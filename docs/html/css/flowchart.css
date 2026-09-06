@@ -1,0 +1,104 @@
+/* ========================================
+   流程图 SVG 样式（book.css 缺失，补全）
+   节点 / 边 / 标签 / 动画，支持亮暗双主题
+   ======================================== */
+
+.flowchart-container {
+  position: relative;
+  margin: var(--space-lg) 0;
+  padding: var(--space-lg) var(--space-md);
+  background: var(--color-bg-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+}
+
+.flowchart-svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+
+/* ---- 边 ---- */
+.flowchart-svg .edge {
+  fill: none;
+  stroke: var(--color-border-dark);
+  stroke-width: 1.6;
+  transition: opacity .3s;
+}
+.flowchart-svg .edge.dashed { stroke-dasharray: 5 4; }
+.flowchart-svg .edge.active { stroke: var(--color-accent); stroke-width: 2; }
+
+.flowchart-svg .edge-label {
+  font-size: 11px;
+  fill: var(--color-text-secondary);
+  font-family: var(--font-sans);
+}
+
+/* ---- 节点通用 ---- */
+.flowchart-svg .node { cursor: default; transition: opacity .3s; }
+.flowchart-svg .node text {
+  font-size: 13px;
+  font-family: var(--font-sans);
+  fill: var(--color-text);
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+/* ---- 节点类型配色 ---- */
+/* start / end：胶囊，主色渐变感 */
+.flowchart-svg .node-rect-start,
+.flowchart-svg .node-rect-end {
+  fill: var(--color-accent);
+  stroke: var(--color-accent-dark);
+  stroke-width: 1.5;
+}
+.flowchart-svg .node-start text,
+.flowchart-svg .node-end text { fill: #fff; font-weight: 600; }
+
+/* process：常规流程节点 */
+.flowchart-svg .node-rect-process {
+  fill: var(--color-surface);
+  stroke: var(--color-border-dark);
+  stroke-width: 1.4;
+}
+
+/* decision：判断节点（菱形感的方角），用警示色描边 */
+.flowchart-svg .node-rect-decision {
+  fill: rgba(245, 158, 11, 0.08);
+  stroke: var(--color-warning);
+  stroke-width: 1.4;
+}
+
+/* tool：工具节点，用信息色 */
+.flowchart-svg .node-rect-tool {
+  fill: rgba(59, 130, 246, 0.08);
+  stroke: var(--color-info);
+  stroke-width: 1.4;
+}
+
+/* ---- 动画态 ---- */
+.flowchart-svg .node.highlight .node-rect-process,
+.flowchart-svg .node.highlight .node-rect-decision,
+.flowchart-svg .node.highlight .node-rect-tool {
+  stroke: var(--color-accent);
+  stroke-width: 2.2;
+  filter: drop-shadow(0 0 6px rgba(99, 102, 241, 0.45));
+}
+.flowchart-svg .node.appearing { animation: fc-pop .45s cubic-bezier(.34,1.56,.64,1); }
+@keyframes fc-pop {
+  0%   { transform: scale(.6); opacity: 0; }
+  100% { transform: scale(1);  opacity: 1; }
+}
+
+/* ---- 重播按钮 ---- */
+.flowchart-replay-btn {
+  position: absolute;
+  top: 10px; right: 10px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-family: var(--font-sans);
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition);
+}
+.flowchart-replay-btn:hover { color: var(--color-accent); border-color: var(--color-accent); }

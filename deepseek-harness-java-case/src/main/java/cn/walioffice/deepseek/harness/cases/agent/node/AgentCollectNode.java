@@ -76,7 +76,7 @@ public class AgentCollectNode extends AbstractAgentMessageNode {
                 }
                 m.put("status", tr.data().error() != null ? "error" : "success");
                 String output = tr.data().message() != null && tr.data().message().content() != null
-                        ? tr.data().message().content().toString()
+                        ? extractToolResultText(tr.data().message().content())
                         : "";
                 if (output.length() > 8192) output = output.substring(0, 8192) + "...[truncated]";
                 m.put("result", output);
@@ -114,5 +114,28 @@ public class AgentCollectNode extends AbstractAgentMessageNode {
             return "<think>" + reasoning + "</think>";
         }
         return text.toString();
+    }
+
+    /**
+     * 把工具结果的内容块展平成可读文本。
+     * 工具结果 Message 的 content 是 ToolResultBlock（里面又嵌套 TextBlock 列表），
+     * 直接 toString 会得到 "ToolResultBlock[toolCallId=..., ...]" 这种 Java 调试格式，前端不可读。
+     */
+    private String extractToolResultText(List<ContentBlock> blocks) {
+        StringBuilder sb = new StringBuilder();
+        for (ContentBlock block : blocks) {
+            if (block instanceof cn.walioffice.deepseek.harness.domain.llm.model.valobj.ToolResultBlock trb) {
+                for (ContentBlock inner : trb.content()) {
+                    if (inner instanceof TextBlock tb) {
+                        if (!sb.isEmpty()) sb.append("\n");
+                        sb.append(tb.text());
+                    }
+                }
+            } else if (block instanceof TextBlock tb) {
+                if (!sb.isEmpty()) sb.append("\n");
+                sb.append(tb.text());
+            }
+        }
+        return sb.toString();
     }
 }

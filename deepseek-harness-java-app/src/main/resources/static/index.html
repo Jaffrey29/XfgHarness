@@ -7,7 +7,19 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>DeepSeek Harness · Java Edition</title>
-  <link rel="stylesheet" href="/app.css" id="app-css" />
+  <script>
+    // 统一缓存破除版本号：同一次页面加载内所有静态资源共用，强制浏览器拉取最新
+    window.__ASSET_V__ = Date.now();
+    window.__loadCss__ = function (href, id) {
+      var l = document.createElement('link');
+      l.rel = 'stylesheet';
+      l.href = href + (href.indexOf('?') >= 0 ? '&' : '?') + 'v=' + window.__ASSET_V__;
+      if (id) l.id = id;
+      document.head.appendChild(l);
+      return l;
+    };
+    window.__loadCss__('/app.css', 'app-css');
+  </script>
   <script>
     window.onerror = function(msg, src, line, col, err) {
       var d = document.getElementById('error-display');
@@ -20,17 +32,23 @@
       d.textContent += 'Error: ' + msg + '\nSource: ' + src + ':' + line + ':' + col + '\n' + (err && err.stack ? err.stack : '') + '\n\n';
     };
   </script>
-  <script src="/lib/marked.min.js"></script>
-  <script src="/lib/purify.min.js"></script>
-  <script src="/lib/highlight-core.min.js"></script>
-  <script src="/lib/highlight-common.min.js"></script>
-  <link rel="stylesheet" href="/lib/github-dark.min.css" />
+  <script>
+    // 带版本号加载 JS 库，避免浏览器缓存旧版本
+    window.__loadJs__ = function (src) {
+      document.write('<script src="' + src + (src.indexOf('?') >= 0 ? '&' : '?') + 'v=' + window.__ASSET_V__ + '"><\/script>');
+    };
+    window.__loadJs__('/lib/marked.min.js');
+    window.__loadJs__('/lib/purify.min.js');
+    window.__loadJs__('/lib/highlight-core.min.js');
+    window.__loadJs__('/lib/highlight-common.min.js');
+    window.__loadCss__('/lib/github-dark.min.css');
+  </script>
 </head>
 <body>
   <div id="app"></div>
   <noscript style="color:red;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);">请启用 JavaScript</noscript>
   <script>
-    document.write('<script src="/app.js?v=' + Date.now() + '"><\/script>');
+    window.__loadJs__('/app.js');
   </script>
 </body>
 </html>

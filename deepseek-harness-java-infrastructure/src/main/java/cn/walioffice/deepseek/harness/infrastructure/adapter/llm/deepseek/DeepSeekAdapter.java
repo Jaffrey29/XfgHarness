@@ -39,6 +39,15 @@ public class DeepSeekAdapter implements LlmAdapter {
     public static final int DEFAULT_CONTEXT_WINDOW = 1_000_000;
     public static final int DEFAULT_MAX_TOKENS = 8_192;
 
+    /**
+     * 单次 LLM HTTP 请求总超时（秒）。多步工具调用后的汇总生成、长上下文推理
+     * 很容易超过 120s，因此做成可配置并默认放宽到 300s。
+     * 可用系统属性 harness.llm.request-timeout-seconds 或环境变量覆盖。
+     */
+    private static final long REQUEST_TIMEOUT_SECONDS = Long.parseLong(
+            System.getProperty("harness.llm.request-timeout-seconds",
+                    System.getenv().getOrDefault("HARNESS_LLM_REQUEST_TIMEOUT_SECONDS", "300")));
+
     private final DeepSeekAdapterOptions options;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
@@ -138,7 +147,7 @@ public class DeepSeekAdapter implements LlmAdapter {
 
         HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(resolveChatCompletionsUri(baseUrl))
-                .timeout(Duration.ofSeconds(120))
+                .timeout(Duration.ofSeconds(REQUEST_TIMEOUT_SECONDS))
                 .header("Content-Type", "application/json")
                 .header("Accept", "text/event-stream")
                 .header("Authorization", "Bearer " + apiKey)
@@ -186,7 +195,7 @@ public class DeepSeekAdapter implements LlmAdapter {
         String payload = objectMapper.writeValueAsString(body);
         HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(resolveChatCompletionsUri(baseUrl))
-                .timeout(Duration.ofSeconds(120))
+                .timeout(Duration.ofSeconds(REQUEST_TIMEOUT_SECONDS))
                 .header("Content-Type", "application/json")
                 .header("Accept", "application/json")
                 .header("Authorization", "Bearer " + apiKey)

@@ -2714,6 +2714,12 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
     const decoder = new TextDecoder();
     let buffer = '';
     let receivedChunks = false;
+    // P0: 跨 reader.read() 持久化 eventType。
+    // 修复：当 TCP 把 `event:chunk\n` 行切到上一个 read、而 `data:...` 行留在下一个 read 时，
+    // 下个 read 顶部 `let eventType = ''` 会让 data 行失去对应的 event 类型，
+    // 导致 chunk / done / error 等事件被静默丢弃，前端累积 fullContent 时丢字、最终渲染残缺。
+    // 用 lastEventType 在 read 之间保留，只有见到新的 event: 行才覆盖。
+    let lastEventType = '';
 
     while (true) {
       const result = await reader.read();
@@ -2723,10 +2729,14 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
       const lines = buffer.split('\n');
       buffer = lines.pop() || '';
 
-      let eventType = '';
+      // P0: 用上次的 eventType 兜底（仅当本次 read 内没出现新的 event: 行才用）。
+      // 这里不能直接覆盖 lastEventType — 让下面的 for 循环见到 event: 行再更新。
+      let eventType = lastEventType;
       for (const line of lines) {
         if (line.startsWith('event:')) {
           eventType = line.slice(6).trim();
+          // P0: 同步到 lastEventType，让跨 read 的 data 行也能找到正确的类型
+          lastEventType = eventType;
         } else if (line.startsWith('data:')) {
           const dataStr = line.slice(5).trim();
           if (!dataStr) continue;

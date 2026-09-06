@@ -31,6 +31,9 @@ public class AgentUseCase implements IAgentUseCase {
     @Autowired
     private IModelSettingQueryService modelSettingQueryService;
 
+    @org.springframework.beans.factory.annotation.Value("${harness.llm.deepseek.default-model:gpt-5.5}")
+    private String defaultModel;
+
     @Override
     public AgentMessageResponse sendMessage(AgentMessageRequest request) {
         try {
@@ -88,7 +91,9 @@ public class AgentUseCase implements IAgentUseCase {
 
     private AgentOptions buildAgentOptions(AgentMessageRequest request) {
         String provider = request.provider() != null ? request.provider() : "deepseek";
-        String model = request.model() != null ? request.model() : "deepseek";
+        // 与 AgentResolveNode 保持一致：默认模型用 yml 的 harness.llm.deepseek.default-model（gpt-5.5），
+        // 而不是写死的 "deepseek"（库里没有该 modelCode，会匹配不到 → apiKey=null → Missing API key）。
+        String model = request.model() != null ? request.model() : defaultModel;
         String baseUrl = null;
         String apiKey = null;
         var setting = modelSettingQueryService.queryAll().stream()

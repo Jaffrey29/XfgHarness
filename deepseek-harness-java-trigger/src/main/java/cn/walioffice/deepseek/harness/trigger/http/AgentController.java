@@ -60,7 +60,7 @@ public class AgentController {
     }
 
     @PostMapping(value = "/stream")
-    public SseEmitter streamMessage(@RequestBody AgentMessageRequest request) {
+    public org.springframework.http.ResponseEntity<SseEmitter> streamMessage(@RequestBody AgentMessageRequest request) {
         SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
 
         emitter.onCompletion(() -> { });
@@ -144,7 +144,12 @@ public class AgentController {
             }
         });
 
-        return emitter;
+        // 强制 SSE 响应声明 UTF-8 charset。
+        // 缺省情况下 SseEmitter 只发 "Content-Type: text/event-stream"（无 charset），
+        // 部分浏览器/中间层会按单字节编码解码多字节中文，导致流式文本切碎乱码。
+        return org.springframework.http.ResponseEntity.ok()
+                .contentType(new MediaType("text", "event-stream", java.nio.charset.StandardCharsets.UTF_8))
+                .body(emitter);
     }
 
     @GetMapping("/{agentId}/status")

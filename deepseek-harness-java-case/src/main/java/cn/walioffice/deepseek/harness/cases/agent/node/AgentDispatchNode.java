@@ -25,7 +25,8 @@ import java.util.regex.Pattern;
 @Service("agentMessageDispatchNode")
 public class AgentDispatchNode extends AbstractAgentMessageNode {
 
-    private static final Pattern ABSOLUTE_PATH = Pattern.compile("(/[^\s，。,；;]+)");
+    // 提取消息中的绝对路径：遇到空白和常见中英文标点即停止，避免把后续说明文字吞进路径。
+    private static final Pattern ABSOLUTE_PATH = Pattern.compile("(/[^\s，。,；;：:\"'“”‘’（）()！？!?、<>]+)");
     private static final Pattern DIRECTORY_QUESTION = Pattern.compile("(?i)(目录|项目|文件夹|仓库|里面有什么|有哪些|包含什么|列表|list|what's in|what is in)");
 
     @Autowired

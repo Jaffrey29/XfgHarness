@@ -200,8 +200,8 @@ const App = {
     document.getElementById('prevChapter').disabled = idx <= 0;
     document.getElementById('nextChapter').disabled = idx >= this.chapters.length - 1;
 
-    // 代码高亮
-    if (window.Prism) Prism.highlightAll();
+    // 代码高亮（自研引擎）
+    if (window.Syntax) Syntax.highlightAll();
 
     // 流程图
     if (window.FlowChart) FlowChart.init();
