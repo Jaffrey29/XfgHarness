@@ -1,7 +1,7 @@
 package cn.xiaofuge.deepseek.harness.app.plugin;
 
 import cn.xiaofuge.deepseek.harness.api.dto.plugin.InstallPluginRequest;
-import cn.xiaofuge.deepseek.harness.cases.plugin.install.IInstallHarnessPluginCase;
+import cn.xiaofuge.deepseek.harness.cases.plugin.IInstallHarnessPluginCase;
 import cn.xiaofuge.deepseek.harness.domain.plugin.IPluginRegistryService;
 import cn.xiaofuge.deepseek.harness.domain.plugin.registry.model.entity.HarnessPluginEntity;
 import cn.xiaofuge.deepseek.harness.domain.plugin.registry.model.valobj.PluginInstallStatusEnumVO;

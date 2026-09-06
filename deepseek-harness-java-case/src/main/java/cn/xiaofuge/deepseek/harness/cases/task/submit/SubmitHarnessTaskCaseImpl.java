@@ -2,6 +2,7 @@ package cn.xiaofuge.deepseek.harness.cases.task.submit;
 
 import cn.xiaofuge.deepseek.harness.api.dto.task.SubmitTaskRequest;
 import cn.xiaofuge.deepseek.harness.api.dto.task.SubmitTaskResponse;
+import cn.xiaofuge.deepseek.harness.cases.task.ISubmitHarnessTaskCase;
 import cn.xiaofuge.deepseek.harness.cases.task.submit.factory.SubmitHarnessTaskFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;

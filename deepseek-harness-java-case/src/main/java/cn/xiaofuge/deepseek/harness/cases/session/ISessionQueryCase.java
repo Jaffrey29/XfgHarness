@@ -1,4 +1,4 @@
-package cn.xiaofuge.deepseek.harness.cases.session.query;
+package cn.xiaofuge.deepseek.harness.cases.session;
 
 import cn.xiaofuge.deepseek.harness.api.dto.session.SessionDetailRequest;
 import cn.xiaofuge.deepseek.harness.api.dto.session.SessionListRequest;

@@ -3,6 +3,7 @@ package cn.xiaofuge.deepseek.harness.cases.session.query;
 import cn.xiaofuge.deepseek.harness.api.dto.session.SessionDetailRequest;
 import cn.xiaofuge.deepseek.harness.api.dto.session.SessionListRequest;
 import cn.xiaofuge.deepseek.harness.api.dto.session.SessionQueryResponse;
+import cn.xiaofuge.deepseek.harness.cases.session.ISessionQueryCase;
 import cn.xiaofuge.deepseek.harness.domain.session.IConversationQueryService;
 import org.springframework.stereotype.Service;
 import java.util.List;

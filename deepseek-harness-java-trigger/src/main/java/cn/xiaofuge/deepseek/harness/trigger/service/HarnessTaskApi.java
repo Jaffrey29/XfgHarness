@@ -2,7 +2,7 @@ package cn.xiaofuge.deepseek.harness.trigger.service;
 
 import cn.xiaofuge.deepseek.harness.api.dto.task.SubmitTaskRequest;
 import cn.xiaofuge.deepseek.harness.api.dto.task.SubmitTaskResponse;
-import cn.xiaofuge.deepseek.harness.cases.task.submit.ISubmitHarnessTaskCase;
+import cn.xiaofuge.deepseek.harness.cases.task.ISubmitHarnessTaskCase;
 import cn.xiaofuge.deepseek.harness.api.service.IHarnessTaskApi;
 import org.springframework.stereotype.Service;
 

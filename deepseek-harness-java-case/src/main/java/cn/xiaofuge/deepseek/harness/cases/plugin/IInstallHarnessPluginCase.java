@@ -1,4 +1,4 @@
-package cn.xiaofuge.deepseek.harness.cases.plugin.install;
+package cn.xiaofuge.deepseek.harness.cases.plugin;
 
 import cn.xiaofuge.deepseek.harness.api.dto.plugin.InstallPluginRequest;
 import cn.xiaofuge.deepseek.harness.api.dto.plugin.InstallPluginResponse;

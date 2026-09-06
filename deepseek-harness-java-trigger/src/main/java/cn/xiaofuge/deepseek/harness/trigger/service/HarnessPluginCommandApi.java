@@ -7,10 +7,10 @@ import cn.xiaofuge.deepseek.harness.api.dto.plugin.InstallPluginResponse;
 import cn.xiaofuge.deepseek.harness.api.dto.plugin.PluginLifecycleResponse;
 import cn.xiaofuge.deepseek.harness.api.dto.plugin.RunPluginRequest;
 import cn.xiaofuge.deepseek.harness.api.dto.plugin.RunPluginResponse;
-import cn.xiaofuge.deepseek.harness.cases.plugin.activate.IActivateHarnessPluginCase;
-import cn.xiaofuge.deepseek.harness.cases.plugin.install.IInstallHarnessPluginCase;
-import cn.xiaofuge.deepseek.harness.cases.plugin.manage.IManageHarnessPluginCase;
-import cn.xiaofuge.deepseek.harness.cases.plugin.run.IRunHarnessPluginCase;
+import cn.xiaofuge.deepseek.harness.cases.plugin.IActivateHarnessPluginCase;
+import cn.xiaofuge.deepseek.harness.cases.plugin.IInstallHarnessPluginCase;
+import cn.xiaofuge.deepseek.harness.cases.plugin.IManageHarnessPluginCase;
+import cn.xiaofuge.deepseek.harness.cases.plugin.IRunHarnessPluginCase;
 import org.springframework.stereotype.Service;
 
 /**

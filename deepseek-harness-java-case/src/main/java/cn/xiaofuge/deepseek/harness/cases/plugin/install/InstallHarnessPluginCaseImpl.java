@@ -2,6 +2,7 @@ package cn.xiaofuge.deepseek.harness.cases.plugin.install;
 
 import cn.xiaofuge.deepseek.harness.api.dto.plugin.InstallPluginRequest;
 import cn.xiaofuge.deepseek.harness.api.dto.plugin.InstallPluginResponse;
+import cn.xiaofuge.deepseek.harness.cases.plugin.IInstallHarnessPluginCase;
 import cn.xiaofuge.deepseek.harness.domain.plugin.registry.model.valobj.PluginInstallationResultVO;
 import cn.xiaofuge.deepseek.harness.domain.plugin.IPluginRegistryService;
 import org.springframework.stereotype.Service;

@@ -1,6 +1,7 @@
 package cn.xiaofuge.deepseek.harness.cases.plugin.run;
 
 import cn.xiaofuge.deepseek.harness.api.dto.plugin.QueryPluginStatusResponse;
+import cn.xiaofuge.deepseek.harness.cases.plugin.IQueryHarnessPluginStatusCase;
 import cn.xiaofuge.deepseek.harness.domain.plugin.runtime.model.valobj.PluginProcessStatusVO;
 import cn.xiaofuge.deepseek.harness.domain.plugin.IPluginRuntimeService;
 import org.springframework.stereotype.Service;

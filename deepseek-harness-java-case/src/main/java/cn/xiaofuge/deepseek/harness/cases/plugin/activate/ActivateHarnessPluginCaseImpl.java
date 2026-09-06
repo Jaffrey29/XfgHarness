@@ -2,6 +2,7 @@ package cn.xiaofuge.deepseek.harness.cases.plugin.activate;
 
 import cn.xiaofuge.deepseek.harness.api.dto.plugin.ActivatePluginRequest;
 import cn.xiaofuge.deepseek.harness.api.dto.plugin.ActivatePluginResponse;
+import cn.xiaofuge.deepseek.harness.cases.plugin.IActivateHarnessPluginCase;
 import cn.xiaofuge.deepseek.harness.domain.plugin.bridge.model.valobj.PluginActivationResultVO;
 import cn.xiaofuge.deepseek.harness.domain.plugin.bridge.model.valobj.PluginBridgePlanVO;
 import cn.xiaofuge.deepseek.harness.domain.plugin.IPluginBridgeService;

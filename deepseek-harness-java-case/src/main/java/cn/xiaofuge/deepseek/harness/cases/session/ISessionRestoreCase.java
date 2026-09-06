@@ -1,4 +1,4 @@
-package cn.xiaofuge.deepseek.harness.cases.session.restore;
+package cn.xiaofuge.deepseek.harness.cases.session;
 
 import cn.xiaofuge.deepseek.harness.api.dto.session.SessionRestoreRequest;
 import cn.xiaofuge.deepseek.harness.api.dto.session.SessionRestoreResponse;

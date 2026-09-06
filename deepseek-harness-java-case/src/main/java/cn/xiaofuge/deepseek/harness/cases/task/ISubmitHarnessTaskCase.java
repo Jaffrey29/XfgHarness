@@ -1,4 +1,4 @@
-package cn.xiaofuge.deepseek.harness.cases.task.submit;
+package cn.xiaofuge.deepseek.harness.cases.task;
 
 import cn.xiaofuge.deepseek.harness.api.dto.task.SubmitTaskRequest;
 import cn.xiaofuge.deepseek.harness.api.dto.task.SubmitTaskResponse;

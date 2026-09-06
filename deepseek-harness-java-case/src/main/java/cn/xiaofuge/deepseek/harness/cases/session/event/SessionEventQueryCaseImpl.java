@@ -2,6 +2,7 @@ package cn.xiaofuge.deepseek.harness.cases.session.event;
 
 import cn.xiaofuge.deepseek.harness.api.dto.session.SessionEventQueryRequest;
 import cn.xiaofuge.deepseek.harness.api.dto.session.SessionEventQueryResponse;
+import cn.xiaofuge.deepseek.harness.cases.session.ISessionEventQueryCase;
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionEvent;
 import cn.xiaofuge.deepseek.harness.domain.session.event.service.ISessionEventLogService;
 import org.springframework.stereotype.Service;

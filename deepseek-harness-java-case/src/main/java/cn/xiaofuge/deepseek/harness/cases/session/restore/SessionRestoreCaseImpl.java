@@ -2,6 +2,7 @@ package cn.xiaofuge.deepseek.harness.cases.session.restore;
 
 import cn.xiaofuge.deepseek.harness.api.dto.session.SessionRestoreRequest;
 import cn.xiaofuge.deepseek.harness.api.dto.session.SessionRestoreResponse;
+import cn.xiaofuge.deepseek.harness.cases.session.ISessionRestoreCase;
 import cn.xiaofuge.deepseek.harness.domain.session.event.service.SessionRebuilderService;
 import org.springframework.stereotype.Service;
 import java.time.Instant;

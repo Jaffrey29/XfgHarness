@@ -3,7 +3,7 @@ package cn.xiaofuge.deepseek.harness.trigger.service;
 import cn.xiaofuge.deepseek.harness.api.dto.plugin.QueryPluginStatusResponse;
 import cn.xiaofuge.deepseek.harness.api.response.plugin.InstalledPluginResponse;
 import cn.xiaofuge.deepseek.harness.api.service.query.HarnessInstalledPluginQueryApi;
-import cn.xiaofuge.deepseek.harness.cases.plugin.run.IQueryHarnessPluginStatusCase;
+import cn.xiaofuge.deepseek.harness.cases.plugin.IQueryHarnessPluginStatusCase;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
