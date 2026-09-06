@@ -1,12 +1,47 @@
-<!-- 第2章：六边形架构 -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>第2章 六边形架构：模块划分与依赖方向 | DeepSeek Harness Java 实战教程</title>
+  <meta name="description" content="为什么 Agent 系统更需要架构约束——以及这个项目如何落地">
+  <link rel="canonical" href="https://fuzhengwei.github.io/deepseek-harness-java/docs/html/ch02-architecture.html">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+  <link rel="stylesheet" href="css/book.css">
+  <link rel="stylesheet" href="css/site.css">
+  <link rel="stylesheet" href="css/flowchart.css">
+</head>
+<body data-chapter="ch02">
+  <div class="reading-progress" id="readingProgress"></div>
+  <div class="app-layout chat-collapsed">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1 class="sidebar-logo" onclick="location.href='index.html'" title="回到首页">📚 Harness 教程</h1>
+        <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
+      </div>
+      <div class="sidebar-progress">
+        <div class="progress-bar"><div class="progress-bar-fill" style="width: 0%"></div></div>
+        <div class="progress-text"><span>学习进度</span><span id="progressText">0/14 章</span></div>
+      </div>
+      <nav class="sidebar-nav" id="sidebarNav"><div class="nav-section">🎬 序章</div><a class="nav-item" data-chapter="ch00" href="ch00-intro.html"><span class="nav-num">00</span><span class="nav-title">教程导读：这本书怎么读</span></a><div class="nav-section">🚀 第一篇：快速上手</div><a class="nav-item" data-chapter="ch01" href="ch01-quickstart.html"><span class="nav-num">01</span><span class="nav-title">十分钟跑起来：构建、启动与第一次对话</span></a><div class="nav-section">🏗️ 第二篇：架构设计</div><a class="nav-item active" data-chapter="ch02" href="ch02-architecture.html"><span class="nav-num">02</span><span class="nav-title">六边形架构：模块划分与依赖方向</span></a><a class="nav-item" data-chapter="ch03" href="ch03-domain.html"><span class="nav-num">03</span><span class="nav-title">领域设计：事件风暴与 27 个限界上下文</span></a><div class="nav-section">🧠 第三篇：核心机制</div><a class="nav-item" data-chapter="ch04" href="ch04-react-loop.html"><span class="nav-num">04</span><span class="nav-title">ReactLoopAgent：ReAct 循环引擎</span></a><a class="nav-item" data-chapter="ch05" href="ch05-session-event.html"><span class="nav-num">05</span><span class="nav-title">会话与事件溯源：SessionLog 的秘密</span></a><a class="nav-item" data-chapter="ch06" href="ch06-intent-strategy.html"><span class="nav-num">06</span><span class="nav-title">意图识别与策略树：消息如何流转</span></a><a class="nav-item" data-chapter="ch07" href="ch07-sse-protocol.html"><span class="nav-num">07</span><span class="nav-title">SSE 流式协议：meta/chunk/step_break/done</span></a><div class="nav-section">🛠️ 第四篇：工具与扩展</div><a class="nav-item" data-chapter="ch08" href="ch08-tools.html"><span class="nav-num">08</span><span class="nav-title">工具系统：ToolCallExecutor 与 Hook 链</span></a><a class="nav-item" data-chapter="ch09" href="ch09-plugin.html"><span class="nav-num">09</span><span class="nav-title">插件开发实战：Java 与 Node 双模式</span></a><a class="nav-item" data-chapter="ch10" href="ch10-mcp.html"><span class="nav-num">10</span><span class="nav-title">MCP 集成：连接外部工具生态</span></a><div class="nav-section">🛡️ 第五篇：治理</div><a class="nav-item" data-chapter="ch11" href="ch11-governance.html"><span class="nav-num">11</span><span class="nav-title">任务、审批与治理：安全执行的边界</span></a><div class="nav-section">⚙️ 第六篇：部署与生产化</div><a class="nav-item" data-chapter="ch12" href="ch12-deployment.html"><span class="nav-num">12</span><span class="nav-title">部署与生产化：从本地到上线</span></a><div class="nav-section">🌟 终章</div><a class="nav-item" data-chapter="ch13" href="ch13-epilogue.html"><span class="nav-num">13</span><span class="nav-title">终章：已知边界与进阶路线</span></a></nav>
+    </aside>
+    <main class="content-area">
+      <div class="content-header">
+        <div class="breadcrumb"><a href="index.html" style="text-decoration:none;">首页</a><span class="crumb-sep">/</span>🏗️ 第二篇：架构设计</div>
+        <div class="nav-buttons">
+          <a class="nav-btn" href="ch01-quickstart.html">← 上一章</a>
+          <a class="nav-btn" href="ch03-domain.html">下一章 →</a>
+        </div>
+      </div>
+      <div class="content-body" id="contentBody"><div class="chapter-head"><div class="chapter-eyebrow">🏗️ 第二篇：架构设计</div><!-- 第2章：六边形架构 -->
 <h1 class="chapter-title">第2章 六边形架构：模块划分与依赖方向</h1>
 <p class="chapter-subtitle">为什么 Agent 系统更需要架构约束——以及这个项目如何落地</p>
 
-<h2 class="section-heading">2.1 本章导读</h2>
+<h2 class="section-heading" id="sec-1">2.1 本章导读</h2>
 
 <p>第1章你已经把系统跑起来了。从本章开始，我们进入源码世界。读一个 652 个文件的工程，<strong>最忌讳从某个类点进去一路跳转</strong>——很快就会迷失。正确的姿势是先建立"地图"：系统分几层？每层边界在哪？谁可以依赖谁？本章给你这张地图。</p>
 
-<h2 class="section-heading">2.2 为什么 Agent 系统更需要架构约束</h2>
+<h2 class="section-heading" id="sec-2">2.2 为什么 Agent 系统更需要架构约束</h2>
 
 <p>传统的 CRUD 系统，架构松一点可能只是"代码难看"；但 Agent 系统架构松了会直接出<strong>事故</strong>：</p>
 
@@ -29,7 +64,7 @@
   <p style="font-size: 13px; color: var(--color-text-secondary);">Agent 系统的本质是"<strong>让不确定的模型输出，驱动确定性的系统行为</strong>"。架构的价值就在于：模型可以是黑盒，但模型触达系统的每一条路径都必须是白盒。</p>
 </div>
 
-<h2 class="section-heading">2.3 六边形架构回顾</h2>
+<h2 class="section-heading" id="sec-3">2.3 六边形架构回顾</h2>
 
 <p>六边形架构（Hexagonal Architecture，又称端口-适配器模式）的核心思想一句话：<strong>领域模型不依赖任何外部世界，外部世界通过"端口"与领域对话</strong>。</p>
 
@@ -37,7 +72,7 @@
 
 <p>左侧是<strong>驱动适配器</strong>（Driving Adapter）：外部请求如何进入系统；右侧是<strong>被驱动适配器</strong>（Driven Adapter）：系统如何访问外部资源。Domain 居中，两侧都依赖它，它不依赖任何人。</p>
 
-<h2 class="section-heading">2.4 本项目的七模块落地</h2>
+<h2 class="section-heading" id="sec-4">2.4 本项目的七模块落地</h2>
 
 <p>项目把六边形架构拆成了 7 个 Maven 模块，依赖方向在 <code>pom.xml</code> 层面被强制约束：</p>
 
@@ -65,7 +100,7 @@
   <p style="font-size: 13px; color: var(--color-text-secondary);">注意 <code>infrastructure</code> 指向 <code>domain</code> 的箭头——这是依赖倒置的体现：不是领域调用基础设施，而是基础设施<strong>实现</strong>领域定义的端口。这个项目曾真实修复过一次违规：Trigger 直接依赖了 infrastructure 的 <code>RuntimeApprovalBroker</code>，修复方式是在 domain 新建端口 <code>IRuntimeApprovalBroker</code> 让适配器实现它，Controller 只注入端口。</p>
 </div>
 
-<h2 class="section-heading">2.5 每层的代码长什么样</h2>
+<h2 class="section-heading" id="sec-5">2.5 每层的代码长什么样</h2>
 
 <h3 class="sub-heading">2.5.1 Trigger 层：只做协议转换</h3>
 
@@ -108,7 +143,7 @@ public interface JavaHarnessPlugin {
 
 <p><code>types</code> 是整个依赖链的最底端，刻意做成纯 POJO——这样第三方插件作者引入这个 JAR 时不会被拖进 Spring 生态。这是插件体系能独立演进的前提（第9章详解）。</p>
 
-<h2 class="section-heading">2.6 一次请求的完整穿越</h2>
+<h2 class="section-heading" id="sec-6">2.6 一次请求的完整穿越</h2>
 
 <p>把各层串起来，看一次对话请求如何从上到下、再从下往上穿越整个系统：</p>
 
@@ -116,9 +151,39 @@ public interface JavaHarnessPlugin {
 
 <p>注意回程的路径：LLM 的响应<strong>不是</strong>沿路"返回"的，而是通过事件回调（<code>deltaSink</code>）从 domain 一路推回 trigger 的 SSE 通道。这种"命令下行、事件上行"的结构在第5章（事件溯源）和第7章（SSE 协议）会详细展开。</p>
 
-<h2 class="section-heading">2.7 小结与下一章预告</h2>
+<h2 class="section-heading" id="sec-7">2.7 小结与下一章预告</h2>
 
 <div class="summary-box">
   <p><strong>本章要点</strong>：六边形架构 = Domain 居中定义端口，Trigger（驱动）与 Infrastructure（被驱动）分两侧实现；7 个 Maven 模块用 pom 依赖强制单向；types 不依赖 Spring 是插件独立演进的关键；请求"命令下行、事件上行"。</p>
   <p style="margin-bottom:0;"><strong>下一章</strong>：模块地图有了，但 <code>domain</code> 模块内部还有 27 个限界上下文——它们是怎么划分出来的？为什么是 27 个而不是 5 个？第3章用事件风暴的方法论带你还原这个划分过程。</p>
 </div>
+</div></div>
+      <nav class="page-nav"><a class="page-nav-card prev" href="ch01-quickstart.html"><span class="page-nav-label">← 上一章</span><span class="page-nav-title">十分钟跑起来：构建、启动与第一次对话</span></a><a class="page-nav-card next" href="ch03-domain.html"><span class="page-nav-label">→ 下一章</span><span class="page-nav-title">领域设计：事件风暴与 27 个限界上下文</span></a></nav>
+      <button class="back-to-top" id="backToTop" title="回到顶部" aria-label="回到顶部">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3.5L4 12h5v8h6v-8h5z"/></svg>
+      </button>
+    </main>
+    <aside class="toc-panel" id="tocPanel">
+      <div class="toc-header"><h3>📋 本章目录</h3></div>
+      <nav class="toc-nav" id="tocNav"><a class="toc-item" href="#sec-1">2.1 本章导读</a><a class="toc-item" href="#sec-2">2.2 为什么 Agent 系统更需要架构约束</a><a class="toc-item" href="#sec-3">2.3 六边形架构回顾</a><a class="toc-item" href="#sec-4">2.4 本项目的七模块落地</a><a class="toc-item" href="#sec-5">2.5 每层的代码长什么样</a><a class="toc-item" href="#sec-6">2.6 一次请求的完整穿越</a><a class="toc-item" href="#sec-7">2.7 小结与下一章预告</a></nav>
+    </aside>
+    <aside class="right-toolbar">
+      <a class="toolbar-btn toolbar-btn-github" href="https://github.com/fuzhengwei/deepseek-harness-java" target="_blank" title="GitHub 源码" style="text-decoration:none;color:inherit;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+      </a>
+    </aside>
+  </div>
+  <script src="js/highlight.js"></script>
+  <script src="js/progress.js"></script>
+  <script src="js/flowchart.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    window.addEventListener('scroll', () => {
+      const h = document.documentElement;
+      const pct = h.scrollTop / (h.scrollHeight - h.clientHeight) * 100;
+      const bar = document.getElementById('readingProgress');
+      if (bar) bar.style.width = (pct || 0) + '%';
+    });
+  </script>
+</body>
+</html>

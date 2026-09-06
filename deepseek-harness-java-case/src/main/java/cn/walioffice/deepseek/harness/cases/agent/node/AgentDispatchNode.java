@@ -7,6 +7,8 @@ import cn.walioffice.deepseek.harness.domain.agent.model.valobj.InboxTarget;
 import cn.walioffice.deepseek.harness.domain.llm.model.entity.Message;
 import cn.walioffice.deepseek.harness.domain.llm.model.entity.MessageSource;
 import cn.walioffice.deepseek.harness.domain.llm.model.valobj.ContentBlock;
+import cn.walioffice.deepseek.harness.domain.llm.model.valobj.ImageAttachmentRef;
+import cn.walioffice.deepseek.harness.domain.llm.model.valobj.ImageBlock;
 import cn.walioffice.deepseek.harness.domain.llm.model.valobj.TextBlock;
 import cn.walioffice.deepseek.harness.domain.shared.strategy.StrategyHandler;
 import org.springframework.stereotype.Service;
@@ -38,13 +40,57 @@ public class AgentDispatchNode extends AbstractAgentMessageNode {
                                            AgentMessageDynamicContext ctx) throws Exception {
         var intent = ctx.getIntent();
         String messageText = prepareMessageText(request.message(), intent);
+        List<ContentBlock> blocks = new java.util.ArrayList<>();
+        blocks.add(new TextBlock(messageText));
+        appendImageBlocks(request, blocks);
         Message userMessage = Message.createUser(
-                List.of(new TextBlock(messageText)),
+                blocks,
                 new MessageSource.UserSource()
         );
         ctx.setUserMessage(userMessage);
         ctx.getAgent().send(userMessage, InboxTarget.NEXT_TURN, true);
         return null;
+    }
+
+    /**
+     * 把请求携带的图片附件解析为 ImageBlock 追加到内容块。
+     * 支持两种形式：data URL（data:image/png;base64,xxx）或裸 base64（需配 mimeType）。
+     * 解析失败的附件跳过并记录（不中断消息发送）。
+     */
+    private static void appendImageBlocks(AgentMessageRequest request, List<ContentBlock> blocks) {
+        if (request.images() == null || request.images().isEmpty()) {
+            return;
+        }
+        for (String raw : request.images()) {
+            if (raw == null || raw.isBlank()) {
+                continue;
+            }
+            try {
+                String mime = "image/png";
+                String base64 = raw.trim();
+                // data URL 形式: data:<mime>;base64,<payload>
+                if (base64.startsWith("data:")) {
+                    int comma = base64.indexOf(',');
+                    if (comma < 0) {
+                        continue;
+                    }
+                    String header = base64.substring(5, comma); // strip "data:"
+                    int semi = header.indexOf(';');
+                    mime = semi > 0 ? header.substring(0, semi) : header;
+                    if (mime == null || mime.isBlank()) {
+                        mime = "image/png";
+                    }
+                    base64 = base64.substring(comma + 1);
+                }
+                byte[] data = java.util.Base64.getDecoder().decode(base64);
+                if (data.length == 0) {
+                    continue;
+                }
+                blocks.add(new ImageBlock(new ImageAttachmentRef(data, mime, 0, 0)));
+            } catch (IllegalArgumentException e) {
+                // 非法 base64：跳过该附件，不让整条消息失败
+            }
+        }
     }
 
     @Override

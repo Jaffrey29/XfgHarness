@@ -1,12 +1,47 @@
-<!-- 第6章：意图识别与策略树 -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>第6章 意图识别与策略树：消息如何流转 | DeepSeek Harness Java 实战教程</title>
+  <meta name="description" content="不用模型的意图分类，和把跨领域流程编成&quot;链&quot;的艺术">
+  <link rel="canonical" href="https://fuzhengwei.github.io/deepseek-harness-java/docs/html/ch06-intent-strategy.html">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+  <link rel="stylesheet" href="css/book.css">
+  <link rel="stylesheet" href="css/site.css">
+  <link rel="stylesheet" href="css/flowchart.css">
+</head>
+<body data-chapter="ch06">
+  <div class="reading-progress" id="readingProgress"></div>
+  <div class="app-layout chat-collapsed">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1 class="sidebar-logo" onclick="location.href='index.html'" title="回到首页">📚 Harness 教程</h1>
+        <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
+      </div>
+      <div class="sidebar-progress">
+        <div class="progress-bar"><div class="progress-bar-fill" style="width: 0%"></div></div>
+        <div class="progress-text"><span>学习进度</span><span id="progressText">0/14 章</span></div>
+      </div>
+      <nav class="sidebar-nav" id="sidebarNav"><div class="nav-section">🎬 序章</div><a class="nav-item" data-chapter="ch00" href="ch00-intro.html"><span class="nav-num">00</span><span class="nav-title">教程导读：这本书怎么读</span></a><div class="nav-section">🚀 第一篇：快速上手</div><a class="nav-item" data-chapter="ch01" href="ch01-quickstart.html"><span class="nav-num">01</span><span class="nav-title">十分钟跑起来：构建、启动与第一次对话</span></a><div class="nav-section">🏗️ 第二篇：架构设计</div><a class="nav-item" data-chapter="ch02" href="ch02-architecture.html"><span class="nav-num">02</span><span class="nav-title">六边形架构：模块划分与依赖方向</span></a><a class="nav-item" data-chapter="ch03" href="ch03-domain.html"><span class="nav-num">03</span><span class="nav-title">领域设计：事件风暴与 27 个限界上下文</span></a><div class="nav-section">🧠 第三篇：核心机制</div><a class="nav-item" data-chapter="ch04" href="ch04-react-loop.html"><span class="nav-num">04</span><span class="nav-title">ReactLoopAgent：ReAct 循环引擎</span></a><a class="nav-item" data-chapter="ch05" href="ch05-session-event.html"><span class="nav-num">05</span><span class="nav-title">会话与事件溯源：SessionLog 的秘密</span></a><a class="nav-item active" data-chapter="ch06" href="ch06-intent-strategy.html"><span class="nav-num">06</span><span class="nav-title">意图识别与策略树：消息如何流转</span></a><a class="nav-item" data-chapter="ch07" href="ch07-sse-protocol.html"><span class="nav-num">07</span><span class="nav-title">SSE 流式协议：meta/chunk/step_break/done</span></a><div class="nav-section">🛠️ 第四篇：工具与扩展</div><a class="nav-item" data-chapter="ch08" href="ch08-tools.html"><span class="nav-num">08</span><span class="nav-title">工具系统：ToolCallExecutor 与 Hook 链</span></a><a class="nav-item" data-chapter="ch09" href="ch09-plugin.html"><span class="nav-num">09</span><span class="nav-title">插件开发实战：Java 与 Node 双模式</span></a><a class="nav-item" data-chapter="ch10" href="ch10-mcp.html"><span class="nav-num">10</span><span class="nav-title">MCP 集成：连接外部工具生态</span></a><div class="nav-section">🛡️ 第五篇：治理</div><a class="nav-item" data-chapter="ch11" href="ch11-governance.html"><span class="nav-num">11</span><span class="nav-title">任务、审批与治理：安全执行的边界</span></a><div class="nav-section">⚙️ 第六篇：部署与生产化</div><a class="nav-item" data-chapter="ch12" href="ch12-deployment.html"><span class="nav-num">12</span><span class="nav-title">部署与生产化：从本地到上线</span></a><div class="nav-section">🌟 终章</div><a class="nav-item" data-chapter="ch13" href="ch13-epilogue.html"><span class="nav-num">13</span><span class="nav-title">终章：已知边界与进阶路线</span></a></nav>
+    </aside>
+    <main class="content-area">
+      <div class="content-header">
+        <div class="breadcrumb"><a href="index.html" style="text-decoration:none;">首页</a><span class="crumb-sep">/</span>🧠 第三篇：核心机制</div>
+        <div class="nav-buttons">
+          <a class="nav-btn" href="ch05-session-event.html">← 上一章</a>
+          <a class="nav-btn" href="ch07-sse-protocol.html">下一章 →</a>
+        </div>
+      </div>
+      <div class="content-body" id="contentBody"><div class="chapter-head"><div class="chapter-eyebrow">🧠 第三篇：核心机制</div><!-- 第6章：意图识别与策略树 -->
 <h1 class="chapter-title">第6章 意图识别与策略树：消息如何流转</h1>
 <p class="chapter-subtitle">不用模型的意图分类，和把跨领域流程编成"链"的艺术</p>
 
-<h2 class="section-heading">6.1 本章导读</h2>
+<h2 class="section-heading" id="sec-1">6.1 本章导读</h2>
 
 <p>第4、5章深入了 Agent 引擎内部，但我们跳过了一段：一条 HTTP 请求到达后、进入 <code>ReactLoopAgent</code> 之前，发生了什么？答案在 <code>case</code> 模块——用例编排层。本章讲两个关键设计：<strong>意图识别</strong>（怎么判断该闲聊还是该调工具）和<strong>策略树</strong>（怎么把多步流程编成一条可扩展的链）。</p>
 
-<h2 class="section-heading">6.2 意图识别：为什么用正则而不是模型</h2>
+<h2 class="section-heading" id="sec-2">6.2 意图识别：为什么用正则而不是模型</h2>
 
 <p>很多系统的意图识别会再调一次小模型。本项目刻意用<strong>纯正则规则</strong>（📦 <code>case/agent/node/AgentIntentNode.java</code>），原因很实际：</p>
 
@@ -45,7 +80,7 @@
   <p style="font-size: 13px; color: var(--color-text-secondary);">规则识别天然有边界。本项目曾踩过坑：<code>AgentDispatchNode.buildDirectoryInstruction()</code> 硬编码"列目录必须调用 <code>fs_search</code>"，但 <code>fs_search</code> 是 glob 文件搜索（<code>pattern="*"</code> 会递归所有文件），不适合列一级目录——修复方式是改推荐 <code>shell_execute</code> 执行 <code>ls -la</code>。教训：<strong>意图规则要配合"工具能力匹配"一起演进</strong>，规则本身也要有测试覆盖。</p>
 </div>
 
-<h2 class="section-heading">6.3 策略树：责任链的工程化</h2>
+<h2 class="section-heading" id="sec-3">6.3 策略树：责任链的工程化</h2>
 
 <p>跨领域流程（如"发消息要经过：解析 Agent → 识别意图 → 分发 → 收集结果"）如果写在一个大方法里，会变成难以维护的 if-else 瀑布。本项目用 <code>AbstractStrategyRouter</code>（📦 <code>domain/shared/strategy/</code>）把它编成<strong>责任链</strong>：</p>
 
@@ -78,7 +113,7 @@
   </table>
 </div>
 
-<h2 class="section-heading">6.4 Agent 消息链：四节点走一遍</h2>
+<h2 class="section-heading" id="sec-4">6.4 Agent 消息链：四节点走一遍</h2>
 
 <p>以 <code>POST /api/agent/stream</code> 为例，四个节点依次是：</p>
 
@@ -103,7 +138,7 @@
   <p style="font-size: 13px; color: var(--color-text-secondary);">这个节点曾经只投影 <code>UserMessage</code> 和 <code>AssistantMessage</code>，<strong>漏了 ToolCall/ToolResult</strong>。后果：前端收到 done 事件重建消息列表时，把 SSE 流式阶段创建的工具卡片清掉了，工具卡永远显示"running"。修复：也投影 ToolCall（status=running）和 ToolResult（status=success/error），并按 callId 合并到同一条 tool 消息。这是第7章 SSE 协议"done 含全量消息"设计的另一半。</p>
 </div>
 
-<h2 class="section-heading">6.5 任务提交链：五节点的治理路径</h2>
+<h2 class="section-heading" id="sec-5">6.5 任务提交链：五节点的治理路径</h2>
 
 <p>对话链是"快路径"（实时交互），任务链是"慢路径"（先治理后执行）。五个节点（📦 <code>case/task/submit/node/</code>）：</p>
 
@@ -111,7 +146,7 @@
 
 <p><code>PermissionCheckNode</code> 是治理核心，内部两步：<code>assess(tools)</code> 产出权限评估 → <code>decide(profile, assessment)</code> 产出 <code>ApprovalDecisionVO</code>。<code>EnqueueNode</code> 根据决策分流：免审批直接 <code>executeSession</code>（RUNNING），需审批则停留 <code>PENDING_APPROVAL</code> 等待人工批准。这条链的完整审批流转是第11章的主题。</p>
 
-<h2 class="section-heading">6.6 为什么策略树适合 Agent 系统</h2>
+<h2 class="section-heading" id="sec-6">6.6 为什么策略树适合 Agent 系统</h2>
 
 <div class="compare-grid">
   <div class="card" style="border-left: 3px solid var(--color-success);">
@@ -128,9 +163,39 @@
   </div>
 </div>
 
-<h2 class="section-heading">6.7 小结与下一章预告</h2>
+<h2 class="section-heading" id="sec-7">6.7 小结与下一章预告</h2>
 
 <div class="summary-box">
   <p><strong>本章要点</strong>：意图识别用纯正则（零延迟、零成本、可单测），四类意图决定后续处理；策略树 = 责任链 + DynamicContext + 非 null 短路；Agent 消息链四节点（Resolve→Intent→Dispatch→Collect）负责对话，任务提交链五节点（SubmissionRoot→ProfileResolution→PermissionCheck→ToolResolution→Enqueue）负责治理。</p>
   <p style="margin-bottom:0;"><strong>下一章</strong>：AgentCollectNode 收集的消息怎么推给浏览器？流式对话的 SSE 事件序列长什么样？为什么需要一个专门的 <code>step_break</code> 事件？第7章完整解析 SSE 流式协议。</p>
 </div>
+</div></div>
+      <nav class="page-nav"><a class="page-nav-card prev" href="ch05-session-event.html"><span class="page-nav-label">← 上一章</span><span class="page-nav-title">会话与事件溯源：SessionLog 的秘密</span></a><a class="page-nav-card next" href="ch07-sse-protocol.html"><span class="page-nav-label">→ 下一章</span><span class="page-nav-title">SSE 流式协议：meta/chunk/step_break/done</span></a></nav>
+      <button class="back-to-top" id="backToTop" title="回到顶部" aria-label="回到顶部">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3.5L4 12h5v8h6v-8h5z"/></svg>
+      </button>
+    </main>
+    <aside class="toc-panel" id="tocPanel">
+      <div class="toc-header"><h3>📋 本章目录</h3></div>
+      <nav class="toc-nav" id="tocNav"><a class="toc-item" href="#sec-1">6.1 本章导读</a><a class="toc-item" href="#sec-2">6.2 意图识别：为什么用正则而不是模型</a><a class="toc-item" href="#sec-3">6.3 策略树：责任链的工程化</a><a class="toc-item" href="#sec-4">6.4 Agent 消息链：四节点走一遍</a><a class="toc-item" href="#sec-5">6.5 任务提交链：五节点的治理路径</a><a class="toc-item" href="#sec-6">6.6 为什么策略树适合 Agent 系统</a><a class="toc-item" href="#sec-7">6.7 小结与下一章预告</a></nav>
+    </aside>
+    <aside class="right-toolbar">
+      <a class="toolbar-btn toolbar-btn-github" href="https://github.com/fuzhengwei/deepseek-harness-java" target="_blank" title="GitHub 源码" style="text-decoration:none;color:inherit;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+      </a>
+    </aside>
+  </div>
+  <script src="js/highlight.js"></script>
+  <script src="js/progress.js"></script>
+  <script src="js/flowchart.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    window.addEventListener('scroll', () => {
+      const h = document.documentElement;
+      const pct = h.scrollTop / (h.scrollHeight - h.clientHeight) * 100;
+      const bar = document.getElementById('readingProgress');
+      if (bar) bar.style.width = (pct || 0) + '%';
+    });
+  </script>
+</body>
+</html>

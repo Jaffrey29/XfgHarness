@@ -298,7 +298,7 @@ flowchart TB
     PluginD -.加载.-> Plugins
 ```
 
-> 完整架构图（draw.io 源文件）见 [`docs/architecture.drawio`](docs/architecture.drawio)，可用 draw.io / diagrams.net 打开编辑。
+> 完整架构图（draw.io 源文件）见 [`docs/architecture.drawio`](docs/md/architecture.drawio)，可用 draw.io / diagrams.net 打开编辑。
 
 ### 3.2 依赖方向与核心约束
 
@@ -564,7 +564,7 @@ Domain 定义端口，Infrastructure 实现。关键端口：
 | `IWorkflowEnginePort` | `LocalWorkflowEnginePort` |
 | `AgentFactoryPort` | `AgentFactory`（组合根：装配 `ReactLoopAgent` + `ToolCallExecutor`） |
 
-> 更完整的领域说明（事件清单、全部端口、子域细节）见 [`docs/domain-design.md`](docs/domain-design.md)。
+> 更完整的领域说明（事件清单、全部端口、子域细节）见 [`docs/domain-design.md`](docs/md/domain-design.md)。
 
 ---
 
@@ -661,7 +661,49 @@ Java Native Plugin 以 JAR 方式安装，宿主使用**隔离 `URLClassLoader`*
 install → activate → run → disable → uninstall
 ```
 
-预置插件可在 `harness.plugin.preset.plugins` 中声明（支持 `auto-enable`），启动时自动装载。完整 Archetype 命令、代码模板和 HTTP 安装示例见 [`docs/java-plugin-development.md`](docs/java-plugin-development.md)。
+预置插件可在 `harness.plugin.preset.plugins` 中声明（支持 `auto-enable`），启动时自动装载。完整 Archetype 命令、代码模板和 HTTP 安装示例见 [`docs/java-plugin-development.md`](docs/md/java-plugin-development.md)。
+
+### 7.5 插件加载流程图
+
+```mermaid
+flowchart TD
+    subgraph INSTALL["① 安装 install"]
+        SRC1["HTTP 接口上传/安装"] --> CASE["InstallHarnessPluginCase"]
+        SRC2["预置声明 harness.plugin.preset.plugins<br/>（启动时 PresetPluginLoader 扫描）"] --> CASE
+        CASE --> REG["PluginRegistryService.installPlugin()"]
+        REG --> ART["ArtifactInstallerPort.install()<br/>制品复制到 harness.plugin.install-root"]
+        ART --> DB1[("落库 HarnessPluginEntity<br/>状态 REGISTERED")]
+    end
+
+    subgraph LOAD["② 激活 activate"]
+        DB1 --> ACT["ActivateHarnessPluginCase<br/>PluginBridgeService.inspect()"]
+        ACT --> RT{"runtimeType"}
+        RT -->|"JAVA_NATIVE"| MGR["JavaPluginRuntimeManager.start()"]
+        MGR --> LD["JavaPluginLoader.load()<br/>新建隔离 URLClassLoader"]
+        LD --> MF["读取 META-INF/plugin.yaml<br/>生成 PluginManifest"]
+        MF --> EP{"plugin.yaml 声明 entrypoint?"}
+        EP -->|"是"| CLS["加载入口类并实例化"]
+        EP -->|"否"| SPI["ServiceLoader SPI<br/>META-INF/services/...JavaHarnessPlugin"]
+        CLS --> RUN["onStart() 并收集 tools()"]
+        SPI --> RUN
+        RT -->|"NODE_BRIDGE"| NB["识别 .codex-plugin/plugin.json、<br/>package.json、cordis.yml 入口<br/>生成受限 node 运行计划"]
+        RUN --> ADAPT["工具适配为 PluginToolDefinition<br/>命名 plugin__&lt;pluginId&gt;__&lt;toolName&gt;"]
+        NB --> ADAPT
+        ADAPT --> TR["注册到 ToolRegistry<br/>并注入 SystemPrompt 能力说明"]
+        TR --> RDY{"bridgeReady?"}
+        RDY -->|"是"| OK[("状态 ACTIVE<br/>可被 Agent 调用")]
+        RDY -->|"否"| FAIL[("状态 FAILED")]
+    end
+
+    subgraph RUNTIME["③ 运行与治理 run / disable / uninstall"]
+        OK --> CALL["Agent 循环按名称调用<br/>ToolRegistry.lookup(plugin__...)"]
+        CALL --> EXEC["Java 插件进程内直调<br/>Node 插件走 sidecar JSON-RPC"]
+        OK --> MGMT["disable / uninstall"]
+        MGMT --> STOP["注销工具 + 移除提示词段落<br/>onStop() 并关闭 ClassLoader"]
+    end
+
+    FAIL -.->|"修复后重新 activate"| ACT
+```
 
 ---
 
@@ -791,6 +833,6 @@ MySQL 承载结构化状态和事件（默认 profile）；standalone profile �
 
 | 文档 | 内容 |
 | --- | --- |
-| [`docs/architecture.drawio`](docs/architecture.drawio) | 总体架构图（draw.io 源文件） |
-| [`docs/domain-design.md`](docs/domain-design.md) | 领域设计详解：事件风暴、全部事件清单、端口与子域细节 |
-| [`docs/java-plugin-development.md`](docs/java-plugin-development.md) | 插件开发指南：Archetype 命令、代码模板、HTTP 安装示例 |
+| [`docs/architecture.drawio`](docs/md/architecture.drawio) | 总体架构图（draw.io 源文件） |
+| [`docs/domain-design.md`](docs/md/domain-design.md) | 领域设计详解：事件风暴、全部事件清单、端口与子域细节 |
+| [`docs/java-plugin-development.md`](docs/md/java-plugin-development.md) | 插件开发指南：Archetype 命令、代码模板、HTTP 安装示例 |

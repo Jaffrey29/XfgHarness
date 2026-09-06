@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>第13章 终章：已知边界与进阶路线 | DeepSeek Harness Java 实战教程</title>
+  <meta name="description" content="诚实地面对不足，才是继续深入的起点">
+  <link rel="canonical" href="https://fuzhengwei.github.io/deepseek-harness-java/docs/html/ch13-epilogue.html">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+  <link rel="stylesheet" href="css/book.css">
+  <link rel="stylesheet" href="css/site.css">
+  <link rel="stylesheet" href="css/flowchart.css">
+</head>
+<body data-chapter="ch13">
+  <div class="reading-progress" id="readingProgress"></div>
+  <div class="app-layout chat-collapsed">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1 class="sidebar-logo" onclick="location.href='index.html'" title="回到首页">📚 Harness 教程</h1>
+        <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
+      </div>
+      <div class="sidebar-progress">
+        <div class="progress-bar"><div class="progress-bar-fill" style="width: 0%"></div></div>
+        <div class="progress-text"><span>学习进度</span><span id="progressText">0/14 章</span></div>
+      </div>
+      <nav class="sidebar-nav" id="sidebarNav"><div class="nav-section">🎬 序章</div><a class="nav-item" data-chapter="ch00" href="ch00-intro.html"><span class="nav-num">00</span><span class="nav-title">教程导读：这本书怎么读</span></a><div class="nav-section">🚀 第一篇：快速上手</div><a class="nav-item" data-chapter="ch01" href="ch01-quickstart.html"><span class="nav-num">01</span><span class="nav-title">十分钟跑起来：构建、启动与第一次对话</span></a><div class="nav-section">🏗️ 第二篇：架构设计</div><a class="nav-item" data-chapter="ch02" href="ch02-architecture.html"><span class="nav-num">02</span><span class="nav-title">六边形架构：模块划分与依赖方向</span></a><a class="nav-item" data-chapter="ch03" href="ch03-domain.html"><span class="nav-num">03</span><span class="nav-title">领域设计：事件风暴与 27 个限界上下文</span></a><div class="nav-section">🧠 第三篇：核心机制</div><a class="nav-item" data-chapter="ch04" href="ch04-react-loop.html"><span class="nav-num">04</span><span class="nav-title">ReactLoopAgent：ReAct 循环引擎</span></a><a class="nav-item" data-chapter="ch05" href="ch05-session-event.html"><span class="nav-num">05</span><span class="nav-title">会话与事件溯源：SessionLog 的秘密</span></a><a class="nav-item" data-chapter="ch06" href="ch06-intent-strategy.html"><span class="nav-num">06</span><span class="nav-title">意图识别与策略树：消息如何流转</span></a><a class="nav-item" data-chapter="ch07" href="ch07-sse-protocol.html"><span class="nav-num">07</span><span class="nav-title">SSE 流式协议：meta/chunk/step_break/done</span></a><div class="nav-section">🛠️ 第四篇：工具与扩展</div><a class="nav-item" data-chapter="ch08" href="ch08-tools.html"><span class="nav-num">08</span><span class="nav-title">工具系统：ToolCallExecutor 与 Hook 链</span></a><a class="nav-item" data-chapter="ch09" href="ch09-plugin.html"><span class="nav-num">09</span><span class="nav-title">插件开发实战：Java 与 Node 双模式</span></a><a class="nav-item" data-chapter="ch10" href="ch10-mcp.html"><span class="nav-num">10</span><span class="nav-title">MCP 集成：连接外部工具生态</span></a><div class="nav-section">🛡️ 第五篇：治理</div><a class="nav-item" data-chapter="ch11" href="ch11-governance.html"><span class="nav-num">11</span><span class="nav-title">任务、审批与治理：安全执行的边界</span></a><div class="nav-section">⚙️ 第六篇：部署与生产化</div><a class="nav-item" data-chapter="ch12" href="ch12-deployment.html"><span class="nav-num">12</span><span class="nav-title">部署与生产化：从本地到上线</span></a><div class="nav-section">🌟 终章</div><a class="nav-item active" data-chapter="ch13" href="ch13-epilogue.html"><span class="nav-num">13</span><span class="nav-title">终章：已知边界与进阶路线</span></a></nav>
+    </aside>
+    <main class="content-area">
+      <div class="content-header">
+        <div class="breadcrumb"><a href="index.html" style="text-decoration:none;">首页</a><span class="crumb-sep">/</span>🌟 终章</div>
+        <div class="nav-buttons">
+          <a class="nav-btn" href="ch12-deployment.html">← 上一章</a>
+          <a class="nav-btn" href="index.html">下一章 →</a>
+        </div>
+      </div>
+      <div class="content-body" id="contentBody"><div class="chapter-head"><div class="chapter-eyebrow">🌟 终章</div><!-- 第13章：终章 -->
+<h1 class="chapter-title">第13章 终章：已知边界与进阶路线</h1>
+<p class="chapter-subtitle">诚实地面对不足，才是继续深入的起点</p>
+
+<h2 class="section-heading" id="sec-1">13.1 本章导读</h2>
+
+<p>走到这里，你已经完整掌握了 deepseek-harness-java 的架构、机制与使用。最后一章不讲新知识，而是做两件事：<strong>诚实地盘点系统当前的边界与隐患</strong>（很多教程回避这个，但它对一个要上线的系统至关重要），以及<strong>给你一条继续进阶的路线</strong>。</p>
+
+<h2 class="section-heading" id="sec-2">13.2 已知边界清单</h2>
+
+<h3 class="sub-heading">13.2.1 安全与治理</h3>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">问题</th><th style="text-align:left;">现状</th><th style="text-align:left;">影响</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>shell_execute 零沙箱</strong></td><td><code>LocalShellExecutor</code> 直接 <code>/bin/sh -c</code>，无命令白名单</td><td>仅靠提交期审批兜底，对话链路可绕过</td></tr>
+      <tr><td><strong>运行期审批 gate 未启用</strong></td><td><code>AgentFactory</code> 默认 <code>approvalBroker=null</code></td><td>对话链路高风险工具不被拦截</td></tr>
+      <tr><td><strong>鉴权过简</strong></td><td>API Key 拦截器 + 空 key 全放行 + actuator 公开</td><td>不适合直接暴露公网</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">13.2.2 稳定性与性能</h3>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">问题</th><th style="text-align:left;">现状</th><th style="text-align:left;">影响</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>ScheduleService 形同虚设</strong></td><td><code>drive()</code> 无 @Scheduled/Quartz 调用方，仓储 InMemory</td><td>定时任务不触发，重启即丢</td></tr>
+      <tr><td><strong>无界线程池</strong></td><td><code>ReactLoopAgent.kick()</code> 与 <code>JobRegistryService</code> 用 <code>newCachedThreadPool</code></td><td>高并发下线程暴涨风险</td></tr>
+      <tr><td><strong>阻塞请求线程</strong></td><td><code>AgentCollectNode</code> 等用 <code>.join()</code></td><td>占用 Tomcat 工作线程</td></tr>
+      <tr><td><strong>长会话 O(n²)</strong></td><td><code>deriveMessages</code> 全量重建；token 用 <code>length/4</code> 粗估</td><td>长会话性能衰减</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">13.2.3 功能完整性</h3>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">问题</th><th style="text-align:left;">现状</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>E2B 沙箱</td><td>只有 Stub 实现，未接真实远程沙箱</td></tr>
+      <tr><td>CODEX/CORDIS 插件</td><td>包型能识别但 runnable=false，是死路径</td></tr>
+      <tr><td>MCP 与插件 Bridge</td><td>互不打通</td></tr>
+      <tr><td>工作流 SSE</td><td>只推终态事件，无增量</td></tr>
+      <tr><td>分布式</td><td>单实例设计，无集群协调</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">💡 为什么要把这些写出来</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">因为这些问题每一个都是<strong>绝佳的练手入口</strong>。它们边界清晰（都有明确的现状描述）、价值明确（都是真实痛点）、难度分层（从"加个 @Scheduled"到"设计分布式协调"都有）。想真正吃透这个项目，最好的方式就是挑一个动手修。</p>
+</div>
+
+<h2 class="section-heading" id="sec-3">13.3 进阶路线：三个方向</h2>
+
+<div class="compare-grid">
+  <div class="card" style="border-left: 3px solid var(--color-info);">
+    <div class="card-title">🔧 方向一：补齐短板</div>
+    <p style="font-size: 13px; color: var(--color-text-secondary);">从 13.2 的清单里挑问题修。推荐起点：给 ScheduleService 加 @Scheduled 驱动（半天）、把 newCachedThreadPool 改有界（半天）、启用运行期审批 gate（一天）。每个都是独立 PR。</p>
+  </div>
+  <div class="card" style="border-left: 3px solid var(--color-success);">
+    <div class="card-title">🚀 方向二：扩展能力</div>
+    <p style="font-size: 13px; color: var(--color-text-secondary);">用第9、10章的技能写自己的插件或接 MCP Server——接入你公司的内部系统、接数据库、接监控平台。这是把项目"用起来"的最短路径。</p>
+  </div>
+  <div class="card" style="border-left: 3px solid var(--color-accent);">
+    <div class="card-title">🏗️ 方向三：架构演进</div>
+    <p style="font-size: 13px; color: var(--color-text-secondary);">挑战大题：Agent 内存状态外置（Redis/DB）实现多实例、任务分布式锁、会话亲和性路由、E2B 真实沙箱接入。这些是分布式 Agent 系统的核心难题。</p>
+  </div>
+</div>
+
+<h2 class="section-heading" id="sec-4">13.4 全书回顾</h2>
+
+<p>回看这条 13 章的路：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"c1","label":"第1章\n跑起来","type":"start"},{"id":"c23","label":"第2-3章\n六边形架构 + 27 个限界上下文","type":"process"},{"id":"c47","label":"第4-7章\nReAct循环 · 事件溯源 · 策略树 · SSE协议","type":"process"},{"id":"c810","label":"第8-10章\n工具 · 插件 · MCP","type":"process"},{"id":"c1112","label":"第11-12章\n治理 · 部署","type":"process"},{"id":"c13","label":"第13章\n边界与进阶","type":"end"}],"edges":[{"from":"c1","to":"c23"},{"from":"c23","to":"c47"},{"from":"c47","to":"c810"},{"from":"c810","to":"c1112"},{"from":"c1112","to":"c13"}]}'></div>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">如果你只记住五句话</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>1. Harness 是 LLM 之外的工程外壳——模型是黑盒，但模型触达系统的每条路径必须是白盒。</td></tr>
+      <tr><td>2. 六边形架构让 Domain 居中定义端口，Infrastructure 实现端口——换模型、换数据库不动核心。</td></tr>
+      <tr><td>3. SessionLog 事件溯源是真相之源——回放、取消、审计都建立在"事件只增不改"上。</td></tr>
+      <tr><td>4. 所有工具（内置/插件/MCP）穿过同一个 ToolCallExecutor——统一入口是治理的前提。</td></tr>
+      <tr><td>5. 能力越大越需要缰绳——权限矩阵、审批、沙箱是 Agent 系统上线前不可省略的部分。</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="section-heading" id="sec-5">13.5 结语</h2>
+
+<div class="quote">
+  Agent 系统的难点从来不在"让模型说句话"，而在"让模型安全、可控、可审计地动手做事"。这个项目把一个生产级 Harness 该考虑的绝大部分问题——架构、事件、工具、插件、治理、部署——都摆在了台面上，连同它的不足一起。读懂它，修好它，扩展它，你就拥有了一个真正属于自己的 Agent 运行时。
+</div>
+
+<p style="text-align:center;color:var(--color-text-secondary);margin-top:32px;">
+  教程源码与项目同在：<a href="https://github.com/fuzhengwei/deepseek-harness-java" target="_blank">github.com/fuzhengwei/deepseek-harness-java</a><br>
+  欢迎 Star、Issue、PR —— 特别是，欢迎你从 13.2 的清单里挑一个，把它修掉。
+</p>
+</div></div>
+      <nav class="page-nav"><a class="page-nav-card prev" href="ch12-deployment.html"><span class="page-nav-label">← 上一章</span><span class="page-nav-title">部署与生产化：从本地到上线</span></a><a class="page-nav-card next disabled" href="index.html"><span class="page-nav-label">→ 下一章</span><span class="page-nav-title">回首页</span></a></nav>
+      <button class="back-to-top" id="backToTop" title="回到顶部" aria-label="回到顶部">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3.5L4 12h5v8h6v-8h5z"/></svg>
+      </button>
+    </main>
+    <aside class="toc-panel" id="tocPanel">
+      <div class="toc-header"><h3>📋 本章目录</h3></div>
+      <nav class="toc-nav" id="tocNav"><a class="toc-item" href="#sec-1">13.1 本章导读</a><a class="toc-item" href="#sec-2">13.2 已知边界清单</a><a class="toc-item" href="#sec-3">13.3 进阶路线：三个方向</a><a class="toc-item" href="#sec-4">13.4 全书回顾</a><a class="toc-item" href="#sec-5">13.5 结语</a></nav>
+    </aside>
+    <aside class="right-toolbar">
+      <a class="toolbar-btn toolbar-btn-github" href="https://github.com/fuzhengwei/deepseek-harness-java" target="_blank" title="GitHub 源码" style="text-decoration:none;color:inherit;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+      </a>
+    </aside>
+  </div>
+  <script src="js/highlight.js"></script>
+  <script src="js/progress.js"></script>
+  <script src="js/flowchart.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    window.addEventListener('scroll', () => {
+      const h = document.documentElement;
+      const pct = h.scrollTop / (h.scrollHeight - h.clientHeight) * 100;
+      const bar = document.getElementById('readingProgress');
+      if (bar) bar.style.width = (pct || 0) + '%';
+    });
+  </script>
+</body>
+</html>

@@ -298,6 +298,7 @@ public class DeepSeekAdapter implements LlmAdapter {
             StringBuilder textContent = new StringBuilder();
             List<ToolCallBlock> msgToolCalls = new ArrayList<>();
             List<ToolResultBlock> msgToolResults = new ArrayList<>();
+            List<ImageBlock> msgImages = new ArrayList<>();
 
             for (var block : msg.content()) {
                 if (block instanceof TextBlock tb) {
@@ -306,6 +307,8 @@ public class DeepSeekAdapter implements LlmAdapter {
                     msgToolCalls.add(tcb);
                 } else if (block instanceof ToolResultBlock trb) {
                     msgToolResults.add(trb);
+                } else if (block instanceof ImageBlock ib) {
+                    msgImages.add(ib);
                 }
             }
 
@@ -344,6 +347,27 @@ public class DeepSeekAdapter implements LlmAdapter {
                     callsNode.add(callNode);
                 }
                 msgNode.set("tool_calls", callsNode);
+            } else if (!msgImages.isEmpty()) {
+                // Multimodal user message: content = [{type:text},{type:image_url}...]
+                ArrayNode contentArr = objectMapper.createArrayNode();
+                if (textContent.length() > 0) {
+                    ObjectNode textPart = objectMapper.createObjectNode();
+                    textPart.put("type", "text");
+                    textPart.put("text", textContent.toString());
+                    contentArr.add(textPart);
+                }
+                for (ImageBlock ib : msgImages) {
+                    ObjectNode imgPart = objectMapper.createObjectNode();
+                    imgPart.put("type", "image_url");
+                    ObjectNode urlNode = imgPart.putObject("image_url");
+                    String mime = ib.attachment() != null && ib.attachment().mimeType() != null
+                            ? ib.attachment().mimeType() : "image/png";
+                    byte[] data = ib.attachment() != null ? ib.attachment().data() : new byte[0];
+                    urlNode.put("url", "data:" + mime + ";base64,"
+                            + Base64.getEncoder().encodeToString(data));
+                    contentArr.add(imgPart);
+                }
+                msgNode.set("content", contentArr);
             } else {
                 // Plain text message
                 msgNode.put("content", textContent.toString());

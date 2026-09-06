@@ -5,6 +5,7 @@
 
 const App = {
   currentChapter: null,
+  staticMode: false,
   chapters: [
     // 序章
     { id: 'ch00', num: 0, title: '教程导读：这本书怎么读', section: '🎬 序章', file: 'chapters/ch00-intro.html' },
@@ -42,6 +43,27 @@ const App = {
     this.bindEvents();
     this.loadTheme();
     Progress.updateUI();
+    this.initHomeEnhancements();
+
+    // 静态章节页模式（build.py 生成的独立 URL 页）：
+    // 正文已内联，SPA 只做增强——高亮/流程图/进度，不再接管路由
+    const staticChapter = document.body.dataset.chapter;
+    if (staticChapter && this.chapters.find(c => c.id === staticChapter)) {
+      this.currentChapter = staticChapter;
+      this.enhanceStaticPage(staticChapter);
+      return;
+    }
+
+    // 静态首页（build.py 生成，含整体框架结构/运行时旅程版块）：
+    // 不接管渲染（SPA renderHome 会覆盖静态内容），仅做增强；hash 则跳转真实章节页
+    if (document.querySelector('.home-hero')) {
+      const h = location.hash.replace('#', '');
+      const target = h && document.querySelector(`.nav-item[data-chapter="${h}"]`);
+      const href = target && target.getAttribute('href');
+      if (href && !href.startsWith('#')) location.href = href;
+      return;
+    }
+
     this.renderHome();
 
     const hash = location.hash.replace('#', '');
@@ -50,8 +72,110 @@ const App = {
     }
   },
 
+  // 首页增强：滚动渐入动效 + 整体框架结构交互（悬停/点击联动详情面板）
+  initHomeEnhancements() {
+    const body = document.getElementById('contentBody');
+    if (!body) return;
+
+    // 1) 滚动渐入：JS 动态加类，禁用 JS 时内容照常可见（SEO 友好）
+    const revealEls = [];
+    body.querySelectorAll('.arch-section, .journey-section, .home-part, .home-tip').forEach(el => {
+      el.classList.add('reveal');
+      revealEls.push(el);
+    });
+    body.querySelectorAll('.home-chapter-list').forEach(el => {
+      el.classList.add('reveal-stagger');
+      revealEls.push(el);
+    });
+    if ('IntersectionObserver' in window) {
+      const io = new IntersectionObserver(entries => {
+        entries.forEach(en => {
+          if (en.isIntersecting) {
+            en.target.classList.add('in');
+            io.unobserve(en.target);
+          }
+        });
+      }, { threshold: 0.06, rootMargin: '0px 0px -4% 0px' });
+      revealEls.forEach(el => io.observe(el));
+    } else {
+      revealEls.forEach(el => el.classList.add('in'));
+    }
+
+    // 2) 架构图交互：悬停/点击左侧模块 → 右侧详情面板切换；详情内按钮跳章节
+    const map = body.querySelector('.arch-map');
+    const detail = document.getElementById('archDetail');
+    if (!map || !detail) return;
+    const layers = Array.from(map.querySelectorAll('.arch-layer'));
+    const findTemplate = mid =>
+      document.querySelector(`template[data-arch-detail="${mid}"]`);
+
+    const showDetail = layer => {
+      layers.forEach(l => l.classList.toggle('selected', l === layer));
+      const tpl = findTemplate(layer.dataset.module);
+      if (!tpl) return;
+      detail.innerHTML = '';
+      detail.appendChild(tpl.content.cloneNode(true));
+      detail.classList.add('active');
+      const color = getComputedStyle(layer).getPropertyValue('--layer-color').trim();
+      if (color) detail.style.setProperty('--detail-color', color);
+    };
+
+    layers.forEach(layer => {
+      layer.addEventListener('mouseenter', () => showDetail(layer));
+      layer.addEventListener('click', () => showDetail(layer));
+      layer.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          showDetail(layer);
+          const link = detail.querySelector('.arch-detail-link');
+          if (link) link.focus();
+        }
+      });
+    });
+    // 默认展示 Domain 核心模块，首屏即有内容
+    const domainLayer = layers.find(l => l.classList.contains('core')) || layers[0];
+    if (domainLayer) showDetail(domainLayer);
+  },
+
+  // 静态章节页增强：代码高亮 + 流程图 + 进度标记 + 已学完按钮
+  enhanceStaticPage(chapterId) {
+    this.staticMode = true;
+    const ch = this.chapters.find(c => c.id === chapterId);
+    const body = document.getElementById('contentBody');
+    if (!ch || !body) return;
+
+    Progress.markLearning(chapterId);
+    if (window.Syntax) Syntax.highlightAll();
+    if (window.FlowChart) FlowChart.init();
+    Progress.updateUI();
+
+    // 标题锚点 id（TOC 跳转用）
+    const headings = body.querySelectorAll('h2.section-heading, h1.chapter-title');
+    headings.forEach((h, i) => { if (!h.id) h.id = 'sec-' + (i + 1); });
+
+    // 已学完按钮（追加到正文末）
+    const footer = document.createElement('div');
+    footer.className = 'chapter-footer';
+    footer.innerHTML = `<button class="home-btn primary" id="markDoneBtn">✓ 标记本章已学完</button>`;
+    body.appendChild(footer);
+    footer.querySelector('#markDoneBtn').addEventListener('click', () => {
+      Progress.markCompleted(chapterId);
+      footer.innerHTML = '<div style="color:var(--color-success);font-size:14px;">✓ 本章已完成，右上角「下一章」继续</div>';
+    });
+
+    // 首页徽章占位回填（静态首页的 data-badge 占位符）
+    document.querySelectorAll('.home-badge-slot').forEach(slot => {
+      const status = Progress.getStatus(slot.dataset.badge);
+      if (status === 'completed') slot.innerHTML = '<span class="home-badge done">✓ 已学完</span>';
+      else if (status === 'learning') slot.innerHTML = '<span class="home-badge learning">学习中</span>';
+    });
+  },
+
   renderSidebar() {
     const nav = document.getElementById('sidebarNav');
+    // 静态页（build.py 已渲染真实 .html 链接）：直接保留服务端侧栏，
+    // 不再接管为 SPA hash 路由——点击即整页跳转，file:// 打开也可用
+    if (nav.querySelector('.nav-item[href$=".html"]')) return;
     let html = '';
     let lastSection = null;
     this.chapters.forEach(ch => {
@@ -74,18 +198,22 @@ const App = {
   },
 
   bindEvents() {
-    document.getElementById('themeToggle').addEventListener('click', () => this.toggleTheme());
-    document.getElementById('prevChapter').addEventListener('click', () => this.goPrev());
-    document.getElementById('nextChapter').addEventListener('click', () => this.goNext());
+    document.getElementById('themeToggle')?.addEventListener('click', () => this.toggleTheme());
+    // SPA 翻页按钮仅存在于 index.html 壳；静态章节页用真实链接，元素可能不存在
+    document.getElementById('prevChapter')?.addEventListener('click', () => this.goPrev());
+    document.getElementById('nextChapter')?.addEventListener('click', () => this.goNext());
 
     const backToTop = document.getElementById('backToTop');
+    backToTop?.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
     const contentBody = document.getElementById('contentBody');
-    window.addEventListener('scroll', () => {
-      backToTop.classList.toggle('visible', window.scrollY > 400);
-    });
-    backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    if (contentBody) {
+      window.addEventListener('scroll', () => {
+        backToTop?.classList.toggle('visible', window.scrollY > 400);
+      });
+    }
 
     window.addEventListener('hashchange', () => {
+      if (this.staticMode) return; // 静态页不接管路由
       const hash = location.hash.replace('#', '');
       if (hash && hash !== this.currentChapter) this.loadChapter(hash);
       if (!hash) this.renderHome();

@@ -153,6 +153,10 @@ const state = {
   pendingApprovals: [],
   // v11: 侧边面板
   activePanel: null, // 'todos' | 'plan' | 'goal' | 'trajectory' | 'subagents' | 'deliverables' | 'jobs' | 'recall' | null
+  // v29: 轨迹视图搜索关键字
+  trajSearch: '',
+  // v29.1: 轨迹明细列表倒序（true=最新在上，默认）
+  trajDesc: true,
   // v11: 会话历史
   sessionHistory: [],
   // v11: 斜杠命令
@@ -311,29 +315,62 @@ function loadSessionsFromStorage() {
   } catch (e) { /* ignore */ }
 }
 
-// v28: 轨迹日志记录
+// v29: 轨迹日志记录 — 增加 t0/t1 epoch 毫秒时间戳，驱动时间线甘特图渲染
 function trajPush(sess, kind, text, extra) {
   sess.trajectoryLog = sess.trajectoryLog || [];
   sess._trajSeq = (sess._trajSeq || 0) + 1;
   if (kind === 'user') sess._trajTurn = (sess._trajTurn || 0) + 1;
+  extra = extra || {};
+  var now = Date.now();
+  var t0 = extra.t0 != null ? extra.t0 : now;
+  var t1 = extra.t1 != null ? extra.t1 : (kind === 'tool' || kind === 'message' ? t0 : t0 + 1);
   const entry = {
     seq: sess._trajSeq,
     turn: sess._trajTurn || 0,
     kind: kind,
     text: (text || ""),
-    time: new Date().toISOString(),
-    duration: extra && extra.duration ? extra.duration : null,
-    tokens: extra && extra.tokens != null ? extra.tokens : null,
-    input: extra && extra.input != null ? extra.input : null,
-    output: extra && extra.output != null ? extra.output : null,
-    toolName: extra && extra.toolName ? extra.toolName : null,
-    status: extra && extra.status ? extra.status : null,
-    error: extra && extra.error ? extra.error : null,
+    time: new Date(t0).toISOString(),
+    t0: t0,
+    t1: t1,
+    duration: extra.duration ? extra.duration : null,
+    tokens: extra.tokens != null ? extra.tokens : null,
+    input: extra.input != null ? extra.input : null,
+    output: extra.output != null ? extra.output : null,
+    toolName: extra.toolName ? extra.toolName : null,
+    status: extra.status ? extra.status : null,
+    error: extra.error ? extra.error : null,
   };
   sess.trajectoryLog.push(entry);
-  // 侧边面板轨迹实时刷新
-  if (state.currentSessionId === sess.agentId && state.activePanel === 'trajectory') render();
+  // 侧边面板 / 主区域轨迹实时刷新
+  if (state.currentSessionId === sess.agentId && (state.activePanel === 'trajectory' || state.activeMainTab === 'trajectory')) render();
   return entry;
+}
+
+// v29: 回填轨迹中 running 状态的工具条目（done 事件到达时补充结果/状态/结束时间）
+function trajSettleTools(sess, doneMessages) {
+  if (!sess.trajectoryLog || !Array.isArray(doneMessages)) return;
+  var running = sess.trajectoryLog.filter(function(e) { return e.kind === 'tool' && e.status === 'running'; });
+  if (running.length === 0) return;
+  var toolResults = doneMessages.filter(function(m) { return m.role === 'tool'; });
+  for (var i = 0; i < running.length && i < toolResults.length; i++) {
+    var entry = running[i];
+    var tr = toolResults[i];
+    entry.status = tr.status || 'success';
+    var durMs = typeof tr.duration === 'number' ? tr.duration : (tr.duration ? parseFloat(tr.duration) * 1000 : null);
+    if (durMs && isFinite(durMs) && durMs > 0) {
+      entry.t1 = entry.t0 + durMs;
+      entry.duration = (durMs / 1000).toFixed(1) + 's';
+    } else {
+      entry.t1 = Date.now();
+      entry.duration = ((entry.t1 - entry.t0) / 1000).toFixed(1) + 's';
+    }
+    if (tr.result != null) {
+      var rText = typeof tr.result === 'string' ? tr.result : JSON.stringify(tr.result);
+      entry.text = (rText || '').slice(0, 300);
+      entry.result = (rText || '').slice(0, 4000);
+    }
+    if (tr.error) entry.error = String(tr.error).slice(0, 300);
+  }
 }
 
 // ── 主题 ───────────────────────────────────
@@ -1806,74 +1843,225 @@ function renderJobsPanel(body, sess) {
 }
 
 // ── Trajectory 面板 ────────────────────────
+// v29: 轨迹视图 — 统计条 + 三泳道时间线（Input/Model/Tools）+ 搜索 + 步骤明细列表
 function renderTrajectoryPanel(body, sess) {
   const log = sess.trajectoryLog || [];
   if (log.length === 0) {
     body.appendChild(el('div', { class: 'trajectory-empty' }, '暂无轨迹数据，发送消息后将自动记录完整执行日志。'));
-  } else {
-    // 工具栏
-    const toolbar = el('div', { class: 'traj-toolbar' });
-    toolbar.appendChild(el('span', { class: 'traj-toolbar-count' }, log.length + ' 条记录'));
-    const userCount = log.filter(function(e) { return e.kind === 'user'; }).length;
-    const msgCount = log.filter(function(e) { return e.kind === 'message'; }).length;
-    const toolCount = log.filter(function(e) { return e.kind === 'tool'; }).length;
-    toolbar.appendChild(el('span', { class: 'traj-toolbar-summary' }, '用户 ' + userCount + ' · 模型 ' + msgCount + ' · 工具 ' + toolCount));
-    body.appendChild(toolbar);
-
-    // 表格
-    const table = el('div', { class: 'traj-table' });
-    // 表头
-    const thead = el('div', { class: 'traj-thead' });
-    thead.appendChild(el('div', { class: 'traj-th traj-th-seq' }, '#'));
-    thead.appendChild(el('div', { class: 'traj-th traj-th-turn' }, 'Turn'));
-    thead.appendChild(el('div', { class: 'traj-th traj-th-kind' }, '类型'));
-    thead.appendChild(el('div', { class: 'traj-th traj-th-text' }, '内容'));
-    thead.appendChild(el('div', { class: 'traj-th traj-th-time' }, '时间'));
-    thead.appendChild(el('div', { class: 'traj-th traj-th-duration' }, '耗时'));
-    thead.appendChild(el('div', { class: 'traj-th traj-th-tokens' }, 'Tokens'));
-    table.appendChild(thead);
-
-    const KIND_LABEL = { user: 'USER', message: 'ASSISTANT', tool: 'TOOL', system: 'SYSTEM', error: 'ERROR' };
-    let lastTurn = -1;
-
-    for (const entry of log) {
-      // Turn 分隔线
-      if (entry.turn !== lastTurn && entry.turn > 0) {
-        const turnDivider = el('div', { class: 'traj-turn-divider' });
-        turnDivider.appendChild(el('span', { class: 'traj-turn-label' }, 'Turn ' + entry.turn));
-        table.appendChild(turnDivider);
-        lastTurn = entry.turn;
-      }
-
-      const row = el('div', { class: 'traj-row traj-kind-' + (entry.kind || 'unknown') });
-      row.appendChild(el('div', { class: 'traj-td traj-td-seq' }, String(entry.seq)));
-      row.appendChild(el('div', { class: 'traj-td traj-td-turn' }, entry.turn > 0 ? String(entry.turn) : ''));
-
-      const kindCell = el('div', { class: 'traj-td traj-td-kind' });
-      kindCell.appendChild(el('span', { class: 'traj-kind-badge traj-kind-' + (entry.kind || 'unknown') }, KIND_LABEL[entry.kind] || entry.kind));
-      if (entry.toolName) kindCell.appendChild(el('span', { class: 'traj-tool-name' }, entry.toolName));
-      row.appendChild(kindCell);
-
-      const textCell = el('div', { class: 'traj-td traj-td-text' });
-      const previewText = entry.text || '';
-      textCell.appendChild(el('span', { class: 'traj-text-preview' }, previewText));
-      if (entry.error) textCell.appendChild(el('span', { class: 'traj-error' }, entry.error));
-      if (entry.status && entry.status !== 'success') textCell.appendChild(el('span', { class: 'traj-status' }, entry.status));
-      row.appendChild(textCell);
-
-      row.appendChild(el('div', { class: 'traj-td traj-td-time' }, formatTime(entry.time)));
-      row.appendChild(el('div', { class: 'traj-td traj-td-duration' }, entry.duration || '—'));
-
-      const tokensCell = el('div', { class: 'traj-td traj-td-tokens' });
-      if (entry.input != null) tokensCell.appendChild(el('span', { class: 'traj-token-in' }, '↑' + entry.input));
-      if (entry.output != null) tokensCell.appendChild(el('span', { class: 'traj-token-out' }, '↓' + entry.output));
-      if (entry.input == null && entry.output == null) tokensCell.appendChild(el('span', null, '—'));
-      row.appendChild(tokensCell);
-
-      table.appendChild(row);
-    }
-    body.appendChild(table);
+    return;
   }
+
+  // ── 顶部统计条（时长 / Turn / 工具数 / 记录数 + 搜索框）──────────────
+  const startTs = log[0].t0 || 0;
+  const endTs = log.reduce(function(mx, e) { return Math.max(mx, e.t1 || e.t0 || 0); }, startTs);
+  const totalMs = Math.max(1, endTs - startTs);
+  const userCount = log.filter(function(e) { return e.kind === 'user'; }).length;
+  const msgCount = log.filter(function(e) { return e.kind === 'message'; }).length;
+  const toolCount = log.filter(function(e) { return e.kind === 'tool'; }).length;
+  const sysCount = log.filter(function(e) { return e.kind === 'system'; }).length;
+  const errCount = log.filter(function(e) { return e.kind === 'error'; }).length;
+  const maxTurn = log.reduce(function(mx, e) { return Math.max(mx, e.turn || 0); }, 0);
+
+  const summary = el('div', { class: 'traj-summary' });
+  summary.appendChild(el('div', { class: 'traj-summary-item', title: '会话总耗时' },
+    el('span', { class: 'traj-summary-ico', text: '⏱' }),
+    el('span', { class: 'traj-summary-num', text: (totalMs / 1000).toFixed(1) + 's' }),
+    el('span', { class: 'traj-summary-lbl', text: 'Duration' })));
+  summary.appendChild(el('div', { class: 'traj-summary-item', title: '对话轮次' },
+    el('span', { class: 'traj-summary-ico', text: '🔁' }),
+    el('span', { class: 'traj-summary-num', text: String(maxTurn) }),
+    el('span', { class: 'traj-summary-lbl', text: 'Turns' })));
+  summary.appendChild(el('div', { class: 'traj-summary-item', title: '工具调用次数' },
+    el('span', { class: 'traj-summary-ico', text: '🛠' }),
+    el('span', { class: 'traj-summary-num', text: String(toolCount) }),
+    el('span', { class: 'traj-summary-lbl', text: 'Tools' })));
+  summary.appendChild(el('div', { class: 'traj-summary-item', title: '总事件数（用户 ' + userCount + ' · 模型 ' + msgCount + ' · 工具 ' + toolCount + ' · 系统 ' + sysCount + ' · 错误 ' + errCount + '）' },
+    el('span', { class: 'traj-summary-ico', text: '📋' }),
+    el('span', { class: 'traj-summary-num', text: String(log.length) }),
+    el('span', { class: 'traj-summary-lbl', text: 'Events' })));
+
+  const searchBox = el('input', {
+    class: 'traj-search',
+    type: 'search',
+    placeholder: '搜索轨迹…',
+    oninput: function(e) {
+      state.trajSearch = e.target.value || '';
+      // 只刷新列表区，避免输入框失焦
+      renderTrajectoryList(sess);
+    },
+  });
+  searchBox.value = state.trajSearch || '';
+  summary.appendChild(searchBox);
+  body.appendChild(summary);
+
+  // ── 时间线（甘特图）────────────────────────────────────────────
+  const timeline = el('div', { class: 'traj-timeline' });
+  const tlHead = el('div', { class: 'traj-tl-head' });
+  tlHead.appendChild(el('span', { class: 'traj-tl-title', text: '⏱ 执行时间线' }));
+  const legend = el('div', { class: 'traj-tl-legend' });
+  legend.appendChild(el('span', { class: 'traj-tl-legend-item' }, el('i', { class: 'traj-tl-swatch traj-tl-swatch-input' }), 'Input'));
+  legend.appendChild(el('span', { class: 'traj-tl-legend-item' }, el('i', { class: 'traj-tl-swatch traj-tl-swatch-model' }), 'Model'));
+  legend.appendChild(el('span', { class: 'traj-tl-legend-item' }, el('i', { class: 'traj-tl-swatch traj-tl-swatch-tool' }), 'Tools'));
+  tlHead.appendChild(legend);
+  timeline.appendChild(tlHead);
+
+  // 时间刻度（0 / 25% / 50% / 75% / 100%）
+  const tlTicks = el('div', { class: 'traj-tl-ticks' });
+  const tickLabels = ['0s', (totalMs / 4000).toFixed(1) + 's', (totalMs / 2000).toFixed(1) + 's', (totalMs / 4 * 3 / 1000).toFixed(1) + 's', (totalMs / 1000).toFixed(1) + 's'];
+  for (var ti = 0; ti < tickLabels.length; ti++) {
+    tlTicks.appendChild(el('span', { class: 'traj-tl-tick', text: tickLabels[ti] }));
+  }
+  timeline.appendChild(tlTicks);
+
+  // 三泳道：Input / Model / Tools
+  const lanes = [
+    { key: 'input', label: 'Input', events: log.filter(function(e) { return e.kind === 'user' || e.kind === 'system'; }) },
+    { key: 'model', label: 'Model', events: log.filter(function(e) { return e.kind === 'message' || e.kind === 'error'; }) },
+    { key: 'tool', label: 'Tools', events: log.filter(function(e) { return e.kind === 'tool'; }) },
+  ];
+  for (var li = 0; li < lanes.length; li++) {
+    var lane = lanes[li];
+    var laneEl = el('div', { class: 'traj-tl-lane traj-tl-lane-' + lane.key });
+    laneEl.appendChild(el('div', { class: 'traj-tl-lane-label', text: lane.label }));
+    var bars = el('div', { class: 'traj-tl-lane-bars' });
+    for (var ei = 0; ei < lane.events.length; ei++) {
+      var ev = lane.events[ei];
+      var left = Math.max(0, Math.min(100, ((ev.t0 - startTs) / totalMs) * 100));
+      var width = Math.max(1.5, Math.min(100 - left, (((ev.t1 || ev.t0) - ev.t0) / totalMs) * 100));
+      var barCls = 'traj-tl-bar traj-tl-bar-' + lane.key;
+      if (ev.status === 'running') barCls += ' traj-tl-bar-running';
+      if (ev.status === 'error' || ev.kind === 'error' || ev.error) barCls += ' traj-tl-bar-error';
+      var tipText = (ev.kind === 'tool' ? (ev.toolName || 'tool') : (KIND_LABELS[ev.kind] || ev.kind)) +
+        (ev.duration ? ' · ' + ev.duration : '') +
+        ' · ' + ((ev.t1 - ev.t0) / 1000).toFixed(1) + 's' +
+        (ev.error ? '\n❌ ' + ev.error : '');
+      var bar = el('div', {
+        class: barCls,
+        style: 'left:' + left.toFixed(2) + '%;width:' + width.toFixed(2) + '%',
+        title: tipText,
+      });
+      bars.appendChild(bar);
+    }
+    laneEl.appendChild(bars);
+    timeline.appendChild(laneEl);
+  }
+  body.appendChild(timeline);
+
+  // ── 步骤明细列表（含搜索过滤）───────────────────────────────────
+  const listWrap = el('div', { class: 'traj-list-wrap', id: 'traj-list-wrap' });
+  body.appendChild(listWrap);
+  renderTrajectoryListInto(listWrap, sess);
+}
+
+const KIND_LABELS = { user: 'USER', message: 'ASSISTANT', tool: 'TOOL', system: 'SYSTEM', error: 'ERROR' };
+
+function renderTrajectoryList(sess) {
+  var wrap = document.getElementById('traj-list-wrap');
+  if (wrap) renderTrajectoryListInto(wrap, sess);
+}
+
+function renderTrajectoryListInto(listWrap, sess) {
+  listWrap.innerHTML = '';
+  const log = sess.trajectoryLog || [];
+  const q = (state.trajSearch || '').toLowerCase();
+  var matched = q ? log.filter(function(e) {
+    return (e.text || '').toLowerCase().indexOf(q) !== -1 ||
+           (e.toolName || '').toLowerCase().indexOf(q) !== -1 ||
+           (KIND_LABELS[e.kind] || '').toLowerCase().indexOf(q) !== -1 ||
+           (e.error || '').toLowerCase().indexOf(q) !== -1;
+  }) : log;
+  // v29.1: 倒序优先（最新在最上面，免滚动）；正序模式保持事件顺序
+  var desc = state.trajDesc !== false;
+  var filtered = desc ? matched.slice().reverse() : matched;
+
+  if (matched.length === 0) {
+    listWrap.appendChild(el('div', { class: 'trajectory-empty' }, '没有匹配「' + (state.trajSearch || '') + '」的记录。'));
+    return;
+  }
+
+  const listHead = el('div', { class: 'traj-list-head' });
+  listHead.appendChild(el('span', { class: 'traj-list-head-title' }, '📋 执行步骤明细' + (q ? '（' + matched.length + ' / ' + log.length + '）' : '')));
+  listHead.appendChild(el('button', {
+    class: 'traj-order-btn',
+    title: '切换正序/倒序',
+    onclick: function() {
+      state.trajDesc = !desc;
+      renderTrajectoryList(sess);
+    },
+  }, desc ? '最新在上 ↓' : '最早在上 ↑'));
+  listWrap.appendChild(listHead);
+
+  const table = el('div', { class: 'traj-table' });
+  let lastTurn = -1;
+
+  for (const entry of filtered) {
+    // Turn 分隔线（倒序时轮次自然降序排列，切换条件不变）
+    if (entry.turn !== lastTurn && entry.turn > 0) {
+      const turnDivider = el('div', { class: 'traj-turn-divider' });
+      turnDivider.appendChild(el('span', { class: 'traj-turn-label' }, 'Turn ' + entry.turn));
+      table.appendChild(turnDivider);
+      lastTurn = entry.turn;
+    }
+
+    const rowCls = 'traj-row traj-kind-' + (entry.kind || 'unknown') + (entry.status === 'running' ? ' traj-row-running' : '');
+    const row = el('div', { class: rowCls });
+
+    // 左侧指示点 + 序号
+    row.appendChild(el('div', { class: 'traj-td traj-td-seq' },
+      el('span', { class: 'traj-dot traj-dot-' + (entry.kind || 'unknown') }),
+      el('span', { text: String(entry.seq) })));
+
+    // Turn 列
+    row.appendChild(el('div', { class: 'traj-td traj-td-turn' }, entry.turn > 0 ? String(entry.turn) : ''));
+
+    // 类型列
+    const kindCell = el('div', { class: 'traj-td traj-td-kind' });
+    kindCell.appendChild(el('span', { class: 'traj-kind-badge traj-kind-' + (entry.kind || 'unknown') }, KIND_LABELS[entry.kind] || entry.kind));
+    if (entry.toolName) kindCell.appendChild(el('span', { class: 'traj-tool-name' }, entry.toolName));
+    row.appendChild(kindCell);
+
+    // 内容列（可展开）
+    const textCell = el('div', { class: 'traj-td traj-td-text' });
+    const previewText = (entry.text || '').replace(/\s+/g, ' ').trim();
+    const hasMore = previewText.length > 120 || (entry.result && entry.result.length > 120);
+    const preview = el('span', { class: 'traj-text-preview' }, previewText.slice(0, 200) || '—');
+    textCell.appendChild(preview);
+    if (entry.error) textCell.appendChild(el('span', { class: 'traj-error' }, entry.error));
+    if (entry.status && entry.status !== 'success' && entry.status !== 'completed') {
+      textCell.appendChild(el('span', { class: 'traj-status' }, entry.status));
+    }
+    if (hasMore) {
+      const expandBtn = el('button', {
+        class: 'traj-expand-btn',
+        title: '展开/收起完整内容',
+        onclick: function() {
+          var detail = textCell.querySelector('.traj-detail');
+          if (detail) { detail.remove(); return; }
+          var fullText = entry.kind === 'tool' && entry.result ? entry.result : (entry.text || '');
+          var detail = el('pre', { class: 'traj-detail' }, fullText);
+          textCell.appendChild(detail);
+        },
+      }, '⋯');
+      textCell.appendChild(expandBtn);
+    }
+    row.appendChild(textCell);
+
+    // 时间列
+    row.appendChild(el('div', { class: 'traj-td traj-td-time', title: entry.time || '' }, formatTime(entry.time)));
+
+    // 耗时列
+    row.appendChild(el('div', { class: 'traj-td traj-td-duration' }, entry.duration || (entry.status === 'running' ? '…' : '—')));
+
+    // Tokens 列
+    const tokensCell = el('div', { class: 'traj-td traj-td-tokens' });
+    if (entry.input != null) tokensCell.appendChild(el('span', { class: 'traj-token-in', title: '输入' }, '↑' + entry.input));
+    if (entry.output != null) tokensCell.appendChild(el('span', { class: 'traj-token-out', title: '输出' }, '↓' + entry.output));
+    if (entry.input == null && entry.output == null) tokensCell.appendChild(el('span', null, '—'));
+    row.appendChild(tokensCell);
+
+    table.appendChild(row);
+  }
+  listWrap.appendChild(table);
 }
 
 // ── Recall 面板 ────────────────────────────
@@ -2087,6 +2275,9 @@ function renderComposer(sess) {
   modelSel.appendChild(select);
   right.appendChild(modelSel);
 
+  // v31: 上下文用量指示圈 — hover 显示已用 tokens
+  right.appendChild(renderContextUsageRing(sess));
+
   // Send / Cancel button
   if (sess && sess.sending) {
     right.appendChild(el('button', { class: 'composer-cancel-btn', onclick: cancelAgent, title: '停止生成' }, '■'));
@@ -2099,6 +2290,70 @@ function renderComposer(sess) {
   inner.appendChild(box);
   composer.appendChild(inner);
   return composer;
+}
+
+// ── 上下文用量指示圈 ────────────────────────
+function renderContextUsageRing(sess) {
+  const wrap = el('div', { class: 'context-ring-wrap', title: '上下文用量' });
+
+  // 计算用量：优先取 stats，否则从消息内容估算
+  const stats = sess ? sess.stats : { inputTokens: 0, outputTokens: 0 };
+  let usedTokens = (stats.inputTokens || 0) + (stats.outputTokens || 0);
+  if (usedTokens === 0 && sess && sess.messages && sess.messages.length > 0) {
+    usedTokens = sess.messages.reduce(function(sum, m) {
+      return sum + estimateTokens(typeof m.content === 'string' ? m.content : '');
+    }, 0);
+  }
+  const maxTokens = 128000; // 默认 128K，可从模型配置获取
+  const pct = maxTokens > 0 ? Math.min(100, Math.max(0, (usedTokens / maxTokens) * 100)) : 0;
+
+  // 格式化数字
+  function fmtTokens(t) {
+    if (t >= 1000000) return (t / 1000000).toFixed(1) + 'M';
+    if (t >= 1000) return (t / 1000).toFixed(1) + 'K';
+    return String(t);
+  }
+
+  // SVG 圆环：周长 ≈ 2πr ≈ 62.8，用 stroke-dasharray 模拟百分比
+  const r = 9;
+  const circumference = 2 * Math.PI * r; // ≈ 56.5
+  const dashLen = (pct / 100) * circumference;
+  const dashStr = dashLen + ' ' + circumference;
+
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(svgNS, 'svg');
+  svg.setAttribute('class', 'context-ring-svg');
+  svg.setAttribute('viewBox', '0 0 22 22');
+
+  const bgCircle = document.createElementNS(svgNS, 'circle');
+  bgCircle.setAttribute('class', 'context-ring-bg');
+  bgCircle.setAttribute('cx', '11');
+  bgCircle.setAttribute('cy', '11');
+  bgCircle.setAttribute('r', String(r));
+  svg.appendChild(bgCircle);
+
+  const fgCircle = document.createElementNS(svgNS, 'circle');
+  fgCircle.setAttribute('class', 'context-ring-fg');
+  fgCircle.setAttribute('cx', '11');
+  fgCircle.setAttribute('cy', '11');
+  fgCircle.setAttribute('r', String(r));
+  fgCircle.setAttribute('stroke-dasharray', dashStr);
+  fgCircle.setAttribute('stroke-dashoffset', '0');
+  svg.appendChild(fgCircle);
+
+  wrap.appendChild(svg);
+
+  // 高量警告
+  if (pct >= 80) wrap.classList.add('ring-danger');
+  else if (pct >= 50) wrap.classList.add('ring-warn');
+
+  // Tooltip
+  const tooltip = el('div', { class: 'context-ring-tooltip' },
+    pct.toFixed(1) + '% · ' + fmtTokens(usedTokens) + ' / ' + fmtTokens(maxTokens) + ' 上下文已使用'
+  );
+  wrap.appendChild(tooltip);
+
+  return wrap;
 }
 
 // ── 设置弹窗 ───────────────────────────────
@@ -2634,6 +2889,9 @@ async function sendMessage(overrideText) {
 
   sess.messages.push({ role: 'user', content: text, time: formatTime(new Date().toISOString()), attachments: msgAttachments });
 
+  // 图片附件随本次请求发给后端（sendWithRetry 里读取 lastRequestAttachments）
+  sess.lastRequestAttachments = msgAttachments;
+
   let assistantMsg = { role: 'assistant', content: '', streaming: true, meta: null };
   sess.messages.push(assistantMsg);
 
@@ -2692,6 +2950,9 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
     const requestBody = { agentId: sess.agentId, message: text };
     if (state.currentWorkspace) requestBody.cwd = state.currentWorkspace;
     if (state.currentModel) requestBody.model = state.currentModel;
+    // 图片附件：随请求发送 data URL 列表，后端转 ImageBlock 供多模态模型识别
+    const imgAttachments = (sess.lastRequestAttachments || []).filter(function(a) { return a.type === 'image' && a.url; });
+    if (imgAttachments.length > 0) requestBody.images = imgAttachments.map(function(a) { return a.url; });
 
     sess.abortController = new AbortController();
     const timeoutId = setTimeout(function() { sess.abortController.abort(); }, SSE_TIMEOUT_MS);
@@ -2772,6 +3033,23 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
               receivedChunks = true;
               stopWaitTimer(sess);
               if (firstChunkTime === null) firstChunkTime = Date.now();
+              // v29: 轨迹 — 记录刚结束的中间 assistant 步骤文本
+              if (fullContent) {
+                trajPush(sess, 'message', fullContent, {
+                  duration: firstChunkTime ? ((Date.now() - firstChunkTime) / 1000).toFixed(1) + 's' : null,
+                  tokens: estimateTokens(fullContent),
+                  output: estimateTokens(fullContent),
+                  t0: firstChunkTime || startTime,
+                  t1: Date.now(),
+                  status: 'step',
+                });
+              }
+              // v29: 轨迹 — 记录工具调用（running，done 时回填结果）
+              trajPush(sess, 'tool', '', {
+                toolName: data.toolName || 'unknown',
+                status: 'running',
+                t0: Date.now(),
+              });
               finishAssistantMessage(sess, assistantMsg, fullContent);
               insertToolCard(sess, { toolName: data.toolName, args: data.args, status: data.status || 'running' });
               assistantMsg = newStreamingAssistant();
@@ -2828,13 +3106,15 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
               sess.stats.outputTokens += estimateTokens(fullContent);
               sess.stats.inputTokens += estimateTokens(text);
 
-              // v28: 轨迹日志 — 记录模型回复
+              // v28: 轨迹日志 — 记录模型回复（v29: 带精确 t0/t1 驱动时间线）
               trajPush(sess, 'message', fullContent, {
                 duration: (duration / 1000).toFixed(1) + 's',
                 tokens: estimateTokens(fullContent),
                 output: estimateTokens(fullContent),
                 input: estimateTokens(text),
                 status: data.status || 'completed',
+                t0: startTime,
+                t1: endTime,
               });
 
               sess.sending = false;
@@ -2846,6 +3126,8 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
                 parseDoneExtras(sess, data);
                 // 从 done 事件构建轨迹
                 buildTrajectoryFromDone(sess, data);
+                // v29: 回填 running 状态工具条目的结果/耗时
+                trajSettleTools(sess, data.messages);
               }
               saveSessionsToStorage();
 
