@@ -128,14 +128,25 @@ const Progress = {
   updateUI() {
     // 更新进度条
     const progress = this.getOverallProgress();
+    const data = this.getAll();
+    const completed = Object.values(data.chapters).filter(c => c.status === 'completed').length;
+    const total = App.chapters ? App.chapters.length : 14;
     const fillEl = document.querySelector('.sidebar-progress .progress-bar-fill');
-    const textEl = document.querySelector('.sidebar-progress .progress-text');
-    
-    if (fillEl) fillEl.style.width = progress + '%';
-    if (textEl) {
-      const data = this.getAll();
-      const completed = Object.values(data.chapters).filter(c => c.status === 'completed').length;
-      textEl.innerHTML = `<span>学习进度</span><span>${completed}/${App.chapters.length} 章</span>`;
+    const numEl = document.getElementById('progressText');
+    const capEl = document.getElementById('progressCaption');
+
+    if (fillEl) fillEl.style.width = Math.round((completed / total) * 100) + '%';
+    if (numEl) numEl.innerHTML = `${completed}/${total} 章`;
+
+    // 进度徽章文案
+    if (capEl) {
+      if (completed === 0) capEl.textContent = 'Lv.1 · 尚未开始，从第 1 章出发';
+      else if (completed === total) capEl.textContent = '🎉 Lv.MAX · 全部学完，太棒了';
+      else {
+        const pct = Math.round((completed / total) * 100);
+        const lv = Math.min(9, Math.floor(pct / 12) + 1);
+        capEl.textContent = `Lv.${lv} · 已完成 ${pct}%，继续前进`;
+      }
     }
     
     // 更新导航项状态

@@ -11,6 +11,8 @@ COPY deepseek-harness-java-domain/pom.xml deepseek-harness-java-domain/
 COPY deepseek-harness-java-infrastructure/pom.xml deepseek-harness-java-infrastructure/
 COPY deepseek-harness-java-trigger/pom.xml deepseek-harness-java-trigger/
 COPY deepseek-harness-java-types/pom.xml deepseek-harness-java-types/
+COPY plugins/sample-tools-plugin/pom.xml plugins/sample-tools-plugin/
+COPY plugins/plugin-archetype/pom.xml plugins/plugin-archetype/
 RUN mvn dependency:go-offline -q
 COPY . .
 RUN mvn package -DskipTests -q

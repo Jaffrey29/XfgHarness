@@ -307,6 +307,32 @@ HOME_JOURNEY_HTML = (
     '</section>'
 )
 
+# 篇章 → 主色变量（与首页 .home-chapter-card 的 --section-* 一致）
+SECTION_VAR = {
+    '序章': '--section-序章',
+    '快速上手': '--section-快速上手',
+    '架构设计': '--section-架构设计',
+    '核心机制': '--section-核心机制',
+    '工具与扩展': '--section-工具与扩展',
+    '治理': '--section-治理',
+    '部署与生产化': '--section-部署与生产化',
+    '终章': '--section-终章',
+}
+_EMOJI_RE = re.compile(r'^([\U0001F000-\U0001FAFF\u2600-\u27BF\uFE0F\u200d]+)\s*')
+
+def section_var(section):
+    for k, v in SECTION_VAR.items():
+        if k in section:
+            return v
+    return '--color-accent'
+
+def section_emoji(section):
+    m = _EMOJI_RE.match(section)
+    return m.group(1) if m else ''
+
+def section_text(section):
+    return _EMOJI_RE.sub('', section).strip()
+
 def page_slug(ch):
     return ch['frag'].replace('.html', '')
 
@@ -343,27 +369,43 @@ def with_h2_ids_v2(frag_html):
     return ''.join(out), toc
 
 def render_sidebar(chapters, current_id):
-    """静态侧边栏：href 指真实页 URL，当前章 active"""
-    html, last = [], None
+    """静态侧边栏：按篇分组 + 每篇主色圆点 + emoji 徽章；当前章 active"""
+    out, last = [], None
+    def close_group():
+        if last is not None:
+            out.append('</div>')
     for ch in chapters:
         if ch['section'] != last:
-            html.append(f'<div class="nav-section">{ch["section"]}</div>')
+            close_group()
+            var = section_var(ch['section'])
+            emoji = section_emoji(ch['section'])
+            text = section_text(ch['section'])
+            out.append(
+                f'<div class="nav-group" data-section="{htmllib.escape(text)}" style="--part:var({var})">'
+                f'<div class="nav-section"><span class="nav-section-dot"></span>'
+                f'<span class="nav-section-emoji">{emoji}</span>'
+                f'<span class="nav-section-title">{htmllib.escape(text)}</span>'
+                f'<span class="nav-section-count">{ch["num"]:02d}</span></div>')
             last = ch['section']
         active = ' active' if ch['id'] == current_id else ''
         href = page_slug(ch) + '.html'
-        html.append(
+        out.append(
             f'<a class="nav-item{active}" data-chapter="{ch["id"]}" href="{href}">'
             f'<span class="nav-num">{ch["num"]:02d}</span>'
             f'<span class="nav-title">{htmllib.escape(ch["title"])}</span></a>')
-    return ''.join(html)
+    close_group()
+    return ''.join(out)
 
-def render_toc(toc):
+def render_toc(toc, num=None):
     if not toc:
-        return '<div style="padding:12px;color:var(--color-text-secondary);font-size:13px;">本章无小节</div>'
-    items = ''.join(
-        f'<a class="toc-item" href="#{hid}">{htmllib.escape(txt)}</a>'
-        for hid, txt in toc)
-    return items
+        return '<div class="toc-empty"><span class="toc-empty-icon">📭</span>本章无小节</div>'
+    items = []
+    for i, (hid, txt) in enumerate(toc, start=1):
+        label = f'{num}.{i}' if num is not None else str(i).zfill(2)
+        items.append(f'<a class="toc-item" href="#{hid}" data-target="{hid}">'
+                     f'<span class="toc-num">{label}</span>'
+                     f'<span class="toc-text">{htmllib.escape(txt)}</span></a>')
+    return ''.join(items)
 
 def wrap_body(frag_html, ch):
     """片段 → 章节正文：包一层编辑式页头（eyebrow 篇名）"""
@@ -407,22 +449,33 @@ def render_page(chapters, ch, prev_ch, next_ch):
   <div class="reading-progress" id="readingProgress"></div>
   <div class="app-layout chat-collapsed">
     <aside class="sidebar">
-      <div class="sidebar-header">
-        <h1 class="sidebar-logo" onclick="location.href='index.html'" title="回到首页">📚 Harness 教程</h1>
+      <div class="sidebar-brand">
+        <a class="brand-lockup" href="index.html" title="回到首页">
+          <span class="brand-tile">📚</span>
+          <span class="brand-meta"><span class="brand-name">Harness 教程</span><span class="brand-sub">Java 实战 · 13 章</span></span>
+        </a>
         <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
       </div>
       <div class="sidebar-progress">
+        <div class="progress-head"><span class="progress-label">学习进度</span><span class="progress-num" id="progressText">0/14 章</span></div>
         <div class="progress-bar"><div class="progress-bar-fill" style="width: 0%"></div></div>
-        <div class="progress-text"><span>学习进度</span><span id="progressText">0/14 章</span></div>
+        <div class="progress-caption" id="progressCaption">Lv.1 · 尚未开始</div>
       </div>
       <nav class="sidebar-nav" id="sidebarNav">{render_sidebar(chapters, ch["id"])}</nav>
     </aside>
     <main class="content-area">
       <div class="content-header">
-        <div class="breadcrumb"><a href="index.html" style="text-decoration:none;">首页</a><span class="crumb-sep">/</span>{htmllib.escape(ch["section"])}</div>
+        <div class="breadcrumb">
+          <a class="crumb-home" href="index.html" aria-label="回到首页">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 9.7V20a1 1 0 0 0 1 1h4v-5h3v5h4a1 1 0 0 0 1-1V9.7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>首页</span>
+          </a>
+          <span class="crumb-sep">›</span>
+          <span class="crumb-sec"><span class="crumb-sec-emoji">{section_emoji(ch["section"])}</span><span>{htmllib.escape(section_text(ch["section"]))}</span></span>
+        </div>
         <div class="nav-buttons">
-          <a class="nav-btn" href="{page_slug(prev_ch) + ".html" if prev_ch else "index.html"}">← 上一章</a>
-          <a class="nav-btn" href="{page_slug(next_ch) + ".html" if next_ch else "index.html"}">下一章 →</a>
+          <a class="nav-btn prev" href="{page_slug(prev_ch) + ".html" if prev_ch else "index.html"}">← 上一章</a>
+          <a class="nav-btn next" href="{page_slug(next_ch) + ".html" if next_ch else "index.html"}">下一章 →</a>
         </div>
       </div>
       <div class="content-body" id="contentBody">{wrap_body(frag, ch)}</div>
@@ -432,11 +485,15 @@ def render_page(chapters, ch, prev_ch, next_ch):
       </button>
     </main>
     <aside class="toc-panel" id="tocPanel">
-      <div class="toc-header"><h3>📋 本章目录</h3></div>
-      <nav class="toc-nav" id="tocNav">{render_toc(toc)}</nav>
+      <div class="toc-header">
+        <h3 class="toc-title"><span class="toc-title-icon">📋</span>本章目录</h3>
+        <span class="toc-count">{len(toc)} 节</span>
+      </div>
+      <nav class="toc-nav" id="tocNav">{render_toc(toc, ch["num"])}</nav>
+      <div class="toc-footer"><a class="toc-github" href="https://github.com/fuzhengwei/deepseek-harness-java" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>查看源码</a></div>
     </aside>
     <aside class="right-toolbar">
-      <a class="toolbar-btn toolbar-btn-github" href="https://github.com/fuzhengwei/deepseek-harness-java" target="_blank" title="GitHub 源码" style="text-decoration:none;color:inherit;">
+      <a class="toolbar-btn toolbar-btn-github" href="https://github.com/fuzhengwei/deepseek-harness-java" target="_blank" rel="noopener" title="GitHub 源码" aria-label="GitHub 源码">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
       </a>
     </aside>
@@ -480,21 +537,30 @@ def render_index(chapters):
   <div class="reading-progress" id="readingProgress"></div>
   <div class="app-layout chat-collapsed">
     <aside class="sidebar">
-      <div class="sidebar-header">
-        <h1 class="sidebar-logo" onclick="location.href='index.html'" title="回到首页">📚 Harness 教程</h1>
+      <div class="sidebar-brand">
+        <a class="brand-lockup" href="index.html" title="回到首页">
+          <span class="brand-tile">📚</span>
+          <span class="brand-meta"><span class="brand-name">Harness 教程</span><span class="brand-sub">Java 实战 · 13 章</span></span>
+        </a>
         <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
       </div>
       <div class="sidebar-progress">
+        <div class="progress-head"><span class="progress-label">学习进度</span><span class="progress-num" id="progressText">0/14 章</span></div>
         <div class="progress-bar"><div class="progress-bar-fill" style="width: 0%"></div></div>
-        <div class="progress-text"><span>学习进度</span><span id="progressText">0/14 章</span></div>
+        <div class="progress-caption" id="progressCaption">Lv.1 · 尚未开始</div>
       </div>
       <nav class="sidebar-nav" id="sidebarNav">{render_sidebar(chapters, None)}</nav>
     </aside>
     <main class="content-area">
       <div class="content-header">
-        <div class="breadcrumb">首页</div>
+        <div class="breadcrumb">
+          <a class="crumb-home" href="index.html" aria-label="回到首页">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 9.7V20a1 1 0 0 0 1 1h4v-5h3v5h4a1 1 0 0 0 1-1V9.7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>首页</span>
+          </a>
+        </div>
         <div class="nav-buttons">
-          <a class="nav-btn" href="{page_slug(chapters[0])}.html">第一章 →</a>
+          <a class="nav-btn next" href="{page_slug(chapters[0])}.html">第一章 →</a>
         </div>
       </div>
       <div class="content-body" id="contentBody">
@@ -543,7 +609,10 @@ def render_index(chapters):
       </button>
     </main>
     <aside class="toc-panel" id="tocPanel">
-      <div class="toc-header"><h3>📋 站点导航</h3></div>
+      <div class="toc-header">
+        <h3 class="toc-title"><span class="toc-title-icon">🧭</span>站点导航</h3>
+        <span class="toc-count">8 篇</span>
+      </div>
       <nav class="toc-nav" id="tocNav">{render_sidebar(chapters, None)}</nav>
     </aside>
     <aside class="right-toolbar">

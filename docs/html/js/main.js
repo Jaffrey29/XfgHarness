@@ -169,6 +169,9 @@ const App = {
       if (status === 'completed') slot.innerHTML = '<span class="home-badge done">✓ 已学完</span>';
       else if (status === 'learning') slot.innerHTML = '<span class="home-badge learning">学习中</span>';
     });
+
+    // 右侧「本章目录」滚动高亮 + 平滑跳转
+    this.initTocScrollspy();
   },
 
   renderSidebar() {
@@ -362,22 +365,57 @@ const App = {
     const tocNav = document.getElementById('tocNav');
     const headings = document.querySelectorAll('#contentBody h2.section-heading, #contentBody h1.chapter-title');
     if (!headings.length) {
-      tocNav.innerHTML = '<div style="padding:12px;color:var(--color-text-secondary);font-size:13px;">本章无小节</div>';
+      tocNav.innerHTML = '<div class="toc-empty"><span class="toc-empty-icon">📭</span>本章无小节</div>';
       return;
     }
     let html = '';
     headings.forEach((h, i) => {
       if (!h.id) h.id = 'toc-h-' + i;
       const isTitle = h.classList.contains('chapter-title');
-      html += `<a class="toc-item${isTitle ? ' toc-title' : ''}" href="javascript:void(0)" data-target="${h.id}">${h.textContent}</a>`;
+      const label = String(i + 1).padStart(2, '0');
+      html += `<a class="toc-item${isTitle ? ' toc-title' : ''}" href="javascript:void(0)" data-target="${h.id}">`
+            + `<span class="toc-num">${label}</span><span class="toc-text">${h.textContent}</span></a>`;
     });
     tocNav.innerHTML = html;
-    tocNav.querySelectorAll('.toc-item').forEach(item => {
-      item.addEventListener('click', () => {
-        const el = document.getElementById(item.dataset.target);
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    this.initTocScrollspy();
+  },
+
+  // 右侧「本章目录」滚动高亮：父容器 .content-area 内滚动，用 IntersectionObserver 定位当前小节
+  initTocScrollspy() {
+    const tocNav = document.getElementById('tocNav');
+    const contentArea = document.querySelector('.content-area');
+    if (!tocNav || !contentArea) return;
+    const items = Array.from(tocNav.querySelectorAll('.toc-item[data-target]'));
+    const pairs = [];
+    items.forEach(it => {
+      const el = document.getElementById(it.dataset.target);
+      if (el) pairs.push({ el, it });
+    });
+    if (!pairs.length) return;
+
+    // 点击 → 平滑滚动到对应小节（父容器是滚动容器）
+    items.forEach(it => {
+      if (it.dataset.bound) return;
+      it.dataset.bound = '1';
+      it.addEventListener('click', e => {
+        e.preventDefault();
+        const el = document.getElementById(it.dataset.target);
+        if (el) scrollToHeading(el);
       });
     });
+
+    const setActive = id => items.forEach(it => it.classList.toggle('active', it.dataset.target === id));
+    setActive(pairs[0].it.dataset.target);
+
+    if (!('IntersectionObserver' in window)) return;
+    const io = new IntersectionObserver(entries => {
+      const visible = entries.filter(e => e.isIntersecting);
+      if (visible.length) {
+        visible.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        setActive(visible[0].target.id);
+      }
+    }, { root: contentArea, rootMargin: '-12% 0px -68% 0px', threshold: 0 });
+    pairs.forEach(p => io.observe(p.el));
   },
 
   goPrev() {
