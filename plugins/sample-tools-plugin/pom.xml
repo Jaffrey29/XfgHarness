@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>cn.walioffice</groupId>
+        <artifactId>deepseek-harness-java</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>sample-tools-plugin</artifactId>
+    <packaging>jar</packaging>
+
+    <name>Sample Tools Plugin</name>
+    <description>示例插件：天气查询 + 文件摘要，纳入主构建流程，编译即可用。</description>
+
+    <dependencies>
+        <!-- 插件只需依赖 domain 模块（provided，打包时不打入插件 JAR） -->
+        <dependency>
+            <groupId>cn.walioffice</groupId>
+            <artifactId>deepseek-harness-java-types</artifactId>
+            <version>${project.version}</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+</project>

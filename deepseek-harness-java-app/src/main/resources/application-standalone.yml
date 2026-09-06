@@ -1,0 +1,31 @@
+spring:
+  datasource:
+    url: jdbc:h2:file:./data/deepseek-harness-java;MODE=MySQL;CASE_INSENSITIVE_IDENTIFIERS=TRUE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  sql:
+    init:
+      mode: always
+      encoding: UTF-8
+
+harness:
+  plugin:
+    install-root: ./plugins
+    node-bridge-enabled: true
+    preset:
+      plugins:
+        - plugin-id: dsh-demo-plugin
+          display-name: DSH Demo Plugin
+          plugin-version: 1.0.0
+          runtime-type: DSH_NODE_BRIDGE
+          source-path: ./plugins/demo-plugin
+          entrypoint: index.js
+          auto-enable: true
+  llm:
+    deepseek:
+      base-url: http://127.0.0.1:8777/v1
+      api-key: ${DEEPSEEK_API_KEY:}
+      max-tokens: 8192
+      context-window: 128000
+      default-model: gpt-5.5

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>DeepSeek Harness · Java Edition</title>
+  <link rel="stylesheet" href="/app.css" id="app-css" />
+  <script>
+    window.onerror = function(msg, src, line, col, err) {
+      var d = document.getElementById('error-display');
+      if (!d) {
+        d = document.createElement('div');
+        d.id = 'error-display';
+        d.style.cssText = 'position:fixed;top:10px;left:10px;right:10px;background:#ff4444;color:#fff;padding:16px;border-radius:8px;z-index:99999;font-family:monospace;font-size:13px;white-space:pre-wrap;max-height:80vh;overflow:auto;';
+        document.body.appendChild(d);
+      }
+      d.textContent += 'Error: ' + msg + '\nSource: ' + src + ':' + line + ':' + col + '\n' + (err && err.stack ? err.stack : '') + '\n\n';
+    };
+  </script>
+  <script src="/lib/marked.min.js"></script>
+  <script src="/lib/purify.min.js"></script>
+  <script src="/lib/highlight-core.min.js"></script>
+  <script src="/lib/highlight-common.min.js"></script>
+  <link rel="stylesheet" href="/lib/github-dark.min.css" />
+</head>
+<body>
+  <div id="app"></div>
+  <noscript style="color:red;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);">请启用 JavaScript</noscript>
+  <script>
+    document.write('<script src="/app.js?v=' + Date.now() + '"><\/script>');
+  </script>
+</body>
+</html>

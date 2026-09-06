@@ -1,0 +1,57 @@
+package cn.walioffice.deepseek.harness.cases.plugin.run;
+
+import cn.walioffice.deepseek.harness.api.dto.plugin.RunPluginRequest;
+import cn.walioffice.deepseek.harness.api.dto.plugin.RunPluginResponse;
+import cn.walioffice.deepseek.harness.domain.plugin.bridge.model.valobj.PluginBridgePlanVO;
+import cn.walioffice.deepseek.harness.domain.plugin.IPluginBridgeService;
+import cn.walioffice.deepseek.harness.domain.plugin.registry.model.entity.HarnessPluginEntity;
+import cn.walioffice.deepseek.harness.domain.plugin.IPluginRegistryService;
+import cn.walioffice.deepseek.harness.domain.plugin.runtime.model.valobj.PluginRunResultVO;
+import cn.walioffice.deepseek.harness.domain.plugin.IPluginRuntimeService;
+import java.time.Instant;
+import org.springframework.stereotype.Service;
+
+/**
+ * 协调插件进程启动。
+ *
+ * @author 小傅哥
+ * @website bugstack.cn
+ */
+@Service
+public class RunHarnessPluginCaseImpl implements IRunHarnessPluginCase {
+
+    private final IPluginRegistryService pluginRegistryService;
+    private final IPluginBridgeService pluginBridgeService;
+    private final IPluginRuntimeService pluginRuntimeService;
+
+    public RunHarnessPluginCaseImpl(
+            IPluginRegistryService pluginRegistryService,
+            IPluginBridgeService pluginBridgeService,
+            IPluginRuntimeService pluginRuntimeService
+    ) {
+        this.pluginRegistryService = pluginRegistryService;
+        this.pluginBridgeService = pluginBridgeService;
+        this.pluginRuntimeService = pluginRuntimeService;
+    }
+
+    @Override
+    public RunPluginResponse execute(RunPluginRequest request) {
+        HarnessPluginEntity plugin = pluginRegistryService.loadPlugin(request.pluginId());
+        PluginBridgePlanVO plan = pluginBridgeService.inspect(plugin);
+        pluginRegistryService.refreshStatus(plugin, plan.bridgeReady());
+        pluginBridgeService.recordBinding(plugin.getPluginId(), plan, Instant.now());
+        if (!plan.bridgeReady()) {
+            throw new IllegalStateException("plugin bridge is not ready: " + plan.message());
+        }
+        PluginRunResultVO result = pluginRuntimeService.start(plugin, plan);
+        return new RunPluginResponse(
+                result.pluginId(),
+                result.processId(),
+                result.runtimeCommand(),
+                result.workingDirectory(),
+                result.running(),
+                result.startedAt(),
+                result.message()
+        );
+    }
+}

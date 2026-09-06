@@ -1,0 +1,79 @@
+server:
+  port: 8090
+
+logging:
+  level:
+    cn.walioffice.deepseek.harness: info
+
+spring:
+  application:
+    name: deepseek-harness-java
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/deepseek_harness_java?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: 12345678
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  sql:
+    init:
+      mode: always
+      encoding: UTF-8
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
+    default-fetch-size: 100
+    default-statement-timeout: 30
+
+harness:
+  llm:
+    deepseek:
+      base-url: http://127.0.0.1:8777/v1
+      api-key: ${DEEPSEEK_API_KEY:}
+      max-tokens: 8192
+      context-window: 128000
+      default-model: gpt-5.5
+  approval:
+    required-profiles:
+      - web
+    required-tools:
+      - shell_execute
+      - fs_write
+      - plugin.run
+      - subprocess.spawn
+    # 运行期审批等待超时（agent 实时挂起等待用户裁决）
+    runtime-timeout-ms: 600000
+  # 沙箱：三档模式（READ_ONLY / WORKSPACE_WRITE / DANGER_FULL_ACCESS）
+  # 本地开发默认 WORKSPACE_WRITE——写操作限制在工作区内、shell cwd 不得越界
+  sandbox:
+    default-mode: WORKSPACE_WRITE
+    shell-enabled: true
+    fs-enabled: true
+  # MCP servers（stdio 传输），启动时连接并把远端工具注册为 mcp__<server>__<tool>
+  mcp:
+    enabled: true
+    servers: []
+    # 示例：
+    # servers:
+    #   - name: filesystem
+    #     command: npx
+    #     args: ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+    #     env: {}
+    #     cwd: ~
+  plugin:
+    install-root: ./plugins
+    node-bridge-enabled: true
+    preset:
+      plugins:
+        - plugin-id: dsh-demo-plugin
+          display-name: DSH Demo Plugin
+          plugin-version: 1.0.0
+          runtime-type: DSH_NODE_BRIDGE
+          source-path: ./plugins/demo-plugin
+          entrypoint: index.js
+          auto-enable: true
+        - plugin-id: sample-tools
+          display-name: Sample Tools Plugin
+          plugin-version: 1.0.0
+          runtime-type: JAVA_NATIVE
+          source-path: ./plugins/sample-tools-plugin-1.0.0.jar
+          entrypoint: sample-tools-plugin-1.0.0.jar
+          auto-enable: true

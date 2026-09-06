@@ -1,0 +1,81 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>cn.walioffice</groupId>
+        <artifactId>deepseek-harness-java</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>deepseek-harness-java-app</artifactId>
+
+    <dependencies>
+        <dependency>
+            <groupId>cn.walioffice</groupId>
+            <artifactId>deepseek-harness-java-trigger</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>cn.walioffice</groupId>
+            <artifactId>deepseek-harness-java-infrastructure</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- 引入示例插件 JAR，构建时复制到 install-root 供 preset 预装使用 -->
+        <dependency>
+            <groupId>cn.walioffice</groupId>
+            <artifactId>sample-tools-plugin</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- 构建时把插件 JAR 复制到 ./plugins/ 目录，preset 配置的 source-path 直接引用 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copy-plugin-jars</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <configuration>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>cn.walioffice</groupId>
+                                    <artifactId>sample-tools-plugin</artifactId>
+                                    <version>${project.version}</version>
+                                    <type>jar</type>
+                                    <destFileName>sample-tools-plugin-1.0.0.jar</destFileName>
+                                    <outputDirectory>${project.basedir}/../plugins</outputDirectory>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

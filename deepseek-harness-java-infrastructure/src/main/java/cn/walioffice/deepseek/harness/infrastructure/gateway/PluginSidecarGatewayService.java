@@ -1,0 +1,125 @@
+package cn.walioffice.deepseek.harness.infrastructure.gateway;
+
+import cn.walioffice.deepseek.harness.domain.plugin.runtime.model.valobj.PluginProcessStatusVO;
+import cn.walioffice.deepseek.harness.domain.plugin.runtime.model.valobj.PluginRunResultVO;
+import java.io.File;
+import java.io.IOException;
+import java.lang.ProcessBuilder.Redirect;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Instant;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+/**
+ * Starts and tracks local Node plugin processes inside the configured install root.
+ *
+ * @author 小傅哥
+ * @website bugstack.cn
+ */
+@Service
+public class PluginSidecarGatewayService {
+
+    private final Map<String, RunningPluginProcess> runningProcesses = new ConcurrentHashMap<>();
+    private final boolean nodeBridgeEnabled;
+    private final Path installRoot;
+
+    public PluginSidecarGatewayService(
+            @Value("${harness.plugin.node-bridge-enabled:true}") boolean nodeBridgeEnabled,
+            @Value("${harness.plugin.install-root:./plugins}") String installRoot
+    ) {
+        this.nodeBridgeEnabled = nodeBridgeEnabled;
+        this.installRoot = Path.of(installRoot).toAbsolutePath().normalize();
+    }
+
+    /**
+     * Starts one Node sidecar process with a validated entrypoint inside the install root.
+     */
+    public PluginRunResultVO start(String pluginId, String workingDirectory, String entrypointPath) {
+        if (!nodeBridgeEnabled) {
+            throw new IllegalStateException("node bridge is disabled by configuration");
+        }
+        RunningPluginProcess current = runningProcesses.get(pluginId);
+        if (current != null && current.process().isAlive()) {
+            return new PluginRunResultVO(pluginId, current.process().pid(), current.runtimeCommand(), current.workingDirectory(), true, current.startedAt(), "plugin process is already running");
+        }
+
+        Path workDir = Path.of(workingDirectory).toAbsolutePath().normalize();
+        Path entrypoint = Path.of(entrypointPath).toAbsolutePath().normalize();
+        if (!workDir.startsWith(installRoot) || !entrypoint.startsWith(installRoot)) {
+            throw new IllegalStateException("plugin execution is limited to the configured install root");
+        }
+        if (!entrypoint.startsWith(workDir)) {
+            throw new IllegalStateException("plugin entrypoint escapes working directory");
+        }
+        if (!Files.exists(entrypoint) || Files.isDirectory(entrypoint)) {
+            throw new IllegalStateException("plugin entrypoint does not exist");
+        }
+        String fileName = entrypoint.getFileName().toString();
+        if (!(fileName.endsWith(".js") || fileName.endsWith(".mjs") || fileName.endsWith(".cjs"))) {
+            throw new IllegalStateException("plugin entrypoint must be a Node-executable script");
+        }
+
+        try {
+            Path logDir = installRoot.resolve("runtime-logs");
+            Files.createDirectories(logDir);
+            File logFile = logDir.resolve(pluginId + ".log").toFile();
+            ProcessBuilder processBuilder = new ProcessBuilder("node", entrypoint.toString())
+                    .directory(workDir.toFile())
+                    .redirectError(Redirect.appendTo(logFile));
+            Process process = processBuilder.start();
+            Instant startedAt = Instant.now();
+            String runtimeCommand = "node " + entrypoint;
+            runningProcesses.put(pluginId, new RunningPluginProcess(process, runtimeCommand, workDir.toString(), startedAt));
+            return new PluginRunResultVO(pluginId, process.pid(), runtimeCommand, workDir.toString(), process.isAlive(), startedAt, "plugin process started");
+        } catch (IOException exception) {
+            throw new IllegalStateException("failed to start plugin process", exception);
+        }
+    }
+
+    public java.util.Optional<Process> runningProcess(String pluginId) {
+        RunningPluginProcess process = runningProcesses.get(pluginId);
+        return process != null && process.process().isAlive()
+                ? java.util.Optional.of(process.process())
+                : java.util.Optional.empty();
+    }
+
+    /**
+     * Returns the current process status for one plugin.
+     */
+    public PluginProcessStatusVO status(String pluginId) {
+        RunningPluginProcess runningPluginProcess = runningProcesses.get(pluginId);
+        if (runningPluginProcess == null) {
+            return new PluginProcessStatusVO(pluginId, null, false, null, null, null, "plugin process not started");
+        }
+        boolean alive = runningPluginProcess.process().isAlive();
+        return new PluginProcessStatusVO(pluginId, runningPluginProcess.process().pid(), alive, runningPluginProcess.runtimeCommand(), runningPluginProcess.workingDirectory(), runningPluginProcess.startedAt(), alive ? "plugin process is running" : "plugin process has exited");
+    }
+
+    /**
+     * Stops one running plugin sidecar process if present.
+     */
+    public PluginProcessStatusVO stop(String pluginId) {
+        RunningPluginProcess runningPluginProcess = runningProcesses.remove(pluginId);
+        if (runningPluginProcess == null) {
+            return new PluginProcessStatusVO(pluginId, null, false, null, null, null, "plugin process not started");
+        }
+        Process process = runningPluginProcess.process();
+        process.destroy();
+        try {
+            if (!process.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                process.destroyForcibly();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            process.destroyForcibly();
+        }
+        boolean alive = process.isAlive();
+        return new PluginProcessStatusVO(pluginId, process.pid(), alive, runningPluginProcess.runtimeCommand(), runningPluginProcess.workingDirectory(), runningPluginProcess.startedAt(), alive ? "plugin process still alive after stop" : "plugin process stopped");
+    }
+
+    private record RunningPluginProcess(Process process, String runtimeCommand, String workingDirectory, Instant startedAt) {
+    }
+}
