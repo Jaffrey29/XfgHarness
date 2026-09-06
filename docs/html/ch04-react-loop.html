@@ -7,9 +7,9 @@
   <meta name="description" content="整个系统的心脏——一个 769 行的类如何驱动&quot;思考-行动-观察&quot;">
   <link rel="canonical" href="https://fuzhengwei.github.io/deepseek-harness-java/docs/html/ch04-react-loop.html">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
-  <link rel="stylesheet" href="css/book.css?v=20260906-2">
-  <link rel="stylesheet" href="css/site.css?v=20260906-2">
-  <link rel="stylesheet" href="css/flowchart.css?v=20260906-2">
+  <link rel="stylesheet" href="css/book.css?v=20260906-4">
+  <link rel="stylesheet" href="css/site.css?v=20260906-4">
+  <link rel="stylesheet" href="css/flowchart.css?v=20260906-4">
 </head>
 <body data-chapter="ch04">
   <div class="reading-progress" id="readingProgress"></div>
@@ -197,13 +197,141 @@ while (true) {
 
 <p>另有两个按次设置的"流式接收器"：<code>streamDeltaSink</code>（文本增量，推给 SSE chunk）和 <code>streamToolCallSink</code>（工具调用，推给 SSE step_break）——它们让同一个 Agent 引擎既能服务 SSE 流式请求，也能服务阻塞式请求，还能被工作流复用。</p>
 
-<h2 class="section-heading" id="sec-9">4.9 小结与下一章预告</h2>
+<h2 class="section-heading" id="sec-9">4.9 课程补充：Inbox 双队列与请求构建细节</h2>
+
+<p>本章主链路（<code>kick → turn → step</code>）只展现了 Agent 引擎的"骨架"。下面四个细节决定了它在真实工作负载下能否<strong>不出错、不丢消息、不浪费 token</strong>——它们都在源码里，但主章节没展开，是课程里覆盖不全的部分。</p>
+
+<h3 class="sub-heading">4.10.1 Inbox 的双队列语义</h3>
+
+<p><code>Inbox</code>（📦 <code>domain/agent/service/Inbox.java</code>）持有<strong>两个有序列表</strong>，分别对应不同的"注入时机"：</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">列表</th><th style="text-align:left;">目标枚举</th><th style="text-align:left;">语义</th><th style="text-align:left;">典型场景</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>nextTurn</code></td><td><code>InboxTarget.NEXT_TURN</code></td><td>等一个完整 turn 的消息</td><td>用户输入、followup 消息</td></tr>
+      <tr><td><code>nextStep</code></td><td><code>InboxTarget.NEXT_STEP</code></td><td>注入到下一步但不唤醒</td><td>计划模式提示、上下文注入</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>关键操作 <code>claim(target, turn)</code> 的工作方式：</p>
+
+<div class="code-block"><pre>// Inbox.claim()（简化）
+public List<Message> claim(InboxTarget target, int turn) {
+    List<Message> claimed = new ArrayList<>(mutate(NEXT_STEP, 0, nextStep.size(), List.of(), false));
+    if (target == InboxTarget.NEXT_TURN) {
+        claimed.addAll(mutate(NEXT_TURN, 0, 1, List.of(), false));  // 抢占 1 条
+    }
+    for (Message m : claimed) notifications.claimed(m, turn);  // 发布 claimed 通知
+    return claimed;
+}</pre></div>
+
+<p>注意几个微妙之处：</p>
+
+<ul>
+  <li><strong>nextStep 每次都被清空</strong>（只要消费就全清）；nextTurn 每次只取 1 条。</li>
+  <li><strong>claim 不写 insert 事件</strong>，只写"删除"事件——这是因为用户消息早已 append 时落地过 <code>AgentInboxSpliced</code> 事件，再写一遍就是冗余。</li>
+  <li><strong>uniqueness 校验</strong>：跨两个列表的全集做 <code>HashSet</code> 去重，重复 id 直接抛 <code>IllegalStateException</code>——防止同一消息被排到两次。</li>
+</ul>
+
+<h3 class="sub-heading">4.10.2 "持久化先于状态变更"的因果序</h3>
+
+<p>Inbox 每次变更（append/prepend/replace/clear）的内部流程是<strong>先写事件，再改内存</strong>：</p>
+
+<div class="code-block"><pre>// Inbox.mutate()（简化）
+public List<Message> splice(target, start, deleteCount, inserted) {
+    var event = SessionEventFactory.inboxSpliced(...);  // 1. 构造事件
+    session.append(event);                              // 2. 先追加到 WAL
+    // 3. 再改内存列表
+    inbox.subList(start, start + actualDeleteCount).clear();
+    for (int i = inserted.size() - 1; i >= 0; i--) inbox.add(start, inserted.get(i));
+    // 4. 发通知
+    if (discardRemoved) removed.forEach(notifications::discarded);
+    inserted.forEach(notifications::inserted);
+}</pre></div>
+
+<p>这种顺序保证了一件关键事：<strong>任何同步观察 session 事件的订阅者，看到的都是"尚未变更"的旧状态</strong>，可以凭 <code>InboxSplicedPayload</code> 的归一化坐标自己重建被移除的消息。如果反过来（先改内存再写事件），订阅者会看到一个"事件还没到但状态已经变了"的中间态。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">💡 这是 Event Sourcing 的关键纪律</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">"持久化先于状态变更"看似多此一举，但它让"重建"和"重放"在因果上完全等价——任何时刻只要按 seq 重放所有事件，结果与实时运行一致。这正是第5章"事件溯源"在 Inbox 上的具体落地。</p>
+</div>
+
+<h3 class="sub-heading">4.10.3 buildRequest：上下文截断公式</h3>
+
+<p><code>step()</code> 每次发请求前都要从 <code>session.deriveMessages()</code> 重建历史，再按 token 预算裁剪。完整逻辑（<code>ReactLoopAgent.buildRequest()</code>，第 611 行起）：</p>
+
+<div class="code-block"><pre>private static final int CONTEXT_WINDOW_FALLBACK = 128_000;  // 对应 yml context-window
+
+private GenerateOptions buildRequest(PromptAssembly assembly, long turn, long step) {
+    List<Message> history = session.deriveMessages();
+    if (continuationRequested) {  // 续写场景：注入"接着写"指令
+        history.add(Message.createUser(
+            List.of(new TextBlock(CONTINUATION_PROMPT)),
+            new PluginSource("react-loop")));
+    }
+    int maxContext = CONTEXT_WINDOW_FALLBACK;
+    int systemTokens = estimateTokens(assembly.system());
+    int budget = maxContext - systemTokens - options.maxTokens() - 1024;
+    if (budget < 4096) budget = 4096;  // 保底
+    history = truncateToBudget(history, budget);
+    return new GenerateOptions(...);
+}</pre></div>
+
+<p><strong>预算公式</strong>：</p>
+
+<div class="code-block"><pre>budget = context_window(128k)
+       - system_tokens        // 系统提示词占的 token
+       - max_tokens            // 本次回复的预留 token
+       - 1024                  // 安全余量
+（最低 4096）</pre></div>
+
+<p><code>truncateToBudget()</code> 从历史<strong>尾部向前</strong>贪心装回，保留最近消息的完整语义；如果发现裁掉太多（少于 6 条），改为"只保留最近 6 条"——绝对不丢到 0。</p>
+
+<p><strong>token 估算</strong>很粗：<code>(int) Math.ceil(text.length() / 4.0)</code>，对中文实际是 1.5~2 token/字，对代码标识符约 0.25 token/字符，所以预算偏保守（多裁一些）。在 <code>MEMORY.md</code> 的"已知隐患"里也标记了这一点。</p>
+
+<h3 class="sub-heading">4.10.4 temperature 可配置：踩过的 400 坑</h3>
+
+<p>代码里有一段很不起眼的常量：</p>
+
+<div class="code-block"><pre>// 读系统属性 / 环境变量；null = 不发送 temperature
+private static final Double SAMPLING_TEMPERATURE = parseTemperature(
+    System.getProperty("harness.agent.temperature",
+            System.getenv("HARNESS_AGENT_TEMPERATURE")));
+
+private static Double parseTemperature(String raw) {
+    if (raw == null || raw.isBlank()) return null;  // 关键：null → 不发送
+    try { return Double.parseDouble(raw.trim()); }
+    catch (NumberFormatException e) { return null; }
+}</pre></div>
+
+<p>这背后有个<strong>真实踩过的坑</strong>：本项目默认模型 <code>gpt-5.5</code> 走的上游网关<strong>只接受 temperature=1</strong>，发任何其他值（如代码里曾经硬编码的 <code>0.3</code>）都会被网关 400 拒掉。于是代码改成"可配置 + 默认不发"——上游网关自己会用默认值（一般是 1），既兼容只接受 1 的网关，也兼容接受自定义温度的模型。</p>
+
+<p>配置方式有两种（顺序优先级）：</p>
+
+<div class="code-block"><pre># 方式 1：环境变量
+export HARNESS_AGENT_TEMPERATURE=1
+
+# 方式 2：JVM 启动参数
+java -Dharness.agent.temperature=1 -jar app.jar
+
+# 不设 = 不发送 temperature 字段，让上游自己决定</pre></div>
+
+<div class="card" style="border-left: 3px solid var(--color-warning);">
+  <div class="card-title">📐 设计原则：让出可变参数</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">"可配置 + 默认留空"是一个常被忽视的工程原则：上游规则会变，今天只接受 1、明天可能支持 0~2；与其把参数写死导致每次模型变更都要改代码+重打包，不如让出配置权，让上游规则自己消化。temperature、context-window、request-timeout 都是这个思路。</p>
+</div>
+
+<h2 class="section-heading" id="sec-10">4.10 小结与下一章预告</h2>
 
 <div class="summary-box">
   <p><strong>本章要点</strong>：三级驱动 kick→turn→step；单 turn ≤ 50 步、续写 ≤ 4 次是安全护栏；取消用 AtomicBoolean + 100ms 轮询实现协作式中断保证事件完整；midTurnContinuation 标志修复了"工具结果送不到模型"的经典 Bug；Flow.Publisher 让 Domain 不依赖 HTTP 客户端。</p>
   <p style="margin-bottom:0;"><strong>下一章</strong>：本章反复出现的 <code>session.append(...)</code> 到底做了什么？为什么说"事件日志就是真相之源"？取消后如何回放完整会话？第5章讲会话与事件溯源。</p>
 </div>
-</div></div>
+</div></div></div></div></div></div></div></div></div></div></div></div>
       <nav class="page-nav"><a class="page-nav-card prev" href="ch03-domain.html"><span class="page-nav-label">← 上一章</span><span class="page-nav-title">领域设计：事件风暴与 27 个限界上下文</span></a><a class="page-nav-card next" href="ch05-session-event.html"><span class="page-nav-label">→ 下一章</span><span class="page-nav-title">会话与事件溯源：SessionLog 的秘密</span></a></nav>
       <button class="back-to-top" id="backToTop" title="回到顶部" aria-label="回到顶部">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3.5L4 12h5v8h6v-8h5z"/></svg>
@@ -212,9 +340,9 @@ while (true) {
     <aside class="toc-panel" id="tocPanel">
       <div class="toc-header">
         <h3 class="toc-title"><span class="toc-title-icon">📋</span>本章目录</h3>
-        <span class="toc-count">9 节</span>
+        <span class="toc-count">10 节</span>
       </div>
-      <nav class="toc-nav" id="tocNav"><a class="toc-item" href="#sec-1" data-target="sec-1"><span class="toc-num">4.1</span><span class="toc-text">本章导读</span></a><a class="toc-item" href="#sec-2" data-target="sec-2"><span class="toc-num">4.2</span><span class="toc-text">ReAct 模式回顾</span></a><a class="toc-item" href="#sec-3" data-target="sec-3"><span class="toc-num">4.3</span><span class="toc-text">三级驱动结构：kick → turn → step</span></a><a class="toc-item" href="#sec-4" data-target="sec-4"><span class="toc-num">4.4</span><span class="toc-text">Phase 状态机与协作式取消</span></a><a class="toc-item" href="#sec-5" data-target="sec-5"><span class="toc-num">4.5</span><span class="toc-text">流式组装的细节：Flow + CountDownLatch + BlockAssembler</span></a><a class="toc-item" href="#sec-6" data-target="sec-6"><span class="toc-num">4.6</span><span class="toc-text">真实 Bug 复盘：midTurnContinuation 标志的诞生</span></a><a class="toc-item" href="#sec-7" data-target="sec-7"><span class="toc-num">4.7</span><span class="toc-text">max_tokens 截断的受控续写</span></a><a class="toc-item" href="#sec-8" data-target="sec-8"><span class="toc-num">4.8</span><span class="toc-text">与外部世界的接口</span></a><a class="toc-item" href="#sec-9" data-target="sec-9"><span class="toc-num">4.9</span><span class="toc-text">小结与下一章预告</span></a></nav>
+      <nav class="toc-nav" id="tocNav"><a class="toc-item" href="#sec-1" data-target="sec-1"><span class="toc-num">4.1</span><span class="toc-text">本章导读</span></a><a class="toc-item" href="#sec-2" data-target="sec-2"><span class="toc-num">4.2</span><span class="toc-text">ReAct 模式回顾</span></a><a class="toc-item" href="#sec-3" data-target="sec-3"><span class="toc-num">4.3</span><span class="toc-text">三级驱动结构：kick → turn → step</span></a><a class="toc-item" href="#sec-4" data-target="sec-4"><span class="toc-num">4.4</span><span class="toc-text">Phase 状态机与协作式取消</span></a><a class="toc-item" href="#sec-5" data-target="sec-5"><span class="toc-num">4.5</span><span class="toc-text">流式组装的细节：Flow + CountDownLatch + BlockAssembler</span></a><a class="toc-item" href="#sec-6" data-target="sec-6"><span class="toc-num">4.6</span><span class="toc-text">真实 Bug 复盘：midTurnContinuation 标志的诞生</span></a><a class="toc-item" href="#sec-7" data-target="sec-7"><span class="toc-num">4.7</span><span class="toc-text">max_tokens 截断的受控续写</span></a><a class="toc-item" href="#sec-8" data-target="sec-8"><span class="toc-num">4.8</span><span class="toc-text">与外部世界的接口</span></a><a class="toc-item" href="#sec-9" data-target="sec-9"><span class="toc-num">4.9</span><span class="toc-text">课程补充：Inbox 双队列与请求构建细节</span></a><a class="toc-item" href="#sec-10" data-target="sec-10"><span class="toc-num">4.10</span><span class="toc-text">小结与下一章预告</span></a></nav>
       <div class="toc-footer"><a class="toc-github" href="https://github.com/fuzhengwei/deepseek-harness-java" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>查看源码</a></div>
     </aside>
     <aside class="right-toolbar">
@@ -223,10 +351,10 @@ while (true) {
       </a>
     </aside>
   </div>
-  <script src="js/highlight.js?v=20260906-2"></script>
-  <script src="js/progress.js?v=20260906-2"></script>
-  <script src="js/flowchart.js?v=20260906-2"></script>
-  <script src="js/main.js?v=20260906-2"></script>
+  <script src="js/highlight.js?v=20260906-4"></script>
+  <script src="js/progress.js?v=20260906-4"></script>
+  <script src="js/flowchart.js?v=20260906-4"></script>
+  <script src="js/main.js?v=20260906-4"></script>
   <script>
     window.addEventListener('scroll', () => {
       const h = document.documentElement;

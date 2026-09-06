@@ -19,7 +19,7 @@ CHAPTERS_DIR = ROOT / 'chapters'
 # 部署域名（百度收录需要绝对 URL；换域名只改这一行）
 SITE_URL = 'https://fuzhengwei.github.io/deepseek-harness-java/docs/html'
 SITE_TITLE = 'DeepSeek Harness Java 实战教程'
-ASSET_VERSION = '20260906-2'
+ASSET_VERSION = '20260906-4'
 
 # 阅读/滚动进度条脚本（普通字符串：JS 花括号不能进 f-string）
 SCROLL_PROGRESS_JS = """  <script>
@@ -559,7 +559,7 @@ def render_index(chapters):
   <link rel="stylesheet" href="{asset('css/site.css')}">
   <link rel="stylesheet" href="{asset('css/flowchart.css')}">
 </head>
-<body>
+<body class="home-page">
   <div class="reading-progress" id="readingProgress"></div>
   <div class="app-layout chat-collapsed">
     <aside class="sidebar">

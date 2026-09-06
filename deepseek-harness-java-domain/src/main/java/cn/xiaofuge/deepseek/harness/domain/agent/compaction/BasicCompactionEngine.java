@@ -1,0 +1,204 @@
+package cn.xiaofuge.deepseek.harness.domain.agent.compaction;
+
+import cn.xiaofuge.deepseek.harness.domain.agent.model.entity.AgentOptions;
+import cn.xiaofuge.deepseek.harness.domain.model.entity.Message;
+import cn.xiaofuge.deepseek.harness.domain.model.entity.MessageSource;
+import cn.xiaofuge.deepseek.harness.domain.model.valobj.ContentBlock;
+import cn.xiaofuge.deepseek.harness.domain.llm.model.valobj.GenerateOptions;
+import cn.xiaofuge.deepseek.harness.domain.model.valobj.TextBlock;
+import cn.xiaofuge.deepseek.harness.domain.llm.service.LlmGenerationService;
+import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionEvent;
+import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionLog;
+import cn.xiaofuge.deepseek.harness.domain.session.event.model.valobj.SurfaceIntent;
+import cn.xiaofuge.deepseek.harness.domain.session.event.model.valobj.SurfaceOp;
+import cn.xiaofuge.deepseek.harness.domain.session.event.service.SessionEventFactory;
+
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+
+/**
+ * 基础压缩引擎。
+ * <p>
+ * 执行流程：
+ * 1. 判断消息量和上下文压力是否达到压缩条件；
+ * 2. 选取需要压缩的消息区间并请求大模型总结；
+ * 3. 用一条摘要消息替换原始区间，减少上下文长度。
+ *
+ * @author 小傅哥
+ * @website bugstack.cn
+ */
+public class BasicCompactionEngine implements CompactionEngine {
+
+    private final LlmGenerationService llmGenerationService;
+    private final long pressureThresholdTokens;
+    private final int minMessagesToCompact;
+
+    public BasicCompactionEngine(
+            LlmGenerationService llmGenerationService,
+            long pressureThresholdTokens,
+            int minMessagesToCompact
+    ) {
+        this.llmGenerationService = llmGenerationService;
+        this.pressureThresholdTokens = pressureThresholdTokens;
+        this.minMessagesToCompact = minMessagesToCompact;
+    }
+
+    @Override
+    public CompletableFuture<CompactionResult> compactIfNeeded(
+            SessionLog session,
+            AgentOptions options,
+            CompactionTrigger trigger
+    ) {
+        List<Message> messages = session.deriveMessages();
+        if (messages.size() < minMessagesToCompact) {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        // 估算令牌数（粗略按 4 个字符约等于 1 个令牌）
+        long estimatedTokens = messages.stream()
+                .mapToLong(m -> m.content().stream()
+                        .mapToLong(b -> b instanceof TextBlock tb ? tb.text().length() / 4 : 10)
+                        .sum())
+                .sum();
+
+        if (trigger != CompactionTrigger.CONTEXT_OVERFLOW && estimatedTokens < pressureThresholdTokens) {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        return compactNow(session, options);
+    }
+
+    @Override
+    public CompletableFuture<CompactionResult> compactNow(
+            SessionLog session,
+            AgentOptions options
+    ) {
+        List<Message> messages = session.deriveMessages();
+        if (messages.size() < 2) {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        // 选择压缩区间：保留最近约四分之一的消息，其余进行压缩
+        int keepRecent = Math.max(1, messages.size() / 4);
+        int compactEnd = messages.size() - keepRecent;
+        if (compactEnd < 2) {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        List<Message> toCompact = messages.subList(0, compactEnd);
+        List<Message> toKeep = messages.subList(compactEnd, messages.size());
+
+        // 构建摘要请求
+        StringBuilder summaryInput = new StringBuilder();
+        for (Message msg : toCompact) {
+            String role = msg.role();
+            for (ContentBlock block : msg.content()) {
+                if (block instanceof TextBlock tb) {
+                    summaryInput.append(role).append(": ").append(tb.text()).append('\n');
+                }
+            }
+        }
+
+        String systemPrompt = "Summarize the following conversation history concisely. " +
+                "Preserve key decisions, context, and any open questions. " +
+                "The summary will replace the original messages in the session.";
+
+        Message summaryRequest = Message.createUser(
+                List.of(new TextBlock(summaryInput.toString())),
+                new MessageSource.UserSource()
+        );
+
+        GenerateOptions genOpts = new GenerateOptions(
+                options.provider(),
+                options.model(),
+                null,
+                List.of(summaryRequest),
+                systemPrompt,
+                List.of(),
+                null,
+                null,
+                null,
+                session.sessionId(),
+                "compaction",
+                options.baseUrl(),
+                options.apiKey()
+        );
+
+        // 调用大模型并收集摘要
+        return llmGenerationService.generate(genOpts).thenCompose(summaryResponse -> {
+            if (summaryResponse == null) {
+                return CompletableFuture.completedFuture(null);
+            }
+
+            String summary = summaryResponse.content().stream()
+                    .filter(b -> b instanceof TextBlock)
+                    .map(b -> ((TextBlock) b).text())
+                    .reduce((a, b) -> a + "\n" + b)
+                    .orElse("");
+
+            if (summary.isBlank()) {
+                return CompletableFuture.completedFuture(null);
+            }
+
+            // 构造摘要消息
+            Message summaryMsg = Message.createUser(
+                    List.of(new TextBlock("[Compacted History]\n\n" + summary)),
+                    new MessageSource.UserSource()
+            );
+
+            // 估算压缩前后的令牌节省量
+            long tokensBefore = toCompact.stream()
+                    .mapToLong(m -> m.content().stream()
+                            .mapToLong(b -> b instanceof TextBlock tb ? tb.text().length() / 4 : 10)
+                            .sum())
+                    .sum();
+            long tokensAfter = summary.length() / 4;
+
+            // 通过替换操作记录压缩动作，覆盖原始区间
+            // 原始实现会追加 replace(start, end) 的事件
+            // 这里先以替换意图写入，后续由 SessionLog 完成投影
+
+            // 查找需要替换的事件序列范围
+            List<SessionEvent> events = session.events();
+            long startSeq = -1;
+            long endSeq = -1;
+            int msgIdx = 0;
+            for (SessionEvent event : events) {
+                if (!event.isSurfaceEvent()) continue;
+                if (msgIdx >= compactEnd) break;
+                SurfaceOp op = event.surfaceIntent() != null
+                        ? event.surfaceIntent().surfaceOp()
+                        : null;
+                if (op instanceof SurfaceOp.Append) {
+                    if (startSeq < 0) startSeq = event.seq();
+                    endSeq = event.seq();
+                    msgIdx++;
+                }
+            }
+
+            if (startSeq < 0) {
+                return CompletableFuture.completedFuture(null);
+            }
+
+            // 追加摘要替换事件
+            // 使用用户消息搭配替换操作
+            // 会话日志追加方法会自动分配序号
+            session.append(SessionEventFactory.userMessage(
+                    0, 0, summaryMsg,
+                    new SurfaceIntent(
+                            new SurfaceOp.Replace(startSeq, endSeq), null
+                    )
+            ));
+
+            return CompletableFuture.completedFuture(new CompactionResult(
+                    summary,
+                    startSeq,
+                    endSeq,
+                    tokensBefore,
+                    tokensAfter,
+                    toCompact,
+                    summaryMsg
+            ));
+        });
+    }
+}

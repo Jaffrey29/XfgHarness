@@ -7,9 +7,9 @@
   <meta name="description" content="Agent 的&quot;手&quot;——统一执行器如何让每次工具调用都可治理">
   <link rel="canonical" href="https://fuzhengwei.github.io/deepseek-harness-java/docs/html/ch08-tools.html">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
-  <link rel="stylesheet" href="css/book.css?v=20260906-2">
-  <link rel="stylesheet" href="css/site.css?v=20260906-2">
-  <link rel="stylesheet" href="css/flowchart.css?v=20260906-2">
+  <link rel="stylesheet" href="css/book.css?v=20260906-4">
+  <link rel="stylesheet" href="css/site.css?v=20260906-4">
+  <link rel="stylesheet" href="css/flowchart.css?v=20260906-4">
 </head>
 <body data-chapter="ch08">
   <div class="reading-progress" id="readingProgress"></div>
@@ -131,13 +131,139 @@ public final class ToolCallExecutor {
 
 <p><code>callId</code> 是配对的钥匙：ToolCall 先写入（UI 显示 running 卡片），ToolResult 后写入（同一 callId 更新为 success/error）。注意 callId 来自 <code>MessageSource.ToolMessageSource.callId()</code>，<strong>不是 Message.id</strong>（那是 UUID）——这是第6章提到的"工具卡片不更新"Bug 修复时的关键细节。</p>
 
-<h2 class="section-heading" id="sec-6">8.6 小结与下一章预告</h2>
+<h2 class="section-heading" id="sec-6">8.6 课程补充：运行期审批 Gate——与提交期审批的分工</h2>
+
+<p>本章讲了 ToolCallExecutor 的"五步流水线"包含 PRE Hook 和审批。但审批其实是<strong>两个独立层次</strong>的协作，本节把这条"提交期 + 运行期"的分工讲透——这是第11章治理的全貌基础。</p>
+
+<h3 class="sub-heading">8.6.1 两层审批：提交期 vs 运行期</h3>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">维度</th><th style="text-align:left;">提交期审批</th><th style="text-align:left;">运行期审批</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>触发时机</td><td>任务提交（POST /api/harness/tasks），五个策略树节点中 <code>PermissionCheckNode</code></td><td>每次工具调用执行前，<code>ToolCallExecutor.runGroup</code> 内</td></tr>
+      <tr><td>决策依据</td><td>profile + 启用工具列表 vs 权限矩阵</td><td>具体工具名 + 当前参数 vs 权限矩阵</td></tr>
+      <tr><td>产出</td><td><code>ApprovalDecisionVO</code>（PENDING_APPROVAL/QUEUED）</td><td>工具直接执行 / 合成 <code>APPROVAL_REQUIRED</code> 失败结果</td></tr>
+      <tr><td>用户介入</td><td>列出整个任务待决，等人批/拒</td><td>人工 broker 阻塞等待本次调用的裁决</td></tr>
+      <tr><td>领域服务</td><td><code>PermissionPolicyService</code> + <code>ApprovalPolicyService</code></td><td><code>RuntimeApprovalGate</code>（接口）</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>简单说：<strong>提交期决定"这个任务能不能跑"</strong>，<strong>运行期决定"工具这一刀能不能切下去"</strong>。提交期放过去后，工具的每一次调用还可以被运行期 gate 再次拦截——这给了"任务本身合规，但单步操作高危"场景更细粒度的控制。</p>
+
+<h3 class="sub-heading">8.6.2 IRuntimeApprovalBroker：运行期审批的端口</h3>
+
+<p>运行期审批是 Agent 在执行工具时<strong>阻塞等待人工裁决</strong>——必须有一个"挂起 + 通知 + 恢复"机制。本项目的设计：</p>
+
+<div class="code-block"><pre>// domain/agent/adapter/port/IRuntimeApprovalBroker.java
+public interface IRuntimeApprovalBroker {
+    ApprovalVerdict requestApproval(ApprovalRequest request);   // 阻塞
+    boolean resolve(String approvalId, ApprovalVerdict verdict); // 提交裁决
+    List<PendingApprovalView> listPending();                    // 前端轮询
+    int pendingCount();
+    record PendingApprovalView(String approvalId, String sessionId,
+                               String toolName, String displayCommand,
+                               Map<String, Object> arguments, String createdAt) {}
+}</pre></div>
+
+<p>三层架构把这个接口分层放好：</p>
+
+<ul>
+  <li><strong>domain/agent/adapter/port</strong>：仅接口 + 视图 record（不依赖 Spring）</li>
+  <li><strong>infrastructure</strong>：<code>RuntimeApprovalBroker</code> 内存实现，提供 <code>ConcurrentHashMap<approvalId, CompletableFuture<Verdict>></code> 挂起</li>
+  <li><strong>trigger</strong>：<code>RuntimeApprovalController</code> 暴露 <code>/api/harness/runtime/approvals</code> 给前端轮询，<code>POST /:id/resolve</code> 提交裁决</li>
+</ul>
+
+<p>接口设计的关键是<strong>同步阻塞的 <code>requestApproval</code></strong>——它假定人工响应会从另一个 HTTP 请求（resolve）进来唤醒。所以 <code>RuntimeApprovalBroker</code> 内部用 <code>CompletableFuture<ApprovalVerdict></code>：</p>
+
+<div class="code-block"><pre>// 简化：runtime broker 内部
+private final ConcurrentMap<String, CompletableFuture<ApprovalVerdict>> waits = new ConcurrentHashMap<>();
+
+public ApprovalVerdict requestApproval(ApprovalRequest req) {
+    CompletableFuture<ApprovalVerdict> future = new CompletableFuture<>();
+    waits.put(req.approvalId(), future);
+    try {
+        return future.get();  // 阻塞，直到 resolve() 触发 complete()
+    } finally {
+        waits.remove(req.approvalId());
+    }
+}
+
+public boolean resolve(String approvalId, ApprovalVerdict v) {
+    var f = waits.remove(approvalId);
+    if (f == null) return false;
+    f.complete(v);   // 唤醒阻塞的请求
+    return true;
+}</pre></div>
+
+<h3 class="sub-heading">8.6.3 MatrixRuntimeApprovalGate：默认实现</h3>
+
+<p><code>MatrixRuntimeApprovalGate</code> 把权限矩阵 + broker 串成一个具体决策：</p>
+
+<div class="code-block"><pre>// domain/tool/service/MatrixRuntimeApprovalGate.java
+public class MatrixRuntimeApprovalGate implements RuntimeApprovalGate {
+    private final IPermissionMatrixPort matrix;
+    private final String sessionId;
+    private final BiFunction<ApprovalRequest, AtomicReference<String>, ApprovalVerdict> askHandler;
+
+    @Override
+    public Decision check(String toolName, Object args) {
+        PermissionMatrixVO m = matrix.load();
+        if (!m.approvalRequiredTools().contains(toolName)) {
+            return Decision.ALLOW;          // 不在审批清单 → 直接放行
+        }
+        ApprovalRequest req = new ApprovalRequest(UUID.randomUUID().toString(),
+                                                  sessionId, toolName, args);
+        ApprovalVerdict v = askHandler.apply(req, /* 临时引用 */);
+        return v.approved() ? Decision.ALLOW : Decision.DENY;
+    }
+}</pre></div>
+
+<p>工作流程：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"ask","label":"ToolCallExecutor\n准备执行工具 X","type":"start"},{"id":"need","label":"X 在审批清单?","type":"decision"},{"id":"allow","label":"直接放行\nreturn ALLOW","type":"process"},{"id":"req","label":"构造 ApprovalRequest\n含 approvalId / sessionId / args","type":"process"},{"id":"wait","label":"askHandler.apply(req)\n= broker.requestApproval\nCompletableFuture 阻塞","type":"process"},{"id":"resolve","label":"前端轮询 → 看到 PendingApprovalView\n用户批/拒 → POST /resolve","type":"process"},{"id":"done","label":"broker.complete(verdict)\ncheck() 返回 ALLOW/DENY","type":"end"}],"edges":[{"from":"ask","to":"need"},{"from":"need","to":"allow","label":"否"},{"from":"need","to":"req","label":"是"},{"from":"req","to":"wait"},{"from":"wait","to":"resolve","label":"另起 HTTP"},{"from":"resolve","to":"done"}]}'></div>
+
+<h3 class="sub-heading">8.6.4 AgentFactory 怎么把 broker 接进 executor</h3>
+
+<p>最后一个细节：上面那些抽象怎么被真正接起来？答案是 <code>AgentFactory.wireAgent()</code>（infrastructure/adapter/agent/AgentFactory.java）：</p>
+
+<div class="code-block"><pre>// AgentFactory.wireAgent()（简化）
+ToolCallExecutor executor = new ToolCallExecutor(toolView, session, 10,
+                                                new JacksonToolArgumentsParser(objectMapper));
+if (hookService != null) executor.setHookService(hookService);
+
+// 运行期审批：矩阵 + broker 都在才接 gate
+if (permissionMatrixPort != null && approvalBroker != null) {
+    MatrixRuntimeApprovalGate gate = new MatrixRuntimeApprovalGate(
+            permissionMatrixPort,
+            session.sessionId(),
+            (req, g) -> approvalBroker.requestApproval(req)   // 注入 ask handler
+    );
+    executor.setApprovalGate(gate);
+}</pre></div>
+
+<p>注意几个<strong>真实踩过的坑</strong>（已记 <code>MEMORY.md</code>）：</p>
+
+<div class="card" style="border-left: 3px solid var(--color-warning);">
+  <div class="card-title">⚠️ AgentFactory 的两个构造器</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">"完整版"（14 参数含 <code>permissionMatrixPort</code> + <code>approvalBroker</code>）和"兼容版"（12 参数，传 null）。当前 HarnessApplicationConfig 只注入兼容版，所以 <code>approvalGate == null</code>，默认走 <code>RuntimeApprovalGate.allowAll()</code>——<strong>提交期审批通过后，运行期不再二次校验</strong>。这就是为什么默认配置下 shell_execute 一旦通过提交期审批就能直接跑。要严格二次校验，需要在 <code>HarnessApplicationConfig</code> 把完整版构造器接起来。</p>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-error);">
+  <div class="card-title">⚠️ requestApproval 同步阻塞的代价</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">如果人工不响应（前端关掉、broker 没接 controller），Agent 会<strong>永远卡在这次工具调用</strong>。代码里没有超时回退——目前的兜底只有用户手动 cancel Agent（<code>Phase.abort.set(true)</code>）。生产部署务必给 broker 加超时：要么前端轮询 UI 强提示，要么 broker 内部 <code>future.get(timeout, ...)</code> 超时返回 DENY。</p>
+</div>
+
+<h2 class="section-heading" id="sec-7">8.7 小结与下一章预告</h2>
 
 <div class="summary-box">
   <p><strong>本章要点</strong>：三类工具（内置/plugin__/mcp__）统一注册、统一执行；ToolCallExecutor 五步流水线（解析→PRE Hook→执行→POST Hook→事件回填）是所有治理的挂载点；超时用协作式 orTimeout；ToolCall/ToolResult 用 callId 配对进事件流。</p>
   <p style="margin-bottom:0;"><strong>下一章</strong>：内置工具不够用？第9章动手写自己的插件——Java Native（进程内类隔离）和 Node Bridge（sidecar 进程）两种模式，各写一个完整示例。</p>
 </div>
-</div></div>
+</div></div></div></div></div></div></div></div></div></div></div></div>
       <nav class="page-nav"><a class="page-nav-card prev" href="ch07-sse-protocol.html"><span class="page-nav-label">← 上一章</span><span class="page-nav-title">SSE 流式协议：meta/chunk/step_break/done</span></a><a class="page-nav-card next" href="ch09-plugin.html"><span class="page-nav-label">→ 下一章</span><span class="page-nav-title">插件开发实战：Java 与 Node 双模式</span></a></nav>
       <button class="back-to-top" id="backToTop" title="回到顶部" aria-label="回到顶部">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3.5L4 12h5v8h6v-8h5z"/></svg>
@@ -146,9 +272,9 @@ public final class ToolCallExecutor {
     <aside class="toc-panel" id="tocPanel">
       <div class="toc-header">
         <h3 class="toc-title"><span class="toc-title-icon">📋</span>本章目录</h3>
-        <span class="toc-count">6 节</span>
+        <span class="toc-count">7 节</span>
       </div>
-      <nav class="toc-nav" id="tocNav"><a class="toc-item" href="#sec-1" data-target="sec-1"><span class="toc-num">8.1</span><span class="toc-text">本章导读</span></a><a class="toc-item" href="#sec-2" data-target="sec-2"><span class="toc-num">8.2</span><span class="toc-text">工具的全景与命名规范</span></a><a class="toc-item" href="#sec-3" data-target="sec-3"><span class="toc-num">8.3</span><span class="toc-text">ToolCallExecutor：唯一入口的五步流水线</span></a><a class="toc-item" href="#sec-4" data-target="sec-4"><span class="toc-num">8.4</span><span class="toc-text">内置工具速览</span></a><a class="toc-item" href="#sec-5" data-target="sec-5"><span class="toc-num">8.5</span><span class="toc-text">事件回填：工具调用如何进事件流</span></a><a class="toc-item" href="#sec-6" data-target="sec-6"><span class="toc-num">8.6</span><span class="toc-text">小结与下一章预告</span></a></nav>
+      <nav class="toc-nav" id="tocNav"><a class="toc-item" href="#sec-1" data-target="sec-1"><span class="toc-num">8.1</span><span class="toc-text">本章导读</span></a><a class="toc-item" href="#sec-2" data-target="sec-2"><span class="toc-num">8.2</span><span class="toc-text">工具的全景与命名规范</span></a><a class="toc-item" href="#sec-3" data-target="sec-3"><span class="toc-num">8.3</span><span class="toc-text">ToolCallExecutor：唯一入口的五步流水线</span></a><a class="toc-item" href="#sec-4" data-target="sec-4"><span class="toc-num">8.4</span><span class="toc-text">内置工具速览</span></a><a class="toc-item" href="#sec-5" data-target="sec-5"><span class="toc-num">8.5</span><span class="toc-text">事件回填：工具调用如何进事件流</span></a><a class="toc-item" href="#sec-6" data-target="sec-6"><span class="toc-num">8.6</span><span class="toc-text">课程补充：运行期审批 Gate——与提交期审批的分工</span></a><a class="toc-item" href="#sec-7" data-target="sec-7"><span class="toc-num">8.7</span><span class="toc-text">小结与下一章预告</span></a></nav>
       <div class="toc-footer"><a class="toc-github" href="https://github.com/fuzhengwei/deepseek-harness-java" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>查看源码</a></div>
     </aside>
     <aside class="right-toolbar">
@@ -157,10 +283,10 @@ public final class ToolCallExecutor {
       </a>
     </aside>
   </div>
-  <script src="js/highlight.js?v=20260906-2"></script>
-  <script src="js/progress.js?v=20260906-2"></script>
-  <script src="js/flowchart.js?v=20260906-2"></script>
-  <script src="js/main.js?v=20260906-2"></script>
+  <script src="js/highlight.js?v=20260906-4"></script>
+  <script src="js/progress.js?v=20260906-4"></script>
+  <script src="js/flowchart.js?v=20260906-4"></script>
+  <script src="js/main.js?v=20260906-4"></script>
   <script>
     window.addEventListener('scroll', () => {
       const h = document.documentElement;

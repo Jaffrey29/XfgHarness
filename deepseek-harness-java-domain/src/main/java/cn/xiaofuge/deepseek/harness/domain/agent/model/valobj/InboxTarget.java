@@ -1,0 +1,37 @@
+package cn.xiaofuge.deepseek.harness.domain.agent.model.valobj;
+
+/**
+ * One of the two ordered pending-message lists owned by an agent.
+ * <p>
+ * Mirrors TS {@code InboxTarget}.
+ * <ul>
+ *   <li>{@link #NEXT_TURN} — prompts awaiting individual turns</li>
+ *   <li>{@link #NEXT_STEP} — input awaiting the next step boundary</li>
+ * </ul>
+ *
+ * @author 小傅哥
+ * @website bugstack.cn
+ */
+public enum InboxTarget {
+    NEXT_TURN("next-turn"),
+    NEXT_STEP("next-step");
+
+    private final String wireName;
+
+    InboxTarget(String wireName) {
+        this.wireName = wireName;
+    }
+
+    public String wireName() {
+        return wireName;
+    }
+
+    public static InboxTarget fromWireName(String name) {
+        for (InboxTarget t : values()) {
+            if (t.wireName.equals(name)) {
+                return t;
+            }
+        }
+        throw new IllegalArgumentException("Unknown inbox target: " + name);
+    }
+}

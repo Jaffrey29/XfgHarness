@@ -41,6 +41,65 @@
   gap: 28px;
   align-items: center;
 }
+/* ========================================================
+   首页（home-page）· 拓宽中间内容区，让卡片铺满更多空间
+   ======================================================== */
+.home-page .content-body {
+  max-width: 100%;
+  padding: 32px 22px 48px;
+}
+.home-page .home-hero {
+  padding: 36px 32px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.75fr);
+  gap: 28px;
+}
+.home-page .home-hero-desc { max-width: 640px; }
+.home-page .home-hero-stats {
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.home-page .arch-section { padding: 30px 26px 28px; }
+.home-page .arch-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 26px;
+}
+.home-page .journey-section { padding: 30px 26px 28px; }
+.home-page .journey-flow {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  row-gap: 22px;
+}
+.home-page .journey-step::after {
+  top: 27px; left: calc(50% + 30px);
+  width: calc(100% - 60px);
+}
+.home-page .home-chapter-list {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+.home-page .home-tip { padding: 18px 22px; }
+
+@media (min-width: 1500px) {
+  .home-page .content-body { padding: 40px 36px 64px; }
+  .home-page .home-hero { padding: 48px 46px; gap: 36px; }
+  .home-page .arch-section { padding: 38px 38px 32px; }
+  .home-page .journey-section { padding: 38px 38px 32px; }
+}
+@media (max-width: 1200px) {
+  .home-page .content-body { padding: 28px 20px 40px; }
+  .home-page .home-hero { padding: 32px 24px; grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); }
+  .home-page .arch-section, .home-page .journey-section { padding: 26px 22px; }
+  .home-page .arch-grid { grid-template-columns: 1fr; }
+  .home-page .journey-flow { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .home-page .journey-step:nth-child(3)::after { display: none; }
+}
+@media (max-width: 768px) {
+  .home-page .content-body { padding: var(--space-md) 16px var(--space-xl); }
+  .home-page .home-hero { padding: 30px 20px; grid-template-columns: 1fr; gap: 22px; }
+  .home-page .home-hero-art { order: -1; max-width: 340px; margin: 0 auto; }
+  .home-page .arch-section, .home-page .journey-section { padding: 24px 18px; }
+  .home-page .journey-flow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .home-page .journey-step::after { display: none !important; }
+}
 /* 极细腻的光晕（克制、不喧宾夺主） */
 .home-hero-glow { position: absolute; border-radius: 50%; filter: blur(90px); pointer-events: none; z-index: 0; }
 .home-hero .glow-a {

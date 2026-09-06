@@ -1,0 +1,17 @@
+package cn.xiaofuge.deepseek.harness.domain.typert.model.valobj;
+
+/**
+ * Result of a Remote method call: either ok with a value, or error with a failure.
+ *
+ * @author 小傅哥
+ * @website bugstack.cn
+ */
+public sealed interface RemoteResult permits RemoteResult.Ok, RemoteResult.Error {
+
+    record Ok(Object value) implements RemoteResult {}
+
+    record Error(RemoteFailure failure) implements RemoteResult {}
+
+    static RemoteResult ok(Object value) { return new Ok(value); }
+    static RemoteResult error(RemoteFailure failure) { return new Error(failure); }
+}

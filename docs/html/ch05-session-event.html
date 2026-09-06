@@ -7,9 +7,9 @@
   <meta name="description" content="为什么说&quot;事件日志就是真相之源&quot;——取消、回放、压缩都建立在它之上">
   <link rel="canonical" href="https://fuzhengwei.github.io/deepseek-harness-java/docs/html/ch05-session-event.html">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
-  <link rel="stylesheet" href="css/book.css?v=20260906-2">
-  <link rel="stylesheet" href="css/site.css?v=20260906-2">
-  <link rel="stylesheet" href="css/flowchart.css?v=20260906-2">
+  <link rel="stylesheet" href="css/book.css?v=20260906-4">
+  <link rel="stylesheet" href="css/site.css?v=20260906-4">
+  <link rel="stylesheet" href="css/flowchart.css?v=20260906-4">
 </head>
 <body data-chapter="ch05">
   <div class="reading-progress" id="readingProgress"></div>
@@ -154,13 +154,109 @@ for (SessionEvent event : events) {
   </div>
 </div>
 
-<h2 class="section-heading" id="sec-7">5.7 小结与下一章预告</h2>
+<h2 class="section-heading" id="sec-7">5.7 课程补充：SurfaceOp.Replace 的两个场景与两条派生路径的口径差异</h2>
+
+<p>本章第 5.4 节讲了 <code>SurfaceOp</code> 的 Append/Replace 两种操作，但只展开了一个场景（流式气泡的逐字浮现）。实际上 <code>Replace</code> 还有另一个关键用途，且系统里<strong>有两条独立的派生路径</strong>在不同的层用不同语义读事件日志——这一节补全这两个细节。</p>
+
+<h3 class="sub-heading">5.8.1 Replace 的第二个关键场景：压缩摘要遮蔽历史</h3>
+
+<p>第 5.5 节说过压缩引擎的策略是"保留最近 1/4 原文、其余 LLM 总结"。那这条总结怎么进事件流？它不追加在末尾——那样会和原文共存，模型会看到两份。正确做法是<strong>用 Replace 把前 3/4 的旧节点"遮蔽"掉</strong>：</p>
+
+<div class="code-block"><pre>// BasicCompactionEngine.compactNow()（简化）
+// 找到待压缩区间的第一个和最后一个 surface seq
+long startSeq = -1, endSeq = -1;
+int msgIdx = 0;
+for (SessionEvent event : events) {
+    if (!event.isSurfaceEvent()) continue;
+    if (msgIdx >= compactEnd) break;  // 越过保留区就停
+    if (event.surfaceIntent().surfaceOp() instanceof SurfaceOp.Append) {
+        if (startSeq < 0) startSeq = event.seq();
+        endSeq = event.seq();
+        msgIdx++;
+    }
+}
+// 追加摘要消息，意图是 Replace [startSeq, endSeq]
+session.append(SessionEventFactory.userMessage(
+    0, 0, summaryMsg,
+    new SurfaceIntent(new SurfaceOp.Replace(startSeq, endSeq), null)
+));</pre></div>
+
+<p>日志里原始事件<strong>全在</strong>（不可篡改是事件溯源纪律），但任何下游投影这批事件时，<code>startSeq..endSeq</code> 区间内的节点都会被这条新摘要替换掉。这就是为什么叫"<strong>遮蔽</strong>"而不是"删除"——历史保留、可审计，但当前视图变化。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-info);">
+  <div class="card-title">💡 Append vs Replace 的本质区别</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);"><strong>Append</strong>：新事件永远追加到对话末尾，模型/UI 看到完整历史。<br><strong>Replace</strong>：新事件遮蔽一段 seq 区间，本质是"重新叙述"那段历史——压缩是"用一句话叙述 N 句话"，流式渲染是"用最新 chunk 叙述上一个 chunk"。两种操作下事件日志都只增不改。</p>
+</div>
+
+<h3 class="sub-heading">5.8.2 两条派生路径：deriveMessages vs extractChatMessages</h3>
+
+<p>同一个 SessionLog 至少有<strong>两个</strong>消费者去"看"事件：</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">路径</th><th style="text-align:left;">入口</th><th style="text-align:left;">消费者</th><th style="text-align:left;">包含 ToolResult？</th><th style="text-align:left;">cache</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>deriveMessages()</code></td><td><code>SessionLog.deriveMessages</code></td><td><code>ReactLoopAgent.buildRequest</code> 喂给 LLM</td><td>✓</td><td>声明了 <code>derivedCache</code> 字段，注释写"until profiling shows hot path"——Java 版每次全量重算</td></tr>
+      <tr><td><code>extractChatMessages()</code></td><td><code>SurfaceProjector.extractChatMessages</code></td><td>UI 聊天面板（不需要看到工具结果细节）</td><td>✗（只保留 user/assistant）</td><td>无（SurfaceProjector 每次 project 也全量）</td></tr>
+      <tr><td><code>AgentCollectNode</code> 投影</td><td>case 层自定义遍历</td><td>SSE done 事件给前端</td><td>✓（按 callId 合并 call + result）</td><td>无</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p><strong>这里有一个真实隐患</strong>（已记在 <code>MEMORY.md</code>）：前两条路径的口径不一致——LLM 看到的消息历史<strong>包含</strong> ToolResult（工具结果是模型推理的依据），UI 聊天面板却<strong>不显示</strong>它们。带来的副作用是：用户看历史时不能直观地"看到模型读了什么文件、跑过什么命令"，只能从 SSE done 事件的 messages 数组里翻 tool 消息。</p>
+
+<p>代码层面的修复思路（目前未做）：要么让 <code>SurfaceProjector.extractChatMessages</code> 可参数化（<code>includeTools=true/false</code>），要么把 UI 的对话视图改成"以折叠卡片展示工具结果"。从设计上看，<code>extractChatMessages</code> 是为"对话"服务的（聊天场景不应被工具噪音淹没），<code>deriveMessages</code> 是为"模型"服务的（必须完整才能继续推理）——两者用途不同、口径不同是正确的，关键是要让调用方知道自己在调哪个。</p>
+
+<h3 class="sub-heading">5.8.3 deriveMessages 的简易投影：Java 版为什么是 O(n²)</h3>
+
+<p>TS 版用增量缓存（按 surface node 索引），每次只在尾部追加新事件时更新缓存。Java 版为了"实现简单"选择了<strong>全量重算</strong>：</p>
+
+<div class="code-block"><pre>// SessionLog.deriveMessages()（简化）
+public synchronized List<Message> deriveMessages() {
+    List<Message> messages = new ArrayList<>();
+    Set<Long> shadowed = new HashSet<>();
+    List<Long> surfaceSeqs = new ArrayList<>();
+
+    for (SessionEvent event : events) {              // O(n) 遍历
+        if (!event.isSurfaceEvent()) continue;
+        SurfaceOp op = event.surfaceIntent()?.surfaceOp();
+        if (op == null) continue;
+
+        if (op instanceof SurfaceOp.Append) {
+            messages.add(projectMessage(event));     // O(1)
+        } else if (op instanceof SurfaceOp.Replace r) {
+            // Replace 的代价：遍历 surfaceSeqs 找出 [r.start, r.end] 内的 seq
+            Iterator<Long> it = surfaceSeqs.iterator();
+            Iterator<Message> mit = messages.iterator();
+            while (it.hasNext()) {                   // O(k)，k = 当前 surface 数
+                long seq = it.next();
+                if (seq >= r.start() && seq <= r.end()) {
+                    it.remove(); mit.next(); mit.remove();
+                } else if (seq > r.end()) break;
+                else mit.next();
+            }
+            messages.add(projectMessage(event));
+        }
+    }
+    return Collections.unmodifiableList(messages);
+}</pre></div>
+
+<p>每个 Replace 都要 O(k) 扫一次当前 surface，Append 也要遍历事件日志判断自己是不是 surface 事件——单次 <code>deriveMessages()</code> 是 O(n) × O(k) ≈ <strong>O(n²)</strong>。短会话（几十条）毫无感觉；长会话（几百条 + 多次压缩）会成为热点。<code>derivedCache</code> 字段已经在类里声明了但<strong>未启用</strong>（Java 注释："The TS version incrementally caches by surface node, but the Java version favors simplicity until profiling shows a hot path"）——这是一个<strong>留作未来优化的空间</strong>。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-warning);">
+  <div class="card-title">⚠️ 优化前先量化</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">会话事件日志的"只增不改"性质让增量缓存非常诱人，但实现要保证：缓存 key 跟事件 seq 同步；多线程下用 <code>synchronized</code> 串行；Replace 区间要正确失效对应节点。不建议在没有 hot path 数据之前就引入——复杂度代价可能比省下的微秒更贵。</p>
+</div>
+
+<h2 class="section-heading" id="sec-8">5.8 小结与下一章预告</h2>
 
 <div class="summary-box">
   <p><strong>本章要点</strong>：SessionLog 是内存追加式 WAL，事件只增不改；SurfaceProjector 用 Append/Replace 两种操作把事件流投影成 UI 状态（幂等性让历史回放与实时渲染共用一套逻辑）；BasicCompactionEngine 保留最近 1/4 原文、其余 LLM 总结；事件溯源同时支撑回放、安全取消、审计三大能力。</p>
   <p style="margin-bottom:0;"><strong>下一章</strong>：会话事件从哪来？要回到消息的入口——一条用户消息到达后，系统怎么判断"该闲聊还是该调工具"？多个步骤如何编排成一条链？第6章讲意图识别与策略树。</p>
 </div>
-</div></div>
+</div></div></div></div></div></div></div></div></div></div></div></div>
       <nav class="page-nav"><a class="page-nav-card prev" href="ch04-react-loop.html"><span class="page-nav-label">← 上一章</span><span class="page-nav-title">ReactLoopAgent：ReAct 循环引擎</span></a><a class="page-nav-card next" href="ch06-intent-strategy.html"><span class="page-nav-label">→ 下一章</span><span class="page-nav-title">意图识别与策略树：消息如何流转</span></a></nav>
       <button class="back-to-top" id="backToTop" title="回到顶部" aria-label="回到顶部">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3.5L4 12h5v8h6v-8h5z"/></svg>
@@ -169,9 +265,9 @@ for (SessionEvent event : events) {
     <aside class="toc-panel" id="tocPanel">
       <div class="toc-header">
         <h3 class="toc-title"><span class="toc-title-icon">📋</span>本章目录</h3>
-        <span class="toc-count">7 节</span>
+        <span class="toc-count">8 节</span>
       </div>
-      <nav class="toc-nav" id="tocNav"><a class="toc-item" href="#sec-1" data-target="sec-1"><span class="toc-num">5.1</span><span class="toc-text">本章导读</span></a><a class="toc-item" href="#sec-2" data-target="sec-2"><span class="toc-num">5.2</span><span class="toc-text">什么是事件溯源</span></a><a class="toc-item" href="#sec-3" data-target="sec-3"><span class="toc-num">5.3</span><span class="toc-text">SessionLog：内存追加式 WAL</span></a><a class="toc-item" href="#sec-4" data-target="sec-4"><span class="toc-num">5.4</span><span class="toc-text">SurfaceProjector：从事件到界面</span></a><a class="toc-item" href="#sec-5" data-target="sec-5"><span class="toc-num">5.5</span><span class="toc-text">BasicCompactionEngine：上下文压缩</span></a><a class="toc-item" href="#sec-6" data-target="sec-6"><span class="toc-num">5.6</span><span class="toc-text">事件溯源带来的三个超能力</span></a><a class="toc-item" href="#sec-7" data-target="sec-7"><span class="toc-num">5.7</span><span class="toc-text">小结与下一章预告</span></a></nav>
+      <nav class="toc-nav" id="tocNav"><a class="toc-item" href="#sec-1" data-target="sec-1"><span class="toc-num">5.1</span><span class="toc-text">本章导读</span></a><a class="toc-item" href="#sec-2" data-target="sec-2"><span class="toc-num">5.2</span><span class="toc-text">什么是事件溯源</span></a><a class="toc-item" href="#sec-3" data-target="sec-3"><span class="toc-num">5.3</span><span class="toc-text">SessionLog：内存追加式 WAL</span></a><a class="toc-item" href="#sec-4" data-target="sec-4"><span class="toc-num">5.4</span><span class="toc-text">SurfaceProjector：从事件到界面</span></a><a class="toc-item" href="#sec-5" data-target="sec-5"><span class="toc-num">5.5</span><span class="toc-text">BasicCompactionEngine：上下文压缩</span></a><a class="toc-item" href="#sec-6" data-target="sec-6"><span class="toc-num">5.6</span><span class="toc-text">事件溯源带来的三个超能力</span></a><a class="toc-item" href="#sec-7" data-target="sec-7"><span class="toc-num">5.7</span><span class="toc-text">课程补充：SurfaceOp.Replace 的两个场景与两条派生路径的口径差异</span></a><a class="toc-item" href="#sec-8" data-target="sec-8"><span class="toc-num">5.8</span><span class="toc-text">小结与下一章预告</span></a></nav>
       <div class="toc-footer"><a class="toc-github" href="https://github.com/fuzhengwei/deepseek-harness-java" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>查看源码</a></div>
     </aside>
     <aside class="right-toolbar">
@@ -180,10 +276,10 @@ for (SessionEvent event : events) {
       </a>
     </aside>
   </div>
-  <script src="js/highlight.js?v=20260906-2"></script>
-  <script src="js/progress.js?v=20260906-2"></script>
-  <script src="js/flowchart.js?v=20260906-2"></script>
-  <script src="js/main.js?v=20260906-2"></script>
+  <script src="js/highlight.js?v=20260906-4"></script>
+  <script src="js/progress.js?v=20260906-4"></script>
+  <script src="js/flowchart.js?v=20260906-4"></script>
+  <script src="js/main.js?v=20260906-4"></script>
   <script>
     window.addEventListener('scroll', () => {
       const h = document.documentElement;
