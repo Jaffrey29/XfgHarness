@@ -1,0 +1,110 @@
+<!-- 第7章：SSE 流式协议 -->
+<h1 class="chapter-title">第7章 SSE 流式协议：meta / chunk / step_break / done</h1>
+<p class="chapter-subtitle">从后端事件到前端气泡——一次流式对话的完整旅程</p>
+
+<h2 class="section-heading">7.1 本章导读</h2>
+
+<p>前面几章都在后端打转。本章我们把视角拉到浏览器：模型逐字输出的文字、工具调用的卡片、最终的完整消息——它们如何通过 SSE（Server-Sent Events）从 <code>ReactLoopAgent</code> 一路流到你的眼前？这个协议看似简单，但本项目在"多步工具调用"场景下踩过三个连环 Bug（文本乱码、工具卡不更新、气泡覆盖），本章会完整复盘。</p>
+
+<h2 class="section-heading">7.2 为什么是 SSE 而不是 WebSocket</h2>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">对比项</th><th style="text-align:left;">SSE</th><th style="text-align:left;">WebSocket</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>方向</td><td>单向（服务端 → 客户端）</td><td>双向</td></tr>
+      <tr><td>协议</td><td>纯 HTTP，天然过代理/防火墙</td><td>需协议升级（ws://）</td></tr>
+      <tr><td>重连</td><td>浏览器自动重连（EventSource）</td><td>需自己实现</td></tr>
+      <tr><td>本场景适配</td><td>✅ 对话流就是单向推送</td><td>双向能力用不上</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>Agent 对话是典型的"用户发一次、服务端推一串"——单向推送，SSE 是最小可用方案。Spring 端用 <code>SseEmitter</code>，前端用原生 <code>EventSource</code> 或 fetch 流。</p>
+
+<h2 class="section-heading">7.3 五种事件的完整序列</h2>
+
+<p><code>POST /api/agent/stream</code> 返回的事件流：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"meta","label":"meta\n起始帧：会话/模型/时间信息","type":"start"},{"id":"chunk1","label":"chunk ×N\n文本增量（AssistantChunk）\n前端逐字追加到当前气泡","type":"process"},{"id":"stepbreak","label":"step_break\n工具调用边界\ntoolName/callId/args/status","type":"decision"},{"id":"toolcard","label":"前端动作：\n完成当前气泡 → 插入工具卡片\n→ 新建空气泡 → 重置计数","type":"process"},{"id":"chunk2","label":"chunk ×M\n工具结果后的续步文本\n写入新气泡","type":"process"},{"id":"done","label":"done\n终态 + 全量 messages（含 tool 角色）\n前端重建工具卡片最终状态","type":"end"}],"edges":[{"from":"meta","to":"chunk1"},{"from":"chunk1","to":"stepbreak","label":"模型要调工具"},{"from":"stepbreak","to":"toolcard"},{"from":"toolcard","to":"chunk2"},{"from":"chunk2","to":"stepbreak","label":"还要调工具"},{"from":"chunk2","to":"done","label":"模型给出最终回答"},{"from":"chunk1","to":"done","label":"不调工具直接回答"}]}'></div>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">事件</th><th style="text-align:left;">后端来源</th><th style="text-align:left;">前端动作</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>meta</code></td><td>请求开始时推送一帧</td><td>显示模型名、首 token 时间统计起点</td></tr>
+      <tr><td><code>chunk</code></td><td><code>ReactLoopAgent.streamDeltaSink</code> 每个 TextDelta</td><td>追加到当前 streaming 气泡</td></tr>
+      <tr><td><code>step_break</code></td><td><code>streamToolCallSink</code>（工具调用时）</td><td>完成当前气泡 → 插入工具卡片 → 开新气泡 → 重置 fullContent</td></tr>
+      <tr><td><code>done</code></td><td><code>AgentCollectNode</code> 投影的全量消息</td><td>重建消息列表，更新工具卡片为终态（success/error）</td></tr>
+      <tr><td><code>error</code></td><td>任何环节异常</td><td>展示错误并结束流</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="section-heading">7.4 step_break：为什么必须是独立事件</h2>
+
+<p>这是本协议最关键的设计决策，来自真实踩坑。最初的想法是"在 chunk 文本里混入特殊字符串标记工具边界"，结果在多步工具调用时出了乱码。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-error);">
+  <div class="card-title">🐛 Bug 6：多 step 文本拼接乱码</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">多 step（多个工具调用）场景下，所有 step 的 TextDelta 通过同一个 deltaSink 推送，前端 <code>fullContent += </code> 把不同 step 的文本拼接到<strong>同一个气泡</strong>里——第一段话、工具结果说明、第二段话全混在一起，呈现为乱码。</p>
+</div>
+
+<p>修复方案是<strong>协议化</strong>：把"工具边界"从文本流中抽出来，变成独立的 SSE 事件。完整链路：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"agent","label":"ReactLoopAgent\nstreamToolCallSink.accept(toolCall)","type":"start"},{"id":"usecase","label":"AgentUseCase\n透传 toolCallSink","type":"process"},{"id":"controller","label":"AgentController\n推送独立 step_break 事件\n{toolName, callId, args, status}","type":"process"},{"id":"frontend","label":"前端 eventType === step_break 分支\n完成当前消息 → 插入工具卡片\n新建 streaming 消息 → 重置 fullContent","type":"end"}],"edges":[{"from":"agent","to":"usecase"},{"from":"usecase","to":"controller"},{"from":"controller","to":"frontend"}]}'></div>
+
+<div class="card" style="border-left: 3px solid var(--color-warning);">
+  <div class="card-title">🐛 连环 Bug 10 &amp; 11：step_break 引入后的两个坑</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">独立事件本身对了，但前端实现还有两个细节差点翻车：①step_break 分支创建新 streaming 消息后<strong>忘了 <code>sess.messages.push(assistantMsg)</code></strong>，导致 render() 不为第二轮文本创建气泡，后续 chunk 覆盖到第一轮气泡里；②<code>updateStreamingMessage</code> 的 60ms 节流缓存（<code>_lastHtml</code>）在 render() 重建 DOM 后没重置，缓存与 DOM 状态不一致。修复分别是在 render() 前补 push 和重置缓存。<strong>教训：状态管理的每一步（数据、DOM、缓存）必须在协议切换点同步重置。</strong></p>
+</div>
+
+<h2 class="section-heading">7.5 done 事件：全量消息的必要性</h2>
+
+<p>为什么流式推送了 chunk，最后还要在 done 里带全量 messages？因为流式过程只覆盖"文本增量"，工具卡片的<strong>最终状态</strong>（成功/失败、完整结果）需要从事件日志重建：</p>
+
+<div class="code-block"><pre>// done 事件携带的 messages 结构（简化）
+{
+  "messages": [
+    { "role": "user", "content": "列出目录文件" },
+    { "role": "assistant", "content": "我先查看一下目录。" },
+    { "role": "tool", "callId": "call_1", "name": "shell_execute",
+      "status": "success", "result": "..." },      // ← 流式阶段只有 status=running
+    { "role": "assistant", "content": "目录下有 3 个文件..." }
+  ]
+}</pre></div>
+
+<p>前端收到 done 后用这份全量消息替换本地状态——这就是第6章说的 <code>AgentCollectNode</code> 必须投影 ToolCall/ToolResult 的原因：<strong>没有它们，done 里就没有 tool 角色消息，前端会把 step_break 阶段创建的工具卡片清掉，卡片永远停在 running</strong>。</p>
+
+<h2 class="section-heading">7.6 后端事件到 SSE 的映射总览</h2>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">领域事件（SessionEvent）</th><th style="text-align:left;">SSE 事件</th><th style="text-align:left;">说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>—（请求开始）</td><td><code>meta</code></td><td>起始帧，非领域事件</td></tr>
+      <tr><td><code>AssistantChunk</code></td><td><code>chunk</code></td><td>文本增量</td></tr>
+      <tr><td><code>ToolCall</code></td><td><code>step_break</code></td><td>工具调用边界（协议化产物）</td></tr>
+      <tr><td>全部事件的投影</td><td><code>done</code></td><td>AgentCollectNode 从 SessionLog 重建</td></tr>
+      <tr><td><code>TurnEnd(Error)</code></td><td><code>error</code></td><td>错误终态</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">💡 设计哲学：事件日志是唯一真相</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">注意 chunk 和 step_break 是"加速通道"（实时体验），done 才是"对账时刻"（以 SessionLog 投影为准）。即使加速通道丢了几个 chunk，done 的全量消息也能把 UI 拉回正确状态。这就是第5章事件溯源的价值在协议层的体现。</p>
+</div>
+
+<h2 class="section-heading">7.7 小结与下一章预告</h2>
+
+<div class="summary-box">
+  <p><strong>本章要点</strong>：SSE 单向推送适配对话流；五事件序列 meta→chunk→(step_break→chunk)*→done；step_break 必须是独立事件而非文本标记（多步工具乱码的教训）；done 携带全量消息用于工具卡片终态对账；加速通道（chunk）+ 对账时刻（done）的双层设计。</p>
+  <p style="margin-bottom:0;"><strong>下一章</strong>：协议通了，接下来看 Agent 的"手"——工具系统。<code>fs_read</code>、<code>shell_execute</code> 这些工具怎么注册？统一执行器怎么做 Hook 和守卫？第8章讲工具系统。</p>
+</div>

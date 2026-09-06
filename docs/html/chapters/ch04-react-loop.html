@@ -1,0 +1,160 @@
+<!-- 第4章：ReactLoopAgent -->
+<h1 class="chapter-title">第4章 ReactLoopAgent：ReAct 循环引擎</h1>
+<p class="chapter-subtitle">整个系统的心脏——一个 769 行的类如何驱动"思考-行动-观察"</p>
+
+<h2 class="section-heading">4.1 本章导读</h2>
+
+<p>前面两章建立的是"静态地图"：模块怎么分、领域怎么划。本章我们进入"动态核心"——<code>domain/agent/service/ReactLoopAgent.java</code>，这是整个系统最重要、也最精巧的一个类。你将看到：ReAct 循环如何用 turn/step 两级结构实现、取消如何做到协作式不丢数据、max_tokens 截断如何自动续写，以及一个曾经让"工具结果永远送不到模型眼里"的真实 Bug 是怎么修掉的。</p>
+
+<h2 class="section-heading">4.2 ReAct 模式回顾</h2>
+
+<p>ReAct（Reason + Act）是最经典的 Agent 范式：<strong>模型不只是生成文本，而是在"推理 → 调用工具 → 观察结果 → 再推理"的循环中逼近目标</strong>。</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"reason","label":"Reason 推理\nLLM 分析上下文\n输出文本或工具调用","type":"process"},{"id":"act","label":"Act 行动\n执行工具\nfs_read / shell_execute ...","type":"process"},{"id":"observe","label":"Observe 观察\n工具结果回填上下文\n模型看到结果继续推理","type":"process"},{"id":"done","label":"完成判断\n模型不再请求工具\n输出最终答案","type":"end"}],"edges":[{"from":"reason","to":"act","label":"有工具调用"},{"from":"act","to":"observe"},{"from":"observe","to":"reason"},{"from":"reason","to":"done","label":"无工具调用"}]}'></div>
+
+<p>听起来简单，但工程化时有一堆硬问题：<em>循环什么时候停？模型输出被 token 截断怎么办？用户中途取消怎么处理？多个消息同时进来怎么排队？</em>这些正是 <code>ReactLoopAgent</code> 要解决的。</p>
+
+<h2 class="section-heading">4.3 三级驱动结构：kick → turn → step</h2>
+
+<p><code>ReactLoopAgent</code> 的驱动分为三层，从外到内是：<strong>kick（驱动器）→ turn（轮）→ step（步）</strong>。</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"kick","label":"kick() 驱动器\n虚拟线程中运行\n循环: 只要 inbox 有消息就开新 turn","type":"start"},{"id":"turn","label":"turn() 一轮对话\n上限 50 步 · 续写最多 4 次\n打开 TurnStart ... 关闭 TurnEnd","type":"process"},{"id":"step","label":"step() 一步\n一次 LLM 流式调用\n+ 可选的工具执行","type":"process"},{"id":"llm","label":"ILlmRuntimePort.stream()\nFlow.Publisher 流式返回","type":"end"}],"edges":[{"from":"kick","to":"turn","label":"inbox 有消息"},{"from":"turn","to":"step","label":"循环"},{"from":"step","to":"llm"},{"from":"step","to":"turn","label":"工具结果需续步"},{"from":"turn","to":"kick","label":"turn 结束"}]}'></div>
+
+<p>对应源码的三个方法：</p>
+
+<div class="code-block"><pre>// ReactLoopAgent.java · 三级驱动（简化注释版）
+private CompletableFuture&lt;Void&gt; kick(Phase.Running running) {   // 246行：驱动器
+    return CompletableFuture.runAsync(() -&gt; {
+        while (true) {
+            if (running.abort().get()) break;                    // 被取消则停
+            if (!inbox.hasPending()) break;                      // 没消息则停
+            if (!turn(running)) break;                           // 执行一轮
+        }
+        // finally 里：若期间又来了新消息，递归 kick 继续处理
+    }, Executors.newCachedThreadPool());
+}
+
+private boolean turn(Phase.Running running) {                    // 282行：一轮
+    session.append(SessionEventFactory.turnStart());
+    final long MAX_STEPS_PER_TURN = 50;                          // 安全上限
+    final int MAX_TOKEN_CONTINUATIONS = 4;                       // 续写上限
+    boolean midTurnContinuation = false;                         // 关键标志（见4.6）
+    while (true) {
+        // ... 检查步数上限、取消、抢占 inbox 消息
+        TurnEndReason stepResult = step(running, turn, step);    // 执行一步
+        if (stepResult == null) { midTurnContinuation = true; continue; }  // 工具续步
+        // ... 根据 Completed/MaxTokens/Blocked/Aborted/Error 决定 turn 结局
+    }
+}
+
+private TurnEndReason step(Phase.Running running, long turn, long step) {  // 404行：一步
+    // 1. 组装系统提示词  2. 构建请求  3. 流式调用 LLM
+    // 4. BlockAssembler 组装响应  5. 有工具调用则执行并回填
+}</pre></div>
+
+<h2 class="section-heading">4.4 Phase 状态机与协作式取消</h2>
+
+<p>Agent 的运行状态用 sealed 类型 <code>Phase</code> 表达：<code>Idle</code>（空闲）/ <code>Running</code>（运行中，携带 abort 标志）/ <code>Maintenance</code>（维护，如压缩上下文）。</p>
+
+<p>取消的设计非常关键——<strong>不能粗暴中断线程</strong>（那样可能写到一半的会话事件丢失），而是协作式：</p>
+
+<div class="code-block"><pre>// 取消：只设置标志位，不断线程
+public synchronized void cancel(AgentCancelCause cause, boolean keepInbox) {
+    if (phase instanceof Phase.Running r) {
+        r.abort().set(true);   // AtomicBoolean，运行中的循环自己检查发现
+    }
+}
+
+// step 内等待流式结束时的检查（485行）
+while (!done.await(100, TimeUnit.MILLISECONDS)) {
+    if (running.abort().get()) { aborted.set(true); break; }  // 100ms 轮询
+}
+
+// 流式订阅 onNext 里也检查（442行）：一旦发现 abort 立即 subscription.cancel()</pre></div>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">💡 为什么用 100ms 轮询而不是中断</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">LLM 流式调用可能在任何时刻收到取消。协作式取消保证：当前已收到的 chunk 全部写入 SessionLog、工具执行要么完整完成要么干净放弃、TurnEnd 事件一定落库。这样取消后的会话仍然是<strong>可回放的完整事件流</strong>，而不是一堆残片。</p>
+</div>
+
+<h2 class="section-heading">4.5 流式组装的细节：Flow + CountDownLatch + BlockAssembler</h2>
+
+<p>step 的核心是订阅 LLM 的流式响应。这里用了 JDK 9 的响应式流 <code>Flow.Publisher</code>（Domain 层因此不依赖任何 HTTP 客户端库）：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"pub","label":"ILlmRuntimePort.stream()\n返回 Flow.Publisher\u003cStreamChunk\u003e","type":"start"},{"id":"sub","label":"订阅 onNext(chunk)\n每个 chunk 做三件事","type":"process"},{"id":"check","label":"1. 检查 abort\n是 → subscription.cancel()","type":"process"},{"id":"assemble","label":"2. BlockAssembler.push(chunk)\n增量组装 ContentBlock","type":"process"},{"id":"push","label":"3. TextDelta → streamDeltaSink\n实时推给 SSE 通道","type":"process"},{"id":"latch","label":"onComplete/onError\nCountDownLatch.countDown()","type":"process"},{"id":"blocks","label":"流结束后\nassembler.blocks() 得到完整消息\nToolCallBlock? 执行工具","type":"end"}],"edges":[{"from":"pub","to":"sub"},{"from":"sub","to":"check"},{"from":"check","to":"assemble"},{"from":"assemble","to":"push"},{"from":"sub","to":"latch"},{"from":"latch","to":"blocks"}]}'></div>
+
+<p><code>StreamChunk</code> 是 sealed 接口，有 <code>TextDelta</code>（文本增量）、<code>Retry</code>（重试提示，会转成人类可读的"模型请求失败，正在重试（1/3）"推给前端）等子类型。<code>BlockAssembler</code> 负责把零散的 chunk 组装成完整的 <code>ContentBlock</code> 列表（文本块 + 工具调用块）。</p>
+
+<h2 class="section-heading">4.6 真实 Bug 复盘：midTurnContinuation 标志的诞生</h2>
+
+<p>这是本项目修复过的最有教学价值的一个 Bug，完美展示了"循环退出条件"设计的微妙之处。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-error);">
+  <div class="card-title">🐛 Bug 现象</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">让 Agent 执行"列出目录文件并介绍"——它确实调用了 <code>shell_execute</code>，工具也执行成功了，但<strong>对话就此中断</strong>，模型从不基于工具结果给出最终回答。工具结果仿佛石沉大海。</p>
+</div>
+
+<p><strong>根因</strong>：turn 循环的每个 step 开头都要检查 inbox 是否有新消息（<code>inbox.claim(...)</code>），如果 inbox 为空就 <code>break</code> 退出 turn。这个逻辑对"第一步"是对的（没有用户消息就不该开始），但<strong>工具调用完成后的后续 step 也走了同样的检查</strong>——此时 inbox 本来就是空的（用户没发新消息），于是循环在工具结果回填后直接退出，模型永远没机会看到工具结果。</p>
+
+<div class="code-block"><pre>// 修复：引入 midTurnContinuation 标志
+boolean midTurnContinuation = false;
+while (true) {
+    if (!midTurnContinuation) {
+        claimed = inbox.claim(InboxTarget.NEXT_TURN, (int) turn);
+        if (claimed.isEmpty() &amp;&amp; !inbox.hasPending() &amp;&amp; !continuationRequested) break;
+        // ...
+    }
+    TurnEndReason stepResult = step(running, turn, step);
+    if (stepResult == null) {           // null = 工具调用已完成，模型应继续推理
+        midTurnContinuation = true;      // 后续 step 跳过 inbox 检查
+        continue;
+    }
+}</pre></div>
+
+<p>修复的本质：<strong>区分"turn 的第一步"和"turn 内的续步"</strong>。第一步必须有用户消息才启动；续步（工具调用后）不需要用户消息，直接继续让模型推理。</p>
+
+<h2 class="section-heading">4.7 max_tokens 截断的受控续写</h2>
+
+<p>模型输出有 token 上限，超长回复会被截断（<code>finish_reason = max_tokens</code>）。<code>ReactLoopAgent</code> 的处理是<strong>自动续写，但有上限</strong>：</p>
+
+<div class="code-block"><pre>final int MAX_TOKEN_CONTINUATIONS = 4;
+// ...
+} else if (stepResult instanceof TurnEndReason.MaxTokens) {
+    if (++tokenContinuations &gt; MAX_TOKEN_CONTINUATIONS) {
+        session.append(SessionEventFactory.turnEnd(new TurnEndReason.MaxTokens()));
+        return true;   // 续写 4 次还不够，放弃，turn 结束
+    }
+    continuationRequested = true;   // 标记：下一步是续写，不要从 inbox 取新消息
+    continue;
+}</pre></div>
+
+<p>注意 <code>continuationRequested</code> 与 <code>midTurnContinuation</code> 是两个不同的标志：前者处理"模型话没说完"，后者处理"模型要基于工具结果继续"。两个都会阻止循环从 inbox 抢占新消息，但触发原因和计数方式不同。</p>
+
+<h2 class="section-heading">4.8 与外部世界的接口</h2>
+
+<p><code>ReactLoopAgent</code> 通过构造器注入的 7 个依赖与外部协作，全部是 Domain 抽象：</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">依赖</th><th style="text-align:left;">类型</th><th style="text-align:left;">职责</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>session</code></td><td><code>SessionLog</code></td><td>事件追加（TurnStart/StepStart/UserMessage/AssistantChunk/ToolCall...）</td></tr>
+      <tr><td><code>inbox</code></td><td><code>Inbox</code></td><td>消息输入箱，支持 NEXT_TURN / nextStep 两种目标</td></tr>
+      <tr><td><code>llm</code></td><td><code>ILlmRuntimePort</code></td><td>流式生成端口，实现由 Infrastructure 提供</td></tr>
+      <tr><td><code>toolRegistry</code> / <code>toolExecutor</code></td><td>工具域</td><td>工具查找与统一执行（Hook + 守卫）</td></tr>
+      <tr><td><code>systemPromptAssembler</code></td><td><code>SystemPromptAssembler</code></td><td>组装系统提示词（含工具 schema）</td></tr>
+      <tr><td><code>events</code></td><td><code>AgentEventListener</code></td><td>生命周期事件回调</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>另有两个按次设置的"流式接收器"：<code>streamDeltaSink</code>（文本增量，推给 SSE chunk）和 <code>streamToolCallSink</code>（工具调用，推给 SSE step_break）——它们让同一个 Agent 引擎既能服务 SSE 流式请求，也能服务阻塞式请求，还能被工作流复用。</p>
+
+<h2 class="section-heading">4.9 小结与下一章预告</h2>
+
+<div class="summary-box">
+  <p><strong>本章要点</strong>：三级驱动 kick→turn→step；单 turn ≤ 50 步、续写 ≤ 4 次是安全护栏；取消用 AtomicBoolean + 100ms 轮询实现协作式中断保证事件完整；midTurnContinuation 标志修复了"工具结果送不到模型"的经典 Bug；Flow.Publisher 让 Domain 不依赖 HTTP 客户端。</p>
+  <p style="margin-bottom:0;"><strong>下一章</strong>：本章反复出现的 <code>session.append(...)</code> 到底做了什么？为什么说"事件日志就是真相之源"？取消后如何回放完整会话？第5章讲会话与事件溯源。</p>
+</div>

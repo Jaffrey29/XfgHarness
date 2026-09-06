@@ -1,0 +1,220 @@
+/* ========================================
+   DeepSeek Harness Java 教程 - 站点补充样式
+   依赖 book.css 的设计变量
+   ======================================== */
+
+/* ===== 首页 Hero ===== */
+.home-hero {
+  padding: var(--space-2xl) var(--space-xl);
+  background: var(--gradient-accent);
+  border-radius: var(--radius-lg);
+  color: #fff;
+  text-align: center;
+  margin-bottom: var(--space-xl);
+}
+.home-hero-tag {
+  display: inline-block;
+  padding: 4px 14px;
+  border: 1px solid rgba(255,255,255,0.4);
+  border-radius: 20px;
+  font-size: 13px;
+  margin-bottom: var(--space-md);
+  opacity: 0.9;
+}
+.home-hero-title {
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 0 0 var(--space-md);
+}
+.home-hero-desc {
+  font-size: 15px;
+  line-height: 1.8;
+  opacity: 0.92;
+  margin: 0 0 var(--space-lg);
+}
+.home-hero-actions {
+  display: flex;
+  gap: var(--space-md);
+  justify-content: center;
+  margin-bottom: var(--space-xl);
+}
+.home-btn {
+  display: inline-block;
+  padding: 10px 24px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  transition: var(--transition);
+}
+.home-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+.home-btn.primary {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+}
+.home-hero .home-btn {
+  background: rgba(255,255,255,0.15);
+  border-color: rgba(255,255,255,0.35);
+  color: #fff;
+  backdrop-filter: blur(4px);
+}
+.home-hero .home-btn.primary {
+  background: #fff;
+  color: var(--color-accent);
+  border-color: #fff;
+}
+.home-hero-stats {
+  display: flex;
+  gap: var(--space-2xl);
+  justify-content: center;
+}
+.home-stat-num { font-size: 28px; font-weight: 700; }
+.home-stat-label { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+
+/* ===== 首篇章节卡片 ===== */
+.home-part { margin-bottom: var(--space-xl); }
+.home-part-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 var(--space-md);
+  padding-bottom: var(--space-sm);
+  border-bottom: 2px solid var(--color-border);
+}
+.home-chapter-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-md);
+}
+.home-chapter-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: var(--color-text);
+  transition: var(--transition);
+  position: relative;
+}
+.home-chapter-card:hover {
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+.home-chapter-num {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  background: rgba(79, 70, 229, 0.08);
+  color: var(--color-accent);
+  font-weight: 700;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.home-chapter-title { font-size: 14px; font-weight: 600; line-height: 1.4; }
+.home-badge {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.home-badge.done { background: rgba(16,185,129,0.12); color: var(--color-success); }
+.home-badge.learning { background: rgba(245,158,11,0.12); color: var(--color-warning); }
+
+/* ===== 侧边栏导航补充 ===== */
+.sidebar-nav .nav-section {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-tertiary);
+  padding: var(--space-sm) var(--space-lg) var(--space-xs);
+  margin-bottom: 0;
+}
+.nav-item .nav-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  margin-right: var(--space-sm);
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+}
+.nav-item.active .nav-num { border-color: var(--color-accent); color: var(--color-accent); }
+.nav-item.completed .nav-num {
+  background: var(--color-success);
+  border-color: var(--color-success);
+  color: #fff;
+}
+.nav-item .nav-title { flex: 1; }
+
+/* ===== TOC ===== */
+.toc-item {
+  display: block;
+  padding: 6px var(--space-md);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  border-left: 2px solid transparent;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.toc-item:hover { color: var(--color-accent); background: var(--color-surface-hover); }
+.toc-item.toc-title { font-weight: 600; color: var(--color-text); }
+
+/* ===== 加载态 ===== */
+.loading {
+  padding: var(--space-2xl);
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 15px;
+}
+
+/* ===== 章节底部 ===== */
+.chapter-footer {
+  margin-top: var(--space-xl);
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--color-border);
+  text-align: center;
+}
+
+/* ===== 阅读进度（顶部细条） ===== */
+.reading-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  background: var(--gradient-accent);
+  width: 0;
+  z-index: 999;
+  transition: width 0.1s linear;
+}
+
+/* ===== 响应式 ===== */
+@media (max-width: 1100px) {
+  .toc-panel { display: none; }
+}
+@media (max-width: 860px) {
+  .sidebar { display: none; }
+  .home-hero { padding: var(--space-xl) var(--space-lg); }
+  .home-hero-title { font-size: 26px; }
+  .home-hero-stats { gap: var(--space-lg); }
+}

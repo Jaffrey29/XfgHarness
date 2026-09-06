@@ -1,0 +1,102 @@
+<!-- 第10章：MCP 集成 -->
+<h1 class="chapter-title">第10章 MCP 集成：连接外部工具生态</h1>
+<p class="chapter-subtitle">一个开放协议如何让 Agent 接入全世界的工具</p>
+
+<h2 class="section-heading">10.1 本章导读</h2>
+
+<p>第9章的插件是"私有扩展"——你写代码、打包、安装。本章讲一种更开放的方式：<strong>MCP（Model Context Protocol）</strong>，一个工具接入的标准协议。只要某个工具方提供了 MCP Server（文件系统、数据库、GitHub、Slack……社区已有成百上千个），你不用写一行适配代码就能接入。</p>
+
+<h2 class="section-heading">10.2 MCP 是什么：工具的 USB 接口</h2>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">💡 一句话理解 MCP</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">USB 让任何外设即插即用到任何电脑；MCP 让任何工具即插即用到任何 Agent。工具方实现一次 MCP Server，所有支持 MCP 的 Agent（Claude、本项目、其他）都能直接用——不用每家各写一套集成。</p>
+</div>
+
+<p>对比第9章的插件体系：</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">维度</th><th style="text-align:left;">插件（第9章）</th><th style="text-align:left;">MCP（本章）</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>耦合</td><td>面向本项目的 SPI 写代码</td><td>面向开放协议，一次实现处处可用</td></tr>
+      <tr><td>获取方式</td><td>自己开发或找本项目专用插件</td><td>直接用社区现成的 MCP Server</td></tr>
+      <tr><td>通信</td><td>Java=进程内，Node=私有 JSON-RPC</td><td>标准化 JSON-RPC 2.0</td></tr>
+      <tr><td>适合</td><td>深度定制、性能敏感</td><td>快速接入生态、标准化能力</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="section-heading">10.3 本项目的 MCP 架构：stdio 传输</h2>
+
+<p>MCP 支持多种传输，本项目实现的是 <strong>stdio</strong>（标准输入输出）——把 MCP Server 作为子进程拉起，通过它的 stdin/stdout 做 JSON-RPC 2.0 通信。</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"yml","label":"harness.mcp.servers 配置\nname/command/args/env/cwd","type":"start"},{"id":"boot","label":"McpBootstrap\n启动时读取配置","type":"process"},{"id":"client","label":"StdioMcpClient\nProcessBuilder 拉起子进程\ninitialize → initialized","type":"process"},{"id":"list","label":"listTools()\n获取 Server 提供的工具清单","type":"process"},{"id":"adapter","label":"McpToolAdapter\n注册为 mcp__\u003cserver\u003e__\u003ctool\u003e","type":"process"},{"id":"registry","label":"ToolRegistry\n与内置/插件工具同链执行","type":"end"}],"edges":[{"from":"yml","to":"boot"},{"from":"boot","to":"client"},{"from":"client","to":"list"},{"from":"list","to":"adapter"},{"from":"adapter","to":"registry"}]}'></div>
+
+<p>关键类分工：</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">类</th><th style="text-align:left;">模块</th><th style="text-align:left;">职责</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>IMcpClient</code></td><td>domain/tool/mcp</td><td>MCP 客户端端口（connect/listTools/callTool）</td></tr>
+      <tr><td><code>StdioMcpClient</code></td><td>infrastructure/adapter/mcp</td><td>stdio 实现：ProcessBuilder 拉子进程，stdin/stdout 跑 JSON-RPC 2.0</td></tr>
+      <tr><td><code>McpToolAdapter</code></td><td>domain/tool/mcp</td><td>把 MCP 工具适配成系统统一 ToolDefinition，注册为 <code>mcp__&lt;serverName&gt;__&lt;toolName&gt;</code></td></tr>
+      <tr><td><code>McpBootstrap</code></td><td>domain/tool/mcp</td><td>启动时读取配置、连接 Server、注册工具</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">10.3.1 握手序列</h3>
+
+<p>StdioMcpClient.connect() 内部是标准 MCP 初始化握手：</p>
+
+<div class="code-block"><pre>// StdioMcpClient.connect()（简化）
+ProcessBuilder pb = new ProcessBuilder(cmd);   // 拉起 MCP Server 子进程
+// ...
+sendAndWait("initialize", Map.of(...));         // 1. 发送 initialize 请求
+sendNotification("notifications/initialized", Map.of());  // 2. 发送 initialized 通知
+// 此后即可 listTools / callTool</pre></div>
+
+<h2 class="section-heading">10.4 动手：接入一个文件系统 MCP Server</h2>
+
+<p>以社区官方的 filesystem Server 为例，在 <code>application.yml</code> 配置：</p>
+
+<div class="code-block"><pre>harness:
+  mcp:
+    enabled: true
+    servers:
+      - name: filesystem
+        command: npx
+        args: ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+        env: {}
+        cwd: ~</pre></div>
+
+<p>启动后，<code>McpBootstrap</code> 会拉起该 Server、列出它的工具（read_file、write_file、list_directory 等），注册为 <code>mcp__filesystem__read_file</code> 这样的工具名。之后 Agent 就能像调内置工具一样调它们——在控制台问"读一下 /tmp 下的某个文件"，模型会选择 <code>mcp__filesystem__read_file</code>。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-warning);">
+  <div class="card-title">⚠️ MCP 工具同样受治理</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">MCP 工具注册后进的是同一个 <code>ToolRegistry</code>、同一个 <code>ToolCallExecutor</code>——Hook、超时、审批矩阵对它们一样生效。接入第三方 MCP Server 前，务必确认它的工具是否该加进 <code>harness.approval.required-tools</code>（比如任何带写能力的工具）。</p>
+</div>
+
+<h2 class="section-heading">10.5 当前边界</h2>
+
+<div class="info-box">
+  <h4>已知限制</h4>
+  <ul>
+    <li>仅支持 stdio 传输（HTTP/SSE 传输未实现）</li>
+    <li>MCP 与插件 Bridge 互不打通——MCP Server 不能作为插件包安装，插件也不能通过 MCP 协议暴露</li>
+    <li>社区 MCP Server 质量参差，接入前建议先手动 <code>npx ... </code> 跑通验证</li>
+  </ul>
+</div>
+
+<h2 class="section-heading">10.6 小结与下一章预告</h2>
+
+<div class="summary-box">
+  <p><strong>本章要点</strong>：MCP 是工具的开放标准协议；本项目用 stdio 传输 + JSON-RPC 2.0（ProcessBuilder 子进程 + initialize/initialized 握手）；McpToolAdapter 把远端工具注册为 <code>mcp__&lt;server&gt;__&lt;tool&gt;</code>，与内置工具同链同治理；配置在 <code>harness.mcp.servers</code>。</p>
+  <p style="margin-bottom:0;"><strong>下一章</strong>：能力越来越强（文件、Shell、插件、MCP），风险也越来越大。怎么保证 Agent 不会执行危险操作？第11章讲任务、审批与治理的完整链路。</p>
+</div>
