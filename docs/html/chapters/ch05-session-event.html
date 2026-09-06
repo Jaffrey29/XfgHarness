@@ -1,0 +1,116 @@
+<h1 class="chapter-title">第5章 会话与事件溯源：SessionLog 的秘密</h1>
+<p class="chapter-subtitle">为什么说"事件日志就是真相之源"——取消、回放、压缩都建立在它之上</p>
+
+<h2 class="section-heading" id="sec-1">5.1 本章导读</h2>
+
+<p>上一章里 <code>ReactLoopAgent</code> 反复调用 <code>session.append(...)</code>——TurnStart、StepStart、UserMessage、AssistantChunk、ToolCall、TurnEnd……本章揭开这个 <code>session</code> 的真面目：它不是简单的"聊天记录"，而是一个<strong>事件溯源（Event Sourcing）系统</strong>。理解了它，你就理解了本项目为什么能做到取消不丢数据、历史完整回放、上下文自动压缩。</p>
+
+<h2 class="section-heading" id="sec-2">5.2 什么是事件溯源</h2>
+
+<p>传统系统存"当前状态"，事件溯源存"发生的所有事"。类比银行账户：</p>
+
+<div class="compare-grid">
+  <div class="card" style="border-left: 3px solid var(--color-warning);">
+    <div class="card-title">传统方式：存余额</div>
+    <p style="font-size: 13px; color: var(--color-text-secondary);">账户表只有一行 <code>balance = 100</code>。你怎么变成 100 的？不知道。中间被人改过一次？也不知道。状态即一切，历史不可考。</p>
+  </div>
+  <div class="card" style="border-left: 3px solid var(--color-success);">
+    <div class="card-title">事件溯源：存流水</div>
+    <p style="font-size: 13px; color: var(--color-text-secondary);">存的是 <code>+200, -50, -50</code> 的完整流水。余额 100 是流水"回放"出来的。历史完整、可审计、可回放、可从任意时间点重建状态。</p>
+  </div>
+</div>
+
+<p>对 Agent 会话来说，"流水"就是会话事件日志（Session Event Log）：用户说了什么、模型回了什么、调用了哪个工具、工具返回了什么、什么时候取消的——全部按顺序追加，<strong>只增不改</strong>。</p>
+
+<h2 class="section-heading" id="sec-3">5.3 SessionLog：内存追加式 WAL</h2>
+
+<p><code>SessionLog</code>（📦 <code>domain/session/event/model/entity/SessionLog.java</code>）本质是一个<strong>内存中的追加式写前日志（WAL）</strong>。Agent 运行过程中产生的一切事件都先追加到这里，再由 <code>ISessionEventStore</code> 端口异步落库（MySQL 的 <code>harness_session_event_log</code> 表）。</p>
+
+<p>事件类型是 sealed 接口 <code>SessionEvent</code>，分四大类：</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">类别</th><th style="text-align:left;">事件</th><th style="text-align:left;">作用</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>轮/步边界</td><td><code>TurnStart</code>、<code>TurnEnd(reason)</code>、<code>StepStart</code>、<code>StepEnd</code></td><td>标记 ReAct 循环的结构边界</td></tr>
+      <tr><td>消息</td><td><code>UserMessage</code>、<code>AssistantChunk</code>、<code>AssistantMessage</code></td><td>对话内容（Chunk 是流式增量，Message 是完整组装结果）</td></tr>
+      <tr><td>工具</td><td><code>ToolCall(callId, name, arguments)</code>、<code>ToolResult(callId, ...)</code></td><td>工具调用与结果，用 callId 配对</td></tr>
+      <tr><td>元信息</td><td><code>RequestHeader</code>、<code>RequestContext</code>、<code>TodoWrite</code>、<code>SessionEndSeed</code>、<code>PlanModeChange</code>、<code>AgentInboxSpliced</code></td><td>请求头快照、待办写入、会话结束种子等</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>每个事件有全局递增的 <code>seq</code>（序号），这是回放和投影的顺序依据。</p>
+
+<h2 class="section-heading" id="sec-4">5.4 SurfaceProjector：从事件到界面</h2>
+
+<p>事件日志是"原始流水"，但 UI 要的是"当前应该显示什么"。中间的翻译层是 <code>SurfaceProjector</code>（表面投影器）：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"events","label":"SessionEvent 流\n(seq 递增的原始事件)","type":"start"},{"id":"intent","label":"SurfaceIntent\n每个事件声明自己的投影意图","type":"process"},{"id":"op","label":"SurfaceOp 两种操作\nAppend: 追加新节点\nReplace: 替换已有节点","type":"decision"},{"id":"nodes","label":"SurfaceNode 列表\n(seq + event)\nUI 渲染的最终状态","type":"end"}],"edges":[{"from":"events","to":"intent"},{"from":"intent","to":"op"},{"from":"op","to":"nodes"}]}'></div>
+
+<p>核心代码极简，却撑起整个 UI 渲染：</p>
+
+<div class="code-block"><pre>// SurfaceProjector.project()（简化）
+for (SessionEvent event : events) {
+    SurfaceIntent intent = intentOf(event);
+    if (intent.surfaceOp() instanceof SurfaceOp.Append) {
+        nodes.add(new SurfaceNode(event.seq(), event));
+    } else if (intent.surfaceOp() instanceof SurfaceOp.Replace r) {
+        // 按 r.targetSeq() 找到旧节点替换
+    }
+}</pre></div>
+
+<p>为什么需要 Replace？典型场景：<strong>AssistantChunk 流式追加时，UI 应该更新同一个气泡而不是每来一个 chunk 就加一个气泡</strong>。chunk 事件投影为 Replace（替换上一个未完成的气泡），完整 AssistantMessage 到来时再 Replace 成终态——界面上看到的就是"文字逐字浮现"的效果。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">💡 投影必须幂等</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">同一个事件流，投影多少次结果都应该一样。这条性质让"重新加载会话"和"实时接收事件"走同一套渲染逻辑——历史回放和实时对话在 UI 层完全一致。</p>
+</div>
+
+<h2 class="section-heading" id="sec-5">5.5 BasicCompactionEngine：上下文压缩</h2>
+
+<p>会话长了，把所有事件塞进 LLM 上下文会爆 token。本项目的压缩策略在 <code>BasicCompactionEngine</code>（📦 <code>domain/agent/compaction/</code>）：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"trigger","label":"触发\n上下文 token 估算超预算\n(length/4 粗估)","type":"start"},{"id":"split","label":"切分事件\n最近 1/4: 保留原文\n前 3/4: 待压缩","type":"process"},{"id":"summarize","label":"LLM 总结\n把前 3/4 的事件\n总结成一条摘要消息","type":"process"},{"id":"rebuild","label":"重建上下文\n摘要 + 最近 1/4 原文","type":"end"}],"edges":[{"from":"trigger","to":"split"},{"from":"split","to":"summarize"},{"from":"summarize","to":"rebuild"}]}'></div>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">设计点</th><th style="text-align:left;">选择</th><th style="text-align:left;">权衡</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>保留比例</td><td>最近 1/4 事件原文</td><td>最近的上下文对当前任务最重要，保留原文避免关键细节（如刚读到的文件内容）被总结丢失</td></tr>
+      <tr><td>压缩方式</td><td>LLM 总结</td><td>比硬截断智能，但消耗一次额外 LLM 调用</td></tr>
+      <tr><td>token 估算</td><td><code>length / 4</code> 粗估</td><td>不精确但零成本；context-window 默认 128000，留足余量后粗估够用</td></tr>
+      <tr><td>事件处理</td><td>摘要作为新事件追加</td><td>不删除原始事件——日志仍是完整流水，只是"喂给模型的上下文"变了</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="section-heading" id="sec-6">5.6 事件溯源带来的三个超能力</h2>
+
+<p>回到本章开头的问题——为什么说事件日志是真相之源？因为它同时支撑了三件看似无关的事：</p>
+
+<div class="compare-grid">
+  <div class="card" style="border-left: 3px solid var(--color-info);">
+    <div class="card-title">🔁 完整回放</div>
+    <p style="font-size: 13px; color: var(--color-text-secondary);">控制台"历史会话"功能不需要单独存储——把 <code>harness_session_event_log</code> 的事件读出来重新投影一遍，就能精确重现当时的每一句话、每一次工具调用。</p>
+  </div>
+  <div class="card" style="border-left: 3px solid var(--color-success);">
+    <div class="card-title">✂️ 安全取消</div>
+    <p style="font-size: 13px; color: var(--color-text-secondary);">第4章的协作式取消之所以不丢数据，正因为所有事件先追加到内存 WAL 再落库。即使 turn 中途 abort，已产生的 TurnStart/Chunk/ToolCall 都已安全记录，TurnEnd(Aborted) 补齐结尾。</p>
+  </div>
+  <div class="card" style="border-left: 3px solid var(--color-accent);">
+    <div class="card-title">🔍 可审计</div>
+    <p style="font-size: 13px; color: var(--color-text-secondary);">Agent 什么时候调了 Shell、参数是什么、返回了什么——全部在事件流里。这是审批治理（第11章）和安全审计的技术基础。</p>
+  </div>
+</div>
+
+<h2 class="section-heading" id="sec-7">5.7 小结与下一章预告</h2>
+
+<div class="summary-box">
+  <p><strong>本章要点</strong>：SessionLog 是内存追加式 WAL，事件只增不改；SurfaceProjector 用 Append/Replace 两种操作把事件流投影成 UI 状态（幂等性让历史回放与实时渲染共用一套逻辑）；BasicCompactionEngine 保留最近 1/4 原文、其余 LLM 总结；事件溯源同时支撑回放、安全取消、审计三大能力。</p>
+  <p style="margin-bottom:0;"><strong>下一章</strong>：会话事件从哪来？要回到消息的入口——一条用户消息到达后，系统怎么判断"该闲聊还是该调工具"？多个步骤如何编排成一条链？第6章讲意图识别与策略树。</p>
+</div>

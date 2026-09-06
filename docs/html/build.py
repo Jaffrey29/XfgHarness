@@ -19,6 +19,7 @@ CHAPTERS_DIR = ROOT / 'chapters'
 # 部署域名（百度收录需要绝对 URL；换域名只改这一行）
 SITE_URL = 'https://fuzhengwei.github.io/deepseek-harness-java/docs/html'
 SITE_TITLE = 'DeepSeek Harness Java 实战教程'
+ASSET_VERSION = '20260906-2'
 
 # 阅读/滚动进度条脚本（普通字符串：JS 花括号不能进 f-string）
 SCROLL_PROGRESS_JS = """  <script>
@@ -36,7 +37,7 @@ def load_registry():
     src = (ROOT / 'js' / 'main.js').read_text(encoding='utf-8')
     pat = re.compile(
         r"\{\s*id:\s*'([^']+)'\s*,\s*num:\s*(\d+)\s*,\s*title:\s*'([^']+)'\s*,"
-        r"\s*section:\s*'([^']+)'\s*,\s*file:\s*'chapters/([^']+)'\s*,?\s*\}")
+        r"\s*section:\s*'([^']+)'\s*,\s*file:\s*'(?:chapters/)?([^']+)'\s*,?\s*\}")
     out = []
     for m in pat.finditer(src):
         out.append(dict(id=m.group(1), num=int(m.group(2)), title=m.group(3),
@@ -47,6 +48,9 @@ def load_registry():
 
 def strip_tags(s):
     return re.sub(r'<[^>]+>', '', s)
+
+def asset(path):
+    return f'{path}?v={ASSET_VERSION}'
 
 def page_desc(frag_html):
     """取片段 subtitle 或第一个 <p> 的纯文本作 description（去内联标签，截 118 字）"""
@@ -75,7 +79,10 @@ CH_DESC = {
     'ch10': 'MCP 集成 · 连接外部工具生态',
     'ch11': '治理审批 · 权限矩阵与人工决策',
     'ch12': '部署生产 · 配置监控与容错落地',
-    'ch13': '尾声 · 总结复盘与扩展路线',
+    'ch13': '边界复盘 · 从 Demo 走向产品',
+    'ch14': '工程全景 · API 控制台数据与测试',
+    'ch15': '工作流 · 子代理与协同执行',
+    'ch16': '长程治理 · 目标计划技能定时',
 }
 
 # 首页 Hero 右侧架构插画 SVG（六层架构 · 编辑排版 · 浅色背景）
@@ -316,6 +323,7 @@ SECTION_VAR = {
     '工具与扩展': '--section-工具与扩展',
     '治理': '--section-治理',
     '部署与生产化': '--section-部署与生产化',
+    '工程全景': '--color-accent',
     '终章': '--section-终章',
 }
 _EMOJI_RE = re.compile(r'^([\U0001F000-\U0001FAFF\u2600-\u27BF\uFE0F\u200d]+)\s*')
@@ -402,9 +410,10 @@ def render_toc(toc, num=None):
     items = []
     for i, (hid, txt) in enumerate(toc, start=1):
         label = f'{num}.{i}' if num is not None else str(i).zfill(2)
+        clean_txt = re.sub(r'^\s*\d+(?:\.\d+)+\s*', '', txt).strip() or txt
         items.append(f'<a class="toc-item" href="#{hid}" data-target="{hid}">'
                      f'<span class="toc-num">{label}</span>'
-                     f'<span class="toc-text">{htmllib.escape(txt)}</span></a>')
+                     f'<span class="toc-text">{htmllib.escape(clean_txt)}</span></a>')
     return ''.join(items)
 
 def wrap_body(frag_html, ch):
@@ -412,8 +421,25 @@ def wrap_body(frag_html, ch):
     eyebrow = f'<div class="chapter-eyebrow">{htmllib.escape(ch["section"])}</div>'
     return f'<div class="chapter-head">{eyebrow}{frag_html}</div>'
 
+def read_fragment(ch):
+    """优先读取 chapters/ 片段；兼容当前仓库中的根级完整章节页。"""
+    fragment_path = CHAPTERS_DIR / ch['frag']
+    if fragment_path.exists():
+        return fragment_path.read_text(encoding='utf-8')
+
+    source_path = ROOT / ch['frag']
+    if not source_path.exists():
+        raise FileNotFoundError(f'章节源文件不存在：{source_path}')
+
+    source_html = source_path.read_text(encoding='utf-8')
+    start = source_html.find('<h1 class="chapter-title"')
+    end = source_html.find('<nav class="page-nav">', start)
+    if start < 0 or end < 0:
+        raise ValueError(f'章节正文提取失败：{source_path}')
+    return source_html[start:end].strip()
+
 def render_page(chapters, ch, prev_ch, next_ch):
-    frag_raw = (CHAPTERS_DIR / ch['frag']).read_text(encoding='utf-8')
+    frag_raw = read_fragment(ch)
     frag, toc = with_h2_ids_v2(frag_raw)
     desc = page_desc(frag_raw)
     slug = page_slug(ch)
@@ -441,9 +467,9 @@ def render_page(chapters, ch, prev_ch, next_ch):
   <meta name="description" content="{htmllib.escape(desc)}">
   <link rel="canonical" href="{canon}">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
-  <link rel="stylesheet" href="css/book.css">
-  <link rel="stylesheet" href="css/site.css">
-  <link rel="stylesheet" href="css/flowchart.css">
+  <link rel="stylesheet" href="{asset('css/book.css')}">
+  <link rel="stylesheet" href="{asset('css/site.css')}">
+  <link rel="stylesheet" href="{asset('css/flowchart.css')}">
 </head>
 <body data-chapter="{ch["id"]}">
   <div class="reading-progress" id="readingProgress"></div>
@@ -452,12 +478,12 @@ def render_page(chapters, ch, prev_ch, next_ch):
       <div class="sidebar-brand">
         <a class="brand-lockup" href="index.html" title="回到首页">
           <span class="brand-tile">📚</span>
-          <span class="brand-meta"><span class="brand-name">Harness 教程</span><span class="brand-sub">Java 实战 · 13 章</span></span>
+          <span class="brand-meta"><span class="brand-name">Harness 教程</span><span class="brand-sub">Java 实战 · 17 章</span></span>
         </a>
         <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
       </div>
       <div class="sidebar-progress">
-        <div class="progress-head"><span class="progress-label">学习进度</span><span class="progress-num" id="progressText">0/14 章</span></div>
+        <div class="progress-head"><span class="progress-label">学习进度</span><span class="progress-num" id="progressText">0/{len(chapters)} 章</span></div>
         <div class="progress-bar"><div class="progress-bar-fill" style="width: 0%"></div></div>
         <div class="progress-caption" id="progressCaption">Lv.1 · 尚未开始</div>
       </div>
@@ -498,10 +524,10 @@ def render_page(chapters, ch, prev_ch, next_ch):
       </a>
     </aside>
   </div>
-  <script src="js/highlight.js"></script>
-  <script src="js/progress.js"></script>
-  <script src="js/flowchart.js"></script>
-  <script src="js/main.js"></script>
+  <script src="{asset('js/highlight.js')}"></script>
+  <script src="{asset('js/progress.js')}"></script>
+  <script src="{asset('js/flowchart.js')}"></script>
+  <script src="{asset('js/main.js')}"></script>
 {SCROLL_PROGRESS_JS}</body>
 </html>'''
 
@@ -526,12 +552,12 @@ def render_index(chapters):
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{SITE_TITLE} — 从零精通 Agent Harness 的设计与实现</title>
-  <meta name="description" content="13 章渐进式实战教程，基于真实开源项目 deepseek-harness-java，深入 DDD 六边形架构、ReAct 循环、事件溯源、策略树、插件体系与审批治理。">
+  <meta name="description" content="17 章渐进式实战教程，基于真实开源项目 deepseek-harness-java，深入 DDD 六边形架构、ReAct 循环、事件溯源、策略树、插件体系、审批治理、工作流、子代理与平台能力。">
   <link rel="canonical" href="{SITE_URL}/">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
-  <link rel="stylesheet" href="css/book.css">
-  <link rel="stylesheet" href="css/site.css">
-  <link rel="stylesheet" href="css/flowchart.css">
+  <link rel="stylesheet" href="{asset('css/book.css')}">
+  <link rel="stylesheet" href="{asset('css/site.css')}">
+  <link rel="stylesheet" href="{asset('css/flowchart.css')}">
 </head>
 <body>
   <div class="reading-progress" id="readingProgress"></div>
@@ -540,12 +566,12 @@ def render_index(chapters):
       <div class="sidebar-brand">
         <a class="brand-lockup" href="index.html" title="回到首页">
           <span class="brand-tile">📚</span>
-          <span class="brand-meta"><span class="brand-name">Harness 教程</span><span class="brand-sub">Java 实战 · 13 章</span></span>
+          <span class="brand-meta"><span class="brand-name">Harness 教程</span><span class="brand-sub">Java 实战 · 17 章</span></span>
         </a>
         <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
       </div>
       <div class="sidebar-progress">
-        <div class="progress-head"><span class="progress-label">学习进度</span><span class="progress-num" id="progressText">0/14 章</span></div>
+        <div class="progress-head"><span class="progress-label">学习进度</span><span class="progress-num" id="progressText">0/{len(chapters)} 章</span></div>
         <div class="progress-bar"><div class="progress-bar-fill" style="width: 0%"></div></div>
         <div class="progress-caption" id="progressCaption">Lv.1 · 尚未开始</div>
       </div>
@@ -570,14 +596,14 @@ def render_index(chapters):
           <div class="home-hero-inner">
             <div class="home-hero-eyebrow"><span class="tag-dot"></span>实战教程 · 基于真实开源项目</div>
             <h1 class="home-hero-title">把 Agent Harness<br>读得<span class="title-em">明明白白</span></h1>
-            <p class="home-hero-desc">13 章渐进式教程，基于开源项目 <strong>deepseek-harness-java</strong>，<br>从跑起来到读懂 ReAct 循环、事件溯源、策略树、插件体系与审批治理。</p>
+            <p class="home-hero-desc">17 章渐进式教程，基于开源项目 <strong>deepseek-harness-java</strong>，<br>从跑起来到读懂 ReAct 循环、事件溯源、策略树、插件体系、审批治理、工作流、子代理与平台能力。</p>
             <div class="home-hero-actions">
               <a class="home-btn primary" href="{page_slug(chapters[1])}.html">开始学习<span class="btn-arrow">→</span></a>
               <a class="home-btn ghost" href="https://github.com/fuzhengwei/deepseek-harness-java" target="_blank">GitHub 仓库</a>
             </div>
             <div class="home-hero-stats">
-              <div class="home-stat"><div class="home-stat-num">13</div><div class="home-stat-label">章节</div></div>
-              <div class="home-stat"><div class="home-stat-num">6</div><div class="home-stat-label">篇幅</div></div>
+              <div class="home-stat"><div class="home-stat-num">17</div><div class="home-stat-label">章节</div></div>
+              <div class="home-stat"><div class="home-stat-num">8</div><div class="home-stat-label">篇幅</div></div>
               <div class="home-stat"><div class="home-stat-num">27</div><div class="home-stat-label">限界上下文</div></div>
               <div class="home-stat"><div class="home-stat-num">7</div><div class="home-stat-label">Maven 模块</div></div>
             </div>
@@ -598,7 +624,7 @@ def render_index(chapters):
             <div class="home-tip-title">阅读建议</div>
             <div class="home-tip-text">
               本教程循序渐进、承上启下：<strong>第一篇先跑起来</strong>获得直觉，<strong>第二篇俯瞰架构</strong>建立全局，
-              <strong>第三篇深入核心机制</strong>理解原理，<strong>第四篇动手扩展</strong>插件与工具，<strong>第五六篇走向生产</strong>。
+              <strong>第三篇深入核心机制</strong>理解原理，<strong>第四篇动手扩展</strong>插件与工具，<strong>第五六篇走向生产</strong>，<strong>工程全景篇补齐平台能力</strong>。
               每章开头有「本章导读」，结尾有「小结与下一章预告」，像看书一样按顺序读体验最佳。
             </div>
           </div>
@@ -621,10 +647,10 @@ def render_index(chapters):
       </a>
     </aside>
   </div>
-  <script src="js/highlight.js"></script>
-  <script src="js/progress.js"></script>
-  <script src="js/flowchart.js"></script>
-  <script src="js/main.js"></script>
+  <script src="{asset('js/highlight.js')}"></script>
+  <script src="{asset('js/progress.js')}"></script>
+  <script src="{asset('js/flowchart.js')}"></script>
+  <script src="{asset('js/main.js')}"></script>
 {SCROLL_PROGRESS_JS}</body>
 </html>'''
 

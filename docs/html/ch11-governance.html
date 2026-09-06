@@ -7,34 +7,44 @@
   <meta name="description" content="能力越大越需要缰绳——权限矩阵、审批链路与状态机">
   <link rel="canonical" href="https://fuzhengwei.github.io/deepseek-harness-java/docs/html/ch11-governance.html">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
-  <link rel="stylesheet" href="css/book.css">
-  <link rel="stylesheet" href="css/site.css">
-  <link rel="stylesheet" href="css/flowchart.css">
+  <link rel="stylesheet" href="css/book.css?v=20260906-2">
+  <link rel="stylesheet" href="css/site.css?v=20260906-2">
+  <link rel="stylesheet" href="css/flowchart.css?v=20260906-2">
 </head>
 <body data-chapter="ch11">
   <div class="reading-progress" id="readingProgress"></div>
   <div class="app-layout chat-collapsed">
     <aside class="sidebar">
-      <div class="sidebar-header">
-        <h1 class="sidebar-logo" onclick="location.href='index.html'" title="回到首页">📚 Harness 教程</h1>
+      <div class="sidebar-brand">
+        <a class="brand-lockup" href="index.html" title="回到首页">
+          <span class="brand-tile">📚</span>
+          <span class="brand-meta"><span class="brand-name">Harness 教程</span><span class="brand-sub">Java 实战 · 17 章</span></span>
+        </a>
         <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
       </div>
       <div class="sidebar-progress">
+        <div class="progress-head"><span class="progress-label">学习进度</span><span class="progress-num" id="progressText">0/17 章</span></div>
         <div class="progress-bar"><div class="progress-bar-fill" style="width: 0%"></div></div>
-        <div class="progress-text"><span>学习进度</span><span id="progressText">0/14 章</span></div>
+        <div class="progress-caption" id="progressCaption">Lv.1 · 尚未开始</div>
       </div>
-      <nav class="sidebar-nav" id="sidebarNav"><div class="nav-section">🎬 序章</div><a class="nav-item" data-chapter="ch00" href="ch00-intro.html"><span class="nav-num">00</span><span class="nav-title">教程导读：这本书怎么读</span></a><div class="nav-section">🚀 第一篇：快速上手</div><a class="nav-item" data-chapter="ch01" href="ch01-quickstart.html"><span class="nav-num">01</span><span class="nav-title">十分钟跑起来：构建、启动与第一次对话</span></a><div class="nav-section">🏗️ 第二篇：架构设计</div><a class="nav-item" data-chapter="ch02" href="ch02-architecture.html"><span class="nav-num">02</span><span class="nav-title">六边形架构：模块划分与依赖方向</span></a><a class="nav-item" data-chapter="ch03" href="ch03-domain.html"><span class="nav-num">03</span><span class="nav-title">领域设计：事件风暴与 27 个限界上下文</span></a><div class="nav-section">🧠 第三篇：核心机制</div><a class="nav-item" data-chapter="ch04" href="ch04-react-loop.html"><span class="nav-num">04</span><span class="nav-title">ReactLoopAgent：ReAct 循环引擎</span></a><a class="nav-item" data-chapter="ch05" href="ch05-session-event.html"><span class="nav-num">05</span><span class="nav-title">会话与事件溯源：SessionLog 的秘密</span></a><a class="nav-item" data-chapter="ch06" href="ch06-intent-strategy.html"><span class="nav-num">06</span><span class="nav-title">意图识别与策略树：消息如何流转</span></a><a class="nav-item" data-chapter="ch07" href="ch07-sse-protocol.html"><span class="nav-num">07</span><span class="nav-title">SSE 流式协议：meta/chunk/step_break/done</span></a><div class="nav-section">🛠️ 第四篇：工具与扩展</div><a class="nav-item" data-chapter="ch08" href="ch08-tools.html"><span class="nav-num">08</span><span class="nav-title">工具系统：ToolCallExecutor 与 Hook 链</span></a><a class="nav-item" data-chapter="ch09" href="ch09-plugin.html"><span class="nav-num">09</span><span class="nav-title">插件开发实战：Java 与 Node 双模式</span></a><a class="nav-item" data-chapter="ch10" href="ch10-mcp.html"><span class="nav-num">10</span><span class="nav-title">MCP 集成：连接外部工具生态</span></a><div class="nav-section">🛡️ 第五篇：治理</div><a class="nav-item active" data-chapter="ch11" href="ch11-governance.html"><span class="nav-num">11</span><span class="nav-title">任务、审批与治理：安全执行的边界</span></a><div class="nav-section">⚙️ 第六篇：部署与生产化</div><a class="nav-item" data-chapter="ch12" href="ch12-deployment.html"><span class="nav-num">12</span><span class="nav-title">部署与生产化：从本地到上线</span></a><div class="nav-section">🌟 终章</div><a class="nav-item" data-chapter="ch13" href="ch13-epilogue.html"><span class="nav-num">13</span><span class="nav-title">终章：已知边界与进阶路线</span></a></nav>
+      <nav class="sidebar-nav" id="sidebarNav"><div class="nav-group" data-section="序章" style="--part:var(--section-序章)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🎬</span><span class="nav-section-title">序章</span><span class="nav-section-count">00</span></div><a class="nav-item" data-chapter="ch00" href="ch00-intro.html"><span class="nav-num">00</span><span class="nav-title">教程导读：这本书怎么读</span></a></div><div class="nav-group" data-section="第一篇：快速上手" style="--part:var(--section-快速上手)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🚀</span><span class="nav-section-title">第一篇：快速上手</span><span class="nav-section-count">01</span></div><a class="nav-item" data-chapter="ch01" href="ch01-quickstart.html"><span class="nav-num">01</span><span class="nav-title">十分钟跑起来：构建、启动与第一次对话</span></a></div><div class="nav-group" data-section="第二篇：架构设计" style="--part:var(--section-架构设计)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🏗️</span><span class="nav-section-title">第二篇：架构设计</span><span class="nav-section-count">02</span></div><a class="nav-item" data-chapter="ch02" href="ch02-architecture.html"><span class="nav-num">02</span><span class="nav-title">六边形架构：模块划分与依赖方向</span></a><a class="nav-item" data-chapter="ch03" href="ch03-domain.html"><span class="nav-num">03</span><span class="nav-title">领域设计：事件风暴与 27 个限界上下文</span></a></div><div class="nav-group" data-section="第三篇：核心机制" style="--part:var(--section-核心机制)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🧠</span><span class="nav-section-title">第三篇：核心机制</span><span class="nav-section-count">04</span></div><a class="nav-item" data-chapter="ch04" href="ch04-react-loop.html"><span class="nav-num">04</span><span class="nav-title">ReactLoopAgent：ReAct 循环引擎</span></a><a class="nav-item" data-chapter="ch05" href="ch05-session-event.html"><span class="nav-num">05</span><span class="nav-title">会话与事件溯源：SessionLog 的秘密</span></a><a class="nav-item" data-chapter="ch06" href="ch06-intent-strategy.html"><span class="nav-num">06</span><span class="nav-title">意图识别与策略树：消息如何流转</span></a><a class="nav-item" data-chapter="ch07" href="ch07-sse-protocol.html"><span class="nav-num">07</span><span class="nav-title">SSE 流式协议：meta/chunk/step_break/done</span></a></div><div class="nav-group" data-section="第四篇：工具与扩展" style="--part:var(--section-工具与扩展)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🛠️</span><span class="nav-section-title">第四篇：工具与扩展</span><span class="nav-section-count">08</span></div><a class="nav-item" data-chapter="ch08" href="ch08-tools.html"><span class="nav-num">08</span><span class="nav-title">工具系统：ToolCallExecutor 与 Hook 链</span></a><a class="nav-item" data-chapter="ch09" href="ch09-plugin.html"><span class="nav-num">09</span><span class="nav-title">插件开发实战：Java 与 Node 双模式</span></a><a class="nav-item" data-chapter="ch10" href="ch10-mcp.html"><span class="nav-num">10</span><span class="nav-title">MCP 集成：连接外部工具生态</span></a></div><div class="nav-group" data-section="第五篇：治理" style="--part:var(--section-治理)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🛡️</span><span class="nav-section-title">第五篇：治理</span><span class="nav-section-count">11</span></div><a class="nav-item active" data-chapter="ch11" href="ch11-governance.html"><span class="nav-num">11</span><span class="nav-title">任务、审批与治理：安全执行的边界</span></a></div><div class="nav-group" data-section="第六篇：部署与生产化" style="--part:var(--section-部署与生产化)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">⚙️</span><span class="nav-section-title">第六篇：部署与生产化</span><span class="nav-section-count">12</span></div><a class="nav-item" data-chapter="ch12" href="ch12-deployment.html"><span class="nav-num">12</span><span class="nav-title">部署与生产化：从本地到上线</span></a><a class="nav-item" data-chapter="ch13" href="ch13-epilogue.html"><span class="nav-num">13</span><span class="nav-title">边界与进阶路线：从 Demo 到产品</span></a></div><div class="nav-group" data-section="工程全景" style="--part:var(--color-accent)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🧰</span><span class="nav-section-title">工程全景</span><span class="nav-section-count">14</span></div><a class="nav-item" data-chapter="ch14" href="ch14-engineering.html"><span class="nav-num">14</span><span class="nav-title">工程全景：API、控制台、数据与测试</span></a><a class="nav-item" data-chapter="ch15" href="ch15-workflow-subagent.html"><span class="nav-num">15</span><span class="nav-title">工作流与子代理：从单 Agent 到协同执行</span></a><a class="nav-item" data-chapter="ch16" href="ch16-platform-capabilities.html"><span class="nav-num">16</span><span class="nav-title">目标、计划、技能与定时任务：长程上下文治理</span></a></div></nav>
     </aside>
     <main class="content-area">
       <div class="content-header">
-        <div class="breadcrumb"><a href="index.html" style="text-decoration:none;">首页</a><span class="crumb-sep">/</span>🛡️ 第五篇：治理</div>
+        <div class="breadcrumb">
+          <a class="crumb-home" href="index.html" aria-label="回到首页">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 9.7V20a1 1 0 0 0 1 1h4v-5h3v5h4a1 1 0 0 0 1-1V9.7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>首页</span>
+          </a>
+          <span class="crumb-sep">›</span>
+          <span class="crumb-sec"><span class="crumb-sec-emoji">🛡️</span><span>第五篇：治理</span></span>
+        </div>
         <div class="nav-buttons">
-          <a class="nav-btn" href="ch10-mcp.html">← 上一章</a>
-          <a class="nav-btn" href="ch12-deployment.html">下一章 →</a>
+          <a class="nav-btn prev" href="ch10-mcp.html">← 上一章</a>
+          <a class="nav-btn next" href="ch12-deployment.html">下一章 →</a>
         </div>
       </div>
-      <div class="content-body" id="contentBody"><div class="chapter-head"><div class="chapter-eyebrow">🛡️ 第五篇：治理</div><!-- 第11章：任务审批与治理 -->
-<h1 class="chapter-title">第11章 任务、审批与治理：安全执行的边界</h1>
+      <div class="content-body" id="contentBody"><div class="chapter-head"><div class="chapter-eyebrow">🛡️ 第五篇：治理</div><h1 class="chapter-title">第11章 任务、审批与治理：安全执行的边界</h1>
 <p class="chapter-subtitle">能力越大越需要缰绳——权限矩阵、审批链路与状态机</p>
 
 <h2 class="section-heading" id="sec-1">11.1 本章导读</h2>
@@ -134,19 +144,23 @@ POST /api/harness/approvals/{sessionId}/reject</pre></div>
       </button>
     </main>
     <aside class="toc-panel" id="tocPanel">
-      <div class="toc-header"><h3>📋 本章目录</h3></div>
-      <nav class="toc-nav" id="tocNav"><a class="toc-item" href="#sec-1">11.1 本章导读</a><a class="toc-item" href="#sec-2">11.2 治理的整体图景：提交期 vs 运行期</a><a class="toc-item" href="#sec-3">11.3 提交期链路：五节点再走一遍</a><a class="toc-item" href="#sec-4">11.4 任务状态机：没批准就不能跑</a><a class="toc-item" href="#sec-5">11.5 沙箱三档模式</a><a class="toc-item" href="#sec-6">11.6 当前治理的边界与对策</a><a class="toc-item" href="#sec-7">11.7 小结与下一章预告</a></nav>
+      <div class="toc-header">
+        <h3 class="toc-title"><span class="toc-title-icon">📋</span>本章目录</h3>
+        <span class="toc-count">7 节</span>
+      </div>
+      <nav class="toc-nav" id="tocNav"><a class="toc-item" href="#sec-1" data-target="sec-1"><span class="toc-num">11.1</span><span class="toc-text">本章导读</span></a><a class="toc-item" href="#sec-2" data-target="sec-2"><span class="toc-num">11.2</span><span class="toc-text">治理的整体图景：提交期 vs 运行期</span></a><a class="toc-item" href="#sec-3" data-target="sec-3"><span class="toc-num">11.3</span><span class="toc-text">提交期链路：五节点再走一遍</span></a><a class="toc-item" href="#sec-4" data-target="sec-4"><span class="toc-num">11.4</span><span class="toc-text">任务状态机：没批准就不能跑</span></a><a class="toc-item" href="#sec-5" data-target="sec-5"><span class="toc-num">11.5</span><span class="toc-text">沙箱三档模式</span></a><a class="toc-item" href="#sec-6" data-target="sec-6"><span class="toc-num">11.6</span><span class="toc-text">当前治理的边界与对策</span></a><a class="toc-item" href="#sec-7" data-target="sec-7"><span class="toc-num">11.7</span><span class="toc-text">小结与下一章预告</span></a></nav>
+      <div class="toc-footer"><a class="toc-github" href="https://github.com/fuzhengwei/deepseek-harness-java" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>查看源码</a></div>
     </aside>
     <aside class="right-toolbar">
-      <a class="toolbar-btn toolbar-btn-github" href="https://github.com/fuzhengwei/deepseek-harness-java" target="_blank" title="GitHub 源码" style="text-decoration:none;color:inherit;">
+      <a class="toolbar-btn toolbar-btn-github" href="https://github.com/fuzhengwei/deepseek-harness-java" target="_blank" rel="noopener" title="GitHub 源码" aria-label="GitHub 源码">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
       </a>
     </aside>
   </div>
-  <script src="js/highlight.js"></script>
-  <script src="js/progress.js"></script>
-  <script src="js/flowchart.js"></script>
-  <script src="js/main.js"></script>
+  <script src="js/highlight.js?v=20260906-2"></script>
+  <script src="js/progress.js?v=20260906-2"></script>
+  <script src="js/flowchart.js?v=20260906-2"></script>
+  <script src="js/main.js?v=20260906-2"></script>
   <script>
     window.addEventListener('scroll', () => {
       const h = document.documentElement;

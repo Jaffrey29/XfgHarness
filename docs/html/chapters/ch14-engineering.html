@@ -1,0 +1,214 @@
+<h1 class="chapter-title">第14章 工程全景：API、控制台、数据与测试</h1>
+          <p class="chapter-subtitle">把学习手册落到仓库协作：看清接口、界面、数据、测试与发布</p>
+
+          <h2 class="section-heading" id="sec-1">14.1 本章导读</h2>
+          <p>前 13 章沿着“跑起来 → 架构 → 核心机制 → 扩展 → 治理 → 生产”的主线读源码。这一章换成工程视角，把散落在 README、Maven 模块、Controller、SQL、静态资源和 CI 中的事实收拢成一张全景图。读完后，你应该能独立回答三个问题：接口契约在哪里；修改一个功能要动哪些模块；提交前怎样验证不破坏主线。</p>
+          <div class="info-box">
+            <p><strong>本章定位</strong>：不是重复讲解 ReAct、插件和审批原理，而是给已经理解机制的人提供工程地图。你可以把它当作代码评审、功能交接和上线前的检查底稿。</p>
+          </div>
+
+          <h2 class="section-heading" id="sec-2">14.2 Maven 模块矩阵</h2>
+          <p>项目由 7 个业务模块加 2 个插件工程组成。业务代码的依赖方向遵守六边形架构：<code>trigger</code> 只转协议，<code>case</code> 编排用例，<code>domain</code> 持有业务与端口，<code>infrastructure</code> 实现技术适配。</p>
+          <div class="comparison-table">
+            <table>
+              <thead><tr><th style="text-align:left;">模块</th><th style="text-align:left;">工程职责</th><th style="text-align:left;">代表性内容</th><th style="text-align:left;">快照规模</th></tr></thead>
+              <tbody>
+                <tr><td><code>trigger</code></td><td>HTTP/SSE、鉴权拦截器、DTO 绑定</td><td><code>AgentController</code>、命令/查询 Controller、<code>ApiKeyAuthInterceptor</code></td><td>25 个 Java 文件，1,398 行</td></tr>
+                <tr><td><code>api</code></td><td>用例接口与 API 契约</td><td><code>IAgentApi</code>、查询/命令 API、请求与响应记录</td><td>56 个 Java 文件，2,040 行</td></tr>
+                <tr><td><code>case</code></td><td>用例编排与责任链</td><td>Agent 意图/分发/收集节点，任务提交与权限检查</td><td>45 个 Java 文件，1,761 行</td></tr>
+                <tr><td><code>domain</code></td><td>业务内核、聚合、端口与领域服务</td><td><code>ReactLoopAgent</code>、<code>SessionLog</code>、工具、插件、MCP、工作流</td><td>344 个 Java 文件，17,861 行</td></tr>
+                <tr><td><code>infrastructure</code></td><td>数据库、LLM、执行环境和外部网关适配</td><td>MyBatis DAO、DeepSeek 网关、插件/工具网关、本地工作流引擎</td><td>88 个 Java 文件，9,424 行</td></tr>
+                <tr><td><code>types</code></td><td>插件 SPI 与公共契约</td><td><code>ToolDefinition</code>、执行输入输出、运行上下文</td><td>21 个 Java 文件，998 行</td></tr>
+                <tr><td><code>app</code></td><td>Spring Boot 装配与静态控制台</td><td><code>DeepseekHarnessJavaApplication</code>、预置插件装载器、<code>static/</code></td><td>3 个 Java 文件，155 行</td></tr>
+                <tr><td><code>plugins/sample-tools-plugin</code></td><td>Java Native 插件样例</td><td>示例工具、插件入口与打包</td><td>可安装 JAR</td></tr>
+                <tr><td><code>plugins/plugin-archetype</code></td><td>插件脚手架</td><td>Maven Archetype、插件主类、示例工具模板</td><td>新插件生成器</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="callout"><p>行数只是导航用的工程快照，不是质量指标。真正需要记住的是边界：<code>domain</code> 不依赖 Spring Web，<code>infrastructure</code> 承接可替换适配器，<code>trigger</code> 不写业务规则。</p></div>
+
+          <h2 class="section-heading" id="sec-3">14.3 REST 契约全景</h2>
+          <p>HTTP 层按“资源 + 动作”分组。下表来自 <code>trigger/http</code> 中的实际路由，可以直接对照 Controller 评审新增接口。</p>
+          <div class="comparison-table">
+            <table>
+              <thead><tr><th style="text-align:left;">能力</th><th style="text-align:left;">端点</th><th style="text-align:left;">说明</th></tr></thead>
+              <tbody>
+                <tr><td rowspan="4">Agent</td><td><code>POST /api/agent/message</code></td><td>阻塞式对话，返回完整消息结果</td></tr>
+                <tr><td><code>POST /api/agent/stream</code></td><td>SSE 流式对话，输出 <code>meta</code>、<code>chunk</code>、<code>step_break</code>、<code>done</code></td></tr>
+                <tr><td><code>GET /api/agent/{agentId}/status</code></td><td>读取 Agent 运行状态</td></tr>
+                <tr><td><code>POST /api/agent/{agentId}/cancel</code></td><td>取消正在执行的 Agent</td></tr>
+                <tr><td rowspan="6">工作区</td><td><code>GET /api/agent/workspaces</code></td><td>读取工作区列表</td></tr>
+                <tr><td><code>GET /api/agent/workspaces/list</code></td><td>按可选路径读取目录列表</td></tr>
+                <tr><td><code>POST /api/agent/workspaces</code></td><td>创建工作区</td></tr>
+                <tr><td><code>DELETE /api/agent/workspaces/{name}</code></td><td>删除工作区</td></tr>
+                <tr><td><code>PATCH /api/agent/workspaces/{name}</code></td><td>重命名工作区</td></tr>
+                <tr><td><code>PUT /api/agent/workspaces/order</code></td><td>更新工作区排序</td></tr>
+                <tr><td rowspan="4">任务与审批</td><td><code>POST /api/harness/tasks/submit</code></td><td>提交 Harness Task</td></tr>
+                <tr><td><code>GET/POST /api/harness/goals/{sessionId}</code></td><td>查询或推进目标状态</td></tr>
+                <tr><td><code>GET /api/harness/approvals/pending</code></td><td>读取提交期待审批项</td></tr>
+                <tr><td><code>POST /api/harness/approvals/{sessionId}/approve</code></td><td>通过提交期审批</td></tr>
+                <tr><td rowspan="2">运行期审批</td><td><code>GET /api/harness/approvals/runtime/pending</code></td><td>轮询 Agent 挂起的实时审批</td></tr>
+                <tr><td><code>POST /api/harness/approvals/runtime/{approvalId}/resolve</code></td><td><code>ALLOW_ONCE</code>、<code>ALLOW_SESSION</code>、<code>DENY</code> 或 <code>CANCEL</code></td></tr>
+                <tr><td rowspan="4">模型配置</td><td><code>GET/POST /api/harness/settings/models</code></td><td>读取或保存模型设置</td></tr>
+                <tr><td><code>DELETE /api/harness/settings/models/{profileCode}</code></td><td>删除模型设置</td></tr>
+                <tr><td><code>POST /api/harness/settings/models/discover</code></td><td>从模型网关发现模型</td></tr>
+                <tr><td><code>GET /api/harness/runtime/models</code></td><td>读取运行时可选模型</td></tr>
+                <tr><td rowspan="6">插件</td><td><code>GET /api/harness/plugins</code></td><td>插件列表</td></tr>
+                <tr><td><code>GET /api/harness/plugins/{pluginId}/status</code></td><td>插件运行状态</td></tr>
+                <tr><td><code>POST /api/harness/plugins/install|activate|run</code></td><td>安装、激活和执行插件</td></tr>
+                <tr><td><code>POST /api/harness/plugins/{pluginId}/enable</code></td><td>启用插件</td></tr>
+                <tr><td><code>POST /api/harness/plugins/{pluginId}/disable</code></td><td>停用插件</td></tr>
+                <tr><td><code>POST /api/harness/plugins/{pluginId}/uninstall</code></td><td>卸载插件</td></tr>
+                <tr><td rowspan="5">终端</td><td><code>POST /api/harness/terminal/sessions</code></td><td>打开终端会话</td></tr>
+                <tr><td><code>GET /api/harness/terminal/sessions</code></td><td>终端会话列表</td></tr>
+                <tr><td><code>POST /api/harness/terminal/sessions/{id}/send</code></td><td>发送命令</td></tr>
+                <tr><td><code>GET /api/harness/terminal/sessions/{id}/read</code></td><td>增量读取输出</td></tr>
+                <tr><td><code>POST /api/harness/terminal/sessions/{id}/close</code></td><td>关闭终端</td></tr>
+                <tr><td rowspan="3">工作流</td><td><code>POST /api/workflow/start</code></td><td>启动工作流，返回 <code>runId</code></td></tr>
+                <tr><td><code>POST /api/workflow/{runId}/cancel</code></td><td>取消运行</td></tr>
+                <tr><td><code>POST /api/workflow/stream</code></td><td>以 SSE 方式启动并输出运行状态</td></tr>
+                <tr><td rowspan="2">控制台回放</td><td><code>GET /api/harness/console/sessions</code></td><td>历史会话列表</td></tr>
+                <tr><td><code>GET /api/harness/console/sessions/{sessionId}/messages</code></td><td>历史消息回放</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="code-block">
+            <div class="code-label">运行期审批请求示例</div>
+            <pre><code class="language-bash">curl -X POST http://localhost:8090/api/harness/approvals/runtime/{approvalId}/resolve \
+  -H 'Content-Type: application/json' \
+  -d '{"verdict":"ALLOW_ONCE"}'</code></pre>
+          </div>
+          <p>鉴权由 <code>ApiKeyAuthInterceptor</code> 统一处理：静态资源和 <code>/actuator</code> 放行；<code>harness.auth.api-keys</code> 为空时本地全放行；非空时接受 <code>X-API-Key</code> 或 <code>Authorization: Bearer</code>。新增公开路径前必须重新评估安全边界。</p>
+
+          <h2 class="section-heading" id="sec-4">14.4 Web 控制台与前端资产</h2>
+          <p>内置控制台位于 <code>deepseek-harness-java-app/src/main/resources/static</code>，不是打包后的前端工程，也没有 Node 构建链。核心文件只有两个：<code>app.js</code> 负责状态、请求、会话渲染和工具卡片；<code>app.css</code> 负责界面样式。第三方能力全部本地化：<code>marked</code> 解析 Markdown，<code>purify</code> 过滤 HTML，<code>highlight-core</code> 与 <code>highlight-common</code> 高亮代码。</p>
+          <div class="comparison-table">
+            <table>
+              <thead><tr><th style="text-align:left;">资产</th><th style="text-align:left;">职责</th><th style="text-align:left;">工程要点</th></tr></thead>
+              <tbody>
+                <tr><td><code>index.html</code></td><td>控制台骨架</td><td>轻量入口，适合随 Spring Boot 一起发布</td></tr>
+                <tr><td><code>app.js</code></td><td>调用 Agent、工作区、模型、插件、审批、控制台回放等 API</td><td>无框架依赖；修改时保持事件边界清晰</td></tr>
+                <tr><td><code>app.css</code></td><td>完整 UI 样式与响应式布局</td><td>避免引入运行时 CSS 框架</td></tr>
+                <tr><td><code>lib/*</code></td><td>本地 Markdown、XSS 过滤和代码高亮</td><td>升级前核对许可证、体积和安全公告</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>控制台的核心体验包括：新建/切换/重命名/删除工作区，创建与恢复会话，普通或流式对话，渲染工具调用卡片，取消运行，管理模型，启停插件，审批任务，以及查看历史消息。排查 UI 问题时不要只看后端日志，应先在 Network 面板确认请求路径、响应码和 SSE 帧，再进入 Controller 或用例层。</p>
+
+          <h2 class="section-heading" id="sec-5">14.5 数据与事件模型</h2>
+          <p>MySQL 初始化脚本定义 12 张表；<code>standalone</code> profile 使用 H2 文件库并以 <code>MODE=MySQL</code> 兼容运行，两套数据源共用同一 schema。事件相关表支持过程记录、界面投影与历史回放。</p>
+          <div class="comparison-table">
+            <table>
+              <thead><tr><th style="text-align:left;">表</th><th style="text-align:left;">作用</th><th style="text-align:left;">工程关注点</th></tr></thead>
+              <tbody>
+                <tr><td><code>harness_session</code></td><td>会话聚合基础状态</td><td>大多数记录通过 <code>session_id</code> 关联</td></tr>
+                <tr><td><code>harness_session_header</code></td><td>会话头、目录、父会话、委托深度等上下文</td><td>影响 Agent 运行边界与提示组装</td></tr>
+                <tr><td><code>harness_session_event</code></td><td>会话过程事件</td><td>注意 JSON 载荷体积</td></tr>
+                <tr><td><code>harness_session_event_log</code></td><td>带序号的事件日志与投影操作</td><td><code>session_id + seq</code> 唯一，是回放顺序的关键</td></tr>
+                <tr><td><code>harness_task</code></td><td>任务提交与执行状态</td><td>任务队列与审批链路的入口记录</td></tr>
+                <tr><td><code>harness_goal_state</code></td><td>目标状态</td><td>支撑长期任务与目标恢复</td></tr>
+                <tr><td><code>harness_plugin_installation</code></td><td>插件安装元数据</td><td>保存来源、版本和运行类型</td></tr>
+                <tr><td><code>harness_plugin_runtime_binding</code></td><td>插件运行绑定</td><td>隔离插件生命周期与安装记录</td></tr>
+                <tr><td><code>harness_model_setting</code></td><td>模型与 Provider 配置</td><td>密钥应注入环境，不提交仓库</td></tr>
+                <tr><td><code>harness_tool_catalog</code></td><td>工具目录</td><td>初始化文件、Shell、Web、MCP 工具</td></tr>
+                <tr><td><code>harness_tool_profile_binding</code></td><td>工具与 Profile 绑定</td><td>控制不同运行形态可见的工具集</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="warning-box">
+            <p><strong>迁移注意</strong>：当前初始化脚本偏向首次建库，修改已有表结构时不要只改 <code>CREATE TABLE</code>；应引入可重复执行的迁移脚本或使用 Flyway/Liquibase，并在 H2 与 MySQL 上同时验证。</p>
+          </div>
+
+          <h2 class="section-heading" id="sec-6">14.6 测试与质量门禁</h2>
+          <p>当前共有 20 个 Java 测试类，分布在四个模块：<code>api</code> 4 个，<code>case</code> 2 个，<code>domain</code> 13 个，<code>infrastructure</code> 1 个。它们覆盖 ReAct 循环、意图与分发、工具执行、Hook、超时、提示组装、目标、终端、待办、插件桥接和若干查询/命令用例。</p>
+          <div class="code-block">
+            <div class="code-label">常用验证命令</div>
+            <pre><code class="language-bash"># 全量测试
+mvn test
+
+# 只验证领域内核
+mvn -pl deepseek-harness-java-domain test
+
+# 快速打包
+mvn package -DskipTests
+
+# 完整发布前验证
+mvn clean verify</code></pre>
+          </div>
+          <div class="info-box">
+            <p><strong>当前缺口</strong>：<code>app</code> 与 <code>trigger</code> 没有 Java 测试，HTTP/SSE 层缺少端到端契约测试；CI 也没有独立 Maven 测试工作流。改动 Controller、鉴权、SSE 或 Dockerfile 时，必须本地补跑构建并手工验证控制台关键路径。</p>
+          </div>
+          <p>建议按变更类型选择验证范围：</p>
+          <div class="comparison-table">
+            <table>
+              <thead><tr><th style="text-align:left;">变更</th><th style="text-align:left;">最低验证</th><th style="text-align:left;">更完整验证</th></tr></thead>
+              <tbody>
+                <tr><td>领域服务、Agent、工具</td><td><code>mvn -pl deepseek-harness-java-domain test</code></td><td>全量 <code>mvn test</code> + 本地对话</td></tr>
+                <tr><td>Controller/SSE/API DTO</td><td>启动应用，<code>curl</code> 验证请求与响应</td><td>为 <code>trigger</code> 增加 MockMvc/WebTestClient 测试</td></tr>
+                <tr><td>SQL/DAO</td><td>H2 <code>standalone</code> 启动</td><td>MySQL 容器启动 + 数据迁移验证</td></tr>
+                <tr><td>静态 UI</td><td>打开控制台完成一次对话</td><td>验证工具卡片、取消、审批和历史回放</td></tr>
+                <tr><td>插件/MCP</td><td>启动后查看插件列表</td><td>安装、启用、执行、停用、卸载全链路</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h2 class="section-heading" id="sec-7">14.7 配置、发布与观测</h2>
+          <p>本地最小配置在 <code>deepseek-harness-java-app/src/main/resources/application.yml</code>：默认端口 <code>8090</code>，MySQL 指向本机，模型网关默认 <code>http://127.0.0.1:8777/v1</code>。发布镜像时至少注入 <code>DEEPSEEK_API_KEY</code>，并按环境覆盖数据库与认证配置。</p>
+          <div class="comparison-table">
+            <table>
+              <thead><tr><th style="text-align:left;">场景</th><th style="text-align:left;">关键配置</th><th style="text-align:left;">检查点</th></tr></thead>
+              <tbody>
+                <tr><td>本地零依赖</td><td><code>--spring.profiles.active=standalone</code></td><td>H2 文件、自动 schema、无外部 MySQL</td></tr>
+                <tr><td>开发 MySQL</td><td><code>spring.datasource.*</code></td><td>可连接、schema 可初始化、日志可读</td></tr>
+                <tr><td>生产 API</td><td><code>harness.auth.api-keys</code></td><td>非空、可轮换、不把服务直接暴露公网</td></tr>
+                <tr><td>模型调用</td><td><code>base-url</code>、<code>api-key</code>、<code>default-model</code></td><td>网关兼容、模型可用、密钥来自环境</td></tr>
+                <tr><td>审批沙箱</td><td><code>harness.approval.*</code>、<code>harness.sandbox.*</code></td><td>高风险工具默认受限，容器和目录权限收紧</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>发布链路由 <code>.github/workflows/docker-build-push.yml</code> 处理：推送 <code>v*</code> 标签或手动触发时，Workflow 使用多阶段 <code>Dockerfile</code> 构建 JAR，并推送到 <code>fuzhengwei/deepseek-harness-java</code>。标签构建会发布版本号与 <code>latest</code>，手动触发会发布 <code>latest</code> 与短 SHA 标签。仓库当前没有独立的 Maven CI 工作流，这是后续工程化最值得补的一环。</p>
+          <p>上线后至少观测四类信号：JVM 与 HTTP 指标、模型请求耗时与失败率、工具执行耗时与拒绝原因、数据库连接池和事件表增长。<code>/actuator</code> 方便排障，但公网部署必须放在认证、网关或内网之后。</p>
+
+          <h2 class="section-heading" id="sec-8">14.8 工程协作与变更检查清单</h2>
+          <p>项目已经很大，单靠“看一下代码”很难保证变更质量。建议把下面清单放进 PR 描述，评审时逐项确认。</p>
+          <div class="comparison-table">
+            <table>
+              <thead><tr><th style="text-align:left;">阶段</th><th style="text-align:left;">检查项</th></tr></thead>
+              <tbody>
+                <tr><td>定位</td><td>明确属于 Trigger 协议、Case 编排、Domain 业务、Infrastructure 适配、Types 契约或 App 装配中的哪一层。</td></tr>
+                <tr><td>契约</td><td>新增 API 先定义 request/response record；字段命名、错误码、状态语义与旧接口保持一致。</td></tr>
+                <tr><td>架构</td><td>不把 HTTP 类型引入 Domain；不把 DAO 直接暴露给 Trigger；外部能力都通过端口进入领域层。</td></tr>
+                <tr><td>安全</td><td>评估路径、输入、Shell、文件、插件、MCP、密钥和日志泄漏；高风险动作必须接入权限或审批。</td></tr>
+                <tr><td>数据</td><td>确认索引、唯一键、事件顺序、JSON 大小、H2/MySQL 兼容和历史数据迁移。</td></tr>
+                <tr><td>并发</td><td>确认线程池、取消、超时、重试、SSE 生命周期和阻塞点；避免无界资源无限增长。</td></tr>
+                <tr><td>测试</td><td>补领域测试或 HTTP 契约测试；跑 <code>mvn test</code>；必要时完成手工冒烟。</td></tr>
+                <tr><td>文档</td><td>更新 README、相关章节或插件指南；配置变化要有默认值和风险说明。</td></tr>
+                <tr><td>发布</td><td>确认镜像标签、数据库迁移、回滚方式、监控告警和事件表归档。</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="flowchart-container" data-flowchart='{"nodes":[{"id":"change","label":"识别变更层\nTrigger / Case / Domain / Infra / App","type":"start"},{"id":"design","label":"对齐 API、领域与数据契约","type":"process"},{"id":"implement","label":"最小实现\n保持端口与模块边界","type":"process"},{"id":"test","label":"mvn test\n补缺失测试与手工冒烟","type":"process"},{"id":"review","label":"安全 / 并发 / 迁移 / 文档评审","type":"process"},{"id":"ship","label":"发布镜像\n监控与回滚就绪","type":"end"}],"edges":[{"from":"change","to":"design"},{"from":"design","to":"implement"},{"from":"implement","to":"test"},{"from":"test","to":"review"},{"from":"review","to":"ship"}]}'></div>
+
+          <h2 class="section-heading" id="sec-9">14.9 常用仓库地图</h2>
+          <div class="comparison-table">
+            <table>
+              <thead><tr><th style="text-align:left;">文件/目录</th><th style="text-align:left;">用途</th></tr></thead>
+              <tbody>
+                <tr><td><code>README.md</code></td><td>项目介绍、快速启动、架构、机制、API、配置、边界与运维清单</td></tr>
+                <tr><td><code>pom.xml</code></td><td>Maven 模块清单和 Java/Spring Boot 版本管理</td></tr>
+                <tr><td><code>Dockerfile</code></td><td>依赖缓存、构建镜像、运行镜像三层结构</td></tr>
+                <tr><td><code>docker-compose.yml</code></td><td>挂载 <code>data</code>、<code>plugins</code>、<code>.dsh</code>、<code>workspaces</code> 并运行 standalone</td></tr>
+                <tr><td><code>docs/dev-ops/mysql/sql/deepseek_harness_java.sql</code></td><td>MySQL 建库脚本和初始工具数据</td></tr>
+                <tr><td><code>docs/html</code></td><td>本学习手册的静态站点与构建脚本</td></tr>
+                <tr><td><code>docs/md</code></td><td>架构图、领域设计与插件开发补充文档</td></tr>
+                <tr><td><code>.github/workflows</code></td><td>Docker 镜像构建与推送流水线</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h2 class="section-heading" id="sec-10">14.10 小结与下一章预告</h2>
+          <p>第 14 章把学习视角切回仓库：模块矩阵决定修改边界，REST 表决定前后端契约，数据表决定事实存放方式，测试命令决定提交信心，CI 和 Docker 决定交付路径。你现在既有“为什么这样设计”的原理链，也有“怎么安全地改”的工程链。</p>
+          <div class="info-box">
+            <p><strong>实践建议</strong>：不要把第 14 章当作终点。挑一个真实需求，沿着 API → Case → Domain → Infrastructure → Test → 文档走一遍；如果一次变更无法清楚说出自己跨越了哪些模块，通常说明设计还没有收敛。</p>
+          </div>
+          <p>下一章继续进入平台能力：工作流如何启动、取消和收敛结果，子代理又如何把复杂任务委派给另一个执行者。</p>

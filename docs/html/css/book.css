@@ -70,8 +70,8 @@
   --text-3xl: 36px;
 
   /* 布局 */
-  --sidebar-width: 260px;
-  --toc-width: 200px;
+  --sidebar-width: 280px;
+  --toc-width: 280px;
   --chat-width: 340px;
   --chat-width-min: 260px;
   --chat-width-max: 600px;
@@ -159,38 +159,38 @@ body {
 /* ===== 主布局 ===== */
 .app-layout {
   display: grid;
-  grid-template-columns: var(--sidebar-width) 1fr var(--toc-width) var(--chat-width) 48px;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr) var(--toc-width) var(--chat-width) 48px;
   grid-template-rows: 100vh;
   height: 100vh;
   transition: grid-template-columns var(--transition);
 }
 
 .app-layout.sidebar-collapsed {
-  grid-template-columns: 0 1fr var(--toc-width) var(--chat-width) 48px;
+  grid-template-columns: 0 minmax(0, 1fr) var(--toc-width) var(--chat-width) 48px;
 }
 
 .app-layout.chat-collapsed {
-  grid-template-columns: var(--sidebar-width) 1fr var(--toc-width) 0 48px;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr) var(--toc-width) 0 48px;
 }
 
 .app-layout.sidebar-collapsed.chat-collapsed {
-  grid-template-columns: 0 1fr var(--toc-width) 0 48px;
+  grid-template-columns: 0 minmax(0, 1fr) var(--toc-width) 0 48px;
 }
 
 .app-layout.toc-collapsed {
-  grid-template-columns: var(--sidebar-width) 1fr 0 var(--chat-width) 48px;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr) 0 var(--chat-width) 48px;
 }
 
 .app-layout.toc-collapsed.chat-collapsed {
-  grid-template-columns: var(--sidebar-width) 1fr 0 0 48px;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr) 0 0 48px;
 }
 
 .app-layout.sidebar-collapsed.toc-collapsed {
-  grid-template-columns: 0 1fr 0 var(--chat-width) 48px;
+  grid-template-columns: 0 minmax(0, 1fr) 0 var(--chat-width) 48px;
 }
 
 .app-layout.sidebar-collapsed.toc-collapsed.chat-collapsed {
-  grid-template-columns: 0 1fr 0 0 48px;
+  grid-template-columns: 0 minmax(0, 1fr) 0 0 48px;
 }
 
 /* ===== 左侧目录栏 ===== */
@@ -3923,15 +3923,16 @@ pre .kw { color: #ff7b72; }        /* 关键字 */
 /* ===== 响应式 ===== */
 @media (max-width: 1200px) {
   :root {
+    --toc-width: 240px;
     --chat-width: 320px;
     --sidebar-width: 240px;
   }
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1100px) {
   /* 中等屏幕：隐藏 TOC 面板，保留侧边栏和内容区 */
   .app-layout {
-    grid-template-columns: var(--sidebar-width) 1fr !important;
+    grid-template-columns: var(--sidebar-width) minmax(0, 1fr) !important;
   }
   .toc-panel {
     display: none !important;

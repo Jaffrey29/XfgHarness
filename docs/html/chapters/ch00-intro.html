@@ -1,0 +1,108 @@
+<h1 class="chapter-title">第0章 教程导读：这本书怎么读</h1>
+<p class="chapter-subtitle">在翻开正文之前，先看清整张地图</p>
+
+<h2 class="section-heading" id="sec-1">0.1 这本书讲的是什么</h2>
+
+<p>这是一本关于 <strong>deepseek-harness-java</strong> 的实战教程——一个用 Java 17 + Spring Boot 3.3 实现的、基于 DDD 六边形架构的 <strong>Agent Harness（智能体运行时基座）</strong>。</p>
+
+<p>如果你用过 Claude Code、Codex CLI 或各类 AI 编程助手，你会发现它们的核心都不是"调一次大模型 API"那么简单。真正难的是模型之外的工程：<strong>会话怎么管？工具怎么调？权限怎么控？插件怎么插？出错怎么恢复？</strong>这些"大脑之外的外壳"，就是 Harness。</p>
+
+<div class="compare-grid">
+  <div class="card" style="border-left: 3px solid var(--color-accent);">
+    <div class="card-title">🧠 LLM（大脑）</div>
+    <p style="font-size: 13px; color: var(--color-text-secondary);">负责推理与生成文本。DeepSeek / GPT / GLM 等模型本身——<strong>本教程不讲怎么训练它</strong>。</p>
+  </div>
+  <div class="card" style="border-left: 3px solid var(--color-info);">
+    <div class="card-title">🦾 Harness（身体与神经系统）</div>
+    <p style="font-size: 13px; color: var(--color-text-secondary);">负责把模型的"想法"变成"行动"：工具调用、会话管理、权限审批、插件扩展、事件记录——<strong>这是本书的主角</strong>。</p>
+  </div>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-success);">
+  <div class="card-title">💡 一句话记住本项目</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">deepseek-harness-java 把"模型调用、工具执行、会话事件、任务审批、插件生命周期、终端与工作区"组织成一个可扩展的 Agent 运行时，并自带一个打开浏览器就能用的 Web 控制台。</p>
+</div>
+
+<h2 class="section-heading" id="sec-2">0.2 为什么值得读这个项目</h2>
+
+<p>市面上 Agent 教程大多用 Python + LangChain 演示，而本项目有三个独特价值：</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">价值点</th><th style="text-align:left;">具体体现</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Java 企业级视角</strong></td><td>Spring Boot 3.3 + MyBatis + DDD 六边形架构，是可直接对照企业工程实践的 Agent 实现</td></tr>
+      <tr><td><strong>完整的治理链路</strong></td><td>权限矩阵评估 → 审批决策 → 排队 → 执行，高风险工具（Shell、写文件）默认需人工审批</td></tr>
+      <tr><td><strong>真实可运行</strong></td><td>不是玩具 Demo：自带 Web 控制台、插件体系（Java + Node 双模式）、MCP 集成、事件溯源回放</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="section-heading" id="sec-3">0.3 全书地图：序章 + 7 篇 16 章</h2>
+
+<p>本书按照"先跑起来 → 俯瞰架构 → 深入机制 → 动手扩展 → 走向生产 → 工程附录"的顺序组织，每一章都建立在前一章的基础上：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"p1","label":"第一篇 · 快速上手\n第1章：十分钟跑起来\n获得直觉：它能干什么","type":"start"},{"id":"p2","label":"第二篇 · 架构设计\n第2-3章：六边形架构与领域设计\n建立全局：它长什么样","type":"process"},{"id":"p3","label":"第三篇 · 核心机制\n第4-7章：ReAct循环/事件溯源/策略树/SSE协议\n理解原理：它怎么工作","type":"process"},{"id":"p4","label":"第四篇 · 工具与扩展\n第8-10章：工具系统/插件开发/MCP集成\n动手扩展：怎么给它加能力","type":"process"},{"id":"p5","label":"第五篇 · 治理\n第11章：任务审批与安全边界\n控制风险：怎么管住它","type":"process"},{"id":"p6","label":"第六篇 · 部署与生产化\n第12-13章：部署上线与进阶路线\n走向生产：怎么用起来","type":"process"},{"id":"p7","label":"工程全景\n第14-16章：API/数据/工作流/长程能力\n查漏补缺：覆盖整个项目工程","type":"end"}],"edges":[{"from":"p1","to":"p2"},{"from":"p2","to":"p3"},{"from":"p3","to":"p4"},{"from":"p4","to":"p5"},{"from":"p5","to":"p6"},{"from":"p6","to":"p7"}]}'></div>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">篇</th><th style="text-align:left;">章节</th><th style="text-align:left;">你将获得</th><th style="text-align:left;">建议读者</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>🚀 快速上手</td><td>第1章</td><td>十分钟内在本机跑起完整系统并发出第一次对话</td><td>所有人（必读）</td></tr>
+      <tr><td>🏗️ 架构设计</td><td>第2-3章</td><td>看懂 7 个 Maven 模块的依赖方向与 27 个限界上下文的划分逻辑</td><td>架构师 / 想读源码的人</td></tr>
+      <tr><td>🧠 核心机制</td><td>第4-7章</td><td>理解 ReAct 循环、事件溯源、意图识别策略树、SSE 协议的实现细节</td><td>想深入原理的人</td></tr>
+      <tr><td>🛠️ 工具与扩展</td><td>第8-10章</td><td>会写自己的工具、Java/Node 插件，会接 MCP Server</td><td>想二次开发的人</td></tr>
+      <tr><td>🛡️ 治理</td><td>第11章</td><td>掌握权限矩阵、审批链路、沙箱边界的配置与扩展</td><td>关注安全合规的人</td></tr>
+      <tr><td>⚙️ 部署与生产化</td><td>第12-13章</td><td>MySQL/Docker 部署、生产检查清单、已知边界与进阶方向</td><td>要上线的人</td></tr>
+      <tr><td>🧰 工程全景</td><td>第14-16章</td><td>REST 契约、控制台、数据表、测试、CI、工作流、子代理、目标、计划、技能、定时与凭据治理</td><td>接手维护的人</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="section-heading" id="sec-4">0.4 阅读前的准备</h2>
+
+<div class="info-box">
+  <h4>📋 前置知识</h4>
+  <ul>
+    <li><strong>必需</strong>：Java 基础语法、Maven 构建、Spring Boot 的基本使用（会起服务、会看 yml）</li>
+    <li><strong>建议</strong>：了解 DDD 基本概念（聚合、限界上下文、端口-适配器）；用过任意一种 LLM API</li>
+    <li><strong>不需要</strong>：不需要懂大模型原理，不需要会 Python</li>
+  </ul>
+</div>
+
+<div class="info-box">
+  <h4>💻 环境要求</h4>
+  <ul>
+    <li>JDK 17+、Maven 3.9+（必需）</li>
+    <li>Node.js 18+（仅第9章 Node 插件部分需要）</li>
+    <li>MySQL 5.7+（仅第12章部署部分需要；平时用 H2 零依赖）</li>
+    <li>一个可用的 OpenAI 兼容模型 API Key（第1章会教你怎么配）</li>
+  </ul>
+</div>
+
+<h2 class="section-heading" id="sec-5">0.5 本书的约定</h2>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">约定</th><th style="text-align:left;">含义</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>代码格式</code></td><td>类名、方法名、配置项、文件路径都用行内代码标记，如 <code>ReactLoopAgent</code>、<code>application.yml</code></td></tr>
+      <tr><td>📦 源码位置</td><td>每章涉及的关键类都会标注 Maven 模块与包路径，方便你对照源码</td></tr>
+      <tr><td>💡 一句话记忆</td><td>每节末尾的总结卡片，是本节最值得带走的一句话</td></tr>
+      <tr><td>⚠️ 注意</td><td>已知的坑、边界或与直觉相反的设计</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="section-heading" id="sec-6">0.6 小结与下一章预告</h2>
+
+<div class="summary-box">
+  <p><strong>本章要点</strong>：Harness 是 LLM 之外的工程外壳；本书按"跑起来 → 看架构 → 懂机制 → 做扩展 → 上生产"六篇递进；前置知识只需 Java + Spring Boot 基础。</p>
+  <p style="margin-bottom:0;"><strong>下一章</strong>：我们将真正动手——克隆代码、一次构建、选择一种方式启动，然后在浏览器里和你的 Agent 说第一句话。如果一切顺利，整个过程不会超过十分钟。</p>
+</div>

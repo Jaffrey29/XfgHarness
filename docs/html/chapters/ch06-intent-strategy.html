@@ -1,0 +1,135 @@
+<h1 class="chapter-title">第6章 意图识别与策略树：消息如何流转</h1>
+<p class="chapter-subtitle">不用模型的意图分类，和把跨领域流程编成"链"的艺术</p>
+
+<h2 class="section-heading" id="sec-1">6.1 本章导读</h2>
+
+<p>第4、5章深入了 Agent 引擎内部，但我们跳过了一段：一条 HTTP 请求到达后、进入 <code>ReactLoopAgent</code> 之前，发生了什么？答案在 <code>case</code> 模块——用例编排层。本章讲两个关键设计：<strong>意图识别</strong>（怎么判断该闲聊还是该调工具）和<strong>策略树</strong>（怎么把多步流程编成一条可扩展的链）。</p>
+
+<h2 class="section-heading" id="sec-2">6.2 意图识别：为什么用正则而不是模型</h2>
+
+<p>很多系统的意图识别会再调一次小模型。本项目刻意用<strong>纯正则规则</strong>（📦 <code>case/agent/node/AgentIntentNode.java</code>），原因很实际：</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">方案</th><th style="text-align:left;">延迟</th><th style="text-align:left;">成本</th><th style="text-align:left;">可解释性</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>正则规则（本项目）</td><td>~0ms</td><td>零</td><td>每条规则可单测（<code>AgentIntentNodeTest</code>）</td></tr>
+      <tr><td>小模型分类</td><td>+一次 LLM 往返（数百 ms~秒级）</td><td>每条消息双倍 token</td><td>黑盒，误判难排查</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>四类意图及其判定逻辑（<code>classify()</code> 方法按顺序短路）：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"msg","label":"用户消息","type":"start"},{"id":"empty","label":"为空?\n→ CLARIFICATION","type":"decision"},{"id":"greet","label":"打招呼/闲聊?\n(GREETING, SMALL_TALK)\n→ CHAT","type":"decision"},{"id":"task","label":"含任务动词/文件路径/\n文件系统关键词?\n→ TASK_EXECUTION","type":"decision"},{"id":"code","label":"含代码块/代码关键词?\n→ CODE_QUESTION","type":"decision"},{"id":"default","label":"默认 → CHAT","type":"end"}],"edges":[{"from":"msg","to":"empty"},{"from":"empty","to":"greet","label":"否"},{"from":"greet","to":"task","label":"否"},{"from":"task","to":"code","label":"否"},{"from":"code","to":"default","label":"否"}]}'></div>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">意图</th><th style="text-align:left;">触发示例</th><th style="text-align:left;">后续处理</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>CHAT</code></td><td>"你好"、"谢谢"</td><td>可经 <code>[no-tools]</code> 前缀跳过工具，直接对话</td></tr>
+      <tr><td><code>CODE_QUESTION</code></td><td>"这段代码为什么报错 ```...```"</td><td>进入工具路径（可能要读文件）</td></tr>
+      <tr><td><code>TASK_EXECUTION</code></td><td>"帮我列出目录下的文件"、"把 README 翻译成英文"</td><td><strong>注入"先调工具"指令</strong>后进入工具路径</td></tr>
+      <tr><td><code>CLARIFICATION</code></td><td>空消息</td><td>请求澄清</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-warning);">
+  <div class="card-title">⚠️ 正则的局限与真实教训</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">规则识别天然有边界。本项目曾踩过坑：<code>AgentDispatchNode.buildDirectoryInstruction()</code> 硬编码"列目录必须调用 <code>fs_search</code>"，但 <code>fs_search</code> 是 glob 文件搜索（<code>pattern="*"</code> 会递归所有文件），不适合列一级目录——修复方式是改推荐 <code>shell_execute</code> 执行 <code>ls -la</code>。教训：<strong>意图规则要配合"工具能力匹配"一起演进</strong>，规则本身也要有测试覆盖。</p>
+</div>
+
+<h2 class="section-heading" id="sec-3">6.3 策略树：责任链的工程化</h2>
+
+<p>跨领域流程（如"发消息要经过：解析 Agent → 识别意图 → 分发 → 收集结果"）如果写在一个大方法里，会变成难以维护的 if-else 瀑布。本项目用 <code>AbstractStrategyRouter</code>（📦 <code>domain/shared/strategy/</code>）把它编成<strong>责任链</strong>：</p>
+
+<div class="code-block"><pre>public abstract class AbstractStrategyRouter&lt;I, C, O&gt; implements StrategyHandler&lt;I, C, O&gt; {
+    // 节点业务逻辑（子类实现）：做自己的事
+    protected abstract O doApply(I requestParameter, C dynamicContext) throws Exception;
+    // 路由决策（子类实现）：下一个节点是谁
+    public abstract StrategyHandler&lt;I, C, O&gt; getNext(I requestParameter, C dynamicContext) throws Exception;
+
+    @Override
+    public final O apply(I req, C ctx) throws Exception {
+        O result = doApply(req, ctx);
+        if (result != null) return result;      // 关键：非 null 短路（如 404、出错直接返回）
+        return router(req, ctx);                // 否则交给下一个节点
+    }
+}</pre></div>
+
+<p>三个设计要点：</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">要点</th><th style="text-align:left;">说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>doApply 与 getNext 分离</strong></td><td>"做什么"和"接下来找谁"是两个独立决策，节点可独立替换、独立测试</td></tr>
+      <tr><td><strong>非 null 短路</strong></td><td>任何节点返回非 null 结果即终止链路——错误、404、提前完成都靠这个机制</td></tr>
+      <tr><td><strong>DynamicContext 贯穿</strong></td><td>泛型 <code>C</code>（如 <code>AgentMessageDynamicContext</code>）在节点间传递累积的中间状态，避免层层改方法签名</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="section-heading" id="sec-4">6.4 Agent 消息链：四节点走一遍</h2>
+
+<p>以 <code>POST /api/agent/stream</code> 为例，四个节点依次是：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"resolve","label":"AgentResolveNode\n按 agentId 复用/创建 Agent\n解析模型、Token、工作目录","type":"start"},{"id":"intent","label":"AgentIntentNode\n正则分类意图\n决定注入什么指令","type":"process"},{"id":"dispatch","label":"AgentDispatchNode\n构造用户消息\nagent.send(msg, NEXT_TURN, true)","type":"process"},{"id":"collect","label":"AgentCollectNode\n等待空闲\n投影 User/Assistant/Tool 消息","type":"process"},{"id":"agent","label":"ReactLoopAgent\n(第4章的 ReAct 循环)","type":"end"}],"edges":[{"from":"resolve","to":"intent"},{"from":"intent","to":"dispatch"},{"from":"dispatch","to":"agent"},{"from":"agent","to":"collect"}]}'></div>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">节点</th><th style="text-align:left;">doApply 做什么</th><th style="text-align:left;">写入 DynamicContext 的内容</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>AgentResolveNode</code></td><td>按 agentId 找到或创建 Agent 实例，解析模型/Token/cwd</td><td>Agent 实例、GenerateOptions</td></tr>
+      <tr><td><code>AgentIntentNode</code></td><td>正则分类意图（CHAT/CODE_QUESTION/TASK_EXECUTION/CLARIFICATION）</td><td>意图枚举、需注入的指令</td></tr>
+      <tr><td><code>AgentDispatchNode</code></td><td>构造 Message，调用 <code>agent.send(msg, NEXT_TURN, true)</code> 唤醒驱动器</td><td>发送结果</td></tr>
+      <tr><td><code>AgentCollectNode</code></td><td>等待 Agent 空闲，从 SessionLog 投影出完整消息列表（含 Tool 消息按 callId 合并）</td><td>最终响应消息列表</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-info);">
+  <div class="card-title">💡 AgentCollectNode 的一个关键修复</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">这个节点曾经只投影 <code>UserMessage</code> 和 <code>AssistantMessage</code>，<strong>漏了 ToolCall/ToolResult</strong>。后果：前端收到 done 事件重建消息列表时，把 SSE 流式阶段创建的工具卡片清掉了，工具卡永远显示"running"。修复：也投影 ToolCall（status=running）和 ToolResult（status=success/error），并按 callId 合并到同一条 tool 消息。这是第7章 SSE 协议"done 含全量消息"设计的另一半。</p>
+</div>
+
+<h2 class="section-heading" id="sec-5">6.5 任务提交链：五节点的治理路径</h2>
+
+<p>对话链是"快路径"（实时交互），任务链是"慢路径"（先治理后执行）。五个节点（📦 <code>case/task/submit/node/</code>）：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"root","label":"SubmissionRootNode\n入口与参数校验","type":"start"},{"id":"profile","label":"ProfileResolutionNode\n解析执行 Profile","type":"process"},{"id":"perm","label":"PermissionCheckNode\n权限矩阵 assess\n+ 审批决策 decide","type":"decision"},{"id":"tool","label":"ToolResolutionNode\n解析任务所需工具","type":"process"},{"id":"enqueue","label":"EnqueueNode\n建会话(QUEUED)+建任务+记日志\n免审批则直接 executeSession","type":"end"}],"edges":[{"from":"root","to":"profile"},{"from":"profile","to":"perm"},{"from":"perm","to":"tool"},{"from":"tool","to":"enqueue"}]}'></div>
+
+<p><code>PermissionCheckNode</code> 是治理核心，内部两步：<code>assess(tools)</code> 产出权限评估 → <code>decide(profile, assessment)</code> 产出 <code>ApprovalDecisionVO</code>。<code>EnqueueNode</code> 根据决策分流：免审批直接 <code>executeSession</code>（RUNNING），需审批则停留 <code>PENDING_APPROVAL</code> 等待人工批准。这条链的完整审批流转是第11章的主题。</p>
+
+<h2 class="section-heading" id="sec-6">6.6 为什么策略树适合 Agent 系统</h2>
+
+<div class="compare-grid">
+  <div class="card" style="border-left: 3px solid var(--color-success);">
+    <div class="card-title">✓ 可插拔</div>
+    <p style="font-size: 13px; color: var(--color-text-secondary);">想在意图识别后加一个"敏感词过滤"节点？写个新节点插进链里即可，不用动既有代码。</p>
+  </div>
+  <div class="card" style="border-left: 3px solid var(--color-success);">
+    <div class="card-title">✓ 可观测</div>
+    <p style="font-size: 13px; color: var(--color-text-secondary);">每个节点是天然埋点——在哪个节点短路、耗时多少，都容易统计。</p>
+  </div>
+  <div class="card" style="border-left: 3px solid var(--color-success);">
+    <div class="card-title">✓ 符合 Agent 的不确定性</div>
+    <p style="font-size: 13px; color: var(--color-text-secondary);">Agent 流程经常"走到一半发现该换路"，责任链的短路机制天然适配这种动态决策。</p>
+  </div>
+</div>
+
+<h2 class="section-heading" id="sec-7">6.7 小结与下一章预告</h2>
+
+<div class="summary-box">
+  <p><strong>本章要点</strong>：意图识别用纯正则（零延迟、零成本、可单测），四类意图决定后续处理；策略树 = 责任链 + DynamicContext + 非 null 短路；Agent 消息链四节点（Resolve→Intent→Dispatch→Collect）负责对话，任务提交链五节点（SubmissionRoot→ProfileResolution→PermissionCheck→ToolResolution→Enqueue）负责治理。</p>
+  <p style="margin-bottom:0;"><strong>下一章</strong>：AgentCollectNode 收集的消息怎么推给浏览器？流式对话的 SSE 事件序列长什么样？为什么需要一个专门的 <code>step_break</code> 事件？第7章完整解析 SSE 流式协议。</p>
+</div>

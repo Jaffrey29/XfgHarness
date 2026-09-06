@@ -5,7 +5,7 @@
 version: '3.8'
 services:
   deepseek-harness-java:
-    image: registry.cn-hangzhou.aliyuncs.com/fuzhengwei/deepseek-harness-java:1.0
+    image: registry.cn-hangzhou.aliyuncs.com/xfg-studio/deepseek-harness-java:0.1.1
     container_name: deepseek-harness-java
     restart: on-failure
     ports:

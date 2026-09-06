@@ -1,6 +1,6 @@
 /* ========================================
    DeepSeek Harness Java 实战教程 - 主控制器
-   13章 · 翻页导航 · 主题切换 · 学习进度
+   17章 · 翻页导航 · 主题切换 · 学习进度
    ======================================== */
 
 const App = {
@@ -8,34 +8,38 @@ const App = {
   staticMode: false,
   chapters: [
     // 序章
-    { id: 'ch00', num: 0, title: '教程导读：这本书怎么读', section: '🎬 序章', file: 'chapters/ch00-intro.html' },
+    { id: 'ch00', num: 0, title: '教程导读：这本书怎么读', section: '🎬 序章', file: 'ch00-intro.html' },
 
     // 第一篇：快速上手
-    { id: 'ch01', num: 1, title: '十分钟跑起来：构建、启动与第一次对话', section: '🚀 第一篇：快速上手', file: 'chapters/ch01-quickstart.html' },
+    { id: 'ch01', num: 1, title: '十分钟跑起来：构建、启动与第一次对话', section: '🚀 第一篇：快速上手', file: 'ch01-quickstart.html' },
 
     // 第二篇：架构设计
-    { id: 'ch02', num: 2, title: '六边形架构：模块划分与依赖方向', section: '🏗️ 第二篇：架构设计', file: 'chapters/ch02-architecture.html' },
-    { id: 'ch03', num: 3, title: '领域设计：事件风暴与 27 个限界上下文', section: '🏗️ 第二篇：架构设计', file: 'chapters/ch03-domain.html' },
+    { id: 'ch02', num: 2, title: '六边形架构：模块划分与依赖方向', section: '🏗️ 第二篇：架构设计', file: 'ch02-architecture.html' },
+    { id: 'ch03', num: 3, title: '领域设计：事件风暴与 27 个限界上下文', section: '🏗️ 第二篇：架构设计', file: 'ch03-domain.html' },
 
     // 第三篇：核心机制
-    { id: 'ch04', num: 4, title: 'ReactLoopAgent：ReAct 循环引擎', section: '🧠 第三篇：核心机制', file: 'chapters/ch04-react-loop.html' },
-    { id: 'ch05', num: 5, title: '会话与事件溯源：SessionLog 的秘密', section: '🧠 第三篇：核心机制', file: 'chapters/ch05-session-event.html' },
-    { id: 'ch06', num: 6, title: '意图识别与策略树：消息如何流转', section: '🧠 第三篇：核心机制', file: 'chapters/ch06-intent-strategy.html' },
-    { id: 'ch07', num: 7, title: 'SSE 流式协议：meta/chunk/step_break/done', section: '🧠 第三篇：核心机制', file: 'chapters/ch07-sse-protocol.html' },
+    { id: 'ch04', num: 4, title: 'ReactLoopAgent：ReAct 循环引擎', section: '🧠 第三篇：核心机制', file: 'ch04-react-loop.html' },
+    { id: 'ch05', num: 5, title: '会话与事件溯源：SessionLog 的秘密', section: '🧠 第三篇：核心机制', file: 'ch05-session-event.html' },
+    { id: 'ch06', num: 6, title: '意图识别与策略树：消息如何流转', section: '🧠 第三篇：核心机制', file: 'ch06-intent-strategy.html' },
+    { id: 'ch07', num: 7, title: 'SSE 流式协议：meta/chunk/step_break/done', section: '🧠 第三篇：核心机制', file: 'ch07-sse-protocol.html' },
 
     // 第四篇：工具与扩展
-    { id: 'ch08', num: 8, title: '工具系统：ToolCallExecutor 与 Hook 链', section: '🛠️ 第四篇：工具与扩展', file: 'chapters/ch08-tools.html' },
-    { id: 'ch09', num: 9, title: '插件开发实战：Java 与 Node 双模式', section: '🛠️ 第四篇：工具与扩展', file: 'chapters/ch09-plugin.html' },
-    { id: 'ch10', num: 10, title: 'MCP 集成：连接外部工具生态', section: '🛠️ 第四篇：工具与扩展', file: 'chapters/ch10-mcp.html' },
+    { id: 'ch08', num: 8, title: '工具系统：ToolCallExecutor 与 Hook 链', section: '🛠️ 第四篇：工具与扩展', file: 'ch08-tools.html' },
+    { id: 'ch09', num: 9, title: '插件开发实战：Java 与 Node 双模式', section: '🛠️ 第四篇：工具与扩展', file: 'ch09-plugin.html' },
+    { id: 'ch10', num: 10, title: 'MCP 集成：连接外部工具生态', section: '🛠️ 第四篇：工具与扩展', file: 'ch10-mcp.html' },
 
     // 第五篇：治理
-    { id: 'ch11', num: 11, title: '任务、审批与治理：安全执行的边界', section: '🛡️ 第五篇：治理', file: 'chapters/ch11-governance.html' },
+    { id: 'ch11', num: 11, title: '任务、审批与治理：安全执行的边界', section: '🛡️ 第五篇：治理', file: 'ch11-governance.html' },
 
     // 第六篇：部署与生产化
-    { id: 'ch12', num: 12, title: '部署与生产化：从本地到上线', section: '⚙️ 第六篇：部署与生产化', file: 'chapters/ch12-deployment.html' },
+    { id: 'ch12', num: 12, title: '部署与生产化：从本地到上线', section: '⚙️ 第六篇：部署与生产化', file: 'ch12-deployment.html' },
 
-    // 终章
-    { id: 'ch13', num: 13, title: '终章：已知边界与进阶路线', section: '🌟 终章', file: 'chapters/ch13-epilogue.html' }
+    { id: 'ch13', num: 13, title: '边界与进阶路线：从 Demo 到产品', section: '⚙️ 第六篇：部署与生产化', file: 'ch13-epilogue.html' },
+
+    // 工程全景
+    { id: 'ch14', num: 14, title: '工程全景：API、控制台、数据与测试', section: '🧰 工程全景', file: 'ch14-engineering.html' },
+    { id: 'ch15', num: 15, title: '工作流与子代理：从单 Agent 到协同执行', section: '🧰 工程全景', file: 'ch15-workflow-subagent.html' },
+    { id: 'ch16', num: 16, title: '目标、计划、技能与定时任务：长程上下文治理', section: '🧰 工程全景', file: 'ch16-platform-capabilities.html' }
   ],
 
   async init() {
@@ -181,9 +185,19 @@ const App = {
     if (nav.querySelector('.nav-item[href$=".html"]')) return;
     let html = '';
     let lastSection = null;
+    const splitSection = s => {
+      const m = s.match(/^([\u{1F000}-\u{1FAFF}\u2600-\u27BF\uFE0F\u200D]+)\s*/u);
+      return m ? [m[1], s.slice(m[0].length)] : ['', s];
+    };
     this.chapters.forEach(ch => {
       if (ch.section !== lastSection) {
-        html += `<div class="nav-section">${ch.section}</div>`;
+        if (lastSection !== null) html += '</div>';
+        const [emoji, text] = splitSection(ch.section);
+        html += `<div class="nav-group" style="--part:var(--color-accent)">`
+              + `<div class="nav-section"><span class="nav-section-dot"></span>`
+              + `<span class="nav-section-emoji">${emoji}</span>`
+              + `<span class="nav-section-title">${text}</span>`
+              + `<span class="nav-section-count">${String(ch.num).padStart(2, '0')}</span></div>`;
         lastSection = ch.section;
       }
       html += `<a class="nav-item" data-chapter="${ch.id}" href="#${ch.id}">
@@ -191,7 +205,7 @@ const App = {
         <span class="nav-title">${ch.title}</span>
       </a>`;
     });
-    nav.innerHTML = html;
+    nav.innerHTML = html + (lastSection !== null ? '</div>' : '');
     nav.querySelectorAll('.nav-item').forEach(item => {
       item.addEventListener('click', e => {
         e.preventDefault();
@@ -280,15 +294,15 @@ const App = {
           <h1 class="home-hero-title">
             把 Agent Harness<br>读得<span class="title-em">明明白白</span>
           </h1>
-          <p class="home-hero-desc">13 章渐进式教程，基于开源项目 <strong>deepseek-harness-java</strong>，<br>从跑起来到读懂 ReAct 循环、事件溯源、策略树、插件体系与审批治理。</p>
+          <p class="home-hero-desc">17 章渐进式教程，基于开源项目 <strong>deepseek-harness-java</strong>，<br>从跑起来到读懂 ReAct 循环、事件溯源、策略树、插件体系、审批治理与平台能力。</p>
           <div class="home-hero-actions">
             <a class="home-btn primary" href="#ch00">开始学习<span class="btn-arrow">→</span></a>
             <a class="home-btn ghost" href="https://github.com/fuzhengwei/deepseek-harness-java" target="_blank">GitHub 仓库</a>
           </div>
           <div class="home-hero-stats">
-            <div class="home-stat"><div class="home-stat-num">13</div><div class="home-stat-label">章节</div></div>
+            <div class="home-stat"><div class="home-stat-num">17</div><div class="home-stat-label">章节</div></div>
             <div class="home-stat-divider"></div>
-            <div class="home-stat"><div class="home-stat-num">6</div><div class="home-stat-label">篇幅</div></div>
+            <div class="home-stat"><div class="home-stat-num">8</div><div class="home-stat-label">篇幅</div></div>
             <div class="home-stat-divider"></div>
             <div class="home-stat"><div class="home-stat-num">27</div><div class="home-stat-label">限界上下文</div></div>
             <div class="home-stat-divider"></div>
@@ -430,6 +444,14 @@ const App = {
     if (idx < this.chapters.length - 1) this.loadChapter(this.chapters[idx + 1].id);
   }
 };
+
+// 在父滚动容器 .content-area 内把元素平滑滚到顶部（留出内容头部高度）
+function scrollToHeading(el) {
+  const contentArea = document.querySelector('.content-area');
+  if (!contentArea) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+  const target = el.getBoundingClientRect().top - contentArea.getBoundingClientRect().top + contentArea.scrollTop - 78;
+  contentArea.scrollTo({ top: target, behavior: 'smooth' });
+}
 
 window.App = App;
 document.addEventListener('DOMContentLoaded', () => App.init());

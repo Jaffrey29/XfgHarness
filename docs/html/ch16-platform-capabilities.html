@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>第16章 目标、计划、技能与定时任务：长程上下文治理 | DeepSeek Harness Java 实战教程</title>
+  <meta name="description" content="从一次对话走向长期任务：目标状态、计划模式、技能复用与未来触发">
+  <link rel="canonical" href="https://fuzhengwei.github.io/deepseek-harness-java/docs/html/ch16-platform-capabilities.html">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+  <link rel="stylesheet" href="css/book.css?v=20260906-2">
+  <link rel="stylesheet" href="css/site.css?v=20260906-2">
+  <link rel="stylesheet" href="css/flowchart.css?v=20260906-2">
+</head>
+<body data-chapter="ch16">
+  <div class="reading-progress" id="readingProgress"></div>
+  <div class="app-layout chat-collapsed">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <a class="brand-lockup" href="index.html" title="回到首页">
+          <span class="brand-tile">📚</span>
+          <span class="brand-meta"><span class="brand-name">Harness 教程</span><span class="brand-sub">Java 实战 · 17 章</span></span>
+        </a>
+        <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
+      </div>
+      <div class="sidebar-progress">
+        <div class="progress-head"><span class="progress-label">学习进度</span><span class="progress-num" id="progressText">0/17 章</span></div>
+        <div class="progress-bar"><div class="progress-bar-fill" style="width: 0%"></div></div>
+        <div class="progress-caption" id="progressCaption">Lv.1 · 尚未开始</div>
+      </div>
+      <nav class="sidebar-nav" id="sidebarNav"><div class="nav-group" data-section="序章" style="--part:var(--section-序章)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🎬</span><span class="nav-section-title">序章</span><span class="nav-section-count">00</span></div><a class="nav-item" data-chapter="ch00" href="ch00-intro.html"><span class="nav-num">00</span><span class="nav-title">教程导读：这本书怎么读</span></a></div><div class="nav-group" data-section="第一篇：快速上手" style="--part:var(--section-快速上手)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🚀</span><span class="nav-section-title">第一篇：快速上手</span><span class="nav-section-count">01</span></div><a class="nav-item" data-chapter="ch01" href="ch01-quickstart.html"><span class="nav-num">01</span><span class="nav-title">十分钟跑起来：构建、启动与第一次对话</span></a></div><div class="nav-group" data-section="第二篇：架构设计" style="--part:var(--section-架构设计)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🏗️</span><span class="nav-section-title">第二篇：架构设计</span><span class="nav-section-count">02</span></div><a class="nav-item" data-chapter="ch02" href="ch02-architecture.html"><span class="nav-num">02</span><span class="nav-title">六边形架构：模块划分与依赖方向</span></a><a class="nav-item" data-chapter="ch03" href="ch03-domain.html"><span class="nav-num">03</span><span class="nav-title">领域设计：事件风暴与 27 个限界上下文</span></a></div><div class="nav-group" data-section="第三篇：核心机制" style="--part:var(--section-核心机制)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🧠</span><span class="nav-section-title">第三篇：核心机制</span><span class="nav-section-count">04</span></div><a class="nav-item" data-chapter="ch04" href="ch04-react-loop.html"><span class="nav-num">04</span><span class="nav-title">ReactLoopAgent：ReAct 循环引擎</span></a><a class="nav-item" data-chapter="ch05" href="ch05-session-event.html"><span class="nav-num">05</span><span class="nav-title">会话与事件溯源：SessionLog 的秘密</span></a><a class="nav-item" data-chapter="ch06" href="ch06-intent-strategy.html"><span class="nav-num">06</span><span class="nav-title">意图识别与策略树：消息如何流转</span></a><a class="nav-item" data-chapter="ch07" href="ch07-sse-protocol.html"><span class="nav-num">07</span><span class="nav-title">SSE 流式协议：meta/chunk/step_break/done</span></a></div><div class="nav-group" data-section="第四篇：工具与扩展" style="--part:var(--section-工具与扩展)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🛠️</span><span class="nav-section-title">第四篇：工具与扩展</span><span class="nav-section-count">08</span></div><a class="nav-item" data-chapter="ch08" href="ch08-tools.html"><span class="nav-num">08</span><span class="nav-title">工具系统：ToolCallExecutor 与 Hook 链</span></a><a class="nav-item" data-chapter="ch09" href="ch09-plugin.html"><span class="nav-num">09</span><span class="nav-title">插件开发实战：Java 与 Node 双模式</span></a><a class="nav-item" data-chapter="ch10" href="ch10-mcp.html"><span class="nav-num">10</span><span class="nav-title">MCP 集成：连接外部工具生态</span></a></div><div class="nav-group" data-section="第五篇：治理" style="--part:var(--section-治理)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🛡️</span><span class="nav-section-title">第五篇：治理</span><span class="nav-section-count">11</span></div><a class="nav-item" data-chapter="ch11" href="ch11-governance.html"><span class="nav-num">11</span><span class="nav-title">任务、审批与治理：安全执行的边界</span></a></div><div class="nav-group" data-section="第六篇：部署与生产化" style="--part:var(--section-部署与生产化)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">⚙️</span><span class="nav-section-title">第六篇：部署与生产化</span><span class="nav-section-count">12</span></div><a class="nav-item" data-chapter="ch12" href="ch12-deployment.html"><span class="nav-num">12</span><span class="nav-title">部署与生产化：从本地到上线</span></a><a class="nav-item" data-chapter="ch13" href="ch13-epilogue.html"><span class="nav-num">13</span><span class="nav-title">边界与进阶路线：从 Demo 到产品</span></a></div><div class="nav-group" data-section="工程全景" style="--part:var(--color-accent)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🧰</span><span class="nav-section-title">工程全景</span><span class="nav-section-count">14</span></div><a class="nav-item" data-chapter="ch14" href="ch14-engineering.html"><span class="nav-num">14</span><span class="nav-title">工程全景：API、控制台、数据与测试</span></a><a class="nav-item" data-chapter="ch15" href="ch15-workflow-subagent.html"><span class="nav-num">15</span><span class="nav-title">工作流与子代理：从单 Agent 到协同执行</span></a><a class="nav-item active" data-chapter="ch16" href="ch16-platform-capabilities.html"><span class="nav-num">16</span><span class="nav-title">目标、计划、技能与定时任务：长程上下文治理</span></a></div></nav>
+    </aside>
+    <main class="content-area">
+      <div class="content-header">
+        <div class="breadcrumb">
+          <a class="crumb-home" href="index.html" aria-label="回到首页">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 9.7V20a1 1 0 0 0 1 1h4v-5h3v5h4a1 1 0 0 0 1-1V9.7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>首页</span>
+          </a>
+          <span class="crumb-sep">›</span>
+          <span class="crumb-sec"><span class="crumb-sec-emoji">🧰</span><span>工程全景</span></span>
+        </div>
+        <div class="nav-buttons">
+          <a class="nav-btn prev" href="ch15-workflow-subagent.html">← 上一章</a>
+          <a class="nav-btn next" href="index.html">下一章 →</a>
+        </div>
+      </div>
+      <div class="content-body" id="contentBody"><div class="chapter-head"><div class="chapter-eyebrow">🧰 工程全景</div><h1 class="chapter-title">第16章 目标、计划、技能与定时任务：长程上下文治理</h1>
+<p class="chapter-subtitle">从一次对话走向长期任务：目标状态、计划模式、技能复用与未来触发</p>
+
+<h2 class="section-heading" id="sec-1">16.1 本章导读</h2>
+<p>一个能调用工具的 Agent 只能解决“眼前这一步”；一个可长期协作的 Agent 还需要知道自己在追什么目标、下一步计划是什么、哪些能力可以复用、未来什么时间该继续工作。本章聚焦四组平台能力：<code>goal</code>、<code>plan</code>、<code>skill</code> 与 <code>schedule</code>。它们共同回答一个问题：<strong>Harness 如何把一次性对话扩展成可持续推进的任务系统</strong>。</p>
+
+<h2 class="section-heading" id="sec-2">16.2 目标状态机：GoalService</h2>
+<p><code>GoalService</code> 同时实现 <code>IGoalQueryService</code> 与 <code>IGoalCommandService</code>。它的工作流很直接：读取当前会话目标，规范化命令，交给 <code>GoalAggregate</code> 做状态转移，再通过 <code>IGoalRepository</code> 保存快照。目标是跨回合存在的状态，不是某一条模型消息的临时注释。</p>
+<div class="comparison-table">
+  <table>
+    <thead><tr><th style="text-align:left;">状态/动作</th><th style="text-align:left;">取值</th><th style="text-align:left;">含义</th></tr></thead>
+    <tbody>
+      <tr><td>目标状态</td><td><code>ACTIVE</code>、<code>PAUSED</code>、<code>BLOCKED</code>、<code>COMPLETED</code>、<code>CLEARED</code></td><td>描述长期目标当前是否可继续、暂停、阻塞、完成或清除</td></tr>
+      <tr><td>目标动作</td><td><code>CREATE</code>、<code>UPDATE</code>、<code>PAUSE</code>、<code>RESUME</code>、<code>COMPLETE</code>、<code>BLOCK</code>、<code>CLEAR</code></td><td>驱动聚合状态机变更</td></tr>
+      <tr><td>终态判断</td><td><code>COMPLETED</code>、<code>CLEARED</code></td><td>只有终态后才允许创建新的目标</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>目标层还对应一组模型可调用工具：<code>goal_get</code> 读取当前目标，<code>goal_create</code> 创建长期目标，<code>goal_update</code> 推进、暂停、恢复、完成、阻塞或清除目标。这样模型不必直接理解数据库，只需要通过工具协议改变目标状态。</p>
+
+<h2 class="section-heading" id="sec-3">16.3 目标与 HTTP/API 的关系</h2>
+<p>目标既可以被模型通过工具使用，也可以由外部系统通过 REST API 管理。<code>GoalQueryController</code> 暴露 <code>GET /api/harness/goals/{sessionId}</code>，<code>GoalCommandController</code> 暴露 <code>POST /api/harness/goals/{sessionId}</code>。这种双入口设计很重要：模型能自我管理长期任务，控制台或运维系统也能人工介入。</p>
+<div class="code-block">
+  <div class="code-label">目标命令示例</div>
+  <pre><code class="language-json">{
+  "action": "CREATE",
+  "title": "完成插件开发教程",
+  "description": "补齐示例、验证命令和常见错误",
+  "maxRounds": 8,
+  "continuationEnabled": true
+}</code></pre>
+</div>
+<div class="warning-box"><p><strong>边界</strong>：目标状态依赖 <code>sessionId</code>。如果未来做多租户或多实例，目标仓储必须与认证身份、会话亲和性和任务锁一起设计，不能只按字符串会话号更新。</p></div>
+
+<h2 class="section-heading" id="sec-4">16.4 计划模式：PlanModeService 与 exit_plan_mode</h2>
+<p>计划模式用于让 Agent 先规划、再执行。源码中的 <code>PlanModeService</code> 管理每个会话的 <code>PlanModeState</code>，<code>ExitPlanModeTool</code> 则让模型通过工具显式退出计划模式。它的价值不在“生成一段计划文本”，而在把“是否还处于规划阶段”变成可检查的运行状态。</p>
+<div class="comparison-table">
+  <table>
+    <thead><tr><th style="text-align:left;">元素</th><th style="text-align:left;">职责</th><th style="text-align:left;">维护建议</th></tr></thead>
+    <tbody>
+      <tr><td><code>PlanModeState</code></td><td>记录计划模式是否开启、计划内容或相关状态</td><td>作为会话级上下文，不要混入工具返回文本</td></tr>
+      <tr><td><code>PlanModeService</code></td><td>维护内存中的会话计划状态</td><td>长期运行前评估持久化和重启恢复</td></tr>
+      <tr><td><code>exit_plan_mode</code></td><td>让模型声明计划完成并切换执行阶段</td><td>与 UI 展示和策略树节点保持语义一致</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>当你新增“强制先计划”或“计划需审批”的能力时，推荐把策略放在用例编排层，而不是把判断写进工具或前端。工具只表达动作，策略树决定什么时候允许动作发生。</p>
+
+<h2 class="section-heading" id="sec-5">16.5 技能工具：SkillTool</h2>
+<p><code>SkillTool</code> 是把“可复用能力”塞进工具体系的入口。它实现 <code>ToolDefinition</code>，因此和文件、Shell、Web、插件、MCP 工具一样，会经过工具注册、模型 schema、执行上下文和结果回填。技能的工程价值是把一组稳定做法沉淀成可调用单元，而不是让模型每次都从零推理。</p>
+<div class="comparison-table">
+  <table>
+    <thead><tr><th style="text-align:left;">维度</th><th style="text-align:left;">技能工具关注点</th></tr></thead>
+    <tbody>
+      <tr><td>输入</td><td>应明确任务、上下文和约束，避免无边界自由文本</td></tr>
+      <tr><td>输出</td><td>应返回结构化或可审计内容，便于写入会话事件</td></tr>
+      <tr><td>治理</td><td>技能内部若会调用高风险工具，仍应经过审批、Hook 和沙箱策略</td></tr>
+      <tr><td>版本</td><td>技能更新应考虑兼容旧会话和历史事件回放</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="section-heading" id="sec-6">16.6 定时任务：ScheduleService</h2>
+<p><code>ScheduleService</code> 提供未来触发能力，领域模型包括 <code>ScheduleRecord</code>、<code>ScheduleKind</code>、<code>ScheduleState</code> 和 <code>ScheduleView</code>。支持三类计划：<code>AFTER</code> 表示若干秒后触发，<code>AT</code> 表示指定时间触发，<code>EVERY</code> 表示按间隔重复触发。</p>
+<div class="comparison-table">
+  <table>
+    <thead><tr><th style="text-align:left;">工具</th><th style="text-align:left;">能力</th><th style="text-align:left;">说明</th></tr></thead>
+    <tbody>
+      <tr><td><code>schedule_create</code></td><td>创建一次性或周期性计划</td><td>参数可表达 after、at、every 等调度语义</td></tr>
+      <tr><td><code>schedule_list</code></td><td>列出当前会话计划</td><td>返回 <code>SCHEDULED</code>、<code>OVERDUE</code> 等视图状态</td></tr>
+      <tr><td><code>schedule_delete</code></td><td>删除计划</td><td>按计划 id 删除</td></tr>
+    </tbody>
+  </table>
+</div>
+<p><code>drive(sessionId, now)</code> 是调度推进方法：它查找到期记录；对 <code>EVERY</code> 任务会推进到下一个锚点之后；对一次性任务会删除记录，表示已派发。这个设计把“找出该触发什么”和“真正向 Agent 投递任务”分开，方便未来替换调度器。</p>
+<div class="warning-box"><p><strong>当前边界</strong>：README 已明确指出 <code>ScheduleService</code> 尚无 <code>@Scheduled</code> 或 Quartz 驱动方，且仓储偏内存形态；它是领域能力雏形，不是完整生产级调度系统。上线前必须补驱动、持久化、幂等和失败重试。</p></div>
+
+<h2 class="section-heading" id="sec-7">16.7 Typert：扩展贡献的注册表</h2>
+<p><code>typert</code> 域不是普通业务功能，它更像“扩展贡献目录”。<code>TypertContribution</code> 可以携带多个 <code>InvocationDescriptor</code>，<code>TypertService.registerContribution()</code> 会把这些调用描述同时写入 remote 与 local registry。后续调用方可以通过 endpoint 解析 invocation，而不需要知道能力来自插件、远端协议还是本地适配器。</p>
+<div class="comparison-table">
+  <table>
+    <thead><tr><th style="text-align:left;">对象</th><th style="text-align:left;">职责</th><th style="text-align:left;">价值</th></tr></thead>
+    <tbody>
+      <tr><td><code>InvocationDescriptor</code></td><td>描述 endpoint、schema、调用方式与元信息</td><td>让能力可发现、可解析、可治理</td></tr>
+      <tr><td><code>TypertContribution</code></td><td>把多个 invocation 作为一次贡献注册</td><td>适合插件或协议加载时批量导入</td></tr>
+      <tr><td><code>ITypertRegistryContract</code></td><td>聚合 context、lookup、local、remote 四类注册表</td><td>统一本地与远端能力目录</td></tr>
+      <tr><td><code>InMemoryTypertRegistry</code></td><td>当前内存实现</td><td>适合启动期装配和本地演示</td></tr>
+      <tr><td><code>TypertProtocolLoader</code></td><td>基础设施侧协议加载入口</td><td>把外部描述导入注册表</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>如果把第8章的工具系统看成“能执行什么动作”，Typert 更像“动作目录与协议描述”。它给插件、MCP、远端工具和未来 UI 动态表单之间留了一个统一发现层。</p>
+
+<h2 class="section-heading" id="sec-8">16.8 Credentials：密钥引用，而不是明文散落</h2>
+<p>Agent Harness 需要调用模型、插件、MCP Server、子代理和外部 API，密钥如果散落在脚本、工具参数或日志里，会直接破坏安全边界。项目中的 <code>credentials</code> 域用 <code>CredentialRef</code> 表示引用，用 <code>ResolvedCredentialVO</code> 表示解析后的值，用 <code>CredentialInfoVO</code> 表示可展示但不泄密的摘要。</p>
+<p>基础设施层的 <code>CredentialsYamlStore</code> 与 <code>LocalCredentialProviderPort</code> 提供本地实现；生产环境可以替换为 Vault、KMS、云密钥服务或企业凭据平台。关键是领域层只依赖 <code>ICredentialProviderPort</code>，不会把密钥存储方式扩散到工具系统。</p>
+<div class="comparison-table">
+  <table>
+    <thead><tr><th style="text-align:left;">原则</th><th style="text-align:left;">落地方式</th></tr></thead>
+    <tbody>
+      <tr><td>引用优先</td><td>工具参数传 <code>CredentialRef</code>，不要直接传明文密钥</td></tr>
+      <tr><td>最小展示</td><td>前端只展示 <code>CredentialInfoVO</code> 中的名称、类型和摘要信息</td></tr>
+      <tr><td>运行期解析</td><td>真正执行外部调用前才解析成 <code>ResolvedCredentialVO</code></td></tr>
+      <tr><td>实现可替换</td><td>本地 YAML 是开发便利，不应成为生产密钥体系</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="section-heading" id="sec-9">16.9 六类能力如何组合</h2>
+<p>目标、计划、技能、定时任务、Typert 和凭据各自独立，但组合后才能支撑长程 Agent。一个典型流程是：用户创建目标；Agent 进入计划模式，拆解步骤；模型调用技能处理可复用动作；插件通过 Typert 贡献可调用端点；需要外部 API 时通过 CredentialRef 解析密钥；遇到需要等待外部条件的步骤时创建定时任务；未来调度触发后，再回到同一个 session 推进目标状态。</p>
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"goal","label":"goal_create\n确立长期目标","type":"start"},{"id":"plan","label":"PlanMode\n拆解行动路径","type":"process"},{"id":"skill","label":"SkillTool\n复用稳定能力","type":"process"},{"id":"schedule","label":"schedule_create\n等待未来触发","type":"process"},{"id":"drive","label":"drive 到期\n回到会话继续执行","type":"process"},{"id":"finish","label":"goal_update\n完成或阻塞","type":"end"}],"edges":[{"from":"goal","to":"plan"},{"from":"plan","to":"skill"},{"from":"skill","to":"schedule"},{"from":"schedule","to":"drive"},{"from":"drive","to":"finish"}]}'></div>
+
+<h2 class="section-heading" id="sec-10">16.10 长程上下文的风险</h2>
+<p>长程能力最怕“看起来能续跑，实际不可审计”。建议重点关注七个风险：目标状态被并发覆盖；计划只在内存中，重启丢失；技能版本变化导致旧会话语义漂移；定时任务重复派发；Typert 注册表重启后丢失；凭据被日志或工具结果泄漏；模型在没有人工确认时长期自动调用高风险工具。解决这些问题，需要把状态、事件、审批、幂等、版本和密钥最小暴露一起设计。</p>
+<div class="comparison-table">
+  <table>
+    <thead><tr><th style="text-align:left;">风险</th><th style="text-align:left;">建议</th></tr></thead>
+    <tbody>
+      <tr><td>目标并发更新</td><td>使用 revision 或乐观锁，保证状态机转移可追踪</td></tr>
+      <tr><td>计划丢失</td><td>把计划模式状态持久化，并写入事件日志</td></tr>
+      <tr><td>技能漂移</td><td>记录技能版本，避免历史回放使用新语义解释旧结果</td></tr>
+      <tr><td>重复调度</td><td>为派发引入幂等 key 和状态转移日志</td></tr>
+      <tr><td>注册表漂移</td><td>Typert contribution 需要版本、来源和健康检查</td></tr>
+      <tr><td>密钥泄漏</td><td>日志、事件和工具结果默认脱敏，只保存引用和摘要</td></tr>
+      <tr><td>长期自动执行</td><td>周期任务默认低权限，高风险工具仍需运行期审批</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="section-heading" id="sec-11">16.11 小结</h2>
+<p>本章要点：目标让 Agent 知道长期追求什么；计划模式让它在执行前先形成结构化路径；技能把稳定能力沉淀成工具；定时任务让系统能在未来继续推进；Typert 负责贡献发现；Credentials 负责密钥引用与解析。它们共同构成“长程上下文治理”的基础，但当前仍有明显生产化缺口：持久化、调度驱动、幂等、版本、密钥托管和审批联动都需要补强。</p>
+<p>至此，学习手册完成从基础启动、架构机制、扩展治理，到工程接手、协同执行和长期任务的完整闭环。下一步可以回到第 14 章的协作清单，挑一个真实改动走完整工程流程；也可以沿第 15 章的工作流/子代理方向，把 Harness 从单 Agent 演进成多执行者协作平台。</p>
+</div></div>
+      <nav class="page-nav"><a class="page-nav-card prev" href="ch15-workflow-subagent.html"><span class="page-nav-label">← 上一章</span><span class="page-nav-title">工作流与子代理：从单 Agent 到协同执行</span></a><a class="page-nav-card next disabled" href="index.html"><span class="page-nav-label">→ 下一章</span><span class="page-nav-title">回首页</span></a></nav>
+      <button class="back-to-top" id="backToTop" title="回到顶部" aria-label="回到顶部">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3.5L4 12h5v8h6v-8h5z"/></svg>
+      </button>
+    </main>
+    <aside class="toc-panel" id="tocPanel">
+      <div class="toc-header">
+        <h3 class="toc-title"><span class="toc-title-icon">📋</span>本章目录</h3>
+        <span class="toc-count">11 节</span>
+      </div>
+      <nav class="toc-nav" id="tocNav"><a class="toc-item" href="#sec-1" data-target="sec-1"><span class="toc-num">16.1</span><span class="toc-text">本章导读</span></a><a class="toc-item" href="#sec-2" data-target="sec-2"><span class="toc-num">16.2</span><span class="toc-text">目标状态机：GoalService</span></a><a class="toc-item" href="#sec-3" data-target="sec-3"><span class="toc-num">16.3</span><span class="toc-text">目标与 HTTP/API 的关系</span></a><a class="toc-item" href="#sec-4" data-target="sec-4"><span class="toc-num">16.4</span><span class="toc-text">计划模式：PlanModeService 与 exit_plan_mode</span></a><a class="toc-item" href="#sec-5" data-target="sec-5"><span class="toc-num">16.5</span><span class="toc-text">技能工具：SkillTool</span></a><a class="toc-item" href="#sec-6" data-target="sec-6"><span class="toc-num">16.6</span><span class="toc-text">定时任务：ScheduleService</span></a><a class="toc-item" href="#sec-7" data-target="sec-7"><span class="toc-num">16.7</span><span class="toc-text">Typert：扩展贡献的注册表</span></a><a class="toc-item" href="#sec-8" data-target="sec-8"><span class="toc-num">16.8</span><span class="toc-text">Credentials：密钥引用，而不是明文散落</span></a><a class="toc-item" href="#sec-9" data-target="sec-9"><span class="toc-num">16.9</span><span class="toc-text">六类能力如何组合</span></a><a class="toc-item" href="#sec-10" data-target="sec-10"><span class="toc-num">16.10</span><span class="toc-text">长程上下文的风险</span></a><a class="toc-item" href="#sec-11" data-target="sec-11"><span class="toc-num">16.11</span><span class="toc-text">小结</span></a></nav>
+      <div class="toc-footer"><a class="toc-github" href="https://github.com/fuzhengwei/deepseek-harness-java" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>查看源码</a></div>
+    </aside>
+    <aside class="right-toolbar">
+      <a class="toolbar-btn toolbar-btn-github" href="https://github.com/fuzhengwei/deepseek-harness-java" target="_blank" rel="noopener" title="GitHub 源码" aria-label="GitHub 源码">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+      </a>
+    </aside>
+  </div>
+  <script src="js/highlight.js?v=20260906-2"></script>
+  <script src="js/progress.js?v=20260906-2"></script>
+  <script src="js/flowchart.js?v=20260906-2"></script>
+  <script src="js/main.js?v=20260906-2"></script>
+  <script>
+    window.addEventListener('scroll', () => {
+      const h = document.documentElement;
+      const pct = h.scrollTop / (h.scrollHeight - h.clientHeight) * 100;
+      const bar = document.getElementById('readingProgress');
+      if (bar) bar.style.width = (pct || 0) + '%';
+    });
+  </script>
+</body>
+</html>

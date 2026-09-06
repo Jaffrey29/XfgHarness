@@ -1,0 +1,101 @@
+<h1 class="chapter-title">第12章 部署与生产化：从本地到上线</h1>
+<p class="chapter-subtitle">H2 与 MySQL 的取舍、Docker 编排、上线前检查清单</p>
+
+<h2 class="section-heading" id="sec-1">12.1 本章导读</h2>
+
+<p>前面 11 章把系统里外讲透了，本章解决最后一公里：怎么把它稳定地跑在服务器上。包括数据源的取舍、Docker 编排细节、以及一份可以直接照着打勾的上线检查清单。</p>
+
+<h2 class="section-heading" id="sec-2">12.2 数据源：H2 还是 MySQL</h2>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">维度</th><th style="text-align:left;">H2（standalone profile）</th><th style="text-align:left;">MySQL（默认 profile）</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>部署</td><td>零依赖，文件库（<code>./data/*.mv.db</code>）</td><td>需独立 MySQL 实例</td></tr>
+      <tr><td>兼容性</td><td><code>MODE=MySQL</code> 兼容模式，共用同一 schema.sql</td><td>原生</td></tr>
+      <tr><td>适用</td><td>本地开发、演示、单机轻量使用</td><td>生产、联调、多实例共享（未来）</td></tr>
+      <tr><td>风险</td><td>文件锁、并发能力有限</td><td>需运维（备份、连接池、监控）</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>schema.sql 共 12 张表，<code>sql.init.mode=always</code> 幂等重跑。<strong>一个迁移陷阱</strong>：schema.sql 用 <code>INSERT ... WHERE NOT EXISTS</code> 只插不更——已存在的配置行（如模型设置）不会被覆盖，下线旧模型需手动 UPDATE。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-warning);">
+  <div class="card-title">⚠️ 生产环境别用 H2</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">本项目曾发生过一次真实误判：在容器沙箱里用 <code>lsof/ps</code> 看不到跨用户的 MySQL 进程，误判"MySQL 没跑"而切了 H2——结果应用连 H2、截图看的是 MySQL，两边数据对不上。判断 MySQL 是否在跑，用 <code>nc -z 127.0.0.1 3306</code> 或 <code>netstat -an | grep LISTEN</code>，别依赖进程列表。</p>
+</div>
+
+<h2 class="section-heading" id="sec-3">12.3 Docker 部署</h2>
+
+<p>项目根目录的 <code>Dockerfile</code> 是多阶段构建：</p>
+
+<div class="code-block"><pre># 阶段1: maven:3.9-eclipse-temurin-17-alpine 构建
+#   - 先 COPY 各模块 pom.xml 跑 dependency:go-offline（利用层缓存）
+#   - 再 COPY 全部源码 mvn package -DskipTests
+# 阶段2: eclipse-temurin:17-jre-alpine 运行
+#   - 只 COPY fat jar，EXPOSE 8090
+#   - ENTRYPOINT 默认 standalone profile</pre></div>
+
+<p><code>docker-compose.yml</code> 的关键挂载与环境变量：</p>
+
+<div class="code-block"><pre>services:
+  app:
+    build: .
+    ports: ["8090:8090"]
+    environment:
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-sk-local}
+      - SPRING_PROFILES_ACTIVE=standalone
+    volumes:
+      - ./data:/app/data            # H2 数据持久化
+      - ./plugins:/app/plugins      # 插件目录
+      - ./workspaces:/app/workspaces # Agent 工作区
+    restart: unless-stopped</pre></div>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">💡 用 MySQL 跑容器</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">去掉 <code>SPRING_PROFILES_ACTIVE=standalone</code>，改用 <code>SPRING_DATASOURCE_URL/USERNAME/PASSWORD</code> 环境变量指向外部 MySQL 即可。注意容器内访问宿主机 MySQL 要用 <code>host.docker.internal</code>（Mac/Windows）或宿主机内网 IP（Linux）。</p>
+</div>
+
+<h2 class="section-heading" id="sec-4">12.4 上线检查清单</h2>
+
+<div class="checklist-box">
+  <ul>
+    <li>☐ <strong>认证</strong>：配置 <code>harness.auth.api-keys</code>（为空则全放行！）；服务不直接暴露公网，前置网关</li>
+    <li>☐ <strong>密钥</strong>：模型 API Key 走环境变量/密钥管理系统，绝不硬编码进 yml 提交仓库</li>
+    <li>☐ <strong>审批</strong>：确认 <code>required-tools</code> 覆盖 shell_execute/fs_write/plugin.run/subprocess.spawn；评估是否启用运行期审批 gate</li>
+    <li>☐ <strong>沙箱</strong>：评估 <code>harness.sandbox.default-mode</code>；用容器/低权限 OS 用户隔离</li>
+    <li>☐ <strong>数据库</strong>：外部 MySQL + 连接池配置 + 备份 + 事件表归档策略（事件表会持续增长）</li>
+    <li>☐ <strong>可观测</strong>：接日志采集、Metrics（/actuator 默认公开，注意加保护）、Tracing、审计</li>
+    <li>☐ <strong>资源</strong>：关注无界线程池（ReactLoopAgent.kick 用 newCachedThreadPool），必要时改有界</li>
+    <li>☐ <strong>横向扩展</strong>：当前是单实例设计——Agent 内存状态、任务锁、会话亲和性都需处理后才能多实例</li>
+  </ul>
+</div>
+
+<h2 class="section-heading" id="sec-5">12.5 配置项速查表</h2>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">配置项</th><th style="text-align:left;">默认</th><th style="text-align:left;">生产建议</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>server.port</code></td><td>8090</td><td>按需</td></tr>
+      <tr><td><code>harness.auth.api-keys</code></td><td>空（全放行）</td><td><strong>必须配置</strong></td></tr>
+      <tr><td><code>harness.llm.deepseek.base-url</code></td><td>127.0.0.1:8777/v1</td><td>指向生产网关</td></tr>
+      <tr><td><code>harness.llm.deepseek.api-key</code></td><td><code>${DEEPSEEK_API_KEY:}</code></td><td>环境变量注入</td></tr>
+      <tr><td><code>harness.approval.required-tools</code></td><td>shell/fs_write/plugin.run/subprocess</td><td>按需收紧</td></tr>
+      <tr><td><code>harness.sandbox.default-mode</code></td><td>WORKSPACE_WRITE</td><td>生产考虑 READ_ONLY 起步</td></tr>
+      <tr><td><code>harness.agent.temperature</code></td><td>空（不发送）</td><td>网关只接受 temperature=1 时保持为空</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="section-heading" id="sec-6">12.6 小结与下一章预告</h2>
+
+<div class="summary-box">
+  <p><strong>本章要点</strong>：H2 用于开发演示、MySQL 用于生产；Docker 多阶段构建 + 三个关键挂载卷；上线检查清单覆盖认证/密钥/审批/沙箱/数据库/可观测/资源/扩展八大项；schema.sql 只插不更是迁移陷阱。</p>
+  <p style="margin-bottom:0;"><strong>下一章</strong>：系统的已知边界是什么？想继续深入该往哪个方向走？第13章给出完整的边界清单与进阶路线。</p>
+</div>

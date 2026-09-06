@@ -117,7 +117,7 @@ const Progress = {
    */
   getOverallProgress() {
     const data = this.getAll();
-    const total = App.chapters ? App.chapters.length : 26; // 序章+25章
+    const total = App.chapters ? App.chapters.length : 17;
     const completed = Object.values(data.chapters).filter(c => c.status === 'completed').length;
     return Math.round((completed / total) * 100);
   },
@@ -130,7 +130,7 @@ const Progress = {
     const progress = this.getOverallProgress();
     const data = this.getAll();
     const completed = Object.values(data.chapters).filter(c => c.status === 'completed').length;
-    const total = App.chapters ? App.chapters.length : 14;
+    const total = App.chapters ? App.chapters.length : 17;
     const fillEl = document.querySelector('.sidebar-progress .progress-bar-fill');
     const numEl = document.getElementById('progressText');
     const capEl = document.getElementById('progressCaption');
