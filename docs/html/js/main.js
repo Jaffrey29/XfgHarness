@@ -144,14 +144,12 @@ const App = {
       <div class="home-hero">
         <div class="home-hero-glow glow-a"></div>
         <div class="home-hero-glow glow-b"></div>
-        <div class="home-hero-grid"></div>
         <div class="home-hero-inner">
-          <div class="home-hero-tag"><span class="tag-dot"></span>实战教程 · 基于真实开源项目</div>
+          <div class="home-hero-eyebrow"><span class="tag-dot"></span>实战教程 · 基于真实开源项目</div>
           <h1 class="home-hero-title">
-            <span class="title-line-1">DeepSeek Harness Java</span>
-            <span class="title-line-2">从入门到精通</span>
+            把 Agent Harness<br>读得<span class="title-em">明明白白</span>
           </h1>
-          <p class="home-hero-desc">13 章渐进式教程，带你从零跑起一个基于 DDD 六边形架构的 Agent Harness，<br>深入 ReAct 循环、事件溯源、策略树、插件体系与审批治理的每一行设计。</p>
+          <p class="home-hero-desc">13 章渐进式教程，基于开源项目 <strong>deepseek-harness-java</strong>，<br>从跑起来到读懂 ReAct 循环、事件溯源、策略树、插件体系与审批治理。</p>
           <div class="home-hero-actions">
             <a class="home-btn primary" href="#ch00">开始学习<span class="btn-arrow">→</span></a>
             <a class="home-btn ghost" href="https://github.com/fuzhengwei/deepseek-harness-java" target="_blank">GitHub 仓库</a>
