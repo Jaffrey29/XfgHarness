@@ -12,7 +12,7 @@ import org.mybatis.spring.annotation.MapperScan;
  */
 @SpringBootApplication(scanBasePackages = "cn.xiaofuge.deepseek.harness")
 @MapperScan("cn.xiaofuge.deepseek.harness.infrastructure.dao")
-public class DeepseekHarnessJavaApplication {
+public class Application {
 
     /**
      * 启动 Spring Boot 应用。
@@ -20,7 +20,7 @@ public class DeepseekHarnessJavaApplication {
      * @param args 命令行参数
      */
     public static void main(String[] args) {
-        SpringApplication.run(DeepseekHarnessJavaApplication.class, args);
+        SpringApplication.run(Application.class, args);
     }
 
 }
