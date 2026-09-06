@@ -7,9 +7,9 @@
   <meta name="description" content="用&quot;事件发生的时间线&quot;还原系统该有的样子">
   <link rel="canonical" href="https://fuzhengwei.github.io/deepseek-harness-java/docs/html/ch03-domain.html">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
-  <link rel="stylesheet" href="css/book.css?v=20260906-5">
-  <link rel="stylesheet" href="css/site.css?v=20260906-5">
-  <link rel="stylesheet" href="css/flowchart.css?v=20260906-5">
+  <link rel="stylesheet" href="css/book.css?v=20260906-9">
+  <link rel="stylesheet" href="css/site.css?v=20260906-9">
+  <link rel="stylesheet" href="css/flowchart.css?v=20260906-9">
 </head>
 <body data-chapter="ch03">
   <div class="reading-progress" id="readingProgress"></div>
@@ -18,7 +18,7 @@
       <div class="sidebar-brand">
         <a class="brand-lockup" href="index.html" title="回到首页">
           <span class="brand-tile">📚</span>
-          <span class="brand-meta"><span class="brand-name">Harness 教程</span><span class="brand-sub">Java 实战 · 17 章</span></span>
+          <span class="brand-meta"><span class="brand-name">Harness 教程</span><span class="brand-sub">Java 实战 · 17 页</span></span>
         </a>
         <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
       </div>
@@ -159,7 +159,113 @@
   <p style="font-size: 13px; color: var(--color-text-secondary);">任务主线的"执行"阶段并没有另起炉灶，而是<strong>复用对话主线的 Agent 链路</strong>——审批通过后，<code>HarnessExecutionService.executeSession</code> 驱动的是同一个 <code>ReactLoopAgent</code>。这意味着对话和任务共享同一套工具、同一套事件记录、同一套 SSE 推送。</p>
 </div>
 
-<h2 class="section-heading" id="sec-8">3.8 小结与下一章预告</h2>
+<h2 class="section-heading" id="sec-8">3.8 课程补充：从 6 组到 37 个能力点的逐模块地图</h2>
+
+<p>3.3 节的六能力面把 27 个一级包"收拢"了，但工程接手时真正要回答的问题往往是<strong>点状的</strong>："审批的评估逻辑在哪个包？""MCP 工具的名字前缀怎么生成？""ask_user_question 归哪个域管？"本节给出一张 37 个能力点（一级包 + 带点号子包）的逐模块地图，作为后续各章的"总索引"——每个能力点标注它所属章节，便于按需跳读。</p>
+
+<h3 class="sub-heading">3.8.1 Agent 执行核心（4 个能力点）</h3>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">能力点</th><th style="text-align:left;">一句话职责</th><th style="text-align:left;">关键类</th><th style="text-align:left;">详见章节</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>agent</code></td><td>Agent 执行引擎：对话循环、消息编排、系统提示词组装、审批与中断</td><td><code>ReactLoopAgent</code>、<code>AgentFactory</code>、<code>Phase</code></td><td>第4章</td></tr>
+      <tr><td><code>agent.ask</code></td><td>面向用户的提问/确认交互（弹窗式问题、选项回答）</td><td>ask 工具族 + <code>ask_user_question</code></td><td>第8、11章</td></tr>
+      <tr><td><code>agent.compaction</code></td><td>上下文压缩：裁剪、归纳、控制上下文长度</td><td><code>BasicCompactionEngine</code>（保留最近 1/4，其余 LLM 总结）</td><td>第5章</td></tr>
+      <tr><td><code>agent.subagent</code></td><td>子 Agent 注册、创建与启动</td><td><code>SubagentTool</code>（.join() 阻塞语义）</td><td>第15章</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">3.8.2 任务、目标与规划（7 个能力点）</h3>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">能力点</th><th style="text-align:left;">一句话职责</th><th style="text-align:left;">关键类</th><th style="text-align:left;">详见章节</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>task</code>（五子域）</td><td>任务提交→权限→审批→排队→执行全链路</td><td><code>PermissionPolicyService</code>、<code>ApprovalPolicyService</code>、<code>HarnessExecutionService</code></td><td>第11章</td></tr>
+      <tr><td><code>goal</code></td><td>目标定义与流转，<code>GoalState</code> 状态落库</td><td><code>GoalAggregate</code>、<code>GoalSnapshotVO</code></td><td>第16章</td></tr>
+      <tr><td><code>plan</code></td><td>规划模式：计划状态切换、退出规划模式</td><td>plan 策略节点</td><td>第16章</td></tr>
+      <tr><td><code>todo</code></td><td>待办写入与结果返回</td><td>todo 工具族</td><td>第16章</td></tr>
+      <tr><td><code>workflow</code></td><td>多步骤流程编排、推进与状态管理</td><td><code>WorkflowService</code>（SSE 只推终态）</td><td>第15章</td></tr>
+      <tr><td><code>schedule</code></td><td>定时/延时任务调度</td><td><code>ScheduleService</code>（⚠️ drive() 无调用方，仓储 InMemory 重启即丢）</td><td>第16章</td></tr>
+      <tr><td><code>jobs</code></td><td>后台作业调度与执行管理</td><td><code>JobRegistryService</code>（newCachedThreadPool 无界）</td><td>第15章</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">3.8.3 LLM 与工具运行时（6 个能力点）</h3>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">能力点</th><th style="text-align:left;">一句话职责</th><th style="text-align:left;">关键类</th><th style="text-align:left;">详见章节</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>llm</code></td><td>LLM 抽象与策略：ContentBlock/StreamChunk（sealed）、流式端口</td><td><code>ILlmRuntimePort.stream()</code> 返回 <code>Flow.Publisher</code></td><td>第4、5章</td></tr>
+      <tr><td><code>runtime.model</code></td><td>模型路由与提供方配置管理</td><td>model_setting 表 + 模型路由</td><td>第12章</td></tr>
+      <tr><td><code>runtime.setting</code></td><td>模型配置的查询与命令修改</td><td><code>/api/harness/settings/models</code></td><td>第12章</td></tr>
+      <tr><td><code>runtime.tool</code></td><td>工具目录与工具选择/解析</td><td>ToolCatalog + 参数解析器</td><td>第8章</td></tr>
+      <tr><td><code>runtime.profile</code></td><td>执行画像/运行模式（headless/web 等）</td><td>Profile 策略（web profile 整体需审批）</td><td>第11章</td></tr>
+      <tr><td><code>tool</code>（12 工具族）</td><td>工具定义、注册、调用与执行核心</td><td><code>ToolRegistry</code>、<code>ToolCallExecutor</code>、<code>MatrixRuntimeApprovalGate</code></td><td>第8章</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">3.8.4 插件体系（4 个能力点）</h3>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">能力点</th><th style="text-align:left;">一句话职责</th><th style="text-align:left;">关键类</th><th style="text-align:left;">详见章节</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>plugin</code></td><td>插件体系总入口</td><td>三段式：Registry / Bridge / Runtime</td><td>第9章</td></tr>
+      <tr><td><code>plugin.registry</code></td><td>安装、元数据、安装计划与结果、启停</td><td><code>PluginRegistryService</code></td><td>第9章</td></tr>
+      <tr><td><code>plugin.bridge</code></td><td>识别接入方式并生成绑定计划</td><td><code>JAVA_NATIVE / DSH_NODE_BRIDGE / DSH_PACKAGE / CODEX / CORDIS</code></td><td>第9章</td></tr>
+      <tr><td><code>plugin.runtime</code></td><td>运行时执行管理：Java 进程内 URLClassLoader 隔离；Node sidecar JSON-RPC</td><td><code>PluginRuntimeService</code></td><td>第9章</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">3.8.5 治理与平台能力（16 个能力点）</h3>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">能力点</th><th style="text-align:left;">一句话职责</th><th style="text-align:left;">关键类 / 现状</th><th style="text-align:left;">详见章节</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>guard</code></td><td>运行守卫：限制危险操作、重复调用提醒、超时校验</td><td>超时 + 重复调用提醒</td><td>第8章</td></tr>
+      <tr><td><code>hooks</code></td><td>生命周期 Hook（PRE/POST_TOOL_USE 等）</td><td><code>IHookService</code>、CLAUDE_CODE 方言</td><td>第8章</td></tr>
+      <tr><td><code>coderuntime</code></td><td>代码执行运行时支持</td><td>运行环境端口</td><td>第16章</td></tr>
+      <tr><td><code>e2b</code></td><td>远程沙箱集成（⚠️ 目前仅 StubE2B* 桩实现）</td><td><code>StubE2B*</code></td><td>第13章</td></tr>
+      <tr><td><code>credentials</code></td><td>凭据管理与访问认证数据</td><td>凭据存储</td><td>第12章</td></tr>
+      <tr><td><code>lsp</code></td><td>语言服务：代码定位、hover、引用查询</td><td>lsp 工具族</td><td>第16章</td></tr>
+      <tr><td><code>sandbox</code></td><td>本地沙箱策略（WORKSPACE_WRITE 限制 cwd）</td><td><code>SandboxPolicyService</code></td><td>第11章</td></tr>
+      <tr><td><code>terminal</code></td><td>终端交互：命令发送、读取、会话快照</td><td><code>/api/harness/terminal</code></td><td>第14章</td></tr>
+      <tr><td><code>storage</code></td><td>存储抽象：KV、快照、持久化</td><td>storage 端口</td><td>第5章</td></tr>
+      <tr><td><code>typert</code></td><td>类型注册/远程类型协议</td><td>结果包装协议</td><td>第9章</td></tr>
+      <tr><td><code>skill</code></td><td>技能系统：定义、选择、调用策略与提供方适配</td><td>skill 工具族</td><td>第16章</td></tr>
+      <tr><td><code>session</code>（4 子域）</td><td>会话管理：registry / event / log / conversation</td><td><code>SessionLog</code>（内存 WAL）、<code>SessionEventFactory</code></td><td>第5章</td></tr>
+      <tr><td><code>shared</code></td><td>策略路由基础设施：<code>AbstractStrategyRouter</code>（doApply + getNext 责任链）</td><td>Agent 链/提交链共用</td><td>第6章</td></tr>
+      <tr><td><code>acp</code></td><td>ACP 协议封装（代理/协作通信接口）</td><td><code>AcpServerService</code></td><td>第15章</td></tr>
+      <tr><td><code>sdk</code></td><td>对外 SDK 统一调用入口</td><td>sdk 层</td><td>第15章</td></tr>
+      <tr><td><code>mcp</code></td><td>MCP Server 接入（stdio JSON-RPC 2.0）</td><td><code>StdioMcpClient</code>、<code>McpToolAdapter</code>（工具名 <code>mcp__&lt;server&gt;__&lt;tool&gt;</code>）</td><td>第10章</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-info);">
+  <div class="card-title">📖 与姊妹文档的分工</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">上表是"每个模块是什么、在哪个章节讲"。更细的三份 Markdown 姊妹文档：<code>docs/md/domain-design.md</code>（叙事：为什么这么分）、<code>docs/md/domain-case-deep-dive.md</code>（深挖：策略树与 ReactLoopAgent 状态机）、<code>docs/md/domain-modules-reference.md</code>（字典：逐模块速查）。HTML 课程各章则把这三者<strong>融进源码讲解</strong>。</p>
+</div>
+
+<h2 class="section-heading" id="sec-9">3.9 小结与下一章预告</h2>
 
 <div class="summary-box">
   <p><strong>本章要点</strong>：事件风暴用"发生了什么"倒推领域边界；27 个上下文按变化原因聚类成六大能力面；task 域五子域、plugin 域三边界是"复杂上下文内部再拆分"的范例；聚合根保护不变量（如任务状态机单向流转）；对话与任务两条主线在执行阶段汇合。</p>
@@ -173,21 +279,22 @@
     <aside class="toc-panel" id="tocPanel">
       <div class="toc-header">
         <h3 class="toc-title"><span class="toc-title-icon">📋</span>本章目录</h3>
-        <span class="toc-count">8 节</span>
+        <span class="toc-count">9 节</span>
       </div>
-      <nav class="toc-nav" id="tocNav"><a class="toc-item" href="#sec-1" data-target="sec-1"><span class="toc-num">3.1</span><span class="toc-text">本章导读</span></a><a class="toc-item" href="#sec-2" data-target="sec-2"><span class="toc-num">3.2</span><span class="toc-text">事件风暴：从事件倒推设计</span></a><a class="toc-item" href="#sec-3" data-target="sec-3"><span class="toc-num">3.3</span><span class="toc-text">27 个限界上下文的全景</span></a><a class="toc-item" href="#sec-4" data-target="sec-4"><span class="toc-num">3.4</span><span class="toc-text">深入解剖：task 域的五子域</span></a><a class="toc-item" href="#sec-5" data-target="sec-5"><span class="toc-num">3.5</span><span class="toc-text">深入解剖：plugin 域的三边界</span></a><a class="toc-item" href="#sec-6" data-target="sec-6"><span class="toc-num">3.6</span><span class="toc-text">核心聚合：领域的锚点</span></a><a class="toc-item" href="#sec-7" data-target="sec-7"><span class="toc-num">3.7</span><span class="toc-text">两条业务主线的交汇</span></a><a class="toc-item" href="#sec-8" data-target="sec-8"><span class="toc-num">3.8</span><span class="toc-text">小结与下一章预告</span></a></nav>
-      <div class="toc-footer"><a class="toc-github" href="https://github.com/fuzhengwei/deepseek-harness-java" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>查看源码</a></div>
+      <nav class="toc-nav" id="tocNav"><a class="toc-item" href="#sec-1" data-target="sec-1"><span class="toc-num">3.1</span><span class="toc-text">本章导读</span></a><a class="toc-item" href="#sec-2" data-target="sec-2"><span class="toc-num">3.2</span><span class="toc-text">事件风暴：从事件倒推设计</span></a><a class="toc-item" href="#sec-3" data-target="sec-3"><span class="toc-num">3.3</span><span class="toc-text">27 个限界上下文的全景</span></a><a class="toc-item" href="#sec-4" data-target="sec-4"><span class="toc-num">3.4</span><span class="toc-text">深入解剖：task 域的五子域</span></a><a class="toc-item" href="#sec-5" data-target="sec-5"><span class="toc-num">3.5</span><span class="toc-text">深入解剖：plugin 域的三边界</span></a><a class="toc-item" href="#sec-6" data-target="sec-6"><span class="toc-num">3.6</span><span class="toc-text">核心聚合：领域的锚点</span></a><a class="toc-item" href="#sec-7" data-target="sec-7"><span class="toc-num">3.7</span><span class="toc-text">两条业务主线的交汇</span></a><a class="toc-item" href="#sec-8" data-target="sec-8"><span class="toc-num">3.8</span><span class="toc-text">课程补充：从 6 组到 37 个能力点的逐模块地图</span></a><a class="toc-item" href="#sec-9" data-target="sec-9"><span class="toc-num">3.9</span><span class="toc-text">小结与下一章预告</span></a></nav>
+      <div class="toc-footer"><a class="toc-github" href="https://gitcode.net/KnowledgePlanet/deepseek-harness-java" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>查看源码</a></div>
     </aside>
     <aside class="right-toolbar">
-      <a class="toolbar-btn toolbar-btn-github" href="https://github.com/fuzhengwei/deepseek-harness-java" target="_blank" rel="noopener" title="GitHub 源码" aria-label="GitHub 源码">
+      <a class="toolbar-btn toolbar-btn-github" href="https://gitcode.net/KnowledgePlanet/deepseek-harness-java" target="_blank" rel="noopener" title="查看源码" aria-label="查看源码">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
       </a>
     </aside>
   </div>
-  <script src="js/highlight.js?v=20260906-5"></script>
-  <script src="js/progress.js?v=20260906-5"></script>
-  <script src="js/flowchart.js?v=20260906-5"></script>
-  <script src="js/main.js?v=20260906-5"></script>
+  <script src="js/highlight.js?v=20260906-9"></script>
+  <script src="js/progress.js?v=20260906-9"></script>
+  <script src="js/flowchart.js?v=20260906-9"></script>
+  <script src="js/quiz.js?v=20260906-9"></script>
+  <script src="js/main.js?v=20260906-9"></script>
   <script>
     window.addEventListener('scroll', () => {
       const h = document.documentElement;

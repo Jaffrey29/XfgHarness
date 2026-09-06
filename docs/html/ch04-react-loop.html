@@ -7,9 +7,9 @@
   <meta name="description" content="整个系统的心脏——一个 769 行的类如何驱动&quot;思考-行动-观察&quot;">
   <link rel="canonical" href="https://fuzhengwei.github.io/deepseek-harness-java/docs/html/ch04-react-loop.html">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
-  <link rel="stylesheet" href="css/book.css?v=20260906-5">
-  <link rel="stylesheet" href="css/site.css?v=20260906-5">
-  <link rel="stylesheet" href="css/flowchart.css?v=20260906-5">
+  <link rel="stylesheet" href="css/book.css?v=20260906-9">
+  <link rel="stylesheet" href="css/site.css?v=20260906-9">
+  <link rel="stylesheet" href="css/flowchart.css?v=20260906-9">
 </head>
 <body data-chapter="ch04">
   <div class="reading-progress" id="readingProgress"></div>
@@ -18,7 +18,7 @@
       <div class="sidebar-brand">
         <a class="brand-lockup" href="index.html" title="回到首页">
           <span class="brand-tile">📚</span>
-          <span class="brand-meta"><span class="brand-name">Harness 教程</span><span class="brand-sub">Java 实战 · 17 章</span></span>
+          <span class="brand-meta"><span class="brand-name">Harness 教程</span><span class="brand-sub">Java 实战 · 17 页</span></span>
         </a>
         <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
       </div>
@@ -201,7 +201,7 @@ while (true) {
 
 <p>本章主链路（<code>kick → turn → step</code>）只展现了 Agent 引擎的"骨架"。下面四个细节决定了它在真实工作负载下能否<strong>不出错、不丢消息、不浪费 token</strong>——它们都在源码里，但主章节没展开，是课程里覆盖不全的部分。</p>
 
-<h3 class="sub-heading">4.10.1 Inbox 的双队列语义</h3>
+<h3 class="sub-heading">4.9.1 Inbox 的双队列语义</h3>
 
 <p><code>Inbox</code>（📦 <code>domain/agent/service/Inbox.java</code>）持有<strong>两个有序列表</strong>，分别对应不同的"注入时机"：</p>
 
@@ -237,7 +237,7 @@ public List<Message> claim(InboxTarget target, int turn) {
   <li><strong>uniqueness 校验</strong>：跨两个列表的全集做 <code>HashSet</code> 去重，重复 id 直接抛 <code>IllegalStateException</code>——防止同一消息被排到两次。</li>
 </ul>
 
-<h3 class="sub-heading">4.10.2 "持久化先于状态变更"的因果序</h3>
+<h3 class="sub-heading">4.9.2 "持久化先于状态变更"的因果序</h3>
 
 <p>Inbox 每次变更（append/prepend/replace/clear）的内部流程是<strong>先写事件，再改内存</strong>：</p>
 
@@ -260,7 +260,7 @@ public List<Message> splice(target, start, deleteCount, inserted) {
   <p style="font-size: 13px; color: var(--color-text-secondary);">"持久化先于状态变更"看似多此一举，但它让"重建"和"重放"在因果上完全等价——任何时刻只要按 seq 重放所有事件，结果与实时运行一致。这正是第5章"事件溯源"在 Inbox 上的具体落地。</p>
 </div>
 
-<h3 class="sub-heading">4.10.3 buildRequest：上下文截断公式</h3>
+<h3 class="sub-heading">4.9.3 buildRequest：上下文截断公式</h3>
 
 <p><code>step()</code> 每次发请求前都要从 <code>session.deriveMessages()</code> 重建历史，再按 token 预算裁剪。完整逻辑（<code>ReactLoopAgent.buildRequest()</code>，第 611 行起）：</p>
 
@@ -293,7 +293,7 @@ private GenerateOptions buildRequest(PromptAssembly assembly, long turn, long st
 
 <p><strong>token 估算</strong>很粗：<code>(int) Math.ceil(text.length() / 4.0)</code>，对中文实际是 1.5~2 token/字，对代码标识符约 0.25 token/字符，所以预算偏保守（多裁一些）。在 <code>MEMORY.md</code> 的"已知隐患"里也标记了这一点。</p>
 
-<h3 class="sub-heading">4.10.4 temperature 可配置：踩过的 400 坑</h3>
+<h3 class="sub-heading">4.9.4 temperature 可配置：踩过的 400 坑</h3>
 
 <p>代码里有一段很不起眼的常量：</p>
 
@@ -325,7 +325,60 @@ java -Dharness.agent.temperature=1 -jar app.jar
   <p style="font-size: 13px; color: var(--color-text-secondary);">"可配置 + 默认留空"是一个常被忽视的工程原则：上游规则会变，今天只接受 1、明天可能支持 0~2；与其把参数写死导致每次模型变更都要改代码+重打包，不如让出配置权，让上游规则自己消化。temperature、context-window、request-timeout 都是这个思路。</p>
 </div>
 
-<h2 class="section-heading" id="sec-10">4.10 小结与下一章预告</h2>
+<h2 class="section-heading" id="sec-10">4.10 课程补充：意图识别与工具选择纠偏</h2>
+
+<p>ReAct 循环的上游是意图链（第6章展开策略树细节），本节讲两个 case 层节点的工程细节——它们直接决定"模型第一步调什么工具"，也各自埋着一个本项目真实修过的 Bug。</p>
+
+<h3 class="sub-heading">4.10.1 AgentIntentNode：纯正则意图分类</h3>
+
+<p><code>AgentIntentNode.classify()</code>（📦 <code>cases/agent/node/AgentIntentNode.java</code>）是<strong>纯正则规则</strong>，没有 LLM 参与，按优先级短路返回四类意图：</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">优先级</th><th style="text-align:left;">条件</th><th style="text-align:left;">意图</th><th style="text-align:left;">下游效应</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>0</td><td>空消息</td><td><code>CLARIFICATION</code></td><td>向用户发起澄清</td></tr>
+      <tr><td>1</td><td>问候语全文匹配（<code>^(你好|hi|thanks...)$</code>）</td><td><code>CHAT</code></td><td>直接闲聊回复</td></tr>
+      <tr><td>2</td><td>文件路径 / 目录路径 / 代码围栏 / (代码关键词 AND 任务动词)</td><td><code>TASK_EXECUTION</code></td><td>注入"先调工具"指令</td></tr>
+      <tr><td>3</td><td>闲聊短语（你是谁/谢谢/bye...）</td><td><code>CHAT</code></td><td>闲聊回复</td></tr>
+      <tr><td>4</td><td>代码关键词（bug/api/线程/正则...）</td><td><code>CODE_QUESTION</code></td><td>讲解优先</td></tr>
+      <tr><td>5</td><td>解释词 AND 任务动词</td><td><code>CODE_QUESTION</code></td><td>讲解优先</td></tr>
+      <tr><td>6</td><td>任务动词（帮我/请/执行/修复/构建...）</td><td><code>TASK_EXECUTION</code></td><td>注入"先调工具"指令</td></tr>
+      <tr><td>7</td><td>文件系统关键词 AND 问号结尾</td><td><code>TASK_EXECUTION</code></td><td>注入"先调工具"指令</td></tr>
+      <tr><td>兜底</td><td>以上都不命中</td><td><code>CHAT</code></td><td>闲聊回复</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>规则顺序就是语义优先级：<strong>先收窄"必然是任务"的强信号</strong>（路径/代码围栏），再排除闲聊，再按弱信号组合判断。TASK_EXECUTION 消息会被 <code>AgentDispatchNode.prepareMessageText()</code> 改写，注入"请先使用可用工具完成下面的任务，不要在未使用工具前直接给出结论"——防止模型跳过工具直接"想象"答案。</p>
+
+<h3 class="sub-heading">4.10.2 真实 Bug 复盘：列目录场景的工具选择纠偏</h3>
+
+<p><code>AgentDispatchNode.buildDirectoryInstruction()</code>（📦 <code>cases/agent/node/AgentDispatchNode.java:115</code>）对"目录里有什么"类问题注入固定指令。这个函数曾经硬编码"必须调用 <code>fs_search</code>"——但 <code>fs_search</code> 是 glob 文件搜索（<code>pattern="*"</code> 会<strong>递归匹配所有文件</strong>），用来"列一级目录"会产生几千行的递归清单，模型拿到的是噪声不是答案。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-error);">
+  <div class="card-title">🐛 教训：注入指令里的工具名不能只看名字像</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">"search"这个名字让人以为它是目录列表器，实际是递归 glob。修复方式：指令改为推荐 <code>shell_execute</code> 执行 <code>ls -la &lt;dir&gt;</code> 或 <code>find &lt;dir&gt; -maxdepth 1 -type d</code>——语义精确（-maxdepth 1 限定一级），且系统提示词同步强化。给模型注入工具建议时，<strong>工具语义必须与任务形状严格对齐</strong>，名字相似性不算数。</p>
+</div>
+
+<div class="code-block"><pre>// AgentDispatchNode.buildDirectoryInstruction()（当前版本，:115 起）
+private static String buildDirectoryInstruction(String messageText) {
+    if (messageText == null || !DIRECTORY_QUESTION.matcher(messageText).find()) return null;
+    Matcher matcher = ABSOLUTE_PATH.matcher(messageText);
+    if (!matcher.find()) return null;
+    String directory = matcher.group(1);
+    return "你需要列出这个目录的一级子目录和文件。推荐用 `shell_execute` 执行 `ls -la \""
+         + directory + "\"` 获取完整列表，\n"
+         + "或者用 `find \"" + directory + "\" -maxdepth 1 -type d` 只列目录。\n"
+         + "拿到真实结果后，用 Markdown 列表展示所有一级项目，不要遗漏、不要模糊化。\n\n"
+         + "用户原始请求：" + messageText;
+}</pre></div>
+
+<p>指令里有两个工程细节值得注意：<code>ABSOLUTE_PATH</code> 正则在空白和常见中英文标点处截断（避免把后续说明文字吞进路径）；指令尾部附<strong>用户原始请求</strong>——注入指令替换了原文，不带回原文模型就丢失了用户的完整语境。</p>
+
+<h2 class="section-heading" id="sec-11">4.11 小结与下一章预告</h2>
 
 <div class="summary-box">
   <p><strong>本章要点</strong>：三级驱动 kick→turn→step；单 turn ≤ 50 步、续写 ≤ 4 次是安全护栏；取消用 AtomicBoolean + 100ms 轮询实现协作式中断保证事件完整；midTurnContinuation 标志修复了"工具结果送不到模型"的经典 Bug；Flow.Publisher 让 Domain 不依赖 HTTP 客户端。</p>
@@ -339,21 +392,22 @@ java -Dharness.agent.temperature=1 -jar app.jar
     <aside class="toc-panel" id="tocPanel">
       <div class="toc-header">
         <h3 class="toc-title"><span class="toc-title-icon">📋</span>本章目录</h3>
-        <span class="toc-count">10 节</span>
+        <span class="toc-count">11 节</span>
       </div>
-      <nav class="toc-nav" id="tocNav"><a class="toc-item" href="#sec-1" data-target="sec-1"><span class="toc-num">4.1</span><span class="toc-text">本章导读</span></a><a class="toc-item" href="#sec-2" data-target="sec-2"><span class="toc-num">4.2</span><span class="toc-text">ReAct 模式回顾</span></a><a class="toc-item" href="#sec-3" data-target="sec-3"><span class="toc-num">4.3</span><span class="toc-text">三级驱动结构：kick → turn → step</span></a><a class="toc-item" href="#sec-4" data-target="sec-4"><span class="toc-num">4.4</span><span class="toc-text">Phase 状态机与协作式取消</span></a><a class="toc-item" href="#sec-5" data-target="sec-5"><span class="toc-num">4.5</span><span class="toc-text">流式组装的细节：Flow + CountDownLatch + BlockAssembler</span></a><a class="toc-item" href="#sec-6" data-target="sec-6"><span class="toc-num">4.6</span><span class="toc-text">真实 Bug 复盘：midTurnContinuation 标志的诞生</span></a><a class="toc-item" href="#sec-7" data-target="sec-7"><span class="toc-num">4.7</span><span class="toc-text">max_tokens 截断的受控续写</span></a><a class="toc-item" href="#sec-8" data-target="sec-8"><span class="toc-num">4.8</span><span class="toc-text">与外部世界的接口</span></a><a class="toc-item" href="#sec-9" data-target="sec-9"><span class="toc-num">4.9</span><span class="toc-text">课程补充：Inbox 双队列与请求构建细节</span></a><a class="toc-item" href="#sec-10" data-target="sec-10"><span class="toc-num">4.10</span><span class="toc-text">小结与下一章预告</span></a></nav>
-      <div class="toc-footer"><a class="toc-github" href="https://github.com/fuzhengwei/deepseek-harness-java" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>查看源码</a></div>
+      <nav class="toc-nav" id="tocNav"><a class="toc-item" href="#sec-1" data-target="sec-1"><span class="toc-num">4.1</span><span class="toc-text">本章导读</span></a><a class="toc-item" href="#sec-2" data-target="sec-2"><span class="toc-num">4.2</span><span class="toc-text">ReAct 模式回顾</span></a><a class="toc-item" href="#sec-3" data-target="sec-3"><span class="toc-num">4.3</span><span class="toc-text">三级驱动结构：kick → turn → step</span></a><a class="toc-item" href="#sec-4" data-target="sec-4"><span class="toc-num">4.4</span><span class="toc-text">Phase 状态机与协作式取消</span></a><a class="toc-item" href="#sec-5" data-target="sec-5"><span class="toc-num">4.5</span><span class="toc-text">流式组装的细节：Flow + CountDownLatch + BlockAssembler</span></a><a class="toc-item" href="#sec-6" data-target="sec-6"><span class="toc-num">4.6</span><span class="toc-text">真实 Bug 复盘：midTurnContinuation 标志的诞生</span></a><a class="toc-item" href="#sec-7" data-target="sec-7"><span class="toc-num">4.7</span><span class="toc-text">max_tokens 截断的受控续写</span></a><a class="toc-item" href="#sec-8" data-target="sec-8"><span class="toc-num">4.8</span><span class="toc-text">与外部世界的接口</span></a><a class="toc-item" href="#sec-9" data-target="sec-9"><span class="toc-num">4.9</span><span class="toc-text">课程补充：Inbox 双队列与请求构建细节</span></a><a class="toc-item" href="#sec-10" data-target="sec-10"><span class="toc-num">4.10</span><span class="toc-text">课程补充：意图识别与工具选择纠偏</span></a><a class="toc-item" href="#sec-11" data-target="sec-11"><span class="toc-num">4.11</span><span class="toc-text">小结与下一章预告</span></a></nav>
+      <div class="toc-footer"><a class="toc-github" href="https://gitcode.net/KnowledgePlanet/deepseek-harness-java" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>查看源码</a></div>
     </aside>
     <aside class="right-toolbar">
-      <a class="toolbar-btn toolbar-btn-github" href="https://github.com/fuzhengwei/deepseek-harness-java" target="_blank" rel="noopener" title="GitHub 源码" aria-label="GitHub 源码">
+      <a class="toolbar-btn toolbar-btn-github" href="https://gitcode.net/KnowledgePlanet/deepseek-harness-java" target="_blank" rel="noopener" title="查看源码" aria-label="查看源码">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
       </a>
     </aside>
   </div>
-  <script src="js/highlight.js?v=20260906-5"></script>
-  <script src="js/progress.js?v=20260906-5"></script>
-  <script src="js/flowchart.js?v=20260906-5"></script>
-  <script src="js/main.js?v=20260906-5"></script>
+  <script src="js/highlight.js?v=20260906-9"></script>
+  <script src="js/progress.js?v=20260906-9"></script>
+  <script src="js/flowchart.js?v=20260906-9"></script>
+  <script src="js/quiz.js?v=20260906-9"></script>
+  <script src="js/main.js?v=20260906-9"></script>
   <script>
     window.addEventListener('scroll', () => {
       const h = document.documentElement;

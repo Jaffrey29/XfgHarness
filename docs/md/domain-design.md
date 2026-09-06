@@ -181,6 +181,8 @@ flowchart LR
 
 接入方式识别：`JAVA_NATIVE`（进程内 URLClassLoader）、`DSH_NODE_BRIDGE`（Node sidecar，JSON-RPC stdio）、`DSH_PACKAGE`/`CODEX`/`CORDIS`（识别后 runnable=false，保留扩展点）。
 
+> 想知道每个模块**怎么用、关键源码长啥样、怎么走**——见 [`docs/md/domain-course/`](domain-course/README.md)（**领域模块课程**：9 章 / 37 个模块的教程分章，从 agent 循环到协议工作流，附学习目标 + 思考题）。本文讲"为什么要这么分 + 怎么流"的叙事，那份讲"每个模块怎么写 / 怎么用"的教学。
+
 ## 3. 核心聚合与领域对象
 
 ### 3.1 Agent 聚合
@@ -349,3 +351,13 @@ Domain 定义端口，Infrastructure 提供实现。关键端口：
 5. **长会话性能**：`deriveMessages` 全量重建 O(n²)；token 预算用 `length/4` 粗估。
 6. **E2B 沙箱只有 Stub**；CODEX/CORDIS 插件包型识别后 runnable=false 为死路径；MCP 与插件 Bridge 互不打通。
 7. **工作流 SSE 只推终态事件**，无增量。
+
+---
+
+## 8. 延伸阅读
+
+> 四份领域文档的分工：
+> - 本文件 (`docs/md/domain-design.md`)：事件风暴 + 限界上下文 + 核心聚合 + 领域事件 + 策略树 + 端口-适配器对照（**叙事主线**）。
+> - `docs/md/domain-case-deep-dive.md`：策略树基础设施 + `ReactLoopAgent` 状态机 + Inbox 与回填 + 提交链 / 审批链 / 工作流链 + Agent 内置工具详解（**关键实现深挖**）。
+> - `docs/md/domain-modules-reference.md`：逐模块速查（37 个能力点的用途、子包分层、关键类、端口、与谁打交道、注意事项）（**模块清单与定位**）。
+> - [`docs/md/domain-course/`](domain-course/README.md)：9 章教程分章讲解，每章按"学习目标 / 关键源码 / 设计意图 / 思考题"组织（**教程正文**）。

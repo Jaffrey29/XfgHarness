@@ -517,6 +517,8 @@ flowchart LR
 
 `plugin` 域拆为三条边界：**Registry**（`PluginRegistryService`，安装/元数据/启停）、**Bridge**（`PluginBridgeService`，识别 `JAVA_NATIVE`/`DSH_NODE_BRIDGE`/`CODEX`/`CORDIS` 并生成绑定计划）、**Runtime**（`PluginRuntimeService`，启动/停止/查询实例）。
 
+> 想按"模块名"反查"哪个包里有什么、关键类与端口在哪"——见 [`docs/md/domain-modules-reference.md`](docs/md/domain-modules-reference.md)（**领域模块速查**：逐个讲解 37 个能力点的用途、子包分层、关键类、端口）。本节是"为什么这样分 + 怎么流"的叙事视角，模块速查是"每个包里有什么"的字典视角。
+
 ### 4.3 核心聚合
 
 - **Agent**：聚合根服务 `ReactLoopAgent`，持有 `SessionLog`、`Inbox`、`ILlmRuntimePort`、`ToolRegistry`、`ToolCallExecutor`、`SystemPromptAssembler`。单 turn 上限 50 步，max_tokens 受控续写最多 4 次，工具调用后经 `midTurnContinuation` 标志跳过 inbox 检查直接续步；取消用 `AtomicBoolean` + 100ms 轮询。
@@ -564,7 +566,7 @@ Domain 定义端口，Infrastructure 实现。关键端口：
 | `IWorkflowEnginePort` | `LocalWorkflowEnginePort` |
 | `AgentFactoryPort` | `AgentFactory`（组合根：装配 `ReactLoopAgent` + `ToolCallExecutor`） |
 
-> 更完整的领域说明（事件清单、全部端口、子域细节）见 [`docs/domain-design.md`](docs/md/domain-design.md)。
+> 更完整的领域说明（事件清单、全部端口、子域细节）见 [`docs/domain-design.md`](docs/md/domain-design.md)；**逐模块速查（含 37 个模块的用途/子包/关键类/端口/关系）**见 [`docs/domain-modules-reference.md`](docs/md/domain-modules-reference.md)。
 
 ---
 
@@ -835,4 +837,6 @@ MySQL 承载结构化状态和事件（默认 profile）；standalone profile �
 | --- | --- |
 | [`docs/architecture.drawio`](docs/md/architecture.drawio) | 总体架构图（draw.io 源文件） |
 | [`docs/domain-design.md`](docs/md/domain-design.md) | 领域设计详解：事件风暴、全部事件清单、端口与子域细节 |
+| [`docs/domain-modules-reference.md`](docs/md/domain-modules-reference.md) | **领域模块速查**：逐个讲解 37 个领域模块的用途、子包分层、关键类、端口、与谁打交道 |
+| [`docs/domain-course/`](docs/md/domain-course/README.md) | **领域模块课程**（教程分章）：9 章逐模块讲解，按"学习目标 / 关键源码 / 设计意图 / 与谁打交道 / 思考题"组织；文件名不带序号，方便后续增删调序 |
 | [`docs/java-plugin-development.md`](docs/md/java-plugin-development.md) | 插件开发指南：Archetype 命令、代码模板、HTTP 安装示例 |

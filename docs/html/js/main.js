@@ -141,7 +141,7 @@ const App = {
     if (domainLayer) showDetail(domainLayer);
   },
 
-  // 静态章节页增强：代码高亮 + 流程图 + 进度标记 + 已学完按钮
+  // 静态章节页增强：代码高亮 + 流程图 + 进度标记 + 已学完按钮 + 八股/面试标签
   enhanceStaticPage(chapterId) {
     this.staticMode = true;
     const ch = this.chapters.find(c => c.id === chapterId);
@@ -156,6 +156,9 @@ const App = {
     // 标题锚点 id（TOC 跳转用）
     const headings = body.querySelectorAll('h2.section-heading, h1.chapter-title');
     headings.forEach((h, i) => { if (!h.id) h.id = 'sec-' + (i + 1); });
+
+    // 八股 / 面试 标签系统：识别 summary-box-bagu 和 #quizArea 后插入标签条
+    this.installChapterTabs(body);
 
     // 已学完按钮（追加到正文末）
     const footer = document.createElement('div');
@@ -176,6 +179,132 @@ const App = {
 
     // 右侧「本章目录」滚动高亮 + 平滑跳转
     this.initTocScrollspy();
+  },
+
+  /**
+   * 章节标签页（独立可点击的 Tab）
+   * - 三个标签：📖 文章 · 📋 八股 · 📝 面试
+   * - 每个标签相互独立，点哪个显示哪个 section
+   * - 默认显示「文章」；点击切换显示/隐藏
+   * - 八股区：通过 .summary-box-bagu 识别（div 含 class summary-box-bagu）
+   * - 面试区：通过 #quizArea 容器识别（其后紧跟 <script> 提供题库）
+   */
+  installChapterTabs(body) {
+    // 1) 找到八股区（含 summary-box-bagu 类），并把整块打上 data-tab-section="bagu"
+    const baguBox = body.querySelector('.summary-box-bagu');
+    if (baguBox) baguBox.setAttribute('data-tab-section', 'bagu');
+
+    // 2) 找到面试区（#quizArea 容器），并把它和其后直系兄弟 <script> 都打 bagu/quiz
+    const quizArea = body.querySelector('#quizArea');
+    if (quizArea) {
+      quizArea.setAttribute('data-tab-section', 'quiz');
+      // 紧随其后的 <script> 标签属于面试区（提供题库），也打 quiz
+      let n = quizArea.nextElementSibling;
+      while (n && n.tagName === 'SCRIPT') {
+        n.setAttribute('data-tab-section', 'quiz');
+        n = n.nextElementSibling;
+      }
+    }
+
+    // 3) 找到文章区：直接子元素中除上述以外的所有顶级 section 都视为 article
+    //    兼容：通过包装容器（如果存在）标整体，否则逐个打标
+    const topChildren = Array.from(body.children);
+    let baguCount = baguBox ? baguBox.querySelectorAll('.qa-item').length : 0;
+    const hasArticle = topChildren.some(c => !c.hasAttribute('data-tab-section'));
+    const hasBagu = !!baguBox;
+    const hasQuiz = !!quizArea;
+
+    if (!hasBagu && !hasQuiz) return;  // 两块都没有就不出标签条
+
+    // 给"文章"区域子元素打标（只给顶层直系子元素打）
+    topChildren.forEach(child => {
+      if (!child.hasAttribute('data-tab-section')) {
+        child.setAttribute('data-tab-section', 'article');
+      }
+    });
+
+    // 4) 构造标签条
+    const nav = document.createElement('div');
+    nav.className = 'chapter-tabs-nav';
+    nav.setAttribute('role', 'tablist');
+    nav.setAttribute('aria-label', '章节内容切换');
+
+    const tabDefs = [];
+    if (hasArticle) tabDefs.push({ id: 'article', icon: '📖', label: '文章', active: true });
+    if (hasBagu)    tabDefs.push({ id: 'bagu',    icon: '📋', label: '八股', badge: baguCount });
+    if (hasQuiz)    tabDefs.push({ id: 'quiz',    icon: '📝', label: '面试' });
+
+    // 标签切换函数
+    const switchTab = (tabId) => {
+      nav.querySelectorAll('.chapter-tab-btn').forEach(b =>
+        b.classList.toggle('active', b.dataset.tab === tabId)
+      );
+      // 切换显示：以 chapter-tabs-nav（自身）外的顶级子元素为准
+      Array.from(body.children).forEach(child => {
+        if (child === nav) return;
+        const sec = child.getAttribute('data-tab-section') || 'article';
+        child.classList.toggle('tab-hidden', sec !== tabId);
+      });
+      // 切到 quiz 时如果还没渲染，主动跑一下 setTimeout 里的 render 调用
+      if (tabId === 'quiz' && quizArea && !quizArea.querySelector('.quiz-section')) {
+        // 重新触发：克隆并重新执行紧跟其后的 script 即可
+        const scripts = [];
+        let n = quizArea.nextElementSibling;
+        while (n && n.tagName === 'SCRIPT') { scripts.push(n); n = n.nextElementSibling; }
+        if (scripts.length) {
+          scripts.forEach(old => {
+            const fresh = document.createElement('script');
+            Array.from(old.attributes).forEach(attr => fresh.setAttribute(attr.name, attr.value));
+            fresh.textContent = old.textContent;
+            old.parentNode.replaceChild(fresh, old);
+          });
+        }
+      }
+      // 吸顶样式刷新
+      requestAnimationFrame(() => {
+        const rect = nav.getBoundingClientRect();
+        const headerRect = document.querySelector('.content-header')?.getBoundingClientRect();
+        const bottom = headerRect ? headerRect.bottom : 60;
+        nav.classList.toggle('is-stuck', Math.abs(rect.top - bottom) < 2);
+      });
+    };
+
+    tabDefs.forEach(def => {
+      const btn = document.createElement('button');
+      btn.className = 'chapter-tab-btn' + (def.active ? ' active' : '');
+      btn.setAttribute('role', 'tab');
+      btn.setAttribute('data-tab', def.id);
+      btn.type = 'button';
+      btn.innerHTML = `<span class="tab-icon">${def.icon}</span>` +
+                      `<span>${def.label}</span>` +
+                      (def.badge != null ? `<span class="tab-badge">${def.badge}</span>` : '');
+      btn.addEventListener('click', e => {
+        e.preventDefault();
+        switchTab(def.id);
+      });
+      nav.appendChild(btn);
+    });
+
+    // 5) 插入标签条到 body 开头（在第一个 article 元素之前）
+    body.insertBefore(nav, body.firstChild);
+
+    // 6) 初始化：激活默认标签，隐藏其它内容
+    const activeTab = (tabDefs.find(t => t.active) || tabDefs[0]).id;
+    Array.from(body.children).forEach(child => {
+      if (child === nav) return;
+      const sec = child.getAttribute('data-tab-section') || 'article';
+      child.classList.toggle('tab-hidden', sec !== activeTab);
+    });
+
+    // 7) 滚动时切换吸顶样式（取自 sticky top，可视需求再加）
+    const onScroll = () => {
+      const rect = nav.getBoundingClientRect();
+      const headerRect = document.querySelector('.content-header')?.getBoundingClientRect();
+      const bottom = headerRect ? headerRect.bottom : 60;
+      nav.classList.toggle('is-stuck', Math.abs(rect.top - bottom) < 2);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
   },
 
   renderSidebar() {
@@ -297,7 +426,7 @@ const App = {
           <p class="home-hero-desc">17 章渐进式教程，基于开源项目 <strong>deepseek-harness-java</strong>，<br>从跑起来到读懂 ReAct 循环、事件溯源、策略树、插件体系、审批治理与平台能力。</p>
           <div class="home-hero-actions">
             <a class="home-btn primary" href="#ch00">开始学习<span class="btn-arrow">→</span></a>
-            <a class="home-btn ghost" href="https://github.com/fuzhengwei/deepseek-harness-java" target="_blank">GitHub 仓库</a>
+            <a class="home-btn ghost" href="https://gitcode.net/KnowledgePlanet/deepseek-harness-java" target="_blank" rel="noopener">查看源码</a>
           </div>
           <div class="home-hero-stats">
             <div class="home-stat"><div class="home-stat-num">17</div><div class="home-stat-label">章节</div></div>
@@ -363,8 +492,11 @@ const App = {
     // 生成本章目录 TOC
     this.renderTOC();
 
-    // 章节底部「标记完成」按钮
+    // 八股 / 面试 标签
     const contentBody = document.getElementById('contentBody');
+    this.installChapterTabs(contentBody);
+
+    // 章节底部「标记完成」按钮
     const footer = document.createElement('div');
     footer.className = 'chapter-footer';
     footer.innerHTML = `<button class="home-btn primary" id="markDoneBtn">✓ 标记本章已学完</button>`;

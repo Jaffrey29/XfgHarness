@@ -19,7 +19,7 @@ CHAPTERS_DIR = ROOT / 'chapters'
 # 部署域名（百度收录需要绝对 URL；换域名只改这一行）
 SITE_URL = 'https://fuzhengwei.github.io/deepseek-harness-java/docs/html'
 SITE_TITLE = 'DeepSeek Harness Java 实战教程'
-ASSET_VERSION = '20260906-5'
+ASSET_VERSION = '20260906-9'
 
 # 阅读/滚动进度条脚本（普通字符串：JS 花括号不能进 f-string）
 SCROLL_PROGRESS_JS = """  <script>
@@ -48,6 +48,7 @@ def load_registry():
 
 def strip_tags(s):
     return re.sub(r'<[^>]+>', '', s)
+
 
 def asset(path):
     return f'{path}?v={ASSET_VERSION}'
@@ -344,6 +345,14 @@ def section_text(section):
 def page_slug(ch):
     return ch['frag'].replace('.html', '')
 
+
+def page_title(ch):
+    return f'第{ch["num"]}章 {ch["title"]}'
+
+
+def page_desc_text(ch):
+    return page_desc(read_fragment(ch))
+
 def page_file(ch):
     return ROOT / page_slug(ch) + '.html' if False else ROOT / (page_slug(ch) + '.html')
 
@@ -377,7 +386,7 @@ def with_h2_ids_v2(frag_html):
     return ''.join(out), toc
 
 def render_sidebar(chapters, current_id):
-    """静态侧边栏：按篇分组 + 每篇主色圆点 + emoji 徽章；当前章 active"""
+    """静态侧边栏：按篇分组 + 每篇主色圆点 + emoji 徽章；当前章 active。"""
     out, last = [], None
     def close_group():
         if last is not None:
@@ -468,7 +477,7 @@ def read_fragment(ch):
 def render_page(chapters, ch, prev_ch, next_ch):
     frag_raw = read_fragment(ch)
     frag, toc = with_h2_ids_v2(frag_raw)
-    desc = page_desc(frag_raw)
+    desc = page_desc_text(ch)
     slug = page_slug(ch)
     canon = f'{SITE_URL}/{slug}.html'
     prev_next = []
@@ -505,7 +514,7 @@ def render_page(chapters, ch, prev_ch, next_ch):
       <div class="sidebar-brand">
         <a class="brand-lockup" href="index.html" title="回到首页">
           <span class="brand-tile">📚</span>
-          <span class="brand-meta"><span class="brand-name">Harness 教程</span><span class="brand-sub">Java 实战 · 17 章</span></span>
+          <span class="brand-meta"><span class="brand-name">Harness 教程</span><span class="brand-sub">Java 实战 · 17 页</span></span>
         </a>
         <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
       </div>
@@ -543,10 +552,10 @@ def render_page(chapters, ch, prev_ch, next_ch):
         <span class="toc-count">{len(toc)} 节</span>
       </div>
       <nav class="toc-nav" id="tocNav">{render_toc(toc, ch["num"])}</nav>
-      <div class="toc-footer"><a class="toc-github" href="https://github.com/fuzhengwei/deepseek-harness-java" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>查看源码</a></div>
+      <div class="toc-footer"><a class="toc-github" href="https://gitcode.net/KnowledgePlanet/deepseek-harness-java" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>查看源码</a></div>
     </aside>
     <aside class="right-toolbar">
-      <a class="toolbar-btn toolbar-btn-github" href="https://github.com/fuzhengwei/deepseek-harness-java" target="_blank" rel="noopener" title="GitHub 源码" aria-label="GitHub 源码">
+      <a class="toolbar-btn toolbar-btn-github" href="https://gitcode.net/KnowledgePlanet/deepseek-harness-java" target="_blank" rel="noopener" title="查看源码" aria-label="查看源码">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
       </a>
     </aside>
@@ -554,6 +563,7 @@ def render_page(chapters, ch, prev_ch, next_ch):
   <script src="{asset('js/highlight.js')}"></script>
   <script src="{asset('js/progress.js')}"></script>
   <script src="{asset('js/flowchart.js')}"></script>
+  <script src="{asset('js/quiz.js')}"></script>
   <script src="{asset('js/main.js')}"></script>
 {SCROLL_PROGRESS_JS}</body>
 </html>'''
@@ -579,7 +589,7 @@ def render_index(chapters):
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{SITE_TITLE} — 从零精通 Agent Harness 的设计与实现</title>
-  <meta name="description" content="17 章渐进式实战教程，基于真实开源项目 deepseek-harness-java，深入 DDD 六边形架构、ReAct 循环、事件溯源、策略树、插件体系、审批治理、工作流、子代理与平台能力。">
+  <meta name="description" content="17 章正文，基于真实开源项目 deepseek-harness-java，深入 DDD 六边形架构、ReAct 循环、事件溯源、策略树、插件体系、审批治理、工作流、子代理与平台能力。">
   <link rel="canonical" href="{SITE_URL}/">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
   <link rel="stylesheet" href="{asset('css/book.css')}">
@@ -593,7 +603,7 @@ def render_index(chapters):
       <div class="sidebar-brand">
         <a class="brand-lockup" href="index.html" title="回到首页">
           <span class="brand-tile">📚</span>
-          <span class="brand-meta"><span class="brand-name">Harness 教程</span><span class="brand-sub">Java 实战 · 17 章</span></span>
+          <span class="brand-meta"><span class="brand-name">Harness 教程</span><span class="brand-sub">Java 实战 · 17 页</span></span>
         </a>
         <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
       </div>
@@ -613,7 +623,7 @@ def render_index(chapters):
           </a>
         </div>
         <div class="nav-buttons">
-          <a class="nav-btn next" href="{page_slug(chapters[0])}.html">第一章 →</a>
+          <a class="nav-btn next" href="ch00-intro.html">教程导读 →</a>
         </div>
       </div>
       <div class="content-body" id="contentBody">
@@ -623,16 +633,16 @@ def render_index(chapters):
           <div class="home-hero-inner">
             <div class="home-hero-eyebrow"><span class="tag-dot"></span>实战教程 · 基于真实开源项目</div>
             <h1 class="home-hero-title">把 Agent Harness<br>读得<span class="title-em">明明白白</span></h1>
-            <p class="home-hero-desc">17 章渐进式教程，基于开源项目 <strong>deepseek-harness-java</strong>，<br>从跑起来到读懂 ReAct 循环、事件溯源、策略树、插件体系、审批治理、工作流、子代理与平台能力。</p>
+            <p class="home-hero-desc">17 章正文，基于开源项目 <strong>deepseek-harness-java</strong>，<br>从跑起来到读懂 ReAct 循环、事件溯源、策略树、插件体系、审批治理、工作流、子代理与平台能力。</p>
             <div class="home-hero-actions">
-              <a class="home-btn primary" href="{page_slug(chapters[1])}.html">开始学习<span class="btn-arrow">→</span></a>
-              <a class="home-btn ghost" href="https://github.com/fuzhengwei/deepseek-harness-java" target="_blank">GitHub 仓库</a>
+              <a class="home-btn primary" href="ch00-intro.html">开始阅读<span class="btn-arrow">→</span></a>
+              <a class="home-btn ghost" href="https://gitcode.net/KnowledgePlanet/deepseek-harness-java" target="_blank" rel="noopener">查看源码</a>
             </div>
             <div class="home-hero-stats">
-              <div class="home-stat"><div class="home-stat-num">17</div><div class="home-stat-label">章节</div></div>
-              <div class="home-stat"><div class="home-stat-num">8</div><div class="home-stat-label">篇幅</div></div>
+              <div class="home-stat"><div class="home-stat-num">{len(chapters)}</div><div class="home-stat-label">页面</div></div>
+              <div class="home-stat"><div class="home-stat-num">{len(parts_grouped(chapters))}</div><div class="home-stat-label">篇幅</div></div>
               <div class="home-stat"><div class="home-stat-num">27</div><div class="home-stat-label">限界上下文</div></div>
-              <div class="home-stat"><div class="home-stat-num">7</div><div class="home-stat-label">Maven 模块</div></div>
+              <div class="home-stat"><div class="home-stat-num">37</div><div class="home-stat-label">领域能力点</div></div>
             </div>
           </div>
           <div class="home-hero-art">
@@ -645,6 +655,31 @@ def render_index(chapters):
         {HOME_ARCH_HTML}
         {HOME_JOURNEY_HTML}
         {cards}
+        <div class="home-author">
+          <div class="home-author-avatar" aria-hidden="true">小</div>
+          <div class="home-author-body">
+            <div class="home-author-head">
+              <span class="home-author-name">小傅哥</span>
+              <span class="home-author-role">一线互联网高级架构师</span>
+            </div>
+            <div class="home-author-desc">
+              《<span class="book-title">手写MyBatis：渐进式源码实践</span>》图书作者，长期深耕 Java 后端架构与中间件源码领域。
+              致力于把复杂的源码拆成 <strong>渐进式、可运行、可验证</strong> 的工程实践，让读者从跑起来到读懂。
+            </div>
+            <div class="home-author-works">
+              <span class="home-author-work">📘 WaLiCode</span>
+              <span class="home-author-work">⚙️ WaLiAPI</span>
+              <span class="home-author-work">🧩 WaLiOffice</span>
+              <span class="home-author-work">🤖 deepseek-harness-java</span>
+            </div>
+            <div class="home-author-link">
+              🔗 个人站：
+              <a href="https://walicode.xiaofuge.cn/" target="_blank" rel="noopener">walicode.xiaofuge.cn
+                <svg class="ext-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>
+              </a>
+            </div>
+          </div>
+        </div>
         <div class="home-tip">
           <div class="home-tip-icon">💡</div>
           <div class="home-tip-body">
@@ -664,12 +699,12 @@ def render_index(chapters):
     <aside class="toc-panel" id="tocPanel">
       <div class="toc-header">
         <h3 class="toc-title"><span class="toc-title-icon">🧭</span>站点导航</h3>
-        <span class="toc-count">8 篇</span>
+        <span class="toc-count">{len(parts_grouped(chapters))} 篇</span>
       </div>
       <nav class="toc-nav" id="tocNav">{render_sidebar(chapters, None)}</nav>
     </aside>
     <aside class="right-toolbar">
-      <a class="toolbar-btn toolbar-btn-github" href="https://github.com/fuzhengwei/deepseek-harness-java" target="_blank" title="GitHub 源码" style="text-decoration:none;color:inherit;">
+      <a class="toolbar-btn toolbar-btn-github" href="https://gitcode.net/KnowledgePlanet/deepseek-harness-java" target="_blank" title="GitHub 源码" style="text-decoration:none;color:inherit;">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
       </a>
     </aside>
@@ -677,6 +712,7 @@ def render_index(chapters):
   <script src="{asset('js/highlight.js')}"></script>
   <script src="{asset('js/progress.js')}"></script>
   <script src="{asset('js/flowchart.js')}"></script>
+  <script src="{asset('js/quiz.js')}"></script>
   <script src="{asset('js/main.js')}"></script>
 {SCROLL_PROGRESS_JS}</body>
 </html>'''
@@ -686,6 +722,7 @@ def parts_grouped(chapters):
     for ch in chapters:
         seen.setdefault(ch['section'], []).append(ch)
     return list(seen.items())
+
 
 def main():
     chapters = load_registry()
