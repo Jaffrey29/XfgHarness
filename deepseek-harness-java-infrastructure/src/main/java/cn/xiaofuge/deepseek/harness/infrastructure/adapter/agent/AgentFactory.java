@@ -12,7 +12,7 @@ import cn.xiaofuge.deepseek.harness.domain.plan.service.PlanModeService;
 import cn.xiaofuge.deepseek.harness.domain.agent.subagent.SubagentRegistry;
 import cn.xiaofuge.deepseek.harness.domain.agent.subagent.SubagentTool;
 import cn.xiaofuge.deepseek.harness.domain.hooks.IHookService;
-import cn.xiaofuge.deepseek.harness.domain.todo.TodoWriteTool;
+import cn.xiaofuge.deepseek.harness.domain.todo.service.TodoWriteTool;
 import cn.xiaofuge.deepseek.harness.domain.todo.service.TodoWriteService;
 import cn.xiaofuge.deepseek.harness.domain.llm.adapter.port.ILlmRuntimePort;
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionHeader;

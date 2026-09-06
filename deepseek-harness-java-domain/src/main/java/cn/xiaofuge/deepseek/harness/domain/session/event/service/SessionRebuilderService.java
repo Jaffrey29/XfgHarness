@@ -3,6 +3,7 @@ package cn.xiaofuge.deepseek.harness.domain.session.event.service;
 import cn.xiaofuge.deepseek.harness.domain.agent.model.entity.Phase;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.Inbox;
 import cn.xiaofuge.deepseek.harness.domain.model.entity.Message;
+import cn.xiaofuge.deepseek.harness.domain.session.ISessionEventLogService;
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionEvent;
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionHeader;
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionLog;

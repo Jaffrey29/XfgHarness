@@ -3,7 +3,7 @@ package cn.xiaofuge.deepseek.harness.cases.task.submit.node;
 import cn.xiaofuge.deepseek.harness.api.dto.task.SubmitTaskRequest;
 import cn.xiaofuge.deepseek.harness.api.dto.task.SubmitTaskResponse;
 import cn.xiaofuge.deepseek.harness.cases.task.submit.factory.SubmitTaskDynamicContext;
-import cn.xiaofuge.deepseek.harness.domain.shared.strategy.StrategyHandler;
+import cn.xiaofuge.deepseek.harness.domain.shared.StrategyHandler;
 import cn.xiaofuge.deepseek.harness.domain.runtime.IToolResolutionService;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;

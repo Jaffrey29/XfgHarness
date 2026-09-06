@@ -1,4 +1,4 @@
-package cn.xiaofuge.deepseek.harness.domain.session.event.service;
+package cn.xiaofuge.deepseek.harness.domain.session;
 
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionEvent;
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionHeader;

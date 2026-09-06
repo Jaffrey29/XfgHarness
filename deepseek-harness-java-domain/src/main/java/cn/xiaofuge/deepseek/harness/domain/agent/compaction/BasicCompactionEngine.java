@@ -15,6 +15,8 @@ import cn.xiaofuge.deepseek.harness.domain.session.event.service.SessionEventFac
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 基础压缩引擎。
@@ -28,6 +30,8 @@ import java.util.concurrent.CompletableFuture;
  * @website bugstack.cn
  */
 public class BasicCompactionEngine implements CompactionEngine {
+
+    private static final Logger log = LoggerFactory.getLogger(BasicCompactionEngine.class);
 
     private final LlmGenerationService llmGenerationService;
     private final long pressureThresholdTokens;
@@ -65,6 +69,8 @@ public class BasicCompactionEngine implements CompactionEngine {
             return CompletableFuture.completedFuture(null);
         }
 
+        log.info("[Compaction] 会话={} 触发压缩（trigger={} 消息数={} 估算token={} 阈值={}）",
+                session.sessionId(), trigger, messages.size(), estimatedTokens, pressureThresholdTokens);
         return compactNow(session, options);
     }
 
@@ -177,8 +183,12 @@ public class BasicCompactionEngine implements CompactionEngine {
             }
 
             if (startSeq < 0) {
+                log.warn("[Compaction] 未能定位需要替换的事件区间，放弃压缩");
                 return CompletableFuture.completedFuture(null);
             }
+
+            log.info("[Compaction] 压缩完成：压缩 {} 条消息为 1 条摘要，token {}→{}（节省 {}），seq范围=[{},{}]",
+                    toCompact.size(), tokensBefore, tokensAfter, tokensBefore - tokensAfter, startSeq, endSeq);
 
             // 追加摘要替换事件
             // 使用用户消息搭配替换操作

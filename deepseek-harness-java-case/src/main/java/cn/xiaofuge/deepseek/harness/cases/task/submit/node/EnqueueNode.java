@@ -3,7 +3,7 @@ package cn.xiaofuge.deepseek.harness.cases.task.submit.node;
 import cn.xiaofuge.deepseek.harness.api.dto.task.SubmitTaskRequest;
 import cn.xiaofuge.deepseek.harness.api.dto.task.SubmitTaskResponse;
 import cn.xiaofuge.deepseek.harness.cases.task.submit.factory.SubmitTaskDynamicContext;
-import cn.xiaofuge.deepseek.harness.domain.shared.strategy.StrategyHandler;
+import cn.xiaofuge.deepseek.harness.domain.shared.StrategyHandler;
 import cn.xiaofuge.deepseek.harness.domain.session.IHarnessSessionRegistryService;
 import cn.xiaofuge.deepseek.harness.domain.session.ISessionLogService;
 import cn.xiaofuge.deepseek.harness.domain.task.IHarnessExecutionService;
@@ -11,6 +11,8 @@ import cn.xiaofuge.deepseek.harness.domain.task.IHarnessTaskQueueService;
 import cn.xiaofuge.deepseek.harness.domain.task.execution.model.valobj.RuntimeExecutionPlanVO;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.time.Instant;
 
 /**
@@ -22,6 +24,8 @@ import java.time.Instant;
  */
 @Service("submitTaskEnqueueNode")
 public class EnqueueNode extends AbstractSubmitTaskNode {
+
+    private static final Logger log = LoggerFactory.getLogger(EnqueueNode.class);
 
     @Autowired
     private IHarnessSessionRegistryService harnessSessionRegistryService;
@@ -56,8 +60,12 @@ public class EnqueueNode extends AbstractSubmitTaskNode {
         );
 
         ctx.setSessionResult(harnessSessionRegistryService.openQueuedSession(runtimePlan));
+        log.info("[Submit] 创建排队会话完成，sessionId={} resolvedModel={}",
+                ctx.getSessionResult().sessionId(), ctx.getSessionResult().resolvedModel());
         ctx.setTaskResult(harnessTaskQueueService.createQueuedTask(ctx.getSessionResult().sessionId(), runtimePlan));
         ctx.setCurrentStatus(ctx.getTaskResult().status().name());
+        log.info("[Submit] 任务入队完成，taskId={} status={}",
+                ctx.getTaskResult().taskId(), ctx.getTaskResult().status().name());
 
         sessionLogService.recordTaskSubmission(
                 ctx.getSessionResult().sessionId(),
@@ -69,8 +77,12 @@ public class EnqueueNode extends AbstractSubmitTaskNode {
         );
 
         if (!approval.approvalRequired()) {
+            log.info("[Submit] 无需审批，立即触发执行 sessionId={}...", ctx.getSessionResult().sessionId());
             ctx.setCurrentStatus(harnessExecutionService
                     .executeSession(ctx.getSessionResult().sessionId()).status().name());
+            log.info("[Submit] 执行触发完成，sessionId={} status={}", ctx.getSessionResult().sessionId(), ctx.getCurrentStatus());
+        } else {
+            log.info("[Submit] 需要审批，任务挂起等待审批 taskId={}", ctx.getTaskResult().taskId());
         }
 
         return new SubmitTaskResponse(

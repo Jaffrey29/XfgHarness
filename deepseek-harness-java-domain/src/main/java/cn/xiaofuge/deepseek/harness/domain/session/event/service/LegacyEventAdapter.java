@@ -3,6 +3,7 @@ package cn.xiaofuge.deepseek.harness.domain.session.event.service;
 import cn.xiaofuge.deepseek.harness.domain.model.entity.Message;
 import cn.xiaofuge.deepseek.harness.domain.model.valobj.TextBlock;
 import cn.xiaofuge.deepseek.harness.domain.model.entity.MessageSource;
+import cn.xiaofuge.deepseek.harness.domain.session.ISessionEventLogService;
 import cn.xiaofuge.deepseek.harness.domain.session.ISessionLogService;
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionEvent;
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.valobj.SessionEventType;

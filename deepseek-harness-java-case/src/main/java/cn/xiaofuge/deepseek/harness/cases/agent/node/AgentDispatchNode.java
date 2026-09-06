@@ -10,10 +10,12 @@ import cn.xiaofuge.deepseek.harness.domain.model.valobj.ContentBlock;
 import cn.xiaofuge.deepseek.harness.domain.model.valobj.ImageAttachmentRef;
 import cn.xiaofuge.deepseek.harness.domain.model.valobj.ImageBlock;
 import cn.xiaofuge.deepseek.harness.domain.model.valobj.TextBlock;
-import cn.xiaofuge.deepseek.harness.domain.shared.strategy.StrategyHandler;
+import cn.xiaofuge.deepseek.harness.domain.shared.StrategyHandler;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -26,6 +28,8 @@ import java.util.regex.Pattern;
  */
 @Service("agentMessageDispatchNode")
 public class AgentDispatchNode extends AbstractAgentMessageNode {
+
+    private static final Logger log = LoggerFactory.getLogger(AgentDispatchNode.class);
 
     // 提取消息中的绝对路径：遇到空白和常见中英文标点即停止，避免把后续说明文字吞进路径。
     private static final Pattern ABSOLUTE_PATH = Pattern.compile("(/[^\s，。,；;：:\"'“”‘’（）()！？!?、<>]+)");
@@ -48,7 +52,10 @@ public class AgentDispatchNode extends AbstractAgentMessageNode {
                 new MessageSource.UserSource()
         );
         ctx.setUserMessage(userMessage);
+        log.info("[Dispatch] Agent={} 构造用户消息并发送到 inbox（intent={} blocks={} 文本长度={}）",
+                request.agentId(), intent, blocks.size(), messageText.length());
         ctx.getAgent().send(userMessage, InboxTarget.NEXT_TURN, true);
+        log.info("[Dispatch] Agent={} 消息已投递 inbox 并唤醒 Agent，等待执行...", request.agentId());
         return null;
     }
 
@@ -89,6 +96,7 @@ public class AgentDispatchNode extends AbstractAgentMessageNode {
                 blocks.add(new ImageBlock(new ImageAttachmentRef(data, mime, 0, 0)));
             } catch (IllegalArgumentException e) {
                 // 非法 base64：跳过该附件，不让整条消息失败
+                log.warn("[Dispatch] 图片附件解析失败，已跳过（原始长度={}）", raw.length());
             }
         }
     }

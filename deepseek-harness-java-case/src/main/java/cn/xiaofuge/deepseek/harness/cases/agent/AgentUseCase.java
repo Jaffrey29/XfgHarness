@@ -11,6 +11,8 @@ import cn.xiaofuge.deepseek.harness.domain.model.valobj.ToolCallBlock;
 import cn.xiaofuge.deepseek.harness.domain.runtime.setting.IModelSettingQueryService;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Agent 交互用例。
@@ -21,6 +23,8 @@ import org.springframework.beans.factory.annotation.Autowired;
  */
 @Service
 public class AgentUseCase implements IAgentUseCase {
+
+    private static final Logger log = LoggerFactory.getLogger(AgentUseCase.class);
 
     @Autowired
     private AgentMessageFactory agentMessageFactory;
@@ -36,12 +40,16 @@ public class AgentUseCase implements IAgentUseCase {
 
     @Override
     public AgentMessageResponse sendMessage(AgentMessageRequest request) {
+        log.info("[UseCase] Agent={} 收到消息发送请求（provider={} model={} streaming=false）",
+                request.agentId(), request.provider(), request.model());
         try {
             return agentMessageFactory.strategyHandler()
                     .apply(request, agentMessageFactory.newContext());
         } catch (RuntimeException e) {
+            log.error("[UseCase] Agent={} 消息发送失败（RuntimeException）：{}", request.agentId(), e.getMessage(), e);
             throw e;
         } catch (Exception e) {
+            log.error("[UseCase] Agent={} 消息发送失败：{}", request.agentId(), e.getMessage(), e);
             throw new RuntimeException(e);
         }
     }
@@ -51,15 +59,19 @@ public class AgentUseCase implements IAgentUseCase {
             AgentMessageRequest request,
             java.util.function.Consumer<String> deltaSink,
             java.util.function.Consumer<ToolCallBlock> toolCallSink) {
+        log.info("[UseCase] Agent={} 收到流式消息发送请求（provider={} model={}）",
+                request.agentId(), request.provider(), request.model());
         // 先解析或创建 Agent，以便回合开始前挂载增量接收器。
         // 策略处理器会复用这里的 Agent 实例。
         ReactLoopAgent agent = agentFactory.get(request.agentId());
         if (agent == null) {
             AgentOptions options = buildAgentOptions(request);
             String workDir = request.cwd() != null ? request.cwd() : System.getProperty("user.dir");
+            log.info("[UseCase] Agent={} 不存在，流式模式创建新实例（model={}）", request.agentId(), options.model());
             agent = agentFactory.create(request.agentId(), options, workDir);
         }
         if (request.provider() != null || request.model() != null) {
+            log.info("[UseCase] Agent={} 请求指定 provider/model，更新 options", request.agentId());
             agent.updateOptions(buildAgentOptions(request));
         }
         agent.setStreamDeltaSink(deltaSink);
@@ -71,6 +83,7 @@ public class AgentUseCase implements IAgentUseCase {
         } finally {
             agent.setStreamDeltaSink(null);
             agent.setStreamToolCallSink(null);
+            log.info("[UseCase] Agent={} 流式请求结束，已清理 sink", request.agentId());
         }
     }
 

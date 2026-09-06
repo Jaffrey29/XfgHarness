@@ -3,10 +3,12 @@ package cn.xiaofuge.deepseek.harness.cases.agent.node;
 import cn.xiaofuge.deepseek.harness.api.dto.agent.AgentMessageRequest;
 import cn.xiaofuge.deepseek.harness.api.dto.agent.AgentMessageResponse;
 import cn.xiaofuge.deepseek.harness.cases.agent.factory.AgentMessageDynamicContext;
-import cn.xiaofuge.deepseek.harness.domain.shared.strategy.StrategyHandler;
+import cn.xiaofuge.deepseek.harness.domain.shared.StrategyHandler;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.regex.Pattern;
 
@@ -22,6 +24,8 @@ import java.util.regex.Pattern;
  */
 @Service("agentMessageIntentNode")
 public class AgentIntentNode extends AbstractAgentMessageNode {
+
+    private static final Logger log = LoggerFactory.getLogger(AgentIntentNode.class);
 
     @Autowired
     @Qualifier("agentMessageDispatchNode")
@@ -59,6 +63,9 @@ public class AgentIntentNode extends AbstractAgentMessageNode {
         String msg = request.message() != null ? request.message().trim() : "";
         AgentMessageDynamicContext.MessageIntent intent = classify(msg);
         ctx.setIntent(intent);
+        log.info("[Intent] Agent={} 意图识别结果={}（消息长度={}，{}）",
+                request.agentId(), intent, msg.length(),
+                msg.length() > 60 ? msg.substring(0, 60) + "..." : msg);
         return null;
     }
 

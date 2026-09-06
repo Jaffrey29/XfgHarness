@@ -11,8 +11,10 @@ import cn.xiaofuge.deepseek.harness.domain.model.entity.MessageSource;
 import cn.xiaofuge.deepseek.harness.domain.model.valobj.ToolResultBlock;
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionEvent;
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionLog;
-import cn.xiaofuge.deepseek.harness.domain.shared.strategy.StrategyHandler;
+import cn.xiaofuge.deepseek.harness.domain.shared.StrategyHandler;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -28,14 +30,18 @@ import java.util.Map;
 @Service("agentMessageCollectNode")
 public class AgentCollectNode extends AbstractAgentMessageNode {
 
+    private static final Logger log = LoggerFactory.getLogger(AgentCollectNode.class);
+
     @Override
     protected AgentMessageResponse doApply(AgentMessageRequest request,
                                            AgentMessageDynamicContext ctx) throws Exception {
         var agent = ctx.getAgent();
+        log.info("[Collect] Agent={} 等待 Agent 空闲，开始收集会话结果...", request.agentId());
         try {
             agent.whenIdle().join();
         } catch (Exception e) {
             // 超时或异常时，直接返回已收集到的消息
+            log.warn("[Collect] Agent={} 等待空闲超时/异常，返回已收集消息：{}", request.agentId(), e.getMessage());
         }
 
         SessionLog session = agent.session();
@@ -85,6 +91,8 @@ public class AgentCollectNode extends AbstractAgentMessageNode {
             }
         }
 
+        log.info("[Collect] Agent={} 收集完成，共 {} 条消息，status={}",
+                request.agentId(), messages.size(), agent.status().name().toLowerCase());
         return new AgentMessageResponse(
                 request.agentId(),
                 session.sessionId(),

@@ -1,4 +1,4 @@
-package cn.xiaofuge.deepseek.harness.domain.shared.strategy;
+package cn.xiaofuge.deepseek.harness.domain.shared;
 
 /**
  * Strategy handler: one node in a strategy tree.

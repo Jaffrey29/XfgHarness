@@ -1,11 +1,10 @@
-package cn.xiaofuge.deepseek.harness.domain.todo;
+package cn.xiaofuge.deepseek.harness.domain.todo.service;
 
 import cn.xiaofuge.deepseek.harness.domain.model.valobj.TextBlock;
 import cn.xiaofuge.deepseek.harness.domain.model.valobj.ToolSchema;
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionLog;
 import cn.xiaofuge.deepseek.harness.domain.todo.model.valobj.TodoItem;
 import cn.xiaofuge.deepseek.harness.domain.todo.model.valobj.TodoWriteResultVO;
-import cn.xiaofuge.deepseek.harness.domain.todo.service.TodoWriteService;
 import cn.xiaofuge.deepseek.harness.domain.model.entity.ToolDefinition;
 import cn.xiaofuge.deepseek.harness.domain.model.entity.ToolExecutionResult;
 import cn.xiaofuge.deepseek.harness.domain.model.entity.ToolRunContext;

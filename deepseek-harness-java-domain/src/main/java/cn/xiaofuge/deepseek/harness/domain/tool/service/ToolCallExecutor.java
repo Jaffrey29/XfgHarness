@@ -15,7 +15,10 @@ import cn.xiaofuge.deepseek.harness.domain.hooks.model.valobj.HookPoint;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 // Domain 层不引入外部日志，由调用方负责记录
+// 注：为满足运行期可观测性需求，此处破例引入 slf4j 记录工具执行的关键步骤
 
 /**
  * Schedules one assistant step's tool calls.
@@ -35,6 +38,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public final class ToolCallExecutor {
 
+    private static final Logger log = LoggerFactory.getLogger(ToolCallExecutor.class);
     // Domain 层不持有日志器
 
     private final ToolRegistry registry;
@@ -124,6 +128,9 @@ public final class ToolCallExecutor {
             java.util.function.Consumer<Message> acceptContext
     ) {
         if (toolCalls.isEmpty()) return false;
+        log.info("[Tool] Turn#{} Step#{} 调度 {} 个工具调用：{}",
+                turn, step, toolCalls.size(),
+                toolCalls.stream().map(ToolCallBlock::name).toList());
 
         // 规划调用
         List<PlannedCall> planned = new ArrayList<>();
@@ -193,6 +200,8 @@ public final class ToolCallExecutor {
 
                 // PRE_TOOL_USE Hook：被拦截时跳过工具
                 if (shouldBlock(call.block.name())) {
+                    log.warn("[Tool] Turn#{} Step#{} 工具 {} 被 PreToolUse Hook 拦截，跳过执行",
+                            turn, step, call.block.name());
                     callSeqs[index] = appendToolCall(turn, step, call.block);
                     started++;
                     slots[index] = new Slot(null, ToolExecutionResult.fail(
@@ -203,6 +212,8 @@ public final class ToolCallExecutor {
 
                 // 运行期审批门禁：被 DENY 时不执行工具，记录合成失败结果
                 if (checkApproval(call.block.name(), call.execArgs).denied()) {
+                    log.warn("[Tool] Turn#{} Step#{} 工具 {} 需审批但未获批准（DENY），跳过执行",
+                            turn, step, call.block.name());
                     callSeqs[index] = appendToolCall(turn, step, call.block);
                     started++;
                     slots[index] = new Slot(null, ToolExecutionResult.fail(
@@ -218,6 +229,7 @@ public final class ToolCallExecutor {
                 started++;
 
                 // 准备并派发调用
+                log.debug("[Tool] Turn#{} Step#{} 派发工具 {} ...", turn, step, call.block.name());
                 ToolExecution exec = ToolExecution.from(
                         ToolExecutionInput.root(call.block.id(), call.block.name(), call.execArgs));
                 ToolRunContext ctx = new ToolRunContext(exec);
@@ -225,6 +237,7 @@ public final class ToolCallExecutor {
                 try {
                     var defOpt = registry.lookup(call.block.name());
                     if (defOpt.isEmpty()) {
+                        log.warn("[Tool] Turn#{} Step#{} 未知工具 {}，记录失败", turn, step, call.block.name());
                         slots[index] = new Slot(ctx, ToolExecutionResult.fail(
                                 "unknown tool \"" + call.block.name() + "\"",
                                 ToolErrorCodes.UNKNOWN_TOOL), false);
@@ -406,6 +419,14 @@ public final class ToolCallExecutor {
 
         // 追加 tool/result 事件
         appendToolResult(turn, step, call.block, result, callSeq);
+        if (result.isError()) {
+            String errDetail = result instanceof ToolExecutionResult.Failure f ? f.error().message() : "unknown";
+            log.warn("[Tool] Turn#{} Step#{} 工具 {} 执行失败：{}（callId={}）",
+                    turn, step, call.block.name(), errDetail, call.block.id());
+        } else {
+            log.info("[Tool] Turn#{} Step#{} 工具 {} 执行成功（callId={}）",
+                    turn, step, call.block.name(), call.block.id());
+        }
 
         // 接收额外上下文
         for (Message ctx : result.additionalContexts()) {

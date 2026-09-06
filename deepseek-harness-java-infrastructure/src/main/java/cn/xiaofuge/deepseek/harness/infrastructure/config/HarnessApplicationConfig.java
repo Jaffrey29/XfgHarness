@@ -43,7 +43,7 @@ import cn.xiaofuge.deepseek.harness.domain.runtime.profile.service.router.Execut
 import cn.xiaofuge.deepseek.harness.domain.runtime.profile.service.router.HeadlessExecutionProfileStrategy;
 import cn.xiaofuge.deepseek.harness.domain.runtime.profile.service.router.WebExecutionProfileStrategy;
 import cn.xiaofuge.deepseek.harness.domain.session.event.adapter.repository.ISessionEventStore;
-import cn.xiaofuge.deepseek.harness.domain.session.event.service.ISessionEventLogService;
+import cn.xiaofuge.deepseek.harness.domain.session.ISessionEventLogService;
 import cn.xiaofuge.deepseek.harness.domain.session.event.service.LegacyEventAdapter;
 import cn.xiaofuge.deepseek.harness.domain.session.event.service.SessionEventLogService;
 import cn.xiaofuge.deepseek.harness.domain.session.event.service.SessionRebuilderService;

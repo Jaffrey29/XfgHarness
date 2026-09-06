@@ -19,6 +19,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 智能体交互控制器。
@@ -34,6 +36,8 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @RestController
 @RequestMapping("/api/agent")
 public class AgentController {
+
+    private static final Logger log = LoggerFactory.getLogger(AgentController.class);
 
     private static final long SSE_TIMEOUT_MS = 300_000L; // #3 加长到 5 分钟
     private static final int CHUNK_SIZE = 40;
@@ -57,11 +61,14 @@ public class AgentController {
 
     @PostMapping("/message")
     public AgentMessageResponse sendMessage(@RequestBody AgentMessageRequest request) {
+        log.info("[HTTP] /api/agent/message 收到请求 agentId={}", request.agentId());
         return agentApi.sendMessage(request);
     }
 
     @PostMapping(value = "/stream")
     public org.springframework.http.ResponseEntity<SseEmitter> streamMessage(@RequestBody AgentMessageRequest request) {
+        log.info("[HTTP] /api/agent/stream 收到流式请求 agentId={} provider={} model={}",
+                request.agentId(), request.provider(), request.model());
         SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
 
         emitter.onCompletion(() -> { });
@@ -100,6 +107,7 @@ public class AgentController {
                 java.util.function.Consumer<ToolCallBlock> toolCallSink = tc -> {
                     if (emitterClosed.get()) return;
                     try {
+                        log.info("[SSE] 推送 step_break 事件：toolName={} callId={}", tc.name(), tc.id());
                         Map<String, Object> tcData = new LinkedHashMap<>();
                         tcData.put("toolName", tc.name());
                         tcData.put("callId", tc.id());
@@ -110,6 +118,7 @@ public class AgentController {
                                 .data(objectMapper.writeValueAsString(tcData)));
                     } catch (IOException e) {
                         emitterClosed.set(true);
+                        log.warn("[SSE] step_break 推送失败，emitter 已关闭：{}", e.getMessage());
                     }
                 };
 
@@ -122,6 +131,9 @@ public class AgentController {
                 done.put("messages", response.messages());
                 done.put("totalChunks", chunkIndex.get());
                 if (!emitterClosed.get()) {
+                    log.info("[SSE] 流式完成，推送 done 事件：agentId={} sessionId={} status={} chunks={} messages={}",
+                            response.agentId(), response.sessionId(), response.status(), chunkIndex.get(),
+                            response.messages() == null ? 0 : response.messages().size());
                     emitter.send(SseEmitter.event()
                             .name("done")
                             .data(objectMapper.writeValueAsString(done)));
@@ -132,6 +144,7 @@ public class AgentController {
                     emitter.complete();
                     return;
                 }
+                log.error("[SSE] 流式处理异常：{}", e.getMessage(), e);
                 try {
                     Map<String, Object> error = new LinkedHashMap<>();
                     error.put("error", e.getClass().getSimpleName());
@@ -160,6 +173,7 @@ public class AgentController {
 
     @PostMapping("/{agentId}/cancel")
     public void cancelAgent(@PathVariable("agentId") String agentId) {
+        log.info("[HTTP] 收到取消请求 agentId={}", agentId);
         agentApi.cancelAgent(agentId);
     }
 

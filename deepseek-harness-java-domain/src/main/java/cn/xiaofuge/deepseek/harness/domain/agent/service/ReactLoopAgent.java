@@ -122,6 +122,7 @@ public class ReactLoopAgent implements Agent {
 
     @Override
     public synchronized void cancel(AgentCancelCause cause, boolean keepInbox) {
+        log.info("[cancel] Agent={} 收到取消请求，cause={} keepInbox={}", id, cause, keepInbox);
         if (!keepInbox) {
             inbox.clear();
         }
@@ -243,10 +244,17 @@ public class ReactLoopAgent implements Agent {
      */
     private CompletableFuture<Void> kick(Phase.Running running) {
         return CompletableFuture.runAsync(() -> {
+            log.info("[kick] Agent={} 驱动器启动，开始消费 inbox（pending={})", id, inbox.hasPending());
             try {
                 while (true) {
-                    if (running.abort().get()) break;
-                    if (!inbox.hasPending()) break;
+                    if (running.abort().get()) {
+                        log.info("[kick] Agent={} 检测到取消信号，停止 turn 循环", id);
+                        break;
+                    }
+                    if (!inbox.hasPending()) {
+                        log.info("[kick] Agent={} inbox 已空，turn 循环自然结束", id);
+                        break;
+                    }
                     boolean shouldContinue = turn(running);
                     if (!shouldContinue) break;
                 }
@@ -255,9 +263,12 @@ public class ReactLoopAgent implements Agent {
                     boolean wasAborted = running.abort().get();
                     turnCount = running.turn();
                     phase = new Phase.Idle(turnCount);
+                    log.info("[kick] Agent={} 驱动器停机，共完成 {} 轮 turn，aborted={}",
+                            id, turnCount, wasAborted);
                     if (!wasAborted && running.wakeRequested().get() && inbox.hasPending()) {
                         Phase.Running next = new Phase.Running(turnCount);
                         phase = next;
+                        log.info("[kick] Agent={} 检测到 wake 请求且 inbox 仍有待处理消息，递归重入驱动器", id);
                         // 递归重入驱动器，继续处理后续 turn
                         CompletableFuture<Void> activity = kick(next);
                         activityDone.set(activity);
@@ -284,6 +295,7 @@ public class ReactLoopAgent implements Agent {
         // 更新阶段引用
         synchronized (this) { phase = running; }
         session.append(SessionEventFactory.turnStart());
+        log.info("[turn] ▶ Agent={} Turn#{} 开始（model={}）", id, turn, options.model());
 
         final long MAX_STEPS_PER_TURN = 50; // safety limit
         final int MAX_TOKEN_CONTINUATIONS = 4;
@@ -297,12 +309,14 @@ public class ReactLoopAgent implements Agent {
             while (true) {
                 if (running.step() >= MAX_STEPS_PER_TURN) {
                     continuationRequested = false;
+                    log.warn("[turn] ⚠ Agent={} Turn#{} 达到单轮步数上限 {}，强制结束", id, turn, MAX_STEPS_PER_TURN);
                     session.append(SessionEventFactory.turnEnd(
                             new TurnEndReason.Error("max steps per turn exceeded", "MAX_STEPS")));
                     return false;
                 }
                 if (running.abort().get()) {
                     continuationRequested = false;
+                    log.info("[turn] ⚠ Agent={} Turn#{} 检测到取消信号，中止 turn", id, turn);
                     session.append(SessionEventFactory.turnEnd(
                             new TurnEndReason.Aborted("aborted")));
                     return false;
@@ -345,32 +359,39 @@ public class ReactLoopAgent implements Agent {
                 // 空值表示"继续执行下一步"（例如工具调用已完成，模型应继续推理）
                 if (stepResult == null) {
                     midTurnContinuation = true;
+                    log.debug("[turn] Agent={} Turn#{} Step#{} 工具调用完成，续步继续推理（midTurnContinuation）", id, turn, step);
                     continue;
                 }
 
                 // 检查当前 turn 是否应该结束
                 if (stepResult instanceof TurnEndReason.Completed) {
                     continuationRequested = false;
+                    log.info("[turn] ◀ Agent={} Turn#{} Step#{} 完成（模型无需更多工具调用）", id, turn, step);
                     session.append(SessionEventFactory.turnEnd(new TurnEndReason.Completed()));
                     return true;
                 } else if (stepResult instanceof TurnEndReason.MaxTokens) {
                     // 模型输出因 token 上限截断时，自动发起一次受控续写。
                     if (++tokenContinuations > MAX_TOKEN_CONTINUATIONS) {
+                        log.warn("[turn] ⚠ Agent={} Turn#{} MaxTokens 续写次数超限({}/{})，结束 turn", id, turn, tokenContinuations - 1, MAX_TOKEN_CONTINUATIONS);
                         session.append(SessionEventFactory.turnEnd(new TurnEndReason.MaxTokens()));
                         return true;
                     }
+                    log.info("[turn] ↻ Agent={} Turn#{} Step#{} 输出被 token 上限截断，发起第 {}/{} 次受控续写", id, turn, step, tokenContinuations, MAX_TOKEN_CONTINUATIONS);
                     continuationRequested = true;
                     continue;
                 } else if (stepResult instanceof TurnEndReason.Blocked) {
                     continuationRequested = false;
+                    log.warn("[turn] ⚠ Agent={} Turn#{} Step#{} 被阻塞（Blocked）", id, turn, step);
                     session.append(SessionEventFactory.turnEnd(new TurnEndReason.Blocked()));
                     return false;
                 } else if (stepResult instanceof TurnEndReason.Aborted) {
                     continuationRequested = false;
+                    log.info("[turn] ⚠ Agent={} Turn#{} Step#{} 被中止（Aborted）", id, turn, step);
                     session.append(SessionEventFactory.turnEnd(stepResult));
                     return false;
                 } else if (stepResult instanceof TurnEndReason.Error) {
                     continuationRequested = false;
+                    log.error("[turn] ✗ Agent={} Turn#{} Step#{} 执行出错：{}", id, turn, step, ((TurnEndReason.Error) stepResult).message());
                     session.append(SessionEventFactory.turnEnd(stepResult));
                     return false;
                 }
@@ -378,11 +399,13 @@ public class ReactLoopAgent implements Agent {
 
             continuationRequested = false;
             // 当前 turn 在没有工具调用的情况下完成
+            log.info("[turn] ◀ Agent={} Turn#{} 自然完成（inbox 无更多待处理消息）", id, turn);
             session.append(SessionEventFactory.turnEnd(new TurnEndReason.Completed()));
             return true;
 
         } catch (Exception e) {
             continuationRequested = false;
+            log.error("[turn] ✗ Agent={} Turn#{} 发生未捕获异常：{}", id, turn, e.getMessage(), e);
             session.append(SessionEventFactory.turnEnd(
                     new TurnEndReason.Error(e.getMessage() != null ? e.getMessage() : e.toString(), "UNKNOWN")));
             return false;
@@ -400,6 +423,9 @@ public class ReactLoopAgent implements Agent {
      * 3. 执行工具调用并返回 step 结束原因。
      */
     private TurnEndReason step(Phase.Running running, long turn, long step) {
+        log.info("[step] ▷ Agent={} Turn#{} Step#{} 开始执行（model={}，工具数={}）",
+                id, turn, step, options.model(), resolveToolSchemas().size());
+        long stepStart = System.currentTimeMillis();
         try {
             // 1. 组装系统提示词
             SystemPromptAssembler.PromptAssembly assembly = systemPromptAssembler
@@ -493,11 +519,14 @@ public class ReactLoopAgent implements Agent {
             }
 
             if (aborted.get()) {
+                log.info("[step] ⚠ Agent={} Turn#{} Step#{} 流式输出期间被取消", id, turn, step);
                 return new TurnEndReason.Aborted("aborted during stream");
             }
 
             if (streamError.get() != null) {
                 Throwable err = streamError.get();
+                log.error("[step] ✗ Agent={} Turn#{} Step#{} LLM 流式调用失败：{}",
+                        id, turn, step, err.getMessage());
                 return new TurnEndReason.Error(
                         err.getMessage() != null ? err.getMessage() : err.toString(),
                         "STREAM_ERROR");
@@ -507,6 +536,9 @@ public class ReactLoopAgent implements Agent {
             FinishReason finish = assembler.finish();
             List<ContentBlock> blocks = assembler.blocks();
             TokenUsage usage = assembler.usage();
+            log.debug("[step] Agent={} Turn#{} Step#{} LLM 流式结束，finish={}，blocks={}，usage={}",
+                    id, turn, step, finish == null ? "null" : finish.getClass().getSimpleName(),
+                    blocks.size(), usage);
 
             MessageSource.ModelMessageSource source = new MessageSource.ModelMessageSource(
                     options.provider(), options.model());
@@ -514,6 +546,8 @@ public class ReactLoopAgent implements Agent {
 
             // 6. 检查结束原因 —— 先处理错误场景
             if (finish instanceof FinishReason.Error err) {
+                log.error("[step] ✗ Agent={} Turn#{} Step#{} LLM 返回错误：code={} message={}",
+                        id, turn, step, err.failure().code(), err.failure().message());
                 // 如果 assistant 消息为空（例如 API Key 无效、网络异常），
                 // 就替换成可见的错误消息，避免前端拿到空白结果。
                 String errText = extractText(assistantMsg);
@@ -533,9 +567,11 @@ public class ReactLoopAgent implements Agent {
             session.append(SessionEventFactory.assistantMessage(turn, step, assistantMsg, usage));
 
             if (finish instanceof FinishReason.MaxTokens) {
+                log.info("[step] ↻ Agent={} Turn#{} Step#{} 输出达到 token 上限", id, turn, step);
                 return new TurnEndReason.MaxTokens();
             }
             if (finish instanceof FinishReason.Aborted) {
+                log.info("[step] ⚠ Agent={} Turn#{} Step#{} 流被中止", id, turn, step);
                 return new TurnEndReason.Aborted("stream aborted");
             }
 
@@ -546,10 +582,15 @@ public class ReactLoopAgent implements Agent {
                     .toList();
 
             if (toolCalls.isEmpty()) {
+                log.info("[step] ◁ Agent={} Turn#{} Step#{} 完成，无工具调用，耗时={}ms",
+                        id, turn, step, System.currentTimeMillis() - stepStart);
                 return new TurnEndReason.Completed();
             }
 
             // 8. 执行工具调用
+            log.info("[step] 🔧 Agent={} Turn#{} Step#{} 模型请求 {} 个工具调用：{}",
+                    id, turn, step, toolCalls.size(),
+                    toolCalls.stream().map(ToolCallBlock::name).toList());
             // 推送 tool_call 事件给 SSE 前端，让前端分段显示多 step 文本
             java.util.function.Consumer<ToolCallBlock> tcSink = streamToolCallSink;
             if (tcSink != null) {
@@ -557,7 +598,10 @@ public class ReactLoopAgent implements Agent {
                     try { tcSink.accept(tc); } catch (RuntimeException ignored) {}
                 }
             }
+            log.info("[step] 🔧 Agent={} Turn#{} Step#{} 开始执行工具调用...", id, turn, step);
             toolExecutor.execute(turn, step, toolCalls, running.abort(), null);
+            log.info("[step] 🔧 Agent={} Turn#{} Step#{} 工具调用执行完成，耗时={}ms，续步推理",
+                    id, turn, step, System.currentTimeMillis() - stepStart);
 
             // 9. 工具调用完成后继续下一步，让模型看到工具结果并继续推理。
             //    返回 null 表示“继续 step”，而不是当前 turn 结束。
@@ -565,8 +609,11 @@ public class ReactLoopAgent implements Agent {
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            log.info("[step] ⚠ Agent={} Turn#{} Step#{} 被中断", id, turn, step);
             return new TurnEndReason.Aborted("interrupted");
         } catch (Exception e) {
+            log.error("[step] ✗ Agent={} Turn#{} Step#{} 执行异常：{}",
+                    id, turn, step, e.getMessage(), e);
             return new TurnEndReason.Error(
                     e.getMessage() != null ? e.getMessage() : e.toString(),
                     "STEP_ERROR");

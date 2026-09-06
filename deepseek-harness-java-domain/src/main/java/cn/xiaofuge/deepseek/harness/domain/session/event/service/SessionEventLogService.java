@@ -1,5 +1,6 @@
 package cn.xiaofuge.deepseek.harness.domain.session.event.service;
 
+import cn.xiaofuge.deepseek.harness.domain.session.ISessionEventLogService;
 import cn.xiaofuge.deepseek.harness.domain.session.event.adapter.repository.ISessionEventStore;
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionEvent;
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionHeader;

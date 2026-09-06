@@ -7,11 +7,13 @@ import cn.xiaofuge.deepseek.harness.domain.agent.model.entity.AgentOptions;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.AgentFactoryPort;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.ReactLoopAgent;
 import cn.xiaofuge.deepseek.harness.domain.runtime.setting.IModelSettingQueryService;
-import cn.xiaofuge.deepseek.harness.domain.shared.strategy.StrategyHandler;
+import cn.xiaofuge.deepseek.harness.domain.shared.StrategyHandler;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 解析节点：获取或创建目标 Agent。
@@ -21,6 +23,8 @@ import org.springframework.beans.factory.annotation.Value;
  */
 @Service("agentMessageResolveNode")
 public class AgentResolveNode extends AbstractAgentMessageNode {
+
+    private static final Logger log = LoggerFactory.getLogger(AgentResolveNode.class);
 
     @Autowired
     private AgentFactoryPort agentFactory;
@@ -42,7 +46,11 @@ public class AgentResolveNode extends AbstractAgentMessageNode {
         if (agent == null) {
             AgentOptions options = buildAgentOptions(request);
             String workDir = request.cwd() != null ? request.cwd() : System.getProperty("user.dir");
+            log.info("[Resolve] Agent={} 不存在，创建新实例（model={} provider={} cwd={}）",
+                    request.agentId(), options.model(), options.provider(), workDir);
             agent = agentFactory.create(request.agentId(), options, workDir);
+        } else {
+            log.debug("[Resolve] Agent={} 已存在，复用实例", request.agentId());
         }
         ctx.setAgent(agent);
         return null;
