@@ -7,9 +7,9 @@
   <meta name="description" content="整个系统的心脏——一个 769 行的类如何驱动&quot;思考-行动-观察&quot;">
   <link rel="canonical" href="https://fuzhengwei.github.io/deepseek-harness-java/docs/html/ch04-react-loop.html">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
-  <link rel="stylesheet" href="css/book.css?v=20260906-4">
-  <link rel="stylesheet" href="css/site.css?v=20260906-4">
-  <link rel="stylesheet" href="css/flowchart.css?v=20260906-4">
+  <link rel="stylesheet" href="css/book.css?v=20260906-5">
+  <link rel="stylesheet" href="css/site.css?v=20260906-5">
+  <link rel="stylesheet" href="css/flowchart.css?v=20260906-5">
 </head>
 <body data-chapter="ch04">
   <div class="reading-progress" id="readingProgress"></div>
@@ -330,8 +330,7 @@ java -Dharness.agent.temperature=1 -jar app.jar
 <div class="summary-box">
   <p><strong>本章要点</strong>：三级驱动 kick→turn→step；单 turn ≤ 50 步、续写 ≤ 4 次是安全护栏；取消用 AtomicBoolean + 100ms 轮询实现协作式中断保证事件完整；midTurnContinuation 标志修复了"工具结果送不到模型"的经典 Bug；Flow.Publisher 让 Domain 不依赖 HTTP 客户端。</p>
   <p style="margin-bottom:0;"><strong>下一章</strong>：本章反复出现的 <code>session.append(...)</code> 到底做了什么？为什么说"事件日志就是真相之源"？取消后如何回放完整会话？第5章讲会话与事件溯源。</p>
-</div>
-</div></div></div></div></div></div></div></div></div></div></div></div>
+</div></div></div>
       <nav class="page-nav"><a class="page-nav-card prev" href="ch03-domain.html"><span class="page-nav-label">← 上一章</span><span class="page-nav-title">领域设计：事件风暴与 27 个限界上下文</span></a><a class="page-nav-card next" href="ch05-session-event.html"><span class="page-nav-label">→ 下一章</span><span class="page-nav-title">会话与事件溯源：SessionLog 的秘密</span></a></nav>
       <button class="back-to-top" id="backToTop" title="回到顶部" aria-label="回到顶部">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3.5L4 12h5v8h6v-8h5z"/></svg>
@@ -351,10 +350,10 @@ java -Dharness.agent.temperature=1 -jar app.jar
       </a>
     </aside>
   </div>
-  <script src="js/highlight.js?v=20260906-4"></script>
-  <script src="js/progress.js?v=20260906-4"></script>
-  <script src="js/flowchart.js?v=20260906-4"></script>
-  <script src="js/main.js?v=20260906-4"></script>
+  <script src="js/highlight.js?v=20260906-5"></script>
+  <script src="js/progress.js?v=20260906-5"></script>
+  <script src="js/flowchart.js?v=20260906-5"></script>
+  <script src="js/main.js?v=20260906-5"></script>
   <script>
     window.addEventListener('scroll', () => {
       const h = document.documentElement;

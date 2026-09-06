@@ -7,9 +7,9 @@
   <meta name="description" content="不用模型的意图分类，和把跨领域流程编成&quot;链&quot;的艺术">
   <link rel="canonical" href="https://fuzhengwei.github.io/deepseek-harness-java/docs/html/ch06-intent-strategy.html">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
-  <link rel="stylesheet" href="css/book.css?v=20260906-4">
-  <link rel="stylesheet" href="css/site.css?v=20260906-4">
-  <link rel="stylesheet" href="css/flowchart.css?v=20260906-4">
+  <link rel="stylesheet" href="css/book.css?v=20260906-5">
+  <link rel="stylesheet" href="css/site.css?v=20260906-5">
+  <link rel="stylesheet" href="css/flowchart.css?v=20260906-5">
 </head>
 <body data-chapter="ch06">
   <div class="reading-progress" id="readingProgress"></div>
@@ -305,8 +305,7 @@ public class AgentResolveNode extends AbstractAgentMessageNode {
 <div class="summary-box">
   <p><strong>本章要点</strong>：意图识别用纯正则（零延迟、零成本、可单测），四类意图决定后续处理；策略树 = 责任链 + DynamicContext + 非 null 短路；Agent 消息链四节点（Resolve→Intent→Dispatch→Collect）负责对话，任务提交链五节点（SubmissionRoot→ProfileResolution→PermissionCheck→ToolResolution→Enqueue）负责治理。</p>
   <p style="margin-bottom:0;"><strong>下一章</strong>：AgentCollectNode 收集的消息怎么推给浏览器？流式对话的 SSE 事件序列长什么样？为什么需要一个专门的 <code>step_break</code> 事件？第7章完整解析 SSE 流式协议。</p>
-</div>
-</div></div></div></div></div></div></div></div></div></div></div></div>
+</div></div></div>
       <nav class="page-nav"><a class="page-nav-card prev" href="ch05-session-event.html"><span class="page-nav-label">← 上一章</span><span class="page-nav-title">会话与事件溯源：SessionLog 的秘密</span></a><a class="page-nav-card next" href="ch07-sse-protocol.html"><span class="page-nav-label">→ 下一章</span><span class="page-nav-title">SSE 流式协议：meta/chunk/step_break/done</span></a></nav>
       <button class="back-to-top" id="backToTop" title="回到顶部" aria-label="回到顶部">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3.5L4 12h5v8h6v-8h5z"/></svg>
@@ -326,10 +325,10 @@ public class AgentResolveNode extends AbstractAgentMessageNode {
       </a>
     </aside>
   </div>
-  <script src="js/highlight.js?v=20260906-4"></script>
-  <script src="js/progress.js?v=20260906-4"></script>
-  <script src="js/flowchart.js?v=20260906-4"></script>
-  <script src="js/main.js?v=20260906-4"></script>
+  <script src="js/highlight.js?v=20260906-5"></script>
+  <script src="js/progress.js?v=20260906-5"></script>
+  <script src="js/flowchart.js?v=20260906-5"></script>
+  <script src="js/main.js?v=20260906-5"></script>
   <script>
     window.addEventListener('scroll', () => {
       const h = document.documentElement;

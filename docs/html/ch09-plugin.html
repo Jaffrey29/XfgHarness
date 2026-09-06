@@ -7,9 +7,9 @@
   <meta name="description" content="亲手给系统加一个&quot;天气查询&quot;工具——两种插件模式各写一遍">
   <link rel="canonical" href="https://fuzhengwei.github.io/deepseek-harness-java/docs/html/ch09-plugin.html">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
-  <link rel="stylesheet" href="css/book.css?v=20260906-4">
-  <link rel="stylesheet" href="css/site.css?v=20260906-4">
-  <link rel="stylesheet" href="css/flowchart.css?v=20260906-4">
+  <link rel="stylesheet" href="css/book.css?v=20260906-5">
+  <link rel="stylesheet" href="css/site.css?v=20260906-5">
+  <link rel="stylesheet" href="css/flowchart.css?v=20260906-5">
 </head>
 <body data-chapter="ch09">
   <div class="reading-progress" id="readingProgress"></div>
@@ -193,8 +193,7 @@ entrypoint: cn.walioffice.plugin.sample.SampleToolsPlugin</pre></div>
 <div class="summary-box">
   <p><strong>本章要点</strong>：插件走 install→activate→run 三段，工具注册后与内置工具同构；Java Native 五步（继承 AbstractHarnessPlugin → 实现 AbstractTool → plugin.yaml → SPI 注册 → 打包）；Node Bridge 用 sidecar 进程 + JSON-RPC 复用 npm 生态；选型看性能/隔离/生态三角。</p>
   <p style="margin-bottom:0;"><strong>下一章</strong>：除了私有插件，还有一个开放标准能接入全世界的工具——MCP（Model Context Protocol）。第10章讲如何用 stdio 连接任意 MCP Server。</p>
-</div>
-</div></div></div></div></div></div></div></div></div></div></div></div>
+</div></div></div>
       <nav class="page-nav"><a class="page-nav-card prev" href="ch08-tools.html"><span class="page-nav-label">← 上一章</span><span class="page-nav-title">工具系统：ToolCallExecutor 与 Hook 链</span></a><a class="page-nav-card next" href="ch10-mcp.html"><span class="page-nav-label">→ 下一章</span><span class="page-nav-title">MCP 集成：连接外部工具生态</span></a></nav>
       <button class="back-to-top" id="backToTop" title="回到顶部" aria-label="回到顶部">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3.5L4 12h5v8h6v-8h5z"/></svg>
@@ -214,10 +213,10 @@ entrypoint: cn.walioffice.plugin.sample.SampleToolsPlugin</pre></div>
       </a>
     </aside>
   </div>
-  <script src="js/highlight.js?v=20260906-4"></script>
-  <script src="js/progress.js?v=20260906-4"></script>
-  <script src="js/flowchart.js?v=20260906-4"></script>
-  <script src="js/main.js?v=20260906-4"></script>
+  <script src="js/highlight.js?v=20260906-5"></script>
+  <script src="js/progress.js?v=20260906-5"></script>
+  <script src="js/flowchart.js?v=20260906-5"></script>
+  <script src="js/main.js?v=20260906-5"></script>
   <script>
     window.addEventListener('scroll', () => {
       const h = document.documentElement;

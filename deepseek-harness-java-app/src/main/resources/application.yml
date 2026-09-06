@@ -27,7 +27,7 @@ harness:
   llm:
     deepseek:
       base-url: http://127.0.0.1:8777/v1
-      api-key: ${DEEPSEEK_API_KEY:}
+      api-key: ${DEEPSEEK_API_KEY:sk-waliapi-272d9aafb16145e2b25e8a7340a57ada}
       max-tokens: 8192
       context-window: 128000
       default-model: gpt-5.5

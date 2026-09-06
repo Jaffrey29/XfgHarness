@@ -19,7 +19,7 @@ CHAPTERS_DIR = ROOT / 'chapters'
 # 部署域名（百度收录需要绝对 URL；换域名只改这一行）
 SITE_URL = 'https://fuzhengwei.github.io/deepseek-harness-java/docs/html'
 SITE_TITLE = 'DeepSeek Harness Java 实战教程'
-ASSET_VERSION = '20260906-4'
+ASSET_VERSION = '20260906-5'
 
 # 阅读/滚动进度条脚本（普通字符串：JS 花括号不能进 f-string）
 SCROLL_PROGRESS_JS = """  <script>
@@ -421,11 +421,37 @@ def wrap_body(frag_html, ch):
     eyebrow = f'<div class="chapter-eyebrow">{htmllib.escape(ch["section"])}</div>'
     return f'<div class="chapter-head">{eyebrow}{frag_html}</div>'
 
+def _strip_surplus_closing_divs(html):
+    """去掉末尾多余的 </div>，修复历史生成器在片段尾部遗留的 div 不平衡问题。
+    仅处理 surplus 集中在末尾的情况，不会破坏合法嵌套。"""
+    opens = len(re.findall(r'<div[\s>]', html))
+    closes = len(re.findall(r'</div>', html))
+    if closes <= opens:
+        return html
+    surplus = closes - opens
+    # 优先尝试整块移除末尾连续的 surplus 个 </div>（允许中间空白）
+    tail_pattern = r'(?:\s*</div>\s*){' + str(surplus) + r'}\s*$'
+    cleaned = re.sub(tail_pattern, '', html)
+    if cleaned != html:
+        return cleaned
+    # 回退：逐个从末尾移除
+    text = html
+    removed = 0
+    while removed < surplus:
+        m = re.search(r'\s*</div>\s*$', text)
+        if not m:
+            break
+        text = text[:m.start()]
+        removed += 1
+    return text
+
 def read_fragment(ch):
-    """优先读取 chapters/ 片段；兼容当前仓库中的根级完整章节页。"""
+    """优先读取 chapters/ 片段；兼容当前仓库中的根级完整章节页。
+    读取后自动清理片段末尾可能遗留的多余 </div>，避免破坏外层 main/app-layout 结构。"""
     fragment_path = CHAPTERS_DIR / ch['frag']
     if fragment_path.exists():
-        return fragment_path.read_text(encoding='utf-8')
+        frag = fragment_path.read_text(encoding='utf-8')
+        return _strip_surplus_closing_divs(frag)
 
     source_path = ROOT / ch['frag']
     if not source_path.exists():
@@ -436,7 +462,8 @@ def read_fragment(ch):
     end = source_html.find('<nav class="page-nav">', start)
     if start < 0 or end < 0:
         raise ValueError(f'章节正文提取失败：{source_path}')
-    return source_html[start:end].strip()
+    frag = source_html[start:end].strip()
+    return _strip_surplus_closing_divs(frag)
 
 def render_page(chapters, ch, prev_ch, next_ch):
     frag_raw = read_fragment(ch)

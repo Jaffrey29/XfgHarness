@@ -7,9 +7,9 @@
   <meta name="description" content="为什么 Agent 系统更需要架构约束——以及这个项目如何落地">
   <link rel="canonical" href="https://fuzhengwei.github.io/deepseek-harness-java/docs/html/ch02-architecture.html">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
-  <link rel="stylesheet" href="css/book.css?v=20260906-4">
-  <link rel="stylesheet" href="css/site.css?v=20260906-4">
-  <link rel="stylesheet" href="css/flowchart.css?v=20260906-4">
+  <link rel="stylesheet" href="css/book.css?v=20260906-5">
+  <link rel="stylesheet" href="css/site.css?v=20260906-5">
+  <link rel="stylesheet" href="css/flowchart.css?v=20260906-5">
 </head>
 <body data-chapter="ch02">
   <div class="reading-progress" id="readingProgress"></div>
@@ -166,8 +166,7 @@ public interface JavaHarnessPlugin {
 <div class="summary-box">
   <p><strong>本章要点</strong>：六边形架构 = Domain 居中定义端口，Trigger（驱动）与 Infrastructure（被驱动）分两侧实现；7 个 Maven 模块用 pom 依赖强制单向；types 不依赖 Spring 是插件独立演进的关键；请求"命令下行、事件上行"。</p>
   <p style="margin-bottom:0;"><strong>下一章</strong>：模块地图有了，但 <code>domain</code> 模块内部还有 27 个限界上下文——它们是怎么划分出来的？为什么是 27 个而不是 5 个？第3章用事件风暴的方法论带你还原这个划分过程。</p>
-</div>
-</div></div></div></div></div></div></div></div></div></div></div></div>
+</div></div></div>
       <nav class="page-nav"><a class="page-nav-card prev" href="ch01-quickstart.html"><span class="page-nav-label">← 上一章</span><span class="page-nav-title">十分钟跑起来：构建、启动与第一次对话</span></a><a class="page-nav-card next" href="ch03-domain.html"><span class="page-nav-label">→ 下一章</span><span class="page-nav-title">领域设计：事件风暴与 27 个限界上下文</span></a></nav>
       <button class="back-to-top" id="backToTop" title="回到顶部" aria-label="回到顶部">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3.5L4 12h5v8h6v-8h5z"/></svg>
@@ -187,10 +186,10 @@ public interface JavaHarnessPlugin {
       </a>
     </aside>
   </div>
-  <script src="js/highlight.js?v=20260906-4"></script>
-  <script src="js/progress.js?v=20260906-4"></script>
-  <script src="js/flowchart.js?v=20260906-4"></script>
-  <script src="js/main.js?v=20260906-4"></script>
+  <script src="js/highlight.js?v=20260906-5"></script>
+  <script src="js/progress.js?v=20260906-5"></script>
+  <script src="js/flowchart.js?v=20260906-5"></script>
+  <script src="js/main.js?v=20260906-5"></script>
   <script>
     window.addEventListener('scroll', () => {
       const h = document.documentElement;
