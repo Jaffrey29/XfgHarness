@@ -26,7 +26,7 @@
 
         <!-- 引入示例插件 JAR，构建时复制到 install-root 供 preset 预装使用 -->
         <dependency>
-            <groupId>cn.walioffice</groupId>
+            <groupId>cn.xiaofuge</groupId>
             <artifactId>sample-tools-plugin</artifactId>
             <version>1.0.0-SNAPSHOT</version>
         </dependency>

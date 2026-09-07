@@ -160,7 +160,7 @@ public class AgentFactory implements AgentFactoryPort {
      * 3. 注册并返回智能体实例。
      */
     public ReactLoopAgent create(String agentId, AgentOptions options, String cwd) {
-        String sessionId = agentId + "-session-" + UUID.randomUUID();
+        String sessionId = UUID.randomUUID().toString();
         SessionHeader header = SessionHeader.create(sessionId, Instant.now(), cwd, agentId);
         SessionLog session = sessionEventStore != null
                 ? new PersistingSessionLog(sessionId, header, sessionEventStore)

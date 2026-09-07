@@ -1,7 +1,7 @@
 package cn.walioffice.plugin.sample;
 
-import cn.walioffice.deepseek.harness.domain.plugin.spi.AbstractHarnessPlugin;
-import cn.walioffice.deepseek.harness.domain.tool.model.entity.ToolDefinition;
+import cn.xiaofuge.deepseek.harness.domain.model.entity.ToolDefinition;
+import cn.xiaofuge.deepseek.harness.domain.spi.AbstractHarnessPlugin;
 import java.util.List;
 
 /**
