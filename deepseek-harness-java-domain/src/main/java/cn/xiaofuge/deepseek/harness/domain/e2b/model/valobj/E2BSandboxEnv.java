@@ -1,15 +1,7 @@
 package cn.xiaofuge.deepseek.harness.domain.e2b.model.valobj;
 
 /**
- * E2B sandbox environment configuration.
- *
- * @param sandboxId    unique sandbox identifier (assigned by provider)
- * @param apiKey       API key for the provider
- * @param template     sandbox template identifier
- * @param timeoutMs    sandbox lifetime in milliseconds
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * E2BSandboxEnv 表示E2BSandboxEnv。
  */
 public record E2BSandboxEnv(String sandboxId, String apiKey, String template, long timeoutMs) {
     /**

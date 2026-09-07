@@ -1,13 +1,7 @@
 package cn.xiaofuge.deepseek.harness.domain.plugin.registry.model.valobj;
 
 /**
- * Describes where one plugin source was installed inside the managed install root.
- *
- * @param installedSourcePath installed plugin directory
- * @param normalizedEntrypoint entrypoint relative to the installed plugin directory
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * PluginArtifactInstallPlanVO 表示PluginArtifactInstallPlan的领域值对象。
  */
 public record PluginArtifactInstallPlanVO(
         String installedSourcePath,

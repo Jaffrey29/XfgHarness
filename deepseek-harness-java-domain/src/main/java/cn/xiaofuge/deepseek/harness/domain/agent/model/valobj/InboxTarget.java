@@ -1,16 +1,7 @@
 package cn.xiaofuge.deepseek.harness.domain.agent.model.valobj;
 
 /**
- * One of the two ordered pending-message lists owned by an agent.
- * <p>
- * Mirrors TS {@code InboxTarget}.
- * <ul>
- *   <li>{@link #NEXT_TURN} — prompts awaiting individual turns</li>
- *   <li>{@link #NEXT_STEP} — input awaiting the next step boundary</li>
- * </ul>
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * InboxTarget 表示收件箱写入目标的领域值对象。
  */
 public enum InboxTarget {
     NEXT_TURN("next-turn"),

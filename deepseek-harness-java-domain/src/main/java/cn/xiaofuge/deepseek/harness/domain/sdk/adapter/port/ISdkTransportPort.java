@@ -13,34 +13,36 @@ import java.util.function.Consumer;
 public interface ISdkTransportPort {
 
     /**
-     * Send a JSON-RPC request and wait for the response.
-     *
-     * @param method  request method
-     * @param params  request params (JSON-serializable)
-     * @return result object (JSON-deserialized)
+     * 处理请求。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param method method。
+     * @return 领域处理结果。
      */
     Object request(String method, Object params);
 
     /**
-     * Send a JSON-RPC notification (no response expected).
-     *
-     * @param method  notification method
-     * @param params  notification params
+     * 处理notify。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param method method。
+     * @return 领域处理结果。
      */
     void notify(String method, Object params);
 
     /**
-     * Register a handler for incoming notifications.
-     *
-     * @param handler  notification handler (method, params)
+     * 处理onNotification。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param handler handler。
+     * @return 领域处理结果。
      */
     void onNotification(Consumer<NotificationFrame> handler);
 
     /**
-     * Close the transport.
+     * NotificationFrame 表示NotificationFrame。
      */
     void close();
 
-    /** One incoming notification frame. */
+    /**
+     * NotificationFrame 表示NotificationFrame。
+     */
     record NotificationFrame(String method, Object params) {}
 }

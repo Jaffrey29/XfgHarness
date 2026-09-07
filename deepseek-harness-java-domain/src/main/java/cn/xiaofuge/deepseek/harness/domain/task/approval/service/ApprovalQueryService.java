@@ -7,7 +7,9 @@ import cn.xiaofuge.deepseek.harness.domain.task.approval.model.valobj.PendingApp
 import java.util.List;
 import org.springframework.stereotype.Service;
 
-/** Implements approval-center projections. */
+/**
+ * ApprovalQueryService 封装ApprovalQuery的领域规则与流程。
+ */
 @Service
 public class ApprovalQueryService implements IApprovalQueryService {
 

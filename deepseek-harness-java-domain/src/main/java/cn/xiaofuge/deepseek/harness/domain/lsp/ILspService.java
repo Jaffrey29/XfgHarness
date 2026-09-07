@@ -16,14 +16,12 @@ import java.util.Optional;
 public interface ILspService {
 
     /**
-     * Query at a position in a file.
-     *
-     * @param queryType   type of query
-     * @param filePath    absolute file path
-     * @param fileContent file content
-     * @param line        0-based line
-     * @param character   0-based character
-     * @return query result, or empty if no provider handles the file
+     * 处理query。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param queryType queryType类型。
+     * @param fileContent fileContent内容。
+     * @param character character。
+     * @return 领域处理结果。
      */
     Optional<LspQueryResult> query(LspQueryType queryType, String filePath, String fileContent, int line, int character);
 }

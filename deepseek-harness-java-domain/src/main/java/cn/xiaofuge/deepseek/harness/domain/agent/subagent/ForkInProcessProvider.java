@@ -2,8 +2,8 @@ package cn.xiaofuge.deepseek.harness.domain.agent.subagent;
 
 import cn.xiaofuge.deepseek.harness.domain.agent.model.entity.AgentOptions;
 import cn.xiaofuge.deepseek.harness.domain.agent.model.valobj.InboxTarget;
-import cn.xiaofuge.deepseek.harness.domain.agent.service.AgentFactoryPort;
-import cn.xiaofuge.deepseek.harness.domain.agent.service.ReactLoopAgent;
+import cn.xiaofuge.deepseek.harness.domain.agentrun.AgentRun;
+import cn.xiaofuge.deepseek.harness.domain.agentrun.AgentRunFactoryPort;
 import cn.xiaofuge.deepseek.harness.domain.model.entity.Message;
 import cn.xiaofuge.deepseek.harness.domain.model.entity.MessageSource;
 import cn.xiaofuge.deepseek.harness.domain.model.valobj.ContentBlock;
@@ -16,21 +16,13 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * In-process subagent provider that forks the parent's completed-turn prefix
- * into the child session. Corresponds to TS {@code subagent-fork-in-process}.
- * <p>
- * The child inherits the parent's conversation context (up to the last
- * completed turn) instead of starting fresh. The current in-flight turn is
- * excluded because it's unbalanced and cannot be replayed.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * ForkInProcessProvider 表示进程内复制子智能体的领域提供者。
  */
 public class ForkInProcessProvider implements SubagentProvider {
 
     private final String providerName;
     private final SubagentRegistry registry;
-    private final AgentFactoryPort agentFactory;
+    private final AgentRunFactoryPort agentFactory;
     private final AgentOptions defaultOptions;
 
     /**
@@ -40,7 +32,7 @@ public class ForkInProcessProvider implements SubagentProvider {
     public ForkInProcessProvider(
             String providerName,
             SubagentRegistry registry,
-            AgentFactoryPort agentFactory,
+            AgentRunFactoryPort agentFactory,
             AgentOptions defaultOptions
     ) {
         this.providerName = providerName;
@@ -87,7 +79,7 @@ public class ForkInProcessProvider implements SubagentProvider {
                     : defaultOptions;
 
             // Create child agent with fresh session
-            ReactLoopAgent childAgent = agentFactory.create(
+            AgentRun childAgent = agentFactory.create(
                     childSessionId,
                     childOptions,
                     request.parentCwd() != null ? request.parentCwd() : "."
@@ -118,8 +110,10 @@ public class ForkInProcessProvider implements SubagentProvider {
     }
 
     /**
-     * Extract the completed-turn prefix from a parent session log.
-     * Returns events up to and including the last {@code turn/end}.
+     * 处理completedTurnPrefix轮次。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param parentSession parentSession会话。
+     * @return 领域处理结果。
      */
     public static List<SessionEvent> completedTurnPrefix(SessionLog parentSession) {
         List<SessionEvent> events = parentSession.events();
@@ -140,7 +134,7 @@ public class ForkInProcessProvider implements SubagentProvider {
      * @param agent Agent参数。
      * @return 方法执行结果。
      */
-    private List<ContentBlock> collectLastAssistantOutput(ReactLoopAgent agent) {
+    private List<ContentBlock> collectLastAssistantOutput(AgentRun agent) {
         var events = agent.session().events();
         TextBlock lastText = null;
         for (var event : events) {
@@ -164,7 +158,7 @@ public class ForkInProcessProvider implements SubagentProvider {
      * @param agent Agent参数。
      * @return 方法执行结果。
      */
-    private String determineStopReason(ReactLoopAgent agent) {
+    private String determineStopReason(AgentRun agent) {
         var events = agent.session().events();
         TurnEndReason lastReason = null;
         for (var event : events) {

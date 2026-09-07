@@ -15,10 +15,10 @@ import cn.xiaofuge.deepseek.harness.domain.sandbox.model.valobj.SandboxPolicyReq
 public interface ISandboxPolicyService {
 
     /**
-     * Resolve the execution policy for one capability call.
-     *
-     * @param request session cwd and optional mode override
-     * @return resolved execution policy
+     * 处理resolve。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param request 请求。
+     * @return 领域处理结果。
      */
     SandboxExecutionPolicy resolve(SandboxPolicyRequest request);
 }

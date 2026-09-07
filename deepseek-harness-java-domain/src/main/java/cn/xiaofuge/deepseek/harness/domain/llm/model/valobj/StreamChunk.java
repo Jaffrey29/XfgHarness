@@ -3,17 +3,7 @@ package cn.xiaofuge.deepseek.harness.domain.llm.model.valobj;
 import cn.xiaofuge.deepseek.harness.domain.model.valobj.ContentBlock;
 
 /**
- * Raw streaming protocol emitted by adapters.
- * <p>
- * Block indexes correlate interleaved deltas, and {@link BlockEnd} carries the
- * assembled block. Adapters emit usage before the terminal finish and nothing
- * afterward. Mirrors TS {@code StreamChunk}.
- * <p>
- * Java 17 note: this is a sealed interface with record permits, exhaustive
- * {@code instanceof} chains replace pattern-matching switch.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * StreamChunk 表示StreamChunk。
  */
 public sealed interface StreamChunk permits
         StreamChunk.BlockStart,
@@ -25,31 +15,52 @@ public sealed interface StreamChunk permits
         StreamChunk.Finish,
         StreamChunk.Retry {
 
-    /** A new content block started at the given index. */
+    /**
+     * BlockStart 表示BlockStart。
+     */
     record BlockStart(int index, String blockType) implements StreamChunk {}
 
-    /** Incremental text delta for the block at {@code index}. */
+    /**
+     * TextDelta 表示TextDelta。
+     */
     record TextDelta(int index, String text) implements StreamChunk {}
 
-    /** Incremental reasoning/thinking delta for the block at {@code index}. */
+    /**
+     * ReasoningDelta 表示ReasoningDelta。
+     */
     record ReasoningDelta(int index, String text) implements StreamChunk {}
 
-    /** Incremental tool-call argument delta for the block at {@code index}. */
+    /**
+     * ToolCallDelta 表示ToolCallDelta。
+     */
     record ToolCallDelta(int index, String id, String name, String argumentsDelta) implements StreamChunk {}
 
-    /** A content block finished assembling; carries the final block. */
+    /**
+     * BlockEnd 表示BlockEnd。
+     */
     record BlockEnd(int index, ContentBlock block) implements StreamChunk {}
 
-    /** Token usage report (may arrive once per stream, before finish). */
+    /**
+     * Usage 表示Usage。
+     */
     record Usage(TokenUsage usage) implements StreamChunk {}
 
-    /** Terminal chunk: the stream is done. */
+    /**
+     * Finish 表示Finish。
+     */
     record Finish(FinishReason reason) implements StreamChunk {}
 
-    /** A retry was scheduled after a failed model request attempt. */
+    /**
+     * Retry 表示Retry。
+     */
     record Retry(int attempt, Integer maxAttempts, String failureMessage) implements StreamChunk {}
 
-    /** Convenience: is this a text/reasoning/tool delta with content? */
+    /**
+     * 判断TokenDelta是否成立。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param chunk chunk。
+     * @return 领域处理结果。
+     */
     static boolean isTokenDelta(StreamChunk chunk) {
         if (chunk instanceof TextDelta td) return !td.text().isEmpty();
         if (chunk instanceof ReasoningDelta rd) return !rd.text().isEmpty();

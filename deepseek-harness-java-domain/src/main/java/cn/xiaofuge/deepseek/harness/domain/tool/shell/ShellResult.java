@@ -1,15 +1,7 @@
 package cn.xiaofuge.deepseek.harness.domain.tool.shell;
 
 /**
- * Result of a shell command execution.
- *
- * @param stdout     standard output
- * @param stderr     standard error
- * @param exitCode   process exit code (0 = success)
- * @param durationMs wall-clock duration in milliseconds
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * ShellResult 表示ShellResult结果。
  */
 public record ShellResult(
         String stdout,
@@ -17,7 +9,10 @@ public record ShellResult(
         int exitCode,
         long durationMs
 ) {
-    /** Whether the command succeeded (exit code 0). */
+    /**
+     * 判断Succes列表是否成立。
+     * @return 领域处理结果。
+     */
     public boolean isSuccess() {
         return exitCode == 0;
     }

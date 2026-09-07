@@ -17,18 +17,18 @@ import java.util.Optional;
 public interface ISkillProviderPort {
 
     /**
-     * Discover all skill candidates from this provider's sources.
-     *
-     * @param cwd workspace selector for the current lookup
-     * @return list of skill candidates
+     * 处理discover。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param cwd 工作目录。
+     * @return 领域处理结果。
      */
     List<SkillCandidate> discover(String cwd);
 
     /**
-     * Load the full skill definition for one candidate.
-     *
-     * @param candidate the candidate to load
-     * @return the loaded skill definition, or empty if not found
+     * 处理load。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param candidate candidate。
+     * @return 领域处理结果。
      */
     Optional<SkillDefinition> load(SkillCandidate candidate);
 }

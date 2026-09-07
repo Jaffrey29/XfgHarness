@@ -10,14 +10,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * The {@code shell_execute} tool.
- * <p>
- * Executes a shell command and returns stdout/stderr/exitCode to the model.
- * Requires approval from the permission matrix before execution.
- * Mirrors TS {@code tool-bash} / {@code tool-pwsh}.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * ShellExecuteTool 定义ShellExecute的领域工具契约。
  */
 public class ShellExecuteTool implements ToolDefinition {
 

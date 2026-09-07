@@ -5,8 +5,8 @@ import cn.xiaofuge.deepseek.harness.api.dto.AgentMessageResponseDTO;
 import cn.xiaofuge.deepseek.harness.api.dto.AgentToolCallEventResponseDTO;
 import cn.xiaofuge.deepseek.harness.cases.agent.factory.AgentMessageFactory;
 import cn.xiaofuge.deepseek.harness.domain.agent.model.valobj.AgentCancelCause;
-import cn.xiaofuge.deepseek.harness.domain.agent.service.AgentFactoryPort;
-import cn.xiaofuge.deepseek.harness.domain.agent.service.ReactLoopAgent;
+import cn.xiaofuge.deepseek.harness.domain.agentrun.AgentRun;
+import cn.xiaofuge.deepseek.harness.domain.agentrun.AgentRunFactoryPort;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
@@ -30,7 +30,7 @@ public class AgentUseCase implements IAgentUseCase {
     private AgentMessageFactory agentMessageFactory;
 
     @Autowired
-    private AgentFactoryPort agentFactory;
+    private AgentRunFactoryPort agentFactory;
 
     /**
      * 发送Message。
@@ -74,7 +74,7 @@ public class AgentUseCase implements IAgentUseCase {
 
     @Override
     public String getAgentStatus(String agentId) {
-        ReactLoopAgent agent = agentFactory.get(agentId);
+        AgentRun agent = agentFactory.get(agentId);
         if (agent == null) return "not-found";
         return agent.status().name().toLowerCase();
     }
@@ -87,7 +87,7 @@ public class AgentUseCase implements IAgentUseCase {
 
     @Override
     public void cancelAgent(String agentId) {
-        ReactLoopAgent agent = agentFactory.get(agentId);
+        AgentRun agent = agentFactory.get(agentId);
         if (agent != null) {
             agent.cancel(new AgentCancelCause.UserCancel("user requested"), false);
         }

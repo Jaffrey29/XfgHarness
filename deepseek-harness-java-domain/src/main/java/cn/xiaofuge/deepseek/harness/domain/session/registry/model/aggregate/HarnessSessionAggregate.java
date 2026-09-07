@@ -45,7 +45,8 @@ public class HarnessSessionAggregate {
      */
     public String getSessionId() { return sessionId; }
     /**
-     * 获取Workspace Id。
+     * 获取WorkspaceIdID。
+     * @return 领域处理结果。
      */
     public String getWorkspaceId() { return workspaceId; }
     /**

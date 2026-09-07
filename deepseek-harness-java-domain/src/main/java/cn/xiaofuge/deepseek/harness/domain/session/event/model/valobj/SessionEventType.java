@@ -1,18 +1,7 @@
 package cn.xiaofuge.deepseek.harness.domain.session.event.model.valobj;
 
 /**
- * All session event types in the canonical event log.
- * <p>
- * Each constant maps to one record variant in {@link SessionEvent}.
- * Types marked {@code ignorable=true} may be safely skipped by readers
- * that do not recognise them; all other types are <strong>required</strong> —
- * a reader MUST reject reconstruction rather than silently dropping them.
- * <p>
- * New event types should default to {@code ignorable=false} unless the event
- * is purely informational (e.g. telemetry, debug annotations).
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * SessionEventType 表示会话事件类型。
  */
 public enum SessionEventType {
 

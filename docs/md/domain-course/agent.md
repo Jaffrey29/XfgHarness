@@ -66,7 +66,7 @@
 | --- | --- | --- |
 | `service/ReactLoopAgent.java` | 767 | 主循环 / turn 控制器 |
 | `service/Agent.java` | 77 | Agent 抽象接口（`send/cancel/runMaintenance`） |
-| `service/AgentFactoryPort.java` | 38 | 组合根端口（infra `AgentFactory` 实现） |
+| `agentrun/AgentRunFactoryPort.java` | 38 | 组合根端口（infra `AgentFactory` 实现） |
 | `service/Inbox.java` | 323 | 用户消息收件箱 |
 | `service/SystemPromptAssembler.java` + `ScopedSystemPromptAssembler.java` | — | 系统提示词组装（按 profile 注入） |
 | `model/entity/Phase.java` | — | sealed 状态机（Idle/Running/Maintenance） |
@@ -127,7 +127,7 @@ stateDiagram-v2
 | 消费 | `session.event.SessionEventFactory` | 构造事件 |
 | 消费 | `session.event.service.SurfaceProjector` | 把事件投影为 `SurfaceOp` |
 | 触发 | `agent.compaction.BasicCompactionEngine` | turn 末压缩 |
-| 被消费 | `case.AgentUseCase` | 通过 `AgentFactoryPort.resolveOrCreate(sessionId)` 复用或创建 |
+| 被消费 | `case.AgentUseCase` | 通过 `AgentRunFactoryPort` 复用或创建 |
 | 被消费 | `trigger.AgentController` | 推送 SSE |
 
 ### ⑦ 注意事项

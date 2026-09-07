@@ -12,28 +12,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Incremental projection of durable agent inbox events.
- * <p>
- * Mirrors TS {@code Inbox}. An {@code Inbox} owns two ordered pending-message
- * lists ({@code next-turn} and {@code next-step}) and durably records every
- * mutation as an {@code agent/inbox/spliced} session event.
- * <p>
- * <strong>Replay semantics:</strong> On construction, the inbox replays all
- * {@code agent/inbox/spliced} events from the session log (skipping the seed
- * portion). After replay, the inbox is live — new mutations append events
- * to the session log and update the in-memory state synchronously.
- * <p>
- * <strong>Durability ordering:</strong> The durable event is appended
- * <em>before</em> the live projection mutates, so synchronous session-event
- * observers see the pre-splice lists and can reconstruct removed messages
- * from the normalized coordinates.
- * <p>
- * <strong>Identity uniqueness:</strong> No two pending messages in either
- * list may share the same id. Validation runs against the combined
- * post-splice state (both lists) to prevent duplicates.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * Inbox 表示智能体收件箱的领域模型。
  */
 public final class Inbox {
 
@@ -43,10 +22,9 @@ public final class Inbox {
     private final List<Message> nextStep = new ArrayList<>();
 
     /**
-     * Construct an inbox by replaying durable inbox events from the session.
-     *
-     * @param session       the session log (must be past the seed)
-     * @param notifications live notification sink
+     * 构造Inbox领域对象。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param session 会话。
      */
     public Inbox(SessionLog session, InboxNotifications notifications) {
         this.session = session;
@@ -74,34 +52,44 @@ public final class Inbox {
         }
     }
 
-    /** Prompts awaiting individual turns (read-only view). */
+    /**
+     * 处理nextTurn轮次。
+     * @return 领域处理结果。
+     */
     public List<Message> nextTurn() {
         return List.copyOf(nextTurn);
     }
 
-    /** Input awaiting the next step boundary (read-only view). */
+    /**
+     * 处理nextStep步骤。
+     * @return 领域处理结果。
+     */
     public List<Message> nextStep() {
         return List.copyOf(nextStep);
     }
 
-    /** Whether either pending-message list contains work. */
+    /**
+     * 判断是否包含Pending。
+     * @return 领域处理结果。
+     */
     public boolean hasPending() {
         return !nextTurn.isEmpty() || !nextStep.isEmpty();
     }
 
-    /** Durably cancel all pending input, clearing next-step before next-turn. */
+    /**
+     * 处理clear。
+     * @return 领域处理结果。
+     */
     public void clear() {
         splice(InboxTarget.NEXT_STEP, 0, nextStep.size(), List.of());
         splice(InboxTarget.NEXT_TURN, 0, nextTurn.size(), List.of());
     }
 
     /**
-     * Remove and return the complete batch proposed for one step, publishing
-     * each claimed message. The durable splices are pure deletions.
-     *
-     * @param target whether this boundary also consumes one queued turn
-     * @param turn   turn that will own the claimed batch
-     * @return next-step input followed by the queued turn, when requested
+     * 处理claim。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param target 目标。
+     * @return 领域处理结果。
      */
     public List<Message> claim(InboxTarget target, int turn) {
         List<Message> claimed = new ArrayList<>(mutate(InboxTarget.NEXT_STEP, 0, nextStep.size(), List.of(), false));
@@ -115,36 +103,30 @@ public final class Inbox {
     }
 
     /**
-     * Append one message to a pending list and durably record the insertion.
-     *
-     * @param target  pending list to extend
-     * @param message message to append
-     * @throws IllegalStateException if the message identity is already pending
+     * 处理append。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param target 目标。
+     * @return 领域处理结果。
      */
     public void append(InboxTarget target, Message message) {
         splice(target, listFor(target).size(), 0, List.of(message));
     }
 
     /**
-     * Prepend one message to a pending list and durably record the insertion.
-     *
-     * @param target  pending list to extend
-     * @param message message to prepend
-     * @throws IllegalStateException if the message identity is already pending
+     * 处理prepend。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param target 目标。
+     * @return 领域处理结果。
      */
     public void prepend(InboxTarget target, Message message) {
         splice(target, 0, 0, List.of(message));
     }
 
     /**
-     * Replace one pending message in place, possibly changing its identity.
-     * A successful replacement publishes the old message as discarded and
-     * the new message as inserted.
-     *
-     * @param messageId  identity of the pending message to replace
-     * @param newMessage replacement message
-     * @return whether the message was still pending
-     * @throws IllegalStateException if the replacement duplicates another pending message identity
+     * 处理replace。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param messageId 消息ID。
+     * @return 领域处理结果。
      */
     public boolean replace(String messageId, Message newMessage) {
         Optional<Location> location = locate(messageId);
@@ -155,10 +137,10 @@ public final class Inbox {
     }
 
     /**
-     * Remove one pending message and durably record its cancellation.
-     *
-     * @param messageId identity of the pending message to remove
-     * @return whether the message was still pending
+     * 处理remove。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param messageId 消息ID。
+     * @return 领域处理结果。
      */
     public boolean remove(String messageId) {
         Optional<Location> location = locate(messageId);
@@ -169,15 +151,11 @@ public final class Inbox {
     }
 
     /**
-     * Apply standard splice semantics and durably record the normalized result.
-     * <p>
-     * The durable event commits before the live projection mutates.
-     *
-     * @param target      pending list to mutate
-     * @param start       splice position
-     * @param deleteCount maximum number of messages to remove
-     * @param inserted    messages to insert at the resolved position
-     * @return messages removed by the splice
+     * 处理splice。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param target 目标。
+     * @param deleteCount deleteCount。
+     * @return 领域处理结果。
      */
     public List<Message> splice(InboxTarget target, int start, int deleteCount, List<Message> inserted) {
         return mutate(target, start, deleteCount, inserted, true);
@@ -272,7 +250,12 @@ public final class Inbox {
         return removed;
     }
 
-    /** Apply one normalized durable splice to the projection (during replay). */
+    /**
+     * 应用领域规则或状态变更。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param data 数据。
+     * @return 领域处理结果。
+     */
     private List<Message> apply(InboxSplicedPayload data) {
         InboxTarget target = InboxTarget.fromWireName(data.target());
         int removedCount = data.removedCount();
@@ -294,9 +277,10 @@ public final class Inbox {
     }
 
     /**
-     * Validate one normalized splice against the current projection.
-     *
-     * @throws IllegalStateException if the splice is out of bounds or creates duplicate ids
+     * 处理validate。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param splice splice。
+     * @return 领域处理结果。
      */
     private void validate(InboxSplice splice) {
         List<Message> inbox = listFor(splice.target());

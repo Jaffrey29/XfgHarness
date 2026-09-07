@@ -5,6 +5,7 @@ import cn.xiaofuge.deepseek.harness.domain.agent.model.entity.Phase;
 import cn.xiaofuge.deepseek.harness.domain.agent.model.valobj.AgentCancelCause;
 import cn.xiaofuge.deepseek.harness.domain.agent.model.valobj.AgentStatus;
 import cn.xiaofuge.deepseek.harness.domain.agent.model.valobj.InboxTarget;
+import cn.xiaofuge.deepseek.harness.domain.agentrun.AgentRun;
 import cn.xiaofuge.deepseek.harness.domain.model.entity.Message;
 import cn.xiaofuge.deepseek.harness.domain.model.entity.MessageSource;
 import cn.xiaofuge.deepseek.harness.domain.model.valobj.ContentBlock;
@@ -51,7 +52,7 @@ import org.slf4j.LoggerFactory;
  * @author 小傅哥
  * @website bugstack.cn
  */
-public class ReactLoopAgent implements Agent {
+public class ReactLoopAgent implements AgentRun {
 
     private static final Logger log = LoggerFactory.getLogger(ReactLoopAgent.class);
 
@@ -696,9 +697,8 @@ public class ReactLoopAgent implements Agent {
     private static final int CONTEXT_WINDOW_FALLBACK = 128_000;
 
     /**
-     * Sampling temperature for LLM calls; configurable because some upstreams
-     * only accept a fixed value (e.g. temperature=1) and reject anything else.
-     * A null/blank value means "do not send temperature at all".
+     * 处理parseTemperature。
+     * @return 领域处理结果。
      */
     private static final Double SAMPLING_TEMPERATURE = parseTemperature(
             System.getProperty("harness.agent.temperature",

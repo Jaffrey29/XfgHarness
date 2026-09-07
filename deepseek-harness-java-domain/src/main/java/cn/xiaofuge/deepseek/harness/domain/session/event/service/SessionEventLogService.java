@@ -13,14 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.stereotype.Service;
 
 /**
- * Default implementation of {@link ISessionEventLogService}.
- * <p>
- * Maintains an in-memory {@link SessionLog} per session and mirrors
- * writes to the durable {@link ISessionEventStore}. On startup or resume,
- * the log can be restored from the store.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * SessionEventLogService 封装会话事件SessionEventLog的领域规则与流程。
  */
 @Service
 public class SessionEventLogService implements ISessionEventLogService {
@@ -158,7 +151,10 @@ public class SessionEventLogService implements ISessionEventLogService {
     // ── Helpers ──────────────────────────────────────────────────
 
     /**
-     * 获取Or Create Log。
+     * 获取OrCreateLog。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sessionId 会话ID。
+     * @return 领域处理结果。
      */
     private SessionLog getOrCreateLog(String sessionId) {
         return logs.computeIfAbsent(sessionId, sid -> {

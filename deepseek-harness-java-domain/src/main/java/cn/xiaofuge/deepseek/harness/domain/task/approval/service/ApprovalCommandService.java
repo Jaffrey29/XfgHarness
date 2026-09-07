@@ -11,7 +11,9 @@ import cn.xiaofuge.deepseek.harness.domain.task.execution.model.valobj.HarnessEx
 import java.time.Instant;
 import org.springframework.stereotype.Service;
 
-/** Executes approval actions and resumes the task flow. */
+/**
+ * ApprovalCommandService 封装ApprovalCommand命令的领域规则与流程。
+ */
 @Service
 public class ApprovalCommandService implements IApprovalCommandService {
 

@@ -1,23 +1,16 @@
 package cn.xiaofuge.deepseek.harness.domain.tool.shell;
 
 /**
- * Executor for shell commands.
- * <p>
- * Implementations may run locally, in a sandbox, or remotely.
- * Mirrors the TS {@code ShellExecutor} interface family.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * IShellExecutor 表示IShellExecutor。
  */
 public interface IShellExecutor {
 
     /**
-     * Execute a command and block until completion.
-     *
-     * @param command  the command string to execute
-     * @param cwd      working directory (null = inherit current)
-     * @param timeoutMs maximum execution time (0 = no limit)
-     * @return the shell result
+     * 执行领域动作并返回结果。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param command 命令。
+     * @param timeoutMs timeoutMsM列表。
+     * @return 领域处理结果。
      */
     ShellResult execute(String command, String cwd, long timeoutMs);
 }

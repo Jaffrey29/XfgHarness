@@ -3,16 +3,7 @@ package cn.xiaofuge.deepseek.harness.domain.llm.adapter;
 import java.util.List;
 
 /**
- * Fully resolved retry policy for one provider route.
- * <p>
- * Mirrors TS {@code ResolvedRetryPolicy}. Two modes:
- * <ul>
- *   <li>{@code normal} — bounded exponential backoff with jitter, max retries</li>
- *   <li>{@code always} — unbounded retry until success or cancellation</li>
- * </ul>
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * ResolvedRetryPolicy 表示ResolvedRetryPolicy。
  */
 public sealed interface ResolvedRetryPolicy permits
         ResolvedRetryPolicy.Normal,
@@ -22,7 +13,9 @@ public sealed interface ResolvedRetryPolicy permits
     int maxDelayMs();
     double jitterRatio();
 
-    /** Bounded transient retry policy. */
+    /**
+     * Normal 表示Normal。
+     */
     record Normal(
             int initialDelayMs,
             int maxDelayMs,
@@ -35,7 +28,9 @@ public sealed interface ResolvedRetryPolicy permits
         }
     }
 
-    /** Unbounded retry policy. */
+    /**
+     * Always 表示Alway列表。
+     */
     record Always(
             int initialDelayMs,
             int maxDelayMs,

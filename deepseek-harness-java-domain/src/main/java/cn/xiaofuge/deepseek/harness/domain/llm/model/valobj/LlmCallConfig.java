@@ -4,20 +4,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Provider, model, reasoning effort, and sampling scalars of one conversation's
- * requests. Every field maps 1:1 onto {@link GenerateOptions}.
- * <p>
- * Mirrors TS {@code LlmCallConfig}.
- *
- * @param provider        registered provider route
- * @param model           model id
- * @param reasoningEffort reasoning effort level (nullable)
- * @param temperature     sampling temperature (nullable)
- * @param maxTokens       max output tokens (nullable)
- * @param stop            stop sequences (nullable, empty list means none)
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * LlmCallConfig 表示LlmCallConfig。
  */
 public record LlmCallConfig(
         String provider,
@@ -34,8 +21,10 @@ public record LlmCallConfig(
     }
 
     /**
-     * Field-wise equality — the comparison a caller runs to decide whether
-     * a proposed configuration is a real change or the held one restated.
+     * 处理configEqualsEqual列表。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param other other。
+     * @return 领域处理结果。
      */
     public boolean configEquals(LlmCallConfig other) {
         if (other == null) return false;

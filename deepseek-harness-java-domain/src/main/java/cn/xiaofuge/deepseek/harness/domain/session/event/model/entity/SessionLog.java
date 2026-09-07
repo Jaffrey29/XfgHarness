@@ -178,7 +178,8 @@ public class SessionLog {
     }
 
     /**
-     * First live seq = lastEndSeedSeq + 1, or 0 if no end-seed exists.
+     * 处理firstLiveSeq。
+     * @return 领域处理结果。
      */
     public synchronized long firstLiveSeq() {
         long endSeed = lastEndSeedSeq();
@@ -186,7 +187,10 @@ public class SessionLog {
     }
 
     /**
-     * Replace all events (used by restore/replay).
+     * 处理restore。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param restored restored。
+     * @return 领域处理结果。
      */
     public synchronized void restore(List<SessionEvent> restored) {
         events.clear();
@@ -196,23 +200,20 @@ public class SessionLog {
 
     // ── Surface projection (deriveMessages, requestHeader, requestContext) ──
 
-    /** Cached derived messages. */
+    /**
+     * 常量字段。
+     * <p>用途：保存该字段对应的领域状态或配置。</p>
+     */
     private List<Message> derivedCache = null;
-    /** Surface seqs the cache has projected. */
+    /**
+     * 常量字段。
+     * <p>用途：保存该字段对应的领域状态或配置。</p>
+     */
     private long derivedCacheSeq = -1;
 
     /**
-     * Derive the LLM-visible message history from surface events.
-     * <p>
-     * Walks the event log and projects {@code user/message},
-     * {@code assistant/message}, and {@code tool/result} events that carry
-     * a {@link SurfaceOp#append()} marker into {@link Message} objects.
-     * Surface {@code replace} operations shadow earlier appended ranges,
-     * mirroring the TS {@code Session.deriveMessages()} semantics.
-     * <p>
-     * Cached: each call only projects new events since the last call.
-     *
-     * @return a fresh list of derived messages in model-visible order
+     * 处理deriveMessages消息列表。
+     * @return 领域处理结果。
      */
     public synchronized List<Message> deriveMessages() {
         // Simple projection: rebuild from scratch each time for correctness.
@@ -268,10 +269,10 @@ public class SessionLog {
     }
 
     /**
-     * Project a single surface event into a {@link Message}.
-     *
-     * @return the projected message, or {@code null} if the event type
-     *         does not produce a message
+     * 处理projectMessage消息。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param event 事件。
+     * @return 领域处理结果。
      */
     private Message projectMessage(SessionEvent event) {
         if (event instanceof SessionEvent.UserMessage um) {
@@ -287,16 +288,16 @@ public class SessionLog {
         return null;
     }
 
-    /** Cached request header fold. */
+    /**
+     * 常量字段。
+     * <p>用途：保存该字段对应的领域状态或配置。</p>
+     */
     private RequestHeaderPayload headerFold = null;
     private long headerFoldSeq = -1;
 
     /**
-     * The folded request header — the header the NEXT request will be
-     * compared against — or {@code null} before the first
-     * {@code request/header} event.
-     *
-     * @return the latest folded header payload, or {@code null}
+     * 处理请求requestHeader。
+     * @return 领域处理结果。
      */
     public synchronized RequestHeaderPayload requestHeader() {
         if (headerFoldSeq < events.size()) {
@@ -311,15 +312,16 @@ public class SessionLog {
         return headerFold;
     }
 
-    /** Cached request context fold. */
+    /**
+     * 常量字段。
+     * <p>用途：保存该字段对应的领域状态或配置。</p>
+     */
     private RequestContextPayload contextFold = null;
     private long contextFoldSeq = -1;
 
     /**
-     * The latest resolved route metadata (provider, model, context window),
-     * or {@code null} before the first {@code request/context} event.
-     *
-     * @return the latest immutable route metadata, or {@code null}
+     * 处理请求requestContext。
+     * @return 领域处理结果。
      */
     public synchronized RequestContextPayload requestContext() {
         if (contextFoldSeq < events.size()) {

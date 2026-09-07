@@ -17,19 +17,18 @@ import java.util.Optional;
 public interface ISkillService {
 
     /**
-     * List all winning skill summaries.
-     *
-     * @param cwd workspace selector
-     * @return skill summaries (one per unique name, lowest rank wins)
+     * 处理list。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param cwd 工作目录。
+     * @return 领域处理结果。
      */
     List<SkillSummary> list(String cwd);
 
     /**
-     * Load the full definition for one skill by name.
-     *
-     * @param name skill name (kebab-case)
-     * @param cwd  workspace selector
-     * @return the loaded skill definition, or empty if not found
+     * 处理get。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param name 名称。
+     * @return 领域处理结果。
      */
     Optional<SkillDefinition> get(String name, String cwd);
 }

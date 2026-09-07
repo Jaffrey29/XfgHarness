@@ -1,7 +1,7 @@
 package cn.xiaofuge.deepseek.harness.cases.agent.factory;
 
 import cn.xiaofuge.deepseek.harness.api.dto.AgentToolCallEventResponseDTO;
-import cn.xiaofuge.deepseek.harness.domain.agent.service.ReactLoopAgent;
+import cn.xiaofuge.deepseek.harness.domain.agentrun.AgentRun;
 import cn.xiaofuge.deepseek.harness.domain.model.entity.Message;
 import cn.xiaofuge.deepseek.harness.domain.model.valobj.ToolCallBlock;
 import java.util.function.Consumer;
@@ -26,7 +26,7 @@ public class AgentMessageDynamicContext implements AutoCloseable {
         CLARIFICATION
     }
 
-    private ReactLoopAgent agent;
+    private AgentRun agent;
     private Message userMessage;
     private MessageIntent intent;
     private Consumer<String> deltaSink;
@@ -35,11 +35,11 @@ public class AgentMessageDynamicContext implements AutoCloseable {
     /**
      * 获取Agent。
      */
-    public ReactLoopAgent getAgent() { return agent; }
+    public AgentRun getAgent() { return agent; }
     /**
      * 设置Agent。
      */
-    public void setAgent(ReactLoopAgent agent) { this.agent = agent; }
+    public void setAgent(AgentRun agent) { this.agent = agent; }
 
     /**
      * 获取User Message。
@@ -84,7 +84,7 @@ public class AgentMessageDynamicContext implements AutoCloseable {
     /**
      * 将上下文中的流式接收器绑定到 Agent 执行循环。
      */
-    public void attachSinks(ReactLoopAgent agent) {
+    public void attachSinks(AgentRun agent) {
         if (deltaSink == null && toolCallEventSink == null) {
             return;
         }

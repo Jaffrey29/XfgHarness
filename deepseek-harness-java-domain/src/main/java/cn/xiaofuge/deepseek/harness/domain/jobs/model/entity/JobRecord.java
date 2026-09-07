@@ -7,20 +7,7 @@ import cn.xiaofuge.deepseek.harness.domain.jobs.model.valobj.JobOutcome;
 import java.time.Instant;
 
 /**
- * Mutable in-memory job record. Never handed out directly — callers get a snapshot.
- *
- * @param id             registry-issued job id
- * @param kind           producer kind (bash, subagent, ...)
- * @param label          one-line model-facing label
- * @param ownerSessionId optional owning session
- * @param status         current lifecycle status
- * @param detail         kind-specific detail
- * @param output         final output
- * @param startedAt      start instant
- * @param finishedAt     finish instant (null while running)
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * JobRecord 表示JobRecord。
  */
 public class JobRecord {
     private final String id;

@@ -6,69 +6,88 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Durable append-only store for session events and headers.
- * <p>
- * The store guarantees:
- * <ul>
- *   <li>Events are persisted in seq order (monotonic, gapless, 0-based per session).</li>
- *   <li>Once persisted, an event is never modified or deleted.</li>
- *   <li>Queries return events ordered by seq ascending.</li>
- * </ul>
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * ISessionEventStore 表示ISessionEventStore会话事件。
  */
 public interface ISessionEventStore {
 
     /**
-     * Persist the session header. Called once at session creation.
+     * 处理saveHeader。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param header header。
+     * @return 领域处理结果。
      */
     void saveHeader(SessionHeader header);
 
     /**
-     * Retrieve the session header.
+     * 获取Header。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sessionId 会话ID。
+     * @return 领域处理结果。
      */
     Optional<SessionHeader> getHeader(String sessionId);
 
     /**
-     * Append a single event. The event's seq must be the next sequential
-     * value for this session.
+     * 处理append。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sessionId 会话ID。
+     * @return 领域处理结果。
      */
     void append(String sessionId, SessionEvent event);
 
     /**
-     * Append multiple events atomically. Each event's seq must be sequential.
+     * 处理appendBatch。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sessionId 会话ID。
+     * @return 领域处理结果。
      */
     void appendBatch(String sessionId, List<SessionEvent> events);
 
     /**
-     * Read all events for a session, ordered by seq ascending.
+     * 处理readAll。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sessionId 会话ID。
+     * @return 领域处理结果。
      */
     List<SessionEvent> readAll(String sessionId);
 
     /**
-     * Read events after the given seq (exclusive), ordered by seq ascending.
+     * 处理readAfter。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sessionId 会话ID。
+     * @return 领域处理结果。
      */
     List<SessionEvent> readAfter(String sessionId, long afterSeq);
 
     /**
-     * Read events in the range [fromSeq, toSeq] (inclusive).
+     * 处理readRange。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sessionId 会话ID。
+     * @param toSeq toSeq。
+     * @return 领域处理结果。
      */
     List<SessionEvent> readRange(String sessionId, long fromSeq, long toSeq);
 
     /**
-     * Get the highest seq for a session, or -1 if no events exist.
+     * 获取LastSeq。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sessionId 会话ID。
+     * @return 领域处理结果。
      */
     long getLastSeq(String sessionId);
 
     /**
-     * Count total events for a session.
+     * 处理count。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sessionId 会话ID。
+     * @return 领域处理结果。
      */
     long count(String sessionId);
 
     /**
-     * List the most recent session headers, ordered by creation time descending.
-     * Used by the console sidebar to surface history sessions.
+     * 处理listHeadersHeader列表。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param limit limit。
+     * @return 领域处理结果。
      */
     List<SessionHeader> listHeaders(int limit);
 }

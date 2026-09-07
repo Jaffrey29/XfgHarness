@@ -7,29 +7,27 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Port for subagent providers.
- * <p>
- * Mirrors TS {@code SubagentProvider}: a provider creates and runs a
- * child agent, returning its final output. Implementations may be
- * in-process (fork) or out-of-process (ACP, subprocess).
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * SubagentProvider 表示创建子智能体的领域端口。
  */
 public interface SubagentProvider {
 
-    /** Provider name for registration. */
+    /**
+     * 处理名称。
+     * @return 领域处理结果。
+     */
     String name();
 
     /**
-     * Start a subagent run.
-     *
-     * @param request the start request
-     * @return the run result
+     * 启动生命周期或异步任务。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param request 请求。
+     * @return 领域处理结果。
      */
     CompletableFuture<SubagentResult> start(SubagentStartRequest request);
 
-    /** Capabilities advertised at start time. */
+    /**
+     * SubagentStartRequest 表示SubagentStartRequest请求。
+     */
     SubagentCapabilities capabilities();
 
     // ── Types ───────────────────────────────────────────────────

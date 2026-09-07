@@ -103,7 +103,8 @@ public class ModelSettingEntity {
     }
 
     /**
-     * 获取Profile Code。
+     * 获取画像ProfileCode。
+     * @return 领域处理结果。
      */
     public String getProfileCode() { return profileCode; }
     /**

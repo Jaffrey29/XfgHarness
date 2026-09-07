@@ -5,48 +5,42 @@ import cn.xiaofuge.deepseek.harness.domain.storage.model.valobj.KvUnitDescriptor
 import java.util.Map;
 
 /**
- * Port for a storage backend that owns the physical medium for KV units.
- *
- * <p>One unit maps to one logical file (json) or one logical database (sqlite).
- * The backend handles load, persist, and delete for individual keys.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * IStorageBackendPort 定义IStorageBackend的领域端口，由基础设施层适配。
  */
 public interface IStorageBackendPort {
 
     /**
-     * Load all tables and keys for the given unit descriptor.
-     *
-     * @param descriptor unit descriptor
-     * @return snapshot of all tables
+     * 处理load。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param descriptor descriptor。
+     * @return 领域处理结果。
      */
     KvSnapshot load(KvUnitDescriptor descriptor);
 
     /**
-     * Persist a single key within a table.
-     *
-     * @param descriptor unit descriptor
-     * @param table      table name
-     * @param key        key within the table
-     * @param value      value to store
+     * 处理put。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param descriptor descriptor。
+     * @param key key。
+     * @return 领域处理结果。
      */
     void put(KvUnitDescriptor descriptor, String table, String key, String value);
 
     /**
-     * Remove a single key within a table.
-     *
-     * @param descriptor unit descriptor
-     * @param table      table name
-     * @param key        key within the table
+     * 处理remove。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param descriptor descriptor。
+     * @param key key。
+     * @return 领域处理结果。
      */
     void remove(KvUnitDescriptor descriptor, String table, String key);
 
     /**
-     * Persist a batch of puts atomically.
-     *
-     * @param descriptor unit descriptor
-     * @param puts       map of table → (key → value)
+     * 处理putAll。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param descriptor descriptor。
+     * @param puts put列表。
+     * @return 领域处理结果。
      */
     void putAll(KvUnitDescriptor descriptor, Map<String, Map<String, String>> puts);
 }

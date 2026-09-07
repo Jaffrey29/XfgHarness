@@ -1,4 +1,6 @@
 package cn.xiaofuge.deepseek.harness.domain.typert.model.valobj;
 
-/** Independently compiled side that produced a contribution. */
+/**
+ * TypertFace 表示TypertFace。
+ */
 public enum TypertFace { HOST, CLIENT }

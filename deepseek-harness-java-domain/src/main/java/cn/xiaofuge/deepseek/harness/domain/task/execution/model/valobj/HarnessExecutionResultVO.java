@@ -4,15 +4,7 @@ import cn.xiaofuge.deepseek.harness.domain.shared.model.valobj.HarnessStatusEnum
 import java.time.Instant;
 
 /**
- * Returns the result of executing one accepted session.
- *
- * @param sessionId session identifier
- * @param status final execution status
- * @param assistantMessage assistant-visible reply or failure text
- * @param operatedAt execution completion time
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * HarnessExecutionResultVO 表示Harnes列表HarnessExecutionResult结果的领域值对象。
  */
 public record HarnessExecutionResultVO(
         String sessionId,

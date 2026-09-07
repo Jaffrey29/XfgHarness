@@ -4,13 +4,7 @@ import java.time.Instant;
 import java.util.Objects;
 
 /**
- * Immutable metadata stored at the head of a session event log.
- * <p>
- * Analogous to the TS {@code SessionHeader}. Contains information needed
- * to correctly reconstruct a session from its event log.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * SessionHeader 表示会话SessionHeader。
  */
 public record SessionHeader(
         int version,           // session format version (currently 0)
@@ -40,7 +34,11 @@ public record SessionHeader(
     }
 
     /**
-     * Create a new session header with default version.
+     * 创建领域对象。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sessionId 会话ID。
+     * @param cwd 工作目录。
+     * @return 领域处理结果。
      */
     public static SessionHeader create(
             String sessionId,
@@ -62,7 +60,13 @@ public record SessionHeader(
     }
 
     /**
-     * Create a session header for a subagent fork.
+     * 处理forSubagent。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sessionId 会话ID。
+     * @param cwd 工作目录。
+     * @param seedLength seedLength。
+     * @param agentPreset agentPreset。
+     * @return 领域处理结果。
      */
     public static SessionHeader forSubagent(
             String sessionId,

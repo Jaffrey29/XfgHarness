@@ -13,11 +13,22 @@ public record WorkflowEventPolicy(
         String output,
         String error
 ) {
+    /**
+     * Kind 表示工作流运行结果的事件类型。
+     */
     public enum Kind {
         DONE,
         ERROR
     }
 
+    /**
+     * 将已完成或失败的工作流结果转换为事件策略。
+     * <p>流程：判断异常 → 映射状态和事件类型 → 携带输出或错误信息。</p>
+     * @param runId 运行 ID。
+     * @param result 工作流结果。
+     * @param error 执行异常，可为 null。
+     * @return 工作流事件策略。
+     */
     public static WorkflowEventPolicy completed(String runId, WorkflowResult result, Throwable error) {
         if (error != null) {
             return new WorkflowEventPolicy(runId, Kind.ERROR, "ERROR", "", error.getMessage());

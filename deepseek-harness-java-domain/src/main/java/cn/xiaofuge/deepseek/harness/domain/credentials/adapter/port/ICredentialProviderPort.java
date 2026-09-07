@@ -6,51 +6,39 @@ import cn.xiaofuge.deepseek.harness.domain.credentials.model.valobj.ResolvedCred
 import java.util.Optional;
 
 /**
- * Port implemented by credential providers over their source layers.
- *
- * <p>One seam-wide rule binds all operations: an empty stored value is absent
- * everywhere — {@link #resolve} skips it, {@link #describe} reports it
- * unconfigured — so a blank never masquerades as a configured secret.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * ICredentialProviderPort 定义ICredentialProvider提供方的领域端口，由基础设施层适配。
  */
 public interface ICredentialProviderPort {
 
     /**
-     * Resolve one reference to its current value. Resolution is per call:
-     * consumers re-resolve at each operation and must not cache across
-     * operations.
-     *
-     * @param ref the reference to resolve
-     * @return the value and its source, or empty while unconfigured
+     * 处理resolve。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param ref ref。
+     * @return 领域处理结果。
      */
     Optional<ResolvedCredentialVO> resolve(CredentialRef ref);
 
     /**
-     * Describe one reference for configuration surfaces without exposing the value.
-     *
-     * @param ref the reference to describe
-     * @return configured state, supplying source, and writability
+     * 处理describe。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param ref ref。
+     * @return 领域处理结果。
      */
     CredentialInfoVO describe(CredentialRef ref);
 
     /**
-     * Durably store one value in the provider-managed writable source. Rejects
-     * while a read-only source shadows the reference, and rejects an empty
-     * value (use {@link #unset}).
-     *
-     * @param ref   the reference to store
-     * @param value the non-empty secret value
+     * 处理set。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param ref ref。
+     * @return 领域处理结果。
      */
     void set(CredentialRef ref, String value);
 
     /**
-     * Remove one reference from the provider-managed writable source; removing
-     * an absent reference is a no-op. Rejects while a read-only source shadows
-     * the reference.
-     *
-     * @param ref the reference to remove
+     * 处理unset。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param ref ref。
+     * @return 领域处理结果。
      */
     void unset(CredentialRef ref);
 }

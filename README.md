@@ -238,10 +238,6 @@ flowchart TB
             Auth["ApiKeyAuthInterceptor"]
         end
 
-        subgraph Runtime["runtime 模块 · 运行时组合根"]
-            AgentRuntime["AgentFactory · ToolRegistry<br/>RuntimeApprovalBroker · SessionEventBridge"]
-        end
-
         subgraph API["api 模块 · 应用门面"]
             Facade["Facade + DTO<br/>(隔离外部协议与内部用例)"]
         end
@@ -259,6 +255,7 @@ flowchart TB
             ToolD["tool / guard / hooks<br/>ToolRegistry · ToolCallExecutor"]
             PluginD["plugin<br/>Registry / Bridge / Runtime"]
             RuntimeD["runtime / llm / credentials<br/>ModelSetting · ILlmRuntimePort"]
+            AgentRunD["agentrun<br/>AgentRun · AgentRunFactory"]
             OtherD["goal / plan / todo / workflow<br/>schedule / jobs / terminal / sandbox ..."]
         end
 
@@ -293,7 +290,6 @@ flowchart TB
     Controllers --> UseCase
     UseCase --> Strategy --> Domain
     Facade --> Case
-    Runtime --> Domain
     Infra -.实现端口.-> Domain
     Domain --> Types
     Plugins --> Types
@@ -320,8 +316,7 @@ Domain → Types(SPI) ← Plugins
 | `API` | 暴露应用层 Facade 和 DTO，只依赖 Case，隔离外部协议与内部用例 |
 | `Case` | 编排跨领域流程，不直接依赖具体数据库、HTTP Client 或进程实现 |
 | `Domain` | 持有实体、值对象、领域服务、**端口（Port）**和仓库接口 |
-| `Infrastructure` | 实现 Domain 端口，负责 MySQL/H2、LLM、Node、Shell、MCP 等外部依赖 |
-| `Runtime` | 组合 Agent 执行器、工具注册中心、审批中介和事件监听，只依赖 Domain |
+| `Infrastructure` | 实现 Domain 端口，负责 MySQL/H2、LLM、Node、Shell、MCP 等外部适配 |
 | `Types` | 插件与工具的轻量 SPI 契约包，**不依赖 Spring** |
 
 Case 内部采用两种固定形态，避免“所有模块都套策略树”或“所有模块都直接调领域服务”：
@@ -341,9 +336,8 @@ Case 内部采用两种固定形态，避免“所有模块都套策略树”或
 | `deepseek-harness-java-trigger` | 19 个 REST Controller、API Key 拦截器、Web MVC 配置 |
 | `deepseek-harness-java-api` | 应用层 Facade、Command/Query DTO、响应对象 |
 | `deepseek-harness-java-case` | Agent、Session、Task、Plugin 等用例编排；复杂流程使用 `factory + node` |
-| `deepseek-harness-java-domain` | 27 个限界上下文、实体、值对象、端口与领域服务 |
+| `deepseek-harness-java-domain` | 27 个限界上下文、实体、值对象、端口、领域服务与 AgentRun 运行域 |
 | `deepseek-harness-java-infrastructure` | Repository、DAO、Gateway、协议和执行环境适配 |
-| `deepseek-harness-java-runtime` | Agent 运行时组合根、工具装配、运行审批与会话事件桥接 |
 | `deepseek-harness-java-types` | `JavaHarnessPlugin`、`AbstractTool`、`ToolDefinition` 等 SPI 契约 |
 | `plugins/*` | 示例插件（Java JAR + Node demo）、插件 Archetype |
 | `docs/` | 架构图、领域设计详解、插件开发指南 |
@@ -576,13 +570,13 @@ Domain 定义端口，Infrastructure 实现。关键端口：
 | `ILlmRuntimePort` | `InMemoryLlmRuntimePort`（流式生成，重试在此层） |
 | `IModelExecutionPort` | `ModelExecutionPort` |
 | `IModelProviderPort` | `ModelProviderPort` |
-| `IRuntimeApprovalBroker` | `RuntimeApprovalBroker`（Runtime 组合根） |
+| `IRuntimeApprovalBroker` | `RuntimeApprovalBroker`（Domain AgentRun） |
 | `IPermissionMatrixPort` / `IApprovalPolicyPort` | `PermissionMatrixPort` / `ApprovalPolicyPort` |
 | `IToolCatalogPort` | `ToolCatalogPort` |
 | `IPluginArtifactInstallerPort` / `IPluginRuntimeBridgePort` / `IPluginProcessPort` | `PluginArtifactInstallerPort` / `PluginRuntimeBridgePort` / `PluginProcessPort` |
 | `IHarnessSessionRepository` / `ISessionEventStore` / `IHarnessTaskQueueRepository` / `IGoalRepository` | MyBatis Repository 对应实现 |
 | `IWorkflowEnginePort` | `LocalWorkflowEnginePort` |
-| `AgentFactoryPort` | `AgentFactory`（Runtime 组合根：装配 `ReactLoopAgent` + `ToolCallExecutor`） |
+| `AgentRunFactoryPort` | `AgentFactory`（Domain AgentRun：装配 `AgentRun` + `ToolCallExecutor`） |
 
 > 更完整的领域说明（事件清单、全部端口、子域细节）见 [`docs/domain-design.md`](docs/md/domain-design.md)；**逐模块速查（含 37 个模块的用途/子包/关键类/端口/关系）**见 [`docs/domain-modules-reference.md`](docs/md/domain-modules-reference.md)。
 

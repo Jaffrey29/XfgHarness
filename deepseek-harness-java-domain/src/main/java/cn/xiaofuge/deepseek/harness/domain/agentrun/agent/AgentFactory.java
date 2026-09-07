@@ -1,4 +1,4 @@
-package cn.xiaofuge.deepseek.harness.runtime.agent;
+package cn.xiaofuge.deepseek.harness.domain.agentrun.agent;
 
 import cn.xiaofuge.deepseek.harness.domain.agent.ask.AskUserTool;
 import cn.xiaofuge.deepseek.harness.domain.agent.adapter.port.IRuntimeApprovalBroker;
@@ -8,6 +8,8 @@ import cn.xiaofuge.deepseek.harness.domain.model.entity.ToolExecutionInput;
 import cn.xiaofuge.deepseek.harness.domain.model.valobj.ToolExecutionMode;
 import cn.xiaofuge.deepseek.harness.domain.plan.ExitPlanModeTool;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.*;
+import cn.xiaofuge.deepseek.harness.domain.agentrun.AgentRun;
+import cn.xiaofuge.deepseek.harness.domain.agentrun.AgentRunFactoryPort;
 import cn.xiaofuge.deepseek.harness.domain.plan.model.valobj.PlanModeState;
 import cn.xiaofuge.deepseek.harness.domain.plan.service.PlanModeService;
 import cn.xiaofuge.deepseek.harness.domain.agent.subagent.SubagentRegistry;
@@ -34,8 +36,8 @@ import cn.xiaofuge.deepseek.harness.domain.tool.shell.ShellExecuteTool;
 import cn.xiaofuge.deepseek.harness.domain.tool.web.adapter.port.IWebPort;
 import cn.xiaofuge.deepseek.harness.domain.tool.web.WebFetchTool;
 import cn.xiaofuge.deepseek.harness.domain.tool.web.WebSearchTool;
-import cn.xiaofuge.deepseek.harness.runtime.tool.InMemoryToolRegistry;
-import cn.xiaofuge.deepseek.harness.runtime.tool.JacksonToolArgumentsParser;
+import cn.xiaofuge.deepseek.harness.domain.agentrun.tool.InMemoryToolRegistry;
+import cn.xiaofuge.deepseek.harness.domain.agentrun.tool.JacksonToolArgumentsParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.UUID;
@@ -55,7 +57,7 @@ import java.util.concurrent.ConcurrentMap;
  * @author 小傅哥
  * @website bugstack.cn
  */
-public class AgentFactory implements AgentFactoryPort {
+public class AgentFactory implements AgentRunFactoryPort {
 
     private final ILlmRuntimePort llm;
     private final ToolRegistry sharedToolRegistry;
@@ -72,7 +74,7 @@ public class AgentFactory implements AgentFactoryPort {
     private final IPermissionMatrixPort permissionMatrixPort;
     private final IRuntimeApprovalBroker approvalBroker;
     private final ISessionEventStore sessionEventStore;
-    private final ConcurrentMap<String, ReactLoopAgent> liveAgents = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, AgentRun> liveAgents = new ConcurrentHashMap<>();
 
     /**
      * 初始化默认 Agent 工厂。
@@ -170,7 +172,7 @@ public class AgentFactory implements AgentFactoryPort {
      * 2. 组装所需依赖；
      * 3. 注册并返回智能体实例。
      */
-    public ReactLoopAgent create(String agentId, AgentOptions options, String cwd) {
+    public AgentRun create(String agentId, AgentOptions options, String cwd) {
         String sessionId = UUID.randomUUID().toString();
         SessionHeader header = SessionHeader.create(sessionId, Instant.now(), cwd, agentId);
         SessionLog session = sessionEventStore != null
@@ -187,7 +189,7 @@ public class AgentFactory implements AgentFactoryPort {
      * 2. 重建智能体运行上下文；
      * 3. 注册并返回恢复后的实例。
      */
-    public ReactLoopAgent resume(String agentId, AgentOptions options, String cwd, SessionLog session) {
+    public AgentRun resume(String agentId, AgentOptions options, String cwd, SessionLog session) {
         return wireAgent(agentId, options, cwd, session);
     }
 
@@ -331,7 +333,7 @@ public class AgentFactory implements AgentFactoryPort {
      * 2. 在注册表中查找；
      * 3. 返回对应实例。
      */
-    public ReactLoopAgent get(String agentId) {
+    public AgentRun get(String agentId) {
         return liveAgents.get(agentId);
     }
 
@@ -343,7 +345,7 @@ public class AgentFactory implements AgentFactoryPort {
      * 2. 收集当前存活实例；
      * 3. 返回列表。
      */
-    public ConcurrentMap<String, ReactLoopAgent> all() {
+    public ConcurrentMap<String, AgentRun> all() {
         return liveAgents;
     }
 
@@ -358,7 +360,7 @@ public class AgentFactory implements AgentFactoryPort {
     public java.util.concurrent.CompletableFuture<Void> disposeAll() {
         return java.util.concurrent.CompletableFuture.allOf(
                 liveAgents.values().stream()
-                        .map(ReactLoopAgent::dispose)
+                        .map(AgentRun::dispose)
                         .toArray(java.util.concurrent.CompletableFuture[]::new)
         );
     }

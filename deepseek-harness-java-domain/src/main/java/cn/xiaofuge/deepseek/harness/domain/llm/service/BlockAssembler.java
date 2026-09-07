@@ -15,19 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Incrementally assembles raw {@link StreamChunk}s into complete
- * {@link ContentBlock}s and a final assistant {@link Message}.
- * <p>
- * The agent loop feeds it while logging raw chunks for replay fidelity, then
- * reads {@link #blocks()}/{@link #message(MessageSource)}/{@link #usage}/
- * {@link #finish()} once the stream ends.
- * <p>
- * Tolerant of delta-only protocols (no block-start/end); deltas arriving for
- * an index already closed by {@code block-end} are ignored (malformed stream).
- * Mirrors TS {@code BlockAssembler}.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * BlockAssembler 表示BlockAssembler。
  */
 public class BlockAssembler {
 
@@ -39,7 +27,7 @@ public class BlockAssembler {
         StringBuilder text = new StringBuilder();
         String toolCallId;
         String toolCallName;
-        /** Set by block-end — authoritative, freezes the partial. */
+        /** 由内容块结束事件设置；设置后冻结当前部分内容。 */
         ContentBlock block;
 
         PartialBlock(String blockType) {
@@ -52,7 +40,12 @@ public class BlockAssembler {
     private TokenUsage usage;
     private FinishReason finish;
 
-    /** Feed one chunk into the assembly state. */
+    /**
+     * 处理push。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param chunk chunk。
+     * @return 领域处理结果。
+     */
     public void push(StreamChunk chunk) {
         if (chunk instanceof StreamChunk.BlockStart bs) {
             if (!partials.containsKey(bs.index())) {
@@ -130,9 +123,8 @@ public class BlockAssembler {
     }
 
     /**
-     * Assemble all blocks seen so far, in stream order.
-     * <p>
-     * Max-token truncation drops tool calls that cannot be executed safely.
+     * 处理block列表。
+     * @return 领域处理结果。
      */
     public List<ContentBlock> blocks() {
         List<ContentBlock> all = new ArrayList<>();
@@ -155,21 +147,27 @@ public class BlockAssembler {
         return all;
     }
 
-    /** Usage from the usage chunk; null until one arrives. */
+    /**
+     * 处理usage。
+     * @return 领域处理结果。
+     */
     public TokenUsage usage() {
         return usage;
     }
 
-    /** Finish reason from the finish chunk; {@code Stop} when the stream ended without one. */
+    /**
+     * 处理finish。
+     * @return 领域处理结果。
+     */
     public FinishReason finish() {
         return finish != null ? finish : new FinishReason.Stop();
     }
 
     /**
-     * The assembled assistant message.
-     *
-     * @param source producer attribution for the assembled message
-     * @return an immutable assistant-role message over {@link #blocks()}
+     * 处理消息。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param source 来源。
+     * @return 领域处理结果。
      */
     public Message message(MessageSource source) {
         return new Message(

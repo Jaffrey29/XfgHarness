@@ -12,18 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
- * Domain service that bridges plugin sidecar tools into the {@link ToolRegistry}.
- * <p>
- * When a plugin sidecar starts, this service:
- * <ol>
- *   <li>Connects to the sidecar via {@link IPluginToolBridge}</li>
- *   <li>Lists all tools declared by the sidecar</li>
- *   <li>Wraps each as {@link PluginToolDefinition} and registers in the tool registry</li>
- * </ol>
- * When the sidecar stops, all tools for that plugin are unregistered via disposers.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * PluginToolBridgeService 封装PluginToolBridge的领域规则与流程。
  */
 @Service
 public class PluginToolBridgeService {
@@ -57,11 +46,10 @@ public class PluginToolBridgeService {
     }
 
     /**
-     * Connect to a plugin sidecar and register all its tools.
-     *
-     * @param pluginId plugin identifier
-     * @param process  the started sidecar process
-     * @return list of registered tool names
+     * 处理bridgePlugin。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param pluginId 插件ID。
+     * @return 领域处理结果。
      */
     public List<String> bridgePlugin(String pluginId, Process process) {
         if (pluginDisposers.containsKey(pluginId)) {
@@ -97,9 +85,10 @@ public class PluginToolBridgeService {
     }
 
     /**
-     * Disconnect from a plugin sidecar and unregister all its tools.
-     *
-     * @param pluginId plugin identifier
+     * 处理unbridgePlugin。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param pluginId 插件ID。
+     * @return 领域处理结果。
      */
     public void unbridgePlugin(String pluginId) {
         removePromptSection(pluginId);
@@ -118,14 +107,20 @@ public class PluginToolBridgeService {
     }
 
     /**
-     * Check if a plugin is currently bridged.
+     * 判断Bridged是否成立。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param pluginId 插件ID。
+     * @return 领域处理结果。
      */
     public boolean isBridged(String pluginId) {
         return pluginDisposers.containsKey(pluginId);
     }
 
     /**
-     * Get the list of tool names registered for a plugin.
+     * 获取ToolNames名称列表。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param pluginId 插件ID。
+     * @return 领域处理结果。
      */
     public List<String> getToolNames(String pluginId) {
         return List.copyOf(pluginToolNames.getOrDefault(pluginId, List.of()));

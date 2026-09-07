@@ -6,28 +6,18 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Cooperative tool-call timeout enforcer.
- *
- * <p>A tool declares {@code timeoutMs} and promises to honor the signal reference;
- * this wrapper arms the deadline and maps expiry to a structured {@link ToolTimeoutResult}.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * ToolTimeoutPolicy 表示ToolTimeoutPolicy。
  */
 public class ToolTimeoutPolicy {
 
     public static final String CODE = ToolTimeoutResult.CODE;
 
     /**
-     * Arms a deadline for a single tool call. Blocks until either the tool completes
-     * or the deadline fires (signaling through {@code signal}).
-     *
-     * @param signal        a reference the tool can check to cancel
-     * @param timeoutMs     elapsed budget in milliseconds
-     * @param toolRunnable  executable tool body
-     * @return the tool result
-     * @throws InterruptedException if the current thread is interrupted while waiting
-     * @throws ToolTimeoutException when this policy's own timer wins
+     * 处理arm。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param signal signal。
+     * @param toolRunnable toolRunnable。
+     * @return 领域处理结果。
      */
     public static Object arm(java.util.concurrent.atomic.AtomicReference<Object> signal,
                              long timeoutMs,
@@ -58,10 +48,14 @@ public class ToolTimeoutPolicy {
         return holder[0];
     }
 
-    /** Holds the timeout-fired sentinel; tools check this to know their deadline won. */
+    /**
+     * TimeoutFired 表示TimeoutFired。
+     */
     public static final class TimeoutFired {}
 
-    /** Thrown when this policy's own timer wins. */
+    /**
+     * ToolTimeoutException 表示ToolTimeoutException。
+     */
     public static class ToolTimeoutException extends RuntimeException {
         private final long timeoutMs;
         /**

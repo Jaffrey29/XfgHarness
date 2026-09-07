@@ -11,13 +11,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Adapts a plugin sidecar tool as a {@link ToolDefinition}.
- * <p>
- * Tool name is plugin-qualified: {@code plugin__<pluginId>__<rawName>}.
- * When invoked, delegates execution to the {@link IPluginToolBridge}.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * PluginToolDefinition 表示PluginToolDefinition。
  */
 public class PluginToolDefinition implements ToolDefinition {
 

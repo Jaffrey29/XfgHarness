@@ -29,34 +29,34 @@ public interface IPluginRegistryService {
     PluginInstallStatusEnumVO refreshStatus(HarnessPluginEntity plugin, boolean bridgeReady);
 
     /**
-     * Disables one installed plugin — keeps artifacts on disk but marks it inactive.
-     *
-     * @param pluginId plugin identifier
-     * @return resulting status
+     * 处理disablePlugin。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param pluginId 插件ID。
+     * @return 领域处理结果。
      */
     PluginInstallStatusEnumVO disablePlugin(String pluginId);
 
     /**
-     * Re-enables one disabled plugin — back to registered state.
-     *
-     * @param pluginId plugin identifier
-     * @return resulting status
+     * 处理enablePlugin。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param pluginId 插件ID。
+     * @return 领域处理结果。
      */
     PluginInstallStatusEnumVO enablePlugin(String pluginId);
 
     /**
-     * Uninstalls one plugin — removes artifacts and marks the registration row as uninstalled.
-     *
-     * @param pluginId plugin identifier
-     * @return resulting status
+     * 处理uninstallPlugin。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param pluginId 插件ID。
+     * @return 领域处理结果。
      */
     PluginInstallStatusEnumVO uninstallPlugin(String pluginId);
 
     /**
-     * Loads one plugin without throwing when absent.
-     *
-     * @param pluginId plugin identifier
-     * @return plugin entity when present
+     * 处理loadPluginOptional。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param pluginId 插件ID。
+     * @return 领域处理结果。
      */
     Optional<HarnessPluginEntity> loadPluginOptional(String pluginId);
 }

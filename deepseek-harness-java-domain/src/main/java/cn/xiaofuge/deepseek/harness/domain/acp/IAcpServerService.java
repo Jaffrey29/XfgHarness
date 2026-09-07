@@ -16,33 +16,34 @@ import cn.xiaofuge.deepseek.harness.domain.acp.model.valobj.AcpSessionInfo;
 public interface IAcpServerService {
 
     /**
-     * Create a new ACP session.
-     *
-     * @param cwd       working directory
-     * @param mcpConfig MCP configuration JSON (optional)
-     * @return session info
+     * 处理newSession会话。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param cwd 工作目录。
+     * @return 领域处理结果。
      */
     AcpSessionInfo newSession(String cwd, String mcpConfig);
 
     /**
-     * Send a prompt to an ACP session.
-     *
-     * @param request prompt request
-     * @return prompt response
+     * 处理提示词。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param request 请求。
+     * @return 领域处理结果。
      */
     AcpPromptResponse prompt(AcpPromptRequest request);
 
     /**
-     * Cancel an in-flight prompt.
-     *
-     * @param sessionId session id
+     * 处理cancel。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sessionId 会话ID。
+     * @return 领域处理结果。
      */
     void cancel(String sessionId);
 
     /**
-     * Close a session.
-     *
-     * @param sessionId session id
+     * 关闭资源或生命周期。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sessionId 会话ID。
+     * @return 领域处理结果。
      */
     void closeSession(String sessionId);
 }

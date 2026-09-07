@@ -9,12 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 /**
- * Owns the deployment default mode, fallback workspace root, and request-time
- * policy resolution. Tool layers call {@link #resolve} for each execution so a
- * session's mode and immutable cwd travel together to every enforcing capability.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * SandboxPolicyService 封装SandboxPolicy的领域规则与流程。
  */
 @Service
 public class SandboxPolicyService implements ISandboxPolicyService {

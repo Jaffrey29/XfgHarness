@@ -9,29 +9,44 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Registry and lookup for tool definitions.
- * Mirrors TS {@code ToolRuntime} (registry portion).
- *
- * <p>调用流程：Agent 发起 tool call → ToolRegistry 查找工具 → Guard 校验 → ToolExecutor 执行 → 结果回填。</p>
- * <p>示例：工具名 fs_read 与 JSON 参数先经过校验，再生成 ToolExecutionResult。</p>
- * @author 小傅哥
- * @website bugstack.cn
+ * ToolRegistry 维护Tool的注册关系。
  */
 public interface ToolRegistry {
 
-    /** Register a tool definition. Returns a disposer. */
+    /**
+     * 注册领域对象并维护索引。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param definition definition。
+     * @return 领域处理结果。
+     */
     Runnable register(ToolDefinition definition);
 
-    /** Look up a tool by name. */
+    /**
+     * 处理lookup。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param name 名称。
+     * @return 领域处理结果。
+     */
     Optional<ToolDefinition> lookup(String name);
 
-    /** All registered tool definitions. */
+    /**
+     * 处理all。
+     * @return 领域处理结果。
+     */
     Collection<ToolDefinition> all();
 
-    /** Determine the execution mode for a pending call. */
+    /**
+     * 处理executionMode。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param exec exec。
+     * @return 领域处理结果。
+     */
     ToolExecutionMode executionMode(ToolExecutionInput exec);
 
-    /** All registered tool schemas (for LLM request building). */
+    /**
+     * 处理schema列表。
+     * @return 领域处理结果。
+     */
     default List<ToolSchema> schemas() {
         return all().stream()
                 .map(td -> new ToolSchema(td.name(), td.description(), td.parameters()))

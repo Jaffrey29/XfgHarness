@@ -4,20 +4,7 @@ import cn.xiaofuge.deepseek.harness.domain.model.entity.Message;
 import java.util.List;
 
 /**
- * Payload for {@code agent/inbox/spliced} session events.
- * <p>
- * Mirrors TS {@code SessionEventMap['agent/inbox/spliced']}.
- * The {@code inserted} list contains full {@link Message} objects (not just ids),
- * matching the TS contract where UserMessage[] is persisted.
- *
- * @param target       "next-turn" or "next-step"
- * @param start        splice position (0-based, normalized)
- * @param removedCount number of messages removed (0 if none)
- * @param inserted     messages inserted at the splice position
- * @param outcome      "canceled" if removed messages were discarded, null otherwise
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * InboxSplicedPayload 表示InboxSplicedPayload。
  */
 public record InboxSplicedPayload(
         String target,

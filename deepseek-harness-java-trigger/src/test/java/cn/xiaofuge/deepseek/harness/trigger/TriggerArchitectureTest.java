@@ -23,7 +23,6 @@ class TriggerArchitectureTest {
                 .that().resideInAPackage("cn.xiaofuge.deepseek.harness.trigger..")
                 .should().dependOnClassesThat().resideInAnyPackage(
                         "cn.xiaofuge.deepseek.harness.domain..",
-                        "cn.xiaofuge.deepseek.harness.runtime..",
                         "cn.xiaofuge.deepseek.harness.infrastructure.."
                 )
                 .check(classes);

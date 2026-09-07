@@ -3,14 +3,7 @@ package cn.xiaofuge.deepseek.harness.domain.agent.service;
 import cn.xiaofuge.deepseek.harness.domain.model.entity.Message;
 
 /**
- * No-op implementation of {@link InboxNotifications}.
- * <p>
- * Suitable for testing and as a default when no live notification channel
- * is wired. Production code should supply a real implementation that
- * pushes to the UI / websocket / SSE layer.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * LoggingInboxNotifications 表示收件箱日志通知的领域适配实现。
  */
 public final class LoggingInboxNotifications implements InboxNotifications {
 

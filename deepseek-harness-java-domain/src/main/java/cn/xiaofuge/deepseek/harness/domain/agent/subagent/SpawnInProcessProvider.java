@@ -2,8 +2,8 @@ package cn.xiaofuge.deepseek.harness.domain.agent.subagent;
 
 import cn.xiaofuge.deepseek.harness.domain.agent.model.entity.AgentOptions;
 import cn.xiaofuge.deepseek.harness.domain.agent.model.valobj.InboxTarget;
-import cn.xiaofuge.deepseek.harness.domain.agent.service.AgentFactoryPort;
-import cn.xiaofuge.deepseek.harness.domain.agent.service.ReactLoopAgent;
+import cn.xiaofuge.deepseek.harness.domain.agentrun.AgentRun;
+import cn.xiaofuge.deepseek.harness.domain.agentrun.AgentRunFactoryPort;
 import cn.xiaofuge.deepseek.harness.domain.model.entity.Message;
 import cn.xiaofuge.deepseek.harness.domain.model.entity.MessageSource;
 import cn.xiaofuge.deepseek.harness.domain.model.valobj.ContentBlock;
@@ -15,20 +15,13 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * In-process subagent provider that creates a fresh child agent with no
- * parent context inheritance. Corresponds to TS {@code subagent-spawn-in-process}.
- * <p>
- * The child gets its own session, system prompt, and tool registry. After the
- * child's turn completes, the result is collected and the child is disposed.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * SpawnInProcessProvider 表示进程内创建子智能体的领域提供者。
  */
 public class SpawnInProcessProvider implements SubagentProvider {
 
     private final String providerName;
     private final SubagentRegistry registry;
-    private final AgentFactoryPort agentFactory;
+    private final AgentRunFactoryPort agentFactory;
     private final AgentOptions defaultOptions;
 
     /**
@@ -38,7 +31,7 @@ public class SpawnInProcessProvider implements SubagentProvider {
     public SpawnInProcessProvider(
             String providerName,
             SubagentRegistry registry,
-            AgentFactoryPort agentFactory,
+            AgentRunFactoryPort agentFactory,
             AgentOptions defaultOptions
     ) {
         this.providerName = providerName;
@@ -85,7 +78,7 @@ public class SpawnInProcessProvider implements SubagentProvider {
                     : defaultOptions;
 
             // Create child agent with fresh session
-            ReactLoopAgent childAgent = agentFactory.create(
+            AgentRun childAgent = agentFactory.create(
                     childSessionId,
                     childOptions,
                     request.parentCwd() != null ? request.parentCwd() : "."
@@ -121,7 +114,7 @@ public class SpawnInProcessProvider implements SubagentProvider {
      * @param agent Agent参数。
      * @return 方法执行结果。
      */
-    private List<ContentBlock> collectLastAssistantOutput(ReactLoopAgent agent) {
+    private List<ContentBlock> collectLastAssistantOutput(AgentRun agent) {
         var events = agent.session().events();
         TextBlock lastText = null;
         for (var event : events) {
@@ -145,7 +138,7 @@ public class SpawnInProcessProvider implements SubagentProvider {
      * @param agent Agent参数。
      * @return 方法执行结果。
      */
-    private String determineStopReason(ReactLoopAgent agent) {
+    private String determineStopReason(AgentRun agent) {
         var events = agent.session().events();
         TurnEndReason lastReason = null;
         for (var event : events) {

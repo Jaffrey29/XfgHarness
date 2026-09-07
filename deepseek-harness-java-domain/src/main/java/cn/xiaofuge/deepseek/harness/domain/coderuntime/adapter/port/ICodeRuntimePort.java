@@ -14,10 +14,10 @@ import cn.xiaofuge.deepseek.harness.domain.coderuntime.model.valobj.CodeRunResul
 public interface ICodeRuntimePort {
 
     /**
-     * Execute a code program with the given request.
-     *
-     * @param request the code run request
-     * @return execution result
+     * 执行领域动作并返回结果。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param request 请求。
+     * @return 领域处理结果。
      */
     CodeRunResult execute(CodeRunRequest request);
 }

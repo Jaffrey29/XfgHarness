@@ -92,7 +92,10 @@ public class HarnessExecutionService implements IHarnessExecutionService {
     }
 
     /**
-     * 解析e Latest User Prompt。
+     * 处理resolveLatestUserPrompt提示词。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sessionId 会话ID。
+     * @return 领域处理结果。
      */
     private String resolveLatestUserPrompt(String sessionId) {
         return sessionEventRepository.queryBySessionId(sessionId).stream()

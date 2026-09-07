@@ -4,8 +4,8 @@ import cn.xiaofuge.deepseek.harness.api.dto.AgentMessageRequestDTO;
 import cn.xiaofuge.deepseek.harness.api.dto.AgentMessageResponseDTO;
 import cn.xiaofuge.deepseek.harness.cases.agent.factory.AgentMessageDynamicContext;
 import cn.xiaofuge.deepseek.harness.domain.agent.model.entity.AgentOptions;
-import cn.xiaofuge.deepseek.harness.domain.agent.service.AgentFactoryPort;
-import cn.xiaofuge.deepseek.harness.domain.agent.service.ReactLoopAgent;
+import cn.xiaofuge.deepseek.harness.domain.agentrun.AgentRun;
+import cn.xiaofuge.deepseek.harness.domain.agentrun.AgentRunFactoryPort;
 import cn.xiaofuge.deepseek.harness.domain.runtime.setting.service.AgentModelSettingResolver;
 import cn.xiaofuge.deepseek.harness.cases.orchestration.StrategyHandler;
 import org.springframework.stereotype.Service;
@@ -28,7 +28,7 @@ public class AgentResolveNode extends AbstractAgentMessageNode {
     private static final Logger log = LoggerFactory.getLogger(AgentResolveNode.class);
 
     @Autowired
-    private AgentFactoryPort agentFactory;
+    private AgentRunFactoryPort agentFactory;
 
     @Autowired
     private AgentModelSettingResolver modelSettingResolver;
@@ -46,7 +46,7 @@ public class AgentResolveNode extends AbstractAgentMessageNode {
     @Override
     protected AgentMessageResponseDTO doApply(AgentMessageRequestDTO request,
                                            AgentMessageDynamicContext ctx) throws Exception {
-        ReactLoopAgent agent = agentFactory.get(request.agentId());
+        AgentRun agent = agentFactory.get(request.agentId());
         if (agent == null) {
             AgentOptions options = buildAgentOptions(request);
             String workDir = request.cwd() != null ? request.cwd() : System.getProperty("user.dir");

@@ -1,25 +1,25 @@
 package cn.xiaofuge.deepseek.harness.domain.agent.model.valobj;
 
 /**
- * Why an agent activity was cancelled. Mirrors TS {@code AgentCancelCause}.
- * <p>
- * The first cause wins for any activity. {@code DISPOSED} means the agent
- * lifecycle is tearing down; other causes are caller-intent.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * AgentCancelCause 表示智能体取消原因的领域值对象。
  */
 public sealed interface AgentCancelCause
         permits AgentCancelCause.UserCancel,
                 AgentCancelCause.Disposed,
                 AgentCancelCause.Maintenance {
 
-    /** User explicitly cancelled the active turn or maintenance task. */
+    /**
+     * UserCancel 表示UserCancel。
+     */
     record UserCancel(String reason) implements AgentCancelCause {}
 
-    /** Agent lifecycle disposal triggered the cancellation. */
+    /**
+     * Disposed 表示Disposed。
+     */
     record Disposed() implements AgentCancelCause {}
 
-    /** Maintenance task was superseded by waking input. */
+    /**
+     * Maintenance 表示Maintenance。
+     */
     record Maintenance() implements AgentCancelCause {}
 }

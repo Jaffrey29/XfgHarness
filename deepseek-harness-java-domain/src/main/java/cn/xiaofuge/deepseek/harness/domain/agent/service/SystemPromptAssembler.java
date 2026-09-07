@@ -6,26 +6,16 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Assembles the system prompt and tool definitions for a model request.
- * Mirrors TS {@code dsh-system-prompt} package's {@code assemble()}.
- * <p>
- * The implementation merges static sections (persona, instructions),
- * dynamic runtime context, and tool schemas into a {@link PromptAssembly}
- * that the agent loop renders into a request.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * SystemPromptAssembler 表示系统提示词的领域装配契约。
  */
 public interface SystemPromptAssembler {
 
     /**
-     * Assemble the prompt for one agent step.
-     *
-     * @param agentId     agent identity for scoped contributions
-     * @param options     agent options (provider, model, cwd)
-     * @param cwd         working directory for the session
-     * @param tools       enabled tool schemas
-     * @return the assembled prompt
+     * 装配领域所需的内容结构。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param agentId 智能体ID。
+     * @param cwd 工作目录。
+     * @return 领域处理结果。
      */
     CompletableFuture<PromptAssembly> assemble(
             String agentId,
@@ -35,10 +25,7 @@ public interface SystemPromptAssembler {
     );
 
     /**
-     * Assembled prompt ready for rendering.
-     *
-     * @param system rendered system prompt string
-     * @param tools  tool schemas to include in the request
+     * PromptAssembly 表示提示词PromptAssembly。
      */
     record PromptAssembly(
             String system,

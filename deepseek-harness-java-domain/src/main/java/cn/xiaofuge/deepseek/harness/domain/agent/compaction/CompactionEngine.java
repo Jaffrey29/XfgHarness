@@ -6,24 +6,12 @@ import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionLog
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Port for compaction engines.
- * <p>
- * Mirrors TS {@code CompactionEngine}: implementations own the trigger
- * policy, retention, and summarization. A successful run replaces the
- * selected surface span with one summary message.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * CompactionEngine 表示会话上下文压缩的领域引擎契约。
  */
 public interface CompactionEngine {
 
     /**
-     * Consider automatic compaction.
-     *
-     * @param session the session log to compact
-     * @param options agent options for model routing
-     * @param trigger the reason compaction is being considered
-     * @return the result, or null if no compaction was needed
+     * 根据当前会话状态判断是否执行上下文压缩。
      */
     CompletableFuture<CompactionResult> compactIfNeeded(
             SessionLog session,
@@ -32,18 +20,19 @@ public interface CompactionEngine {
     );
 
     /**
-     * Explicitly compact useful history.
-     *
-     * @param session the session log to compact
-     * @param options agent options for model routing
-     * @return the result, or null if no safe range exists
+     * 执行会话上下文压缩并返回结果。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param session 会话。
+     * @return 领域处理结果。
      */
     CompletableFuture<CompactionResult> compactNow(
             SessionLog session,
             AgentOptions options
     );
 
-    /** Why compaction is being considered. */
+    /**
+     * CompactionTrigger 表示CompactionTrigger触发原因。
+     */
     enum CompactionTrigger {
         PRESSURE,
         CONTEXT_OVERFLOW

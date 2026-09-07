@@ -53,7 +53,8 @@ public class SubagentRegistry {
     }
 
     /**
-     * 列出Provider Names。
+     * 处理listProviderNames提供方名称列表。
+     * @return 领域处理结果。
      */
     public List<String> listProviderNames() {
         return List.copyOf(providers.keySet());

@@ -19,7 +19,6 @@
         <module>deepseek-harness-java-types</module>
         <module>deepseek-harness-java-domain</module>
         <module>deepseek-harness-java-infrastructure</module>
-        <module>deepseek-harness-java-runtime</module>
         <module>plugins/sample-tools-plugin</module>
         <module>plugins/plugin-archetype</module>
     </modules>

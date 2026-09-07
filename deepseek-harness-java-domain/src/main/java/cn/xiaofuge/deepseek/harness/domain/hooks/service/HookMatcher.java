@@ -6,13 +6,7 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 /**
- * Matches a tool name against matcher groups using the dialect's mode.
- *
- * <p>Claude Code uses literal match (pipe = exact-match alternation) when the
- * pattern is purely {@code [A-Za-z0-9_|]+} and regex otherwise; Codex is always regex.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * HookMatcher 表示HookMatcher。
  */
 public final class HookMatcher {
 

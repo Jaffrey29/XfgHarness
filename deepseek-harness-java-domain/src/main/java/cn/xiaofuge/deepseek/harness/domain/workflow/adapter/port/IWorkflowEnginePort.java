@@ -14,10 +14,10 @@ import cn.xiaofuge.deepseek.harness.domain.workflow.model.entity.WorkflowStartRe
 public interface IWorkflowEnginePort {
 
     /**
-     * Start a workflow run.
-     *
-     * @param request start request
-     * @return live workflow run handle
+     * 启动生命周期或异步任务。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param request 请求。
+     * @return 领域处理结果。
      */
     WorkflowRun start(WorkflowStartRequest request);
 }

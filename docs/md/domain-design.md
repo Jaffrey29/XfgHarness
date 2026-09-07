@@ -249,7 +249,7 @@ AgentResolveNode → AgentIntentNode → AgentDispatchNode → AgentCollectNode
 
 | 节点 | 职责 |
 | --- | --- |
-| `AgentResolveNode` | 按 `agentId` 复用或创建 Agent（经 `AgentFactoryPort`），解析模型、Token、工作目录 |
+| `AgentResolveNode` | 按 `agentId` 复用或创建 AgentRun（经 `AgentRunFactoryPort`），解析模型、Token、工作目录 |
 | `AgentIntentNode` | 纯正则规则分类：`CHAT` / `CODE_QUESTION` / `TASK_EXECUTION` / `CLARIFICATION`；`TASK_EXECUTION` 会注入"先调工具"指令；目录列举类请求推荐 `shell_execute`（ls/find）而非 `fs_search` |
 | `AgentDispatchNode` | 构造 `Message.createUser(...)` 并 `agent.send(userMessage, InboxTarget.NEXT_TURN, true)` |
 | `AgentCollectNode` | 等待 Agent 空闲（`.join()`），从会话事件投影 User/Assistant/ToolCall/ToolResult 消息，按 callId 合并工具消息，组装响应 |
@@ -338,7 +338,7 @@ Domain 定义端口，Infrastructure 提供实现。关键端口：
 | `goal/.../IGoalRepository` | `GoalRepository` | 目标持久化 |
 | `jobs/schedule/...` | `InMemoryJobRegistryRepository` 等 | 内存实现（重启即丢，已知隐患） |
 | `workflow/.../IWorkflowEnginePort` | `LocalWorkflowEnginePort` | 工作流引擎 |
-| `agent/.../AgentFactoryPort` | `AgentFactory` | 组合根：装配 `ReactLoopAgent` + `ToolCallExecutor` |
+| `agentrun/AgentRunFactoryPort` | `AgentFactory` | 组合根：装配 `AgentRun` + `ToolCallExecutor` |
 
 组合根 `AgentFactory` 注入 `ToolRegistry`、`SessionLog`、`ILlmRuntimePort`、`RuntimeApprovalGate`，构建 `ReactLoopAgent` 与 `ToolCallExecutor(registry, session, maxParallel)`。
 

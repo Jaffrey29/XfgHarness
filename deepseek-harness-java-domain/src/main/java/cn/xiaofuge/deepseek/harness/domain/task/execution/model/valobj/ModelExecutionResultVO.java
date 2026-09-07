@@ -1,14 +1,7 @@
 package cn.xiaofuge.deepseek.harness.domain.task.execution.model.valobj;
 
 /**
- * Returns one assistant reply from the configured model provider.
- *
- * @param providerCode provider identifier
- * @param modelCode model identifier
- * @param content assistant reply text
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * ModelExecutionResultVO 表示模型ModelExecutionResult结果的领域值对象。
  */
 public record ModelExecutionResultVO(
         String providerCode,

@@ -18,14 +18,12 @@ import java.util.Map;
 public interface IHookService {
 
     /**
-     * Run all matching hooks for a given hook point.
-     *
-     * @param dialect     hook dialect (claude-code or codex)
-     * @param point       hook interception point
-     * @param toolName    tool name for PreToolUse/PostToolUse (null otherwise)
-     * @param payloadJson hook event payload as JSON
-     * @param environment environment variables for hook processes
-     * @return merged outcome
+     * 处理runHooksHook列表。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param dialect dialect。
+     * @param toolName 工具名。
+     * @param environment environment。
+     * @return 领域处理结果。
      */
     MergedHookOutcome runHooks(HookDialect dialect, HookPoint point, String toolName,
                                String payloadJson, Map<String, String> environment);

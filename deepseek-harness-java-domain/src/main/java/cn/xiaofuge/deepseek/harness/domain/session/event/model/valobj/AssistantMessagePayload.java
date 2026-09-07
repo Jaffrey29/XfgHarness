@@ -4,14 +4,7 @@ import cn.xiaofuge.deepseek.harness.domain.model.entity.Message;
 import cn.xiaofuge.deepseek.harness.domain.llm.model.valobj.TokenUsage;
 
 /**
- * Payload for {@code assistant/message} session events.
- * <p>
- * Carries the full {@link Message} object (role=assistant) and optional
- * {@link TokenUsage} so that {@code SessionLog.deriveMessages()} can
- * reconstruct the conversation history and token accounting.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * AssistantMessagePayload 表示AssistantMessagePayload消息。
  */
 public record AssistantMessagePayload(
         long turn,

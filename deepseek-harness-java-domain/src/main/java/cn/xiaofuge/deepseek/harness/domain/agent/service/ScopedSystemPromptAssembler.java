@@ -11,23 +11,20 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 /**
- * Enhanced system prompt assembler with sections, contexts, variables, and scope support.
- * <p>
- * Mirrors TS {@code dsh-system-prompt} package: ordered sections (persona, identity,
- * tool guidance), dynamic contexts (runtime snapshots), tool schemas with canonical
- * ordering, and {@code {{variable}}} interpolation.
- * <p>
- * Scope: global registrations plus per-agent scoped sections that shadow globals.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * ScopedSystemPromptAssembler 表示作用域系统提示词的领域装配服务。
  */
 public class ScopedSystemPromptAssembler implements SystemPromptAssembler {
 
-    /** Reserved section name for the deployment persona. */
+    /**
+     * 常量字段。
+     * <p>用途：保存该字段对应的领域状态或配置。</p>
+     */
     public static final String PERSONA_SECTION = "deployment:persona";
 
-    /** Prompt order of the persona slot. */
+    /**
+     * 常量字段。
+     * <p>用途：保存该字段对应的领域状态或配置。</p>
+     */
     public static final int PERSONA_ORDER = 0;
 
     // ── Global registry ──────────────────────────────────────────
@@ -60,7 +57,9 @@ public class ScopedSystemPromptAssembler implements SystemPromptAssembler {
         registerSection(new PromptSection(PERSONA_SECTION, PERSONA_ORDER, this.persona));
     }
 
-    /** No-arg constructor with defaults. */
+    /**
+     * 构造ScopedSystemPromptAssembler领域对象。
+     */
     public ScopedSystemPromptAssembler() {
         this(null, null, List.of());
     }
@@ -218,7 +217,10 @@ public class ScopedSystemPromptAssembler implements SystemPromptAssembler {
     // ── Rendering ───────────────────────────────────────────────
 
     /**
-     * Interpolate {{variable}} references, drop empty sections, join with blank lines.
+     * 处理renderPrompt提示词。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param assembly assembly。
+     * @return 领域处理结果。
      */
     public static String renderPrompt(PromptAssemblyFull assembly) {
         return assembly.sections().stream()
@@ -229,7 +231,10 @@ public class ScopedSystemPromptAssembler implements SystemPromptAssembler {
     }
 
     /**
-     * Render the dynamic context snapshot.
+     * 处理renderContextSnapshot。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param assembly assembly。
+     * @return 领域处理结果。
      */
     public static String renderContextSnapshot(PromptAssemblyFull assembly) {
         String body = assembly.contexts().stream()
@@ -241,7 +246,13 @@ public class ScopedSystemPromptAssembler implements SystemPromptAssembler {
         return "Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\n" + body;
     }
 
-    /** Interpolate one section or context. */
+    /**
+     * 处理interpolate。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param input input。
+     * @param variables variable列表。
+     * @return 领域处理结果。
+     */
     private static String interpolate(AssembledSection input, Map<String, String> variables) {
         return doInterpolate(input.text(), variables, "section", input.name());
     }
@@ -342,7 +353,9 @@ public class ScopedSystemPromptAssembler implements SystemPromptAssembler {
 
     // ── Types ───────────────────────────────────────────────────
 
-    /** A registered prompt section. */
+    /**
+     * PromptSection 表示提示词PromptSection。
+     */
     public record PromptSection(
             String name,
             int order,
@@ -373,20 +386,28 @@ public class ScopedSystemPromptAssembler implements SystemPromptAssembler {
         }
     }
 
-    /** A registered dynamic context. */
+    /**
+     * PromptContext 表示提示词PromptContext。
+     */
     public record PromptContext(
             String name,
             int order,
             Object text // String or Function<AssembleContext, String>
     ) {}
 
-    /** One resolved section. */
+    /**
+     * AssembledSection 表示AssembledSection。
+     */
     public record AssembledSection(String name, String text) {}
 
-    /** One resolved context. */
+    /**
+     * AssembledContext 表示AssembledContext。
+     */
     public record AssembledContext(String name, String text) {}
 
-    /** Tool provider result. */
+    /**
+     * ToolProviderResult 表示ToolProviderResult提供方结果。
+     */
     public record ToolProviderResult(
             List<ToolSchema> schemas,
             List<String> knownNames
@@ -402,7 +423,9 @@ public class ScopedSystemPromptAssembler implements SystemPromptAssembler {
         }
     }
 
-    /** Full assembly before rendering. */
+    /**
+     * PromptAssemblyFull 表示提示词PromptAssemblyFull。
+     */
     public record PromptAssemblyFull(
             List<AssembledSection> sections,
             List<AssembledContext> contexts,
@@ -410,7 +433,9 @@ public class ScopedSystemPromptAssembler implements SystemPromptAssembler {
             Map<String, String> variables
     ) {}
 
-    /** Assembly context. */
+    /**
+     * AssembleContext 表示AssembleContext。
+     */
     public record AssembleContext(
             String agentId,
             AgentOptions options,

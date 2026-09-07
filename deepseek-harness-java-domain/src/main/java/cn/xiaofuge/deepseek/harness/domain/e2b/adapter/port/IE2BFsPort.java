@@ -15,37 +15,35 @@ import java.util.List;
 public interface IE2BFsPort {
 
     /**
-     * Read a file from the sandbox.
-     *
-     * @param sandboxId sandbox identifier
-     * @param path      file path in the sandbox
-     * @return file content as string
+     * 处理readFile。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sandboxId sandboxIdID。
+     * @return 领域处理结果。
      */
     String readFile(String sandboxId, String path);
 
     /**
-     * Write a file to the sandbox.
-     *
-     * @param sandboxId sandbox identifier
-     * @param path      file path in the sandbox
-     * @param content   file content
+     * 处理writeFile。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sandboxId sandboxIdID。
+     * @param content 内容。
+     * @return 领域处理结果。
      */
     void writeFile(String sandboxId, String path, String content);
 
     /**
-     * List files in a directory.
-     *
-     * @param sandboxId sandbox identifier
-     * @param dir       directory path
-     * @return list of file names
+     * 处理listDir。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sandboxId sandboxIdID。
+     * @return 领域处理结果。
      */
     List<String> listDir(String sandboxId, String dir);
 
     /**
-     * Delete a file or directory.
-     *
-     * @param sandboxId sandbox identifier
-     * @param path      path to delete
+     * 处理delete。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sandboxId sandboxIdID。
+     * @return 领域处理结果。
      */
     void delete(String sandboxId, String path);
 }

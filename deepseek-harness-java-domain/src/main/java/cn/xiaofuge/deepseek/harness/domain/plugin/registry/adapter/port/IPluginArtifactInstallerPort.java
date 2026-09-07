@@ -13,19 +13,19 @@ import cn.xiaofuge.deepseek.harness.domain.plugin.registry.model.valobj.PluginAr
 public interface IPluginArtifactInstallerPort {
 
     /**
-     * Copies one plugin source into the managed install root and normalizes its entrypoint.
-     *
-     * @param pluginId stable plugin identifier
-     * @param sourcePath local plugin source directory
-     * @param entrypoint plugin entrypoint path relative to the source directory, or absolute within it
-     * @return installed source directory and normalized entrypoint
+     * 处理install。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param pluginId 插件ID。
+     * @param entrypoint entrypoint。
+     * @return 领域处理结果。
      */
     PluginArtifactInstallPlanVO install(String pluginId, String sourcePath, String entrypoint);
 
     /**
-     * Removes one plugin's installed artifacts from the managed install root.
-     *
-     * @param pluginId stable plugin identifier
+     * 处理uninstall。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param pluginId 插件ID。
+     * @return 领域处理结果。
      */
     void uninstall(String pluginId);
 }

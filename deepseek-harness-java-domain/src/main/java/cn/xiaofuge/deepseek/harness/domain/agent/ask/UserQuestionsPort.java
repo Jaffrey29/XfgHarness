@@ -4,31 +4,28 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Port for user-question interaction.
- * <p>
- * Mirrors TS {@code ctx.userQuestions}: the agent calls {@link #ask} to
- * pause and wait for a human response. The infrastructure layer provides
- * an implementation (HTTP blocking, WebSocket, polling, etc.).
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * UserQuestionsPort 表示智能体与用户问答交互的领域端口。
  */
 public interface UserQuestionsPort {
 
     /**
-     * Ask the user one or more questions and block until answers arrive.
-     *
-     * @param request the questions to ask
-     * @return the user's answers
+     * 向用户提出问题，并阻塞等待回答结果。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param request 请求。
+     * @return 领域处理结果。
      */
     UserAnswer ask(UserQuestionRequest request);
 
-    /** Whether a user-questions channel is currently available. */
+    /**
+     * Question 表示问题。
+     */
     boolean isAvailable();
 
     // ── Types ───────────────────────────────────────────────────
 
-    /** One question to ask. */
+    /**
+     * Question 表示问题。
+     */
     record Question(
             String id,
             String question,
@@ -42,26 +39,34 @@ public interface UserQuestionsPort {
         }
     }
 
-    /** One selectable option. */
+    /**
+     * QuestionOption 表示问题QuestionOption。
+     */
     record QuestionOption(
             String label,
             String description
     ) {}
 
-    /** The request carrying one or more questions. */
+    /**
+     * UserQuestionRequest 表示UserQuestionRequest问题请求。
+     */
     record UserQuestionRequest(
             List<Question> questions,
             String agentId
     ) {}
 
-    /** One answer for a question. */
+    /**
+     * Answer 表示Answer。
+     */
     record Answer(
             String id,
             List<String> selected,
             String custom
     ) {}
 
-    /** The response from the user. */
+    /**
+     * UserAnswer 表示UserAnswer。
+     */
     record UserAnswer(
             List<Answer> answers
     ) {}

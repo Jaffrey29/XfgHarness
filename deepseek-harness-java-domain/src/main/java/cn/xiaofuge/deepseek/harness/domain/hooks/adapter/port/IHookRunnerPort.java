@@ -15,12 +15,11 @@ import java.util.Map;
 public interface IHookRunnerPort {
 
     /**
-     * Run one command hook with the given environment and stdin payload.
-     *
-     * @param hook       the command hook
-     * @param payloadJson  stdin JSON payload (hook event data)
-     * @param environment   environment variables for the hook process
-     * @return parsed hook output
+     * 处理run。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param hook hook。
+     * @param environment environment。
+     * @return 领域处理结果。
      */
     HookOutput run(CommandHook hook, String payloadJson, Map<String, String> environment);
 }

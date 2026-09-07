@@ -15,21 +15,19 @@ import java.util.Optional;
 public interface IGuardService {
 
     /**
-     * Observe a completed tool call and return a decision.
-     *
-     * @param agentId    the agent making the call (empty for direct callers)
-     * @param toolName   tool name
-     * @param arguments  canonical (JSON-stringified) arguments
-     * @param resultJson the tool's result as JSON
-     * @return guard decision with optional reminder
+     * 处理postExecute。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param agentId 智能体ID。
+     * @param arguments 参数。
+     * @return 领域处理结果。
      */
     GuardDecision postExecute(Optional<String> agentId, String toolName, String arguments, String resultJson);
 
     /**
-     * Called before each agent step; a user interjection resets repeat tracking.
-     *
-     * @param agentId    the agent
-     * @param hasUserMessage whether the incoming messages contain a user message
+     * 处理preStep步骤。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param agentId 智能体ID。
+     * @return 领域处理结果。
      */
     void preStep(String agentId, boolean hasUserMessage);
 }

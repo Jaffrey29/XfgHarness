@@ -13,9 +13,10 @@ import cn.xiaofuge.deepseek.harness.domain.task.submission.model.valobj.TaskSubm
 public interface TaskSubmissionFilter {
 
     /**
-     * Validates one submission input.
-     *
-     * @param submission submission input
+     * 处理filter。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param submission submission。
+     * @return 领域处理结果。
      */
     void filter(TaskSubmissionVO submission);
 }

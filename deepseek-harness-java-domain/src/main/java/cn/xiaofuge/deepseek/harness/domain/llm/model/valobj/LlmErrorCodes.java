@@ -33,7 +33,7 @@ public final class LlmErrorCodes {
     public static final String ABORTED = "ABORTED";
     public static final String UNKNOWN = "UNKNOWN";
 
-    /** Default retryable codes for the normal retry policy. */
+    /** 普通重试策略默认可重试的错误码。 */
     public static final java.util.List<String> DEFAULT_RETRYABLE_CODES = java.util.List.of(
             EMPTY_RESPONSE, RATE_LIMIT, SERVER, TIMEOUT, TRANSPORT
     );

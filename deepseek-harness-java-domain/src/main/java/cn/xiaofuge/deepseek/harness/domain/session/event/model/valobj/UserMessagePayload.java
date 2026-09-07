@@ -3,14 +3,7 @@ package cn.xiaofuge.deepseek.harness.domain.session.event.model.valobj;
 import cn.xiaofuge.deepseek.harness.domain.model.entity.Message;
 
 /**
- * Payload for {@code user/message} session events.
- * <p>
- * Carries the full {@link Message} object (role=user) so that
- * {@code SessionLog.deriveMessages()} can reconstruct the conversation
- * history without lossy string conversions.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * UserMessagePayload 表示UserMessagePayload消息。
  */
 public record UserMessagePayload(long turn, long step, Message message) {
     public UserMessagePayload {

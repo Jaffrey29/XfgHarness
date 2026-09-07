@@ -13,21 +13,19 @@ import cn.xiaofuge.deepseek.harness.domain.e2b.model.valobj.E2BExecResult;
 public interface IE2BSubprocessPort {
 
     /**
-     * Run a command in the sandbox.
-     *
-     * @param sandboxId sandbox identifier
-     * @param command   command to run
-     * @return execution result
+     * 处理run。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sandboxId sandboxIdID。
+     * @return 领域处理结果。
      */
     E2BExecResult run(String sandboxId, String command);
 
     /**
-     * Run a command with stdin input.
-     *
-     * @param sandboxId sandbox identifier
-     * @param command   command to run
-     * @param stdin     stdin content
-     * @return execution result
+     * 处理runWithInput。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sandboxId sandboxIdID。
+     * @param stdin stdin。
+     * @return 领域处理结果。
      */
     E2BExecResult runWithInput(String sandboxId, String command, String stdin);
 }

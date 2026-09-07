@@ -41,7 +41,8 @@ public class ToolCatalogEntryEntity {
      */
     public String getToolCode() { return toolCode; }
     /**
-     * 获取Display Name。
+     * 获取DisplayName名称。
+     * @return 领域处理结果。
      */
     public String getDisplayName() { return displayName; }
     /**

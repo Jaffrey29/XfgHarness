@@ -16,33 +16,34 @@ import java.util.Optional;
 public interface IE2BSandboxService {
 
     /**
-     * Create a new sandbox.
-     *
-     * @param env sandbox environment configuration
-     * @return sandbox id
+     * 创建领域对象。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param env env。
+     * @return 领域处理结果。
      */
     String create(E2BSandboxEnv env);
 
     /**
-     * Get the filesystem port for a sandbox.
-     *
-     * @param sandboxId sandbox identifier
-     * @return filesystem port, or empty if sandbox not found
+     * 处理f列表。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sandboxId sandboxIdID。
+     * @return 领域处理结果。
      */
     Optional<IE2BFsPort> fs(String sandboxId);
 
     /**
-     * Get the subprocess port for a sandbox.
-     *
-     * @param sandboxId sandbox identifier
-     * @return subprocess port, or empty if sandbox not found
+     * 处理subproces列表。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sandboxId sandboxIdID。
+     * @return 领域处理结果。
      */
     Optional<IE2BSubprocessPort> subprocess(String sandboxId);
 
     /**
-     * Kill and dispose a sandbox.
-     *
-     * @param sandboxId sandbox identifier
+     * 处理kill。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sandboxId sandboxIdID。
+     * @return 领域处理结果。
      */
     void kill(String sandboxId);
 }

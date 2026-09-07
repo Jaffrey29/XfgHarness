@@ -10,13 +10,7 @@ import java.util.*;
 import org.springframework.stereotype.Service;
 
 /**
- * Hook service: matches configured hooks against a hook point and tool name,
- * runs them via the runner port, and merges outcomes.
- *
- * <p>Configuration is a map of hook point → list of matcher groups, per dialect.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * HookService 封装Hook的领域规则与流程。
  */
 @Service
 public class HookService implements IHookService {

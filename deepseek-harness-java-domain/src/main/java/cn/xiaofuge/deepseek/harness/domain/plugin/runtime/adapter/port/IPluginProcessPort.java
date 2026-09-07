@@ -20,10 +20,10 @@ public interface IPluginProcessPort {
     PluginProcessStatusVO status(String pluginId);
 
     /**
-     * Stops one running plugin sidecar process.
-     *
-     * @param pluginId plugin identifier
-     * @return resulting status after stop attempt
+     * 停止生命周期或异步任务。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param pluginId 插件ID。
+     * @return 领域处理结果。
      */
     PluginProcessStatusVO stop(String pluginId);
 }

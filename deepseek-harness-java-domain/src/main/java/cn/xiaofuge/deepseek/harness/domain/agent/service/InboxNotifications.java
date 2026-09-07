@@ -3,24 +3,31 @@ package cn.xiaofuge.deepseek.harness.domain.agent.service;
 import cn.xiaofuge.deepseek.harness.domain.model.entity.Message;
 
 /**
- * Live notifications committed by {@link Inbox} mutations.
- * <p>
- * Mirrors TS {@code InboxNotifications}. Each method is called after the
- * durable session event has been appended but before the live projection
- * is visible to the next reader, so synchronous observers see the pre-splice
- * state and can reconstruct removed messages from the normalized coordinates.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * InboxNotifications 表示收件箱变更通知的领域契约。
  */
 public interface InboxNotifications {
 
-    /** Publish one inserted message. */
+    /**
+     * 处理inserted。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param message 消息。
+     * @return 领域处理结果。
+     */
     void inserted(Message message);
 
-    /** Publish one discarded message. */
+    /**
+     * 处理discarded。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param message 消息。
+     * @return 领域处理结果。
+     */
     void discarded(Message message);
 
-    /** Publish one claimed message inside its owning turn. */
+    /**
+     * 处理claimed。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param message 消息。
+     * @return 领域处理结果。
+     */
     void claimed(Message message, int turn);
 }

@@ -1,4 +1,4 @@
-package cn.xiaofuge.deepseek.harness.runtime.agent;
+package cn.xiaofuge.deepseek.harness.domain.agentrun.agent;
 
 import cn.xiaofuge.deepseek.harness.domain.session.event.adapter.repository.ISessionEventStore;
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionEvent;

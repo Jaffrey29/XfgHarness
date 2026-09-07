@@ -11,16 +11,14 @@ package cn.xiaofuge.deepseek.harness.domain.runtime.profile.service.router;
 public interface ExecutionProfileStrategy {
 
     /**
-     * Returns the profile code handled by this strategy.
-     *
-     * @return profile code
+     * 处理画像profileCode。
+     * @return 领域处理结果。
      */
     String profileCode();
 
     /**
-     * Resolves the execution mode for the current profile.
-     *
-     * @return execution mode string
+     * 处理executionMode。
+     * @return 领域处理结果。
      */
     String executionMode();
 }

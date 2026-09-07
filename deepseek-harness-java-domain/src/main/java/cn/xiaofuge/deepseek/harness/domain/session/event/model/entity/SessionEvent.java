@@ -5,26 +5,7 @@ import cn.xiaofuge.deepseek.harness.domain.session.event.model.valobj.*;
 import java.time.Instant;
 
 /**
- * Discriminated union of all session events.
- * <p>
- * Each variant carries:
- * <ul>
- *   <li>{@code seq} — monotonically increasing sequence number (0-based, gapless)</li>
- *   <li>{@code time} — epoch milliseconds</li>
- *   <li>{@code type} — the {@link SessionEventType} discriminant</li>
- *   <li>type-specific {@code data} payload</li>
- *   <li>optional {@code surfaceIntent} — only for {@link SurfaceEventType} events</li>
- * </ul>
- * <p>
- * Non-surface events (boundaries, chunks, headers, etc.) never carry surface metadata.
- * Use {@link #isSurfaceEvent()} to check.
- * <p>
- * This is a sealed interface — all variants are listed here. The set may be extended
- * by adding new permitted records; readers MUST handle unknown required types by
- * rejecting reconstruction (unless the type is marked {@code ignorable}).
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * SessionEvent 表示会话事件。
  */
 public sealed interface SessionEvent permits
         SessionEvent.TurnStart,
@@ -48,12 +29,18 @@ public sealed interface SessionEvent permits
     Instant time();
     SessionEventType type();
 
-    /** Whether this event is a surface event (carries surface metadata). */
+    /**
+     * 判断SurfaceEvent事件是否成立。
+     * @return 领域处理结果。
+     */
     default boolean isSurfaceEvent() {
         return SurfaceEventType.isSurfaceEventType(type());
     }
 
-    /** Surface intent (only present for surface events). */
+    /**
+     * 处理surfaceIntent。
+     * @return 领域处理结果。
+     */
     default SurfaceIntent surfaceIntent() {
         return null;
     }
@@ -184,8 +171,7 @@ public sealed interface SessionEvent permits
     }
 
     /**
-     * Generic fallback for ignorable/legacy events that do not need a typed payload.
-     * Used for backward compatibility with old event types (task.submitted, etc.).
+     * Generic 表示Generic。
      */
     record Generic(
             long seq, Instant time,

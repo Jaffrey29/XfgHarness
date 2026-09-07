@@ -10,7 +10,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 class ApiArchitectureTest {
 
     @Test
-    void apiMustNotDependOnDomainRuntimeOrInfrastructure() {
+    void apiMustNotDependOnDomainOrInfrastructure() {
         var classes = new ClassFileImporter()
                 .withImportOption(new ImportOption.DoNotIncludeTests())
                 .importPackages("cn.xiaofuge.deepseek.harness");
@@ -19,7 +19,6 @@ class ApiArchitectureTest {
                 .that().resideInAPackage("cn.xiaofuge.deepseek.harness.api..")
                 .should().dependOnClassesThat().resideInAnyPackage(
                         "cn.xiaofuge.deepseek.harness.domain..",
-                        "cn.xiaofuge.deepseek.harness.runtime..",
                         "cn.xiaofuge.deepseek.harness.infrastructure.."
                 )
                 .check(classes);

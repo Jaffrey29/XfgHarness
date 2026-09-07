@@ -21,9 +21,10 @@ public interface IHarnessPluginRepository {
     List<HarnessPluginEntity> listAll();
 
     /**
-     * Permanently removes one plugin registration row.
-     *
-     * @param pluginId plugin identifier
+     * 处理deleteByPluginIdID。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param pluginId 插件ID。
+     * @return 领域处理结果。
      */
     void deleteByPluginId(String pluginId);
 }

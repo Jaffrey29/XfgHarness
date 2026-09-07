@@ -23,12 +23,6 @@
             <artifactId>deepseek-harness-java-infrastructure</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <dependency>
-            <groupId>cn.xiaofuge</groupId>
-            <artifactId>deepseek-harness-java-runtime</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-
         <!-- 引入示例插件 JAR，构建时复制到 install-root 供 preset 预装使用 -->
         <dependency>
             <groupId>cn.xiaofuge</groupId>

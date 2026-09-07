@@ -8,28 +8,20 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Projects the session event log into an ordered list of "surface nodes" —
- * the visible conversation surface (user messages, assistant messages, tool results).
- * <p>
- * This is the read-side projection that powers conversation views.
- * Surface events with {@code SurfaceOp.APPEND} add nodes; events with
- * {@code SurfaceOp.REPLACE} replace existing nodes.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * SurfaceProjector 表示SurfaceProjector。
  */
 public class SurfaceProjector {
 
     /**
-     * A surface node is a reference to the source event that produced it.
+     * SurfaceNode 表示SurfaceNode。
      */
     public record SurfaceNode(long seq, SessionEvent event) {}
 
     /**
-     * Project all surface events from the given event list into surface nodes.
-     *
-     * @param events ordered session events
-     * @return ordered surface nodes
+     * 处理project。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param events 事件列表。
+     * @return 领域处理结果。
      */
     public List<SurfaceNode> project(List<SessionEvent> events) {
         List<SurfaceNode> surface = new ArrayList<>();
@@ -55,8 +47,10 @@ public class SurfaceProjector {
     }
 
     /**
-     * Extract only user and assistant messages from surface nodes
-     * (excluding tool results for chat display).
+     * 处理extractChatMessages消息列表。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param events 事件列表。
+     * @return 领域处理结果。
      */
     public List<SessionEvent> extractChatMessages(List<SessionEvent> events) {
         List<SurfaceNode> nodes = project(events);

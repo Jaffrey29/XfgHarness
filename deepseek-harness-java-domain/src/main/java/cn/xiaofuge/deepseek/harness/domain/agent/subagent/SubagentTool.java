@@ -11,18 +11,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Model-facing tool that delegates work to a subagent provider.
- * <p>
- * Corresponds to TS {@code tool-subagent}. The model invokes this tool with
- * a prompt and optional configuration; the tool starts a child agent via
- * the configured {@link SubagentProvider}, waits for completion, and returns
- * the child's final assistant output as the tool result.
- * <p>
- * Default tool name is {@code subagent}; each loaded instance must use a
- * distinct name.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * SubagentTool 表示子智能体调用的领域工具定义。
  */
 public class SubagentTool implements ToolDefinition {
 

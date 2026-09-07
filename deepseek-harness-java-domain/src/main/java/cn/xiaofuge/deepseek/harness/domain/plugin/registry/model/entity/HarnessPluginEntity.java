@@ -57,7 +57,8 @@ public class HarnessPluginEntity {
      */
     public String getPluginId() { return pluginId; }
     /**
-     * 获取Display Name。
+     * 获取DisplayName名称。
+     * @return 领域处理结果。
      */
     public String getDisplayName() { return displayName; }
     /**
@@ -90,27 +91,32 @@ public class HarnessPluginEntity {
     public Instant getInstalledAt() { return installedAt; }
 
     /**
-     * Marks the plugin active after a successful activation phase.
+     * 处理activate。
+     * @return 领域处理结果。
      */
     public void activate() { this.status = PluginInstallStatusEnumVO.ACTIVE; }
 
     /**
-     * Marks the plugin failed after an activation or bridge check failure.
+     * 处理fail。
+     * @return 领域处理结果。
      */
     public void fail() { this.status = PluginInstallStatusEnumVO.FAILED; }
 
     /**
-     * Marks the plugin disabled — kept on disk but not available for execution.
+     * 处理disable。
+     * @return 领域处理结果。
      */
     public void disable() { this.status = PluginInstallStatusEnumVO.DISABLED; }
 
     /**
-     * Marks the plugin enabled — back to registered, ready for activation.
+     * 处理enable。
+     * @return 领域处理结果。
      */
     public void enable() { this.status = PluginInstallStatusEnumVO.REGISTERED; }
 
     /**
-     * Marks the plugin uninstalled — record kept for audit but no longer loadable.
+     * 处理uninstall。
+     * @return 领域处理结果。
      */
     public void uninstall() { this.status = PluginInstallStatusEnumVO.UNINSTALLED; }
 }

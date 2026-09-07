@@ -60,7 +60,8 @@ public class HarnessTaskEntity {
      */
     public String getPrompt() { return prompt; }
     /**
-     * 获取Enabled Tools。
+     * 获取启用状态Tool列表。
+     * @return 领域处理结果。
      */
     public List<String> getEnabledTools() { return enabledTools; }
     /**

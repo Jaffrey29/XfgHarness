@@ -13,14 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Factory for creating session events with correct defaults.
- * <p>
- * All factory methods produce events with seq=0 (the {@link SessionLog}
- * will reassign the correct seq on append). Callers only need to provide
- * the event-specific data and a timestamp.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * SessionEventFactory 负责会话事件的创建与装配。
  */
 public final class SessionEventFactory {
 
@@ -122,7 +115,11 @@ public final class SessionEventFactory {
     // ── Messages ─────────────────────────────────────────────────
 
     /**
-     * Create an assistant chunk event (ignorable, for replay fidelity).
+     * 处理assistantChunk。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param turn 轮次。
+     * @param chunk chunk。
+     * @return 领域处理结果。
      */
     public static SessionEvent.AssistantChunk assistantChunk(long turn, long step, String chunk, String kind) {
         return new SessionEvent.AssistantChunk(0, now(),
@@ -130,7 +127,11 @@ public final class SessionEventFactory {
     }
 
     /**
-     * Create a user message event from a {@link Message} (role=user).
+     * 处理userMessage消息。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param turn 轮次。
+     * @param message 消息。
+     * @return 领域处理结果。
      */
     public static SessionEvent.UserMessage userMessage(long turn, long step, Message message) {
         return new SessionEvent.UserMessage(0, now(),
@@ -139,7 +140,11 @@ public final class SessionEventFactory {
     }
 
     /**
-     * Create a user message event with a custom surface intent (e.g. Replace for compaction).
+     * 处理userMessage消息。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param turn 轮次。
+     * @param message 消息。
+     * @return 领域处理结果。
      */
     public static SessionEvent.UserMessage userMessage(long turn, long step, Message message, SurfaceIntent intent) {
         return new SessionEvent.UserMessage(0, now(),
@@ -148,7 +153,10 @@ public final class SessionEventFactory {
     }
 
     /**
-     * Create a user message event from a plain string (convenience for legacy callers).
+     * 处理userMessage消息。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param content 内容。
+     * @return 领域处理结果。
      */
     public static SessionEvent.UserMessage userMessage(String content) {
         Message msg = Message.createUser(
@@ -159,7 +167,11 @@ public final class SessionEventFactory {
     }
 
     /**
-     * Create an injected user message (non-waking context).
+     * 处理injectedUserMessage消息。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param turn 轮次。
+     * @param message 消息。
+     * @return 领域处理结果。
      */
     public static SessionEvent.UserMessage injectedUserMessage(long turn, long step, Message message) {
         return new SessionEvent.UserMessage(0, now(),
@@ -168,7 +180,11 @@ public final class SessionEventFactory {
     }
 
     /**
-     * Create an assistant message event from a {@link Message} (role=assistant).
+     * 处理assistantMessage消息。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param turn 轮次。
+     * @param message 消息。
+     * @return 领域处理结果。
      */
     public static SessionEvent.AssistantMessage assistantMessage(
             long turn, long step, Message message, TokenUsage usage

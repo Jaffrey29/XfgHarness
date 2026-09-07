@@ -17,23 +17,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 
 /**
- * Reconstructs in-memory session state from a persisted event log.
- * <p>
- * Given a session id, this service:
- * <ol>
- *   <li>Loads the {@link SessionHeader} and all {@link SessionEvent}s from the
- *       {@link ISessionEventStore}</li>
- *   <li>Restores the in-memory {@link SessionLog} via
- *       {@link ISessionEventLogService#restore(String)}</li>
- *   <li>Rebuilds the {@link Inbox} by replaying inbox splice events</li>
- *   <li>Derives the current agent {@link Phase} from turn/step boundaries</li>
- *   <li>Extracts the latest todo snapshot, request header, and request context</li>
- * </ol>
- * The result is a {@link RestoredSession} snapshot that the agent loop can
- * resume from.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * SessionRebuilderService 封装会话SessionRebuilder的领域规则与流程。
  */
 @Service
 public class SessionRebuilderService {
@@ -51,10 +35,10 @@ public class SessionRebuilderService {
     }
 
     /**
-     * Rebuild full session state from persisted events.
-     *
-     * @param sessionId session to restore
-     * @return restored session snapshot
+     * 处理rebuild。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sessionId 会话ID。
+     * @return 领域处理结果。
      */
     public RestoredSession rebuild(String sessionId) {
         // 1. Restore the SessionLog from the store
@@ -270,7 +254,7 @@ public class SessionRebuilderService {
     // ── Result record ────────────────────────────────────────────
 
     /**
-     * Immutable snapshot of restored session state.
+     * RestoredSession 表示RestoredSession会话。
      */
     public record RestoredSession(
             SessionHeader header,

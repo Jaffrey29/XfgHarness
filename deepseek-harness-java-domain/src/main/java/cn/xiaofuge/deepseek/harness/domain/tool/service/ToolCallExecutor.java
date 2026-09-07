@@ -21,20 +21,7 @@ import org.slf4j.LoggerFactory;
 // 注：为满足运行期可观测性需求，此处破例引入 slf4j 记录工具执行的关键步骤
 
 /**
- * Schedules one assistant step's tool calls.
- * Mirrors TS {@code executeToolCalls} from {@code tool-calls.ts}.
- *
- * <p>Exclusive calls form barriers; parallel calls use a bounded rolling pool
- * and are reclassified before start. Dispatch may overlap, while results and
- * result context remain model-ordered. Abort or an internal scheduler failure
- * stops replenishment and drains started calls.
- *
- * <p>Abort records synthetic error results for skipped calls so replay stays
- * valid. A terminal scheduler failure preserves already-recorded
- * {@code tool/call} events without fabricating results.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * ToolCallExecutor 表示ToolCallExecutor。
  */
 public final class ToolCallExecutor {
 

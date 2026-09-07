@@ -11,13 +11,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Adapter that wraps an MCP tool as a {@link ToolDefinition}.
- * <p>
- * Tool name is server-qualified: {@code mcp__<serverName>__<rawName>}.
- * Mirrors TS MCP tool registration pattern.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * McpToolAdapter 表示McpToolAdapter。
  */
 public class McpToolAdapter implements ToolDefinition {
 

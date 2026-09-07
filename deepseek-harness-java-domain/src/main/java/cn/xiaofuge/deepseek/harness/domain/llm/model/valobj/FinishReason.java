@@ -18,30 +18,43 @@ public sealed interface FinishReason permits
         FinishReason.Aborted,
         FinishReason.Error {
 
-    /** Model stopped naturally (end-of-text, stop sequence, etc.) */
+    /**
+     * Stop 表示Stop。
+     */
     record Stop() implements FinishReason {}
 
-    /** Model stopped to request tool calls. */
+    /**
+     * ToolCalls 表示ToolCallsCall列表。
+     */
     record ToolCalls() implements FinishReason {}
 
-    /** Model hit the max output token limit. */
+    /**
+     * MaxTokens 表示MaxTokensToken列表。
+     */
     record MaxTokens() implements FinishReason {}
 
-    /** Request was aborted (caller cancellation, timeout, etc.) */
+    /**
+     * Aborted 表示Aborted。
+     */
     record Aborted(LlmFailure failure) implements FinishReason {
         public Aborted {
             java.util.Objects.requireNonNull(failure, "failure");
         }
     }
 
-    /** Provider returned an error. */
+    /**
+     * Error 表示Error。
+     */
     record Error(LlmFailure failure) implements FinishReason {
         public Error {
             java.util.Objects.requireNonNull(failure, "failure");
         }
     }
 
-    /** Convenience: is this a terminal error or abort? */
+    /**
+     * 判断Failure是否成立。
+     * @return 领域处理结果。
+     */
     default boolean isFailure() {
         return this instanceof Aborted || this instanceof Error;
     }

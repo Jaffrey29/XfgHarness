@@ -22,7 +22,11 @@ public class RepeatToolReminderEngine {
     private final int argumentsPreviewChars;
     private final Map<String, Chain> chains = new ConcurrentHashMap<>();
 
-    /** Thresholds must be integers >= 2 with no duplicates. */
+    /**
+     * 构造RepeatToolReminderEngine领域对象。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param thresholds threshold列表。
+     */
     public RepeatToolReminderEngine(List<Integer> thresholds, int argumentsPreviewChars) {
         if (thresholds == null || thresholds.isEmpty()) {
             throw new IllegalArgumentException("thresholds must not be empty");
@@ -43,12 +47,11 @@ public class RepeatToolReminderEngine {
     }
 
     /**
-     * Observe one tool call; return an optional reminder text if a threshold was hit.
-     *
-     * @param agentId   agent identifier
-     * @param toolName  tool name
-     * @param arguments canonical JSON string of arguments
-     * @return reminder text, or empty if no threshold matched
+     * 处理observe。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param agentId 智能体ID。
+     * @param arguments 参数。
+     * @return 领域处理结果。
      */
     public Optional<String> observe(String agentId, String toolName, String arguments) {
         String canonical = arguments == null ? "" : arguments;

@@ -1,4 +1,4 @@
-package cn.xiaofuge.deepseek.harness.runtime.agent;
+package cn.xiaofuge.deepseek.harness.domain.agentrun.agent;
 
 import cn.xiaofuge.deepseek.harness.domain.agent.adapter.port.IRuntimeApprovalBroker;
 import cn.xiaofuge.deepseek.harness.domain.tool.service.RuntimeApprovalGate.ApprovalRequest;

@@ -18,61 +18,94 @@ import java.util.concurrent.CompletableFuture;
  */
 public interface Agent {
 
-    /** The single identity shared with the session. */
+    /**
+     * 处理ID。
+     * @return 领域处理结果。
+     */
     String id();
 
-    /** Provider route and model this agent's requests use. */
+    /**
+     * 处理智能体选项。
+     * @return 领域处理结果。
+     */
     AgentOptions options();
 
-    /** The live session this agent drives. */
+    /**
+     * 处理会话。
+     * @return 领域处理结果。
+     */
     SessionLog session();
 
-    /** The agent-owned projection of durable pending work. */
+    /**
+     * 处理inbox。
+     * @return 领域处理结果。
+     */
     Inbox inbox();
 
-    /** Current lifecycle state. */
+    /**
+     * 处理状态。
+     * @return 领域处理结果。
+     */
     AgentStatus status();
 
     /**
-     * Clear queued work (unless keepInbox) and abort the active turn.
-     *
-     * @param cause   the stable caller intent
-     * @param keepInbox if true, preserve pending work
+     * 处理cancel。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param cause cause。
+     * @return 领域处理结果。
      */
     void cancel(AgentCancelCause cause, boolean keepInbox);
 
-    /** Resolve after current activity reaches quiescence. */
+    /**
+     * 处理whenIdle。
+     * @return 领域处理结果。
+     */
     CompletableFuture<Void> whenIdle();
 
     /**
-     * Run one non-turn maintenance task from idle phase.
-     *
-     * @param task operation whose fulfillment is preserved
-     * @return the task result
+     * 在空闲阶段执行一次维护任务并保持任务完成状态。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param task task。
+     * @return 领域处理结果。
      */
     <T> CompletableFuture<T> runMaintenance(java.util.function.Function<
             java.util.concurrent.atomic.AtomicBoolean, CompletableFuture<T>> task);
 
     /**
-     * Route identified input to an inbox boundary and optionally wake the driver.
-     *
-     * @param message identified content
-     * @param target  next-turn or next-step
-     * @param wakeup  whether delivery may wake the driver
+     * 将输入路由到收件箱边界，并决定是否唤醒驱动。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param message 消息。
+     * @param wakeup wakeup。
+     * @return 领域处理结果。
      */
     void send(Message message, InboxTarget target, boolean wakeup);
 
-    /** Queue an ordinary follow-up turn and wake the driver. */
+    /**
+     * 追加下一轮跟进消息并唤醒驱动。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param message 消息。
+     * @return 领域处理结果。
+     */
     default void followup(Message message) {
         send(message, InboxTarget.NEXT_TURN, true);
     }
 
-    /** Submit steering for the nearest step. */
+    /**
+     * 注入最近一步的纠偏消息。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param message 消息。
+     * @return 领域处理结果。
+     */
     default void steer(Message message) {
         send(message, InboxTarget.NEXT_STEP, true);
     }
 
-    /** Queue model-facing context for the next pre-step without waking. */
+    /**
+     * 注入模型可见上下文但不唤醒驱动。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param message 消息。
+     * @return 领域处理结果。
+     */
     default void inject(Message message) {
         send(message, InboxTarget.NEXT_STEP, false);
     }

@@ -1,4 +1,4 @@
-package cn.xiaofuge.deepseek.harness.runtime;
+package cn.xiaofuge.deepseek.harness.domain.agentrun;
 
 import cn.xiaofuge.deepseek.harness.domain.agent.ask.UserQuestionsPort;
 import cn.xiaofuge.deepseek.harness.domain.agent.adapter.port.IRuntimeApprovalBroker;
@@ -18,11 +18,11 @@ import cn.xiaofuge.deepseek.harness.domain.tool.service.ToolArgumentsParser;
 import cn.xiaofuge.deepseek.harness.domain.tool.shell.IShellExecutor;
 import cn.xiaofuge.deepseek.harness.domain.tool.fs.adapter.port.IFsPort;
 import cn.xiaofuge.deepseek.harness.domain.tool.web.adapter.port.IWebPort;
-import cn.xiaofuge.deepseek.harness.runtime.agent.AgentFactory;
-import cn.xiaofuge.deepseek.harness.runtime.agent.InMemoryUserQuestionsPort;
-import cn.xiaofuge.deepseek.harness.runtime.agent.RuntimeApprovalBroker;
-import cn.xiaofuge.deepseek.harness.runtime.tool.InMemoryToolRegistry;
-import cn.xiaofuge.deepseek.harness.runtime.tool.JacksonToolArgumentsParser;
+import cn.xiaofuge.deepseek.harness.domain.agentrun.agent.AgentFactory;
+import cn.xiaofuge.deepseek.harness.domain.agentrun.agent.InMemoryUserQuestionsPort;
+import cn.xiaofuge.deepseek.harness.domain.agentrun.agent.RuntimeApprovalBroker;
+import cn.xiaofuge.deepseek.harness.domain.agentrun.tool.InMemoryToolRegistry;
+import cn.xiaofuge.deepseek.harness.domain.agentrun.tool.JacksonToolArgumentsParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.function.Function;
 import java.util.List;
@@ -35,7 +35,7 @@ import org.springframework.context.annotation.Configuration;
  * <p>负责把领域核心、外部能力端口和运行期治理策略组装成可执行的 Agent。</p>
  */
 @Configuration
-public class AgentRuntimeConfig {
+public class AgentRunConfig {
 
     @Bean
     public ToolRegistry toolRegistry() {
@@ -111,7 +111,7 @@ public class AgentRuntimeConfig {
     @Bean
     public Object agentFactorySubagentInit(
             SubagentRegistry subagentRegistry,
-            cn.xiaofuge.deepseek.harness.runtime.agent.AgentFactory agentFactory
+            cn.xiaofuge.deepseek.harness.domain.agentrun.agent.AgentFactory agentFactory
     ) {
         var spawn = new SpawnInProcessProvider(
                 "spawn-in-process",
@@ -124,7 +124,7 @@ public class AgentRuntimeConfig {
     }
 
     @Bean
-    public cn.xiaofuge.deepseek.harness.runtime.agent.AgentFactory agentFactory(
+    public cn.xiaofuge.deepseek.harness.domain.agentrun.agent.AgentFactory agentFactory(
             ILlmRuntimePort llmRuntimePort,
             ToolRegistry toolRegistry,
             SystemPromptAssembler systemPromptAssembler,
@@ -141,7 +141,7 @@ public class AgentRuntimeConfig {
             IRuntimeApprovalBroker runtimeApprovalBroker,
             ISessionEventStore sessionEventStore
     ) {
-        return new cn.xiaofuge.deepseek.harness.runtime.agent.AgentFactory(
+        return new cn.xiaofuge.deepseek.harness.domain.agentrun.agent.AgentFactory(
                 llmRuntimePort,
                 toolRegistry,
                 systemPromptAssembler,

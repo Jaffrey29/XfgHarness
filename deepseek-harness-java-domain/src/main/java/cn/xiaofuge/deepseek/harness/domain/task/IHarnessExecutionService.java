@@ -13,10 +13,10 @@ import cn.xiaofuge.deepseek.harness.domain.task.execution.model.valobj.HarnessEx
 public interface IHarnessExecutionService {
 
     /**
-     * Executes the latest user prompt stored in one accepted session.
-     *
-     * @param sessionId session identifier
-     * @return final execution result
+     * 执行领域动作并返回结果。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sessionId 会话ID。
+     * @return 领域处理结果。
      */
     HarnessExecutionResultVO executeSession(String sessionId);
 }

@@ -1,32 +1,17 @@
 package cn.xiaofuge.deepseek.harness.domain.session.event.model.valobj;
 
 /**
- * Describes how a surface event modifies the visible conversation surface.
- * <ul>
- *   <li>{@code APPEND} — add a new node to the end of the surface.</li>
- *   <li>{@code REPLACE} — replace surface nodes {@code [start..end]} (inclusive)
- *       with this event. Both endpoints must be current surface node seqs.
- *       {@code start == end} replaces a single node.</li>
- * </ul>
- * <p>
- * The {@code sourceEventSeqs} of a replace event MUST cover all seqs of the
- * surface nodes being obscured.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * SurfaceOp 表示SurfaceOp。
  */
 public sealed interface SurfaceOp permits SurfaceOp.Append, SurfaceOp.Replace {
 
     /**
-     * Append a new node to the surface.
+     * Append 表示Append。
      */
     record Append() implements SurfaceOp {}
 
     /**
-     * Replace existing surface nodes [start..end] (inclusive).
-     *
-     * @param start seq of the first surface node to replace
-     * @param end   seq of the last surface node to replace
+     * Replace 表示Replace。
      */
     record Replace(long start, long end) implements SurfaceOp {
         public Replace {
@@ -37,14 +22,18 @@ public sealed interface SurfaceOp permits SurfaceOp.Append, SurfaceOp.Replace {
     }
 
     /**
-     * Factory for append.
+     * 处理append。
+     * @return 领域处理结果。
      */
     static SurfaceOp append() {
         return new Append();
     }
 
     /**
-     * Factory for replace.
+     * 处理replace。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param start start。
+     * @return 领域处理结果。
      */
     static SurfaceOp replace(long start, long end) {
         return new Replace(start, end);

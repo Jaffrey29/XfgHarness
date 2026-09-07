@@ -1,13 +1,7 @@
 package cn.xiaofuge.deepseek.harness.domain.tool.model.valobj;
 
 /**
- * Canonical error codes for tool call cancellation.
- * Mirrors TS {@code TOOL_ABORTED} / {@code TOOL_ABORTED_BEFORE_DISPATCH}.
- *
- * <p>调用流程：Agent 发起 tool call → ToolRegistry 查找工具 → Guard 校验 → ToolExecutor 执行 → 结果回填。</p>
- * <p>示例：工具名 fs_read 与 JSON 参数先经过校验，再生成 ToolExecutionResult。</p>
- * @author 小傅哥
- * @website bugstack.cn
+ * ToolErrorCodes 表示ToolErrorCodesCode列表。
  */
 public final class ToolErrorCodes {
     public static final String ABORTED = "ABORTED";

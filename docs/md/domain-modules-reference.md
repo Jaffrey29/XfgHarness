@@ -93,7 +93,7 @@
 | --- | --- |
 | `service/ReactLoopAgent.java` | 唯一的驱动器；`turn()` 循环 + LLM 流式 + 工具执行 + 状态机 |
 | `service/Agent.java` | Agent 抽象接口（send / cancel / runMaintenance） |
-| `service/AgentFactoryPort.java` | 组合根端口，由 infra `AgentFactory` 实现 |
+| `agentrun/AgentRunFactoryPort.java` | 组合根端口，由 infra `AgentFactory` 实现 |
 | `service/Inbox.java` | 用户消息收件箱；驱动 `kick()` |
 | `service/SystemPromptAssembler.java` + `ScopedSystemPromptAssembler.java` | 系统提示词组装（按 profile 注入） |
 | `service/InboxNotifications.java` / `LoggingInboxNotifications.java` | inbox 事件监听（用于 UI 提醒） |
@@ -111,7 +111,7 @@
 | 端口 | 谁来用 |
 | --- | --- |
 | `IRuntimeApprovalBroker` | infra 的 `RuntimeApprovalBroker`；`AgentFactory` 在 wire Agent 时通过 `MatrixRuntimeApprovalGate` 接入 |
-| `AgentFactoryPort` | infra 的 `AgentFactory`；case 层 `AgentResolveNode` 通过它创建 / 复用 Agent |
+| `AgentRunFactoryPort` | infra 的 `AgentFactory`；case 层 `AgentResolveNode` 通过它创建 / 复用 AgentRun |
 
 **注意事项**：
 
@@ -713,7 +713,7 @@ trigger.submitMessage
 | 我想找… | 看这里 |
 | --- | --- |
 | Agent 主入口 | `agent.service.ReactLoopAgent` |
-| Agent 组合根 | `agent.service.AgentFactoryPort`（infra `AgentFactory` 实现） |
+| AgentRun 组合根 | `agentrun.AgentRunFactoryPort`（infra `AgentFactory` 实现） |
 | LLM 流式接口 | `llm.adapter.port.ILlmRuntimePort.stream(...)` |
 | 工具执行 | `tool.service.ToolCallExecutor` |
 | 工具注册表 | `tool.adapter.ToolRegistry` |

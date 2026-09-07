@@ -12,17 +12,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 
 /**
- * Bridges the new typed {@link SessionEvent} system with the legacy
- * {@link ISessionLogService} / {@code SessionEventEntity} API.
- * <p>
- * This adapter allows existing code (SubmitHarnessTaskCase, HarnessExecutionService, etc.)
- * to continue working while the new event system is rolled out.
- * <p>
- * It translates legacy {@code recordTaskSubmission} / {@code recordExecutionCompleted}
- * calls into typed session events.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * LegacyEventAdapter 表示LegacyEventAdapter事件。
  */
 @Service
 public class LegacyEventAdapter {
@@ -42,8 +32,12 @@ public class LegacyEventAdapter {
     }
 
     /**
-     * Record a task submission as session events.
-     * Produces: user/message + task/submitted + [task/approval.required | task/auto-approved]
+     * 处理recordTaskSubmission。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sessionId 会话ID。
+     * @param profileCode 画像profileCode。
+     * @param approvalRequired approvalRequired。
+     * @return 领域处理结果。
      */
     public void recordTaskSubmission(
             String sessionId, String taskId, String profileCode,
@@ -66,7 +60,10 @@ public class LegacyEventAdapter {
     }
 
     /**
-     * Record approval accepted.
+     * 处理recordApprovalAccepted。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sessionId 会话ID。
+     * @return 领域处理结果。
      */
     public void recordApprovalAccepted(String sessionId) {
         eventLogService.append(sessionId, SessionEventFactory.generic(
@@ -75,7 +72,10 @@ public class LegacyEventAdapter {
     }
 
     /**
-     * Record execution started.
+     * 处理recordExecutionStarted。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sessionId 会话ID。
+     * @return 领域处理结果。
      */
     public void recordExecutionStarted(String sessionId, String resolvedModel) {
         eventLogService.append(sessionId, SessionEventFactory.generic(
@@ -84,7 +84,11 @@ public class LegacyEventAdapter {
     }
 
     /**
-     * Record execution completed: assistant/message + task.execution/completed.
+     * 处理recordExecutionCompleted。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sessionId 会话ID。
+     * @param assistantMessage assistantMessage消息。
+     * @return 领域处理结果。
      */
     public void recordExecutionCompleted(String sessionId, String modelCode, String assistantMessage) {
         Message msg = Message.createAssistant(
@@ -98,7 +102,10 @@ public class LegacyEventAdapter {
     }
 
     /**
-     * Record execution failed: assistant/message + task.execution/failed.
+     * 处理recordExecutionFailed。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sessionId 会话ID。
+     * @return 领域处理结果。
      */
     public void recordExecutionFailed(String sessionId, String failureMessage) {
         Message msg = Message.createAssistant(
@@ -112,8 +119,10 @@ public class LegacyEventAdapter {
     }
 
     /**
-     * Query visible messages for the conversation view.
-     * Uses the surface projector to extract user + assistant messages.
+     * 处理queryVisibleMessages消息列表。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sessionId 会话ID。
+     * @return 领域处理结果。
      */
     public List<VisibleMessage> queryVisibleMessages(String sessionId) {
         List<SessionEvent> events = eventLogService.readAll(sessionId);
@@ -162,7 +171,7 @@ public class LegacyEventAdapter {
     }
 
     /**
-     * Simple message projection for chat views.
+     * VisibleMessage 表示VisibleMessage消息。
      */
     public record VisibleMessage(String role, String content, java.time.Instant occurredAt) {}
 }

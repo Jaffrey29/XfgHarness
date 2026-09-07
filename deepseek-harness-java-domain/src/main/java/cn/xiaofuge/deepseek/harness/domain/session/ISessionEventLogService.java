@@ -5,59 +5,71 @@ import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionHea
 import java.util.List;
 
 /**
- * Domain service for managing the session event log lifecycle.
- * <p>
- * This is the primary write-side interface for the session event system.
- * It coordinates the in-memory {@link SessionLog} with the durable
- * {@link ISessionEventStore}, ensuring events are persisted before they
- * are visible to read-side projections.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * ISessionEventLogService 封装ISessionEventLog会话事件的领域规则与流程。
  */
 public interface ISessionEventLogService {
 
     /**
-     * Create a new session log with the given header.
-     * The header is persisted immediately.
+     * 创建领域对象。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param header header。
+     * @return 领域处理结果。
      */
     SessionHeader createSession(SessionHeader header);
 
     /**
-     * Append a single event to the session log and persist it.
-     * The event's seq is assigned by the log (caller should set seq=0 or use factory).
-     *
-     * @return the appended event with the correct seq assigned
+     * 处理append。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sessionId 会话ID。
+     * @return 领域处理结果。
      */
     SessionEvent append(String sessionId, SessionEvent event);
 
     /**
-     * Append multiple events atomically.
+     * 处理appendBatch。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sessionId 会话ID。
+     * @return 领域处理结果。
      */
     List<SessionEvent> appendBatch(String sessionId, List<SessionEvent> events);
 
     /**
-     * Read all events for a session.
+     * 处理readAll。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sessionId 会话ID。
+     * @return 领域处理结果。
      */
     List<SessionEvent> readAll(String sessionId);
 
     /**
-     * Read events after the given seq.
+     * 处理readAfter。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sessionId 会话ID。
+     * @return 领域处理结果。
      */
     List<SessionEvent> readAfter(String sessionId, long afterSeq);
 
     /**
-     * Get the session header.
+     * 获取Header。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sessionId 会话ID。
+     * @return 领域处理结果。
      */
     SessionHeader getHeader(String sessionId);
 
     /**
-     * Get the last seq for a session (-1 if empty).
+     * 获取LastSeq。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sessionId 会话ID。
+     * @return 领域处理结果。
      */
     long getLastSeq(String sessionId);
 
     /**
-     * Restore a session log from persisted events (used by resume/replay).
+     * 处理restore。
+     * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
+     * @param sessionId 会话ID。
+     * @return 领域处理结果。
      */
     void restore(String sessionId);
 }
