@@ -24,6 +24,8 @@ import org.junit.jupiter.api.Test;
 /**
  * SpringPluginContext 生命周期测试。
  * <p>覆盖插件工具限定名、贡献项逆序回收、事件订阅隔离和插件 Hook 的注册/执行语义。
+ * <p>调用流程：插件清单 → 运行时加载 → 工具/Hook 注册 → 调用与卸载。</p>
+ * <p>示例：插件目录中的 manifest 决定运行时类型与入口。</p>
  */
 class SpringPluginContextTest {
 

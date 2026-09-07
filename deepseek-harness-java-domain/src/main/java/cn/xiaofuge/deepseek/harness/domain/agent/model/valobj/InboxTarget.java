@@ -23,14 +23,19 @@ public enum InboxTarget {
     }
 
     /**
-     * 处理wire Name相关逻辑。
+     * 处理wire 名称。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
      */
     public String wireName() {
         return wireName;
     }
 
     /**
-     * 处理from Wire Name相关逻辑。
+     * 根据 Wire 名称。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param name 名称。
+     * @return 创建的领域对象。
      */
     public static InboxTarget fromWireName(String name) {
         for (InboxTarget t : values()) {

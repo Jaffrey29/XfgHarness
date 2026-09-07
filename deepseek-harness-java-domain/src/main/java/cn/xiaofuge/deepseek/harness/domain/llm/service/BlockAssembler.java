@@ -85,7 +85,11 @@ public class BlockAssembler {
     }
 
     /**
-     * 处理ensure相关逻辑。
+     * 处理ensure。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param index index参数。
+     * @param blockType block 类型参数。
+     * @return 方法执行结果。
      */
     private PartialBlock ensure(int index, String blockType) {
         PartialBlock partial = partials.get(index);
@@ -98,7 +102,11 @@ public class BlockAssembler {
     }
 
     /**
-     * 处理assemble相关逻辑。
+     * 处理assemble。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param partial partial参数。
+     * @param index index参数。
+     * @return 方法执行结果。
      */
     private ContentBlock assemble(PartialBlock partial, int index) {
         if (partial.block != null) return partial.block;

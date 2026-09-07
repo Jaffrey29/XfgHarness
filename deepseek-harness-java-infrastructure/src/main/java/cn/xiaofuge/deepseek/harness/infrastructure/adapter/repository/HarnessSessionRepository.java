@@ -13,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 通过 DAO 和缓存层持久化会话。
  *
+ * <p>调用流程：领域端口 → 基础设施适配器 → 外部系统。</p>
+ * <p>示例：适配器只实现端口契约，业务规则保留在 domain。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -22,7 +24,10 @@ public class HarnessSessionRepository implements IHarnessSessionRepository {
     private final IHarnessSessionDao harnessSessionDao;
 
     /**
-     * 处理Harness Session Repository相关逻辑。
+     * 处理Harness 会话 Repository。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param harnessSessionDao harness 会话 Dao参数。
+     * @return 方法执行结果。
      */
     public HarnessSessionRepository(IHarnessSessionDao harnessSessionDao) {
         this.harnessSessionDao = harnessSessionDao;
@@ -42,11 +47,25 @@ public class HarnessSessionRepository implements IHarnessSessionRepository {
         );
         harnessSessionDao.save(sessionPO);
     }
+    /**
+     * 查找By Session Id。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public Optional<HarnessSessionAggregate> findBySessionId(String sessionId) {
         return harnessSessionDao.findBySessionId(sessionId).map(this::toAggregate);
     }
+    /**
+     * 列出Recent。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param limit limit参数。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public List<HarnessSessionAggregate> listRecent(int limit) {
@@ -54,7 +73,10 @@ public class HarnessSessionRepository implements IHarnessSessionRepository {
     }
 
     /**
-     * 处理to Aggregate相关逻辑。
+     * 转换为 Aggregate。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param sessionPO 会话 P O参数。
+     * @return 转换后的目标对象。
      */
     private HarnessSessionAggregate toAggregate(HarnessSessionPO sessionPO) {
         HarnessSessionAggregate session = new HarnessSessionAggregate(

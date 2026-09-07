@@ -24,6 +24,8 @@ import org.slf4j.LoggerFactory;
  * 2. 根据 provider 路由到具体模型适配器；
  * 3. 将异常统一包装成结束 chunk 返回。
  *
+ * <p>调用流程：模型请求 → HTTP 客户端 → 解析 JSON/SSE → 归一化为领域事件。</p>
+ * <p>示例：上游返回 token delta 时，适配器转换为 LLM 增量事件。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -33,18 +35,40 @@ public class InMemoryLlmRuntimePort implements ILlmRuntimePort {
 
     private final Map<String, LlmAdapter> adapters = new ConcurrentHashMap<>();
 
+    /**
+     * 注册模型 Provider 对应的 LLM 适配器。
+     * <p>流程：接收 provider 编码和适配器实例 → 写入内存路由表 → 记录注册成功日志。
+     * <p>示例：注册 provider=deepseek 后，请求 provider=deepseek 会路由到 DeepSeek 适配器。
+     *
+     * @param provider 模型提供方编码
+     * @param adapter LLM 适配器实现
+     */
     @Override
     public void registerAdapter(String provider, LlmAdapter adapter) {
         adapters.put(provider, adapter);
         log.info("Registered LLM adapter for provider: {}", provider);
     }
 
+    /**
+     * 取消模型 Provider 的适配器注册。
+     * <p>流程：接收 provider 编码 → 从内存路由表移除适配器 → 记录注销成功日志。
+     * <p>示例：注销 provider=deepseek 后，后续该 provider 的请求会收到路由失败结果。
+     *
+     * @param provider 模型提供方编码
+     */
     @Override
     public void unregisterAdapter(String provider) {
         adapters.remove(provider);
         log.info("Unregistered LLM adapter for provider: {}", provider);
     }
 
+    /**
+     * 列出当前已注册的模型 Provider。
+     * <p>流程：遍历内存路由表 → 让适配器生成展示信息 → 汇总为 Provider 列表。
+     * <p>示例：注册 deepseek、openai 后返回这两个 provider 的展示信息。
+     *
+     * @return 已注册 Provider 展示信息列表
+     */
     @Override
     public List<LlmAdapter.LlmProviderInfo> listProviders() {
         List<LlmAdapter.LlmProviderInfo> result = new ArrayList<>();
@@ -54,28 +78,65 @@ public class InMemoryLlmRuntimePort implements ILlmRuntimePort {
         return result;
     }
 
+    /**
+     * 列出指定 Provider 的可用模型。
+     * <p>流程：按 provider 查找适配器 → 委托适配器读取模型目录 → 未找到时返回空列表。
+     * <p>示例：provider=deepseek 且适配器存在时，返回 DeepSeek 适配器暴露的模型列表。
+     *
+     * @param provider 模型提供方编码
+     * @return 可用模型列表；Provider 未注册时为空列表
+     */
     @Override
     public List<LlmAdapter.LlmModelInfo> listModels(String provider) {
         LlmAdapter adapter = adapters.get(provider);
         return adapter != null ? adapter.listModels(provider) : List.of();
     }
 
+    /**
+     * 解析指定 Provider 下的模型元数据。
+     * <p>流程：按 provider 查找适配器 → 委托适配器定位模型 → 返回上下文、默认 token 等信息。
+     * <p>数据示例：provider=deepseek、model=deepseek-chat 会返回该模型的上下文窗口和默认输出上限。
+     *
+     * @param provider 模型提供方编码
+     * @param model 模型编码
+     * @return 已解析的模型信息
+     * @throws IllegalArgumentException Provider 未注册适配器时抛出
+     */
     @Override
     public LlmAdapter.LlmResolvedModelInfo resolveModel(String provider, String model) {
         LlmAdapter adapter = adapters.get(provider);
         if (adapter == null) {
-            throw new IllegalArgumentException("No adapter registered for provider: " + provider);
+            String message = "No adapter registered for provider '" + provider
+                    + "'. Available providers: " + adapters.keySet()
+                    + ". Check providerCode in model settings.";
+            log.error("模型路由失败：provider='{}' 未注册适配器，可用 providers={}。"
+                            + "请检查 Web 控制台模型设置中的 providerCode。", provider, adapters.keySet());
+            throw new IllegalArgumentException(message);
         }
         return adapter.resolveModel(provider, model);
     }
 
+    /**
+     * 通过注册的适配器发起流式模型调用。
+     * <p>流程：按 provider 查找适配器 → 读取重试策略 → 订阅适配器输出 → 统一包装增量、异常和结束事件。
+     * <p>数据示例：provider=deepseek 请求流式补全时，适配器返回的 token delta 会被逐个发布给调用方；
+     * Provider 不存在时直接发布一条 Error 结束事件。
+     *
+     * @param options 模型生成参数
+     * @return 可订阅的模型流
+     */
     @Override
     public Flow.Publisher<StreamChunk> stream(GenerateOptions options) {
         LlmAdapter adapter = adapters.get(options.provider());
         if (adapter == null) {
+            log.error("模型路由失败：provider='{}' 未注册适配器，可用 providers={}。"
+                            + "请检查 Web 控制台模型设置中的 providerCode。",
+                    options.provider(), adapters.keySet());
             SubmissionPublisher<StreamChunk> publisher = new SubmissionPublisher<>();
             publisher.submit(new StreamChunk.Finish(new FinishReason.Error(new LlmFailure(
-                    "No adapter registered for provider: " + options.provider(),
+                    "No adapter registered for provider '" + options.provider()
+                            + "'. Available providers: " + adapters.keySet()
+                            + ". Check providerCode in model settings.",
                     LlmErrorCodes.UNKNOWN
             ))));
             publisher.close();
@@ -119,9 +180,9 @@ public class InMemoryLlmRuntimePort implements ILlmRuntimePort {
 
         return wrapper;
     }
-
     /**
-     * 处理retrying Stream相关逻辑。
+     * 对流式模型调用执行重试。
+     * <p>流程：发起流式请求 → 捕获可重试错误 → 按退避策略重建流。</p>
      */
     private Flow.Publisher<StreamChunk> retryingStream(
             LlmAdapter adapter,
@@ -188,7 +249,10 @@ public class InMemoryLlmRuntimePort implements ILlmRuntimePort {
     }
 
     /**
-     * 处理await Attempt相关逻辑。
+     * 处理await Attempt。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param publisher publisher参数。
+     * @return 方法执行结果。
      */
     private AttemptResult awaitAttempt(Flow.Publisher<StreamChunk> publisher) {
         java.util.concurrent.CountDownLatch done = new java.util.concurrent.CountDownLatch(1);
@@ -207,11 +271,22 @@ public class InMemoryLlmRuntimePort implements ILlmRuntimePort {
                     finish.set(finishChunk.reason());
                 }
             }
+            /**
+             * on Error。
+             * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+             * @param throwable throwable参数。
+             */
+
 
             @Override public void onError(Throwable throwable) {
                 error.set(throwable);
                 done.countDown();
             }
+            /**
+             * on Complete。
+             * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+             */
+
 
             @Override public void onComplete() {
                 done.countDown();
@@ -244,7 +319,10 @@ public class InMemoryLlmRuntimePort implements ILlmRuntimePort {
     }
 
     /**
-     * 处理sleep相关逻辑。
+     * 处理sleep。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param delayMs delay Ms参数。
+     * @return 方法执行结果。
      */
     private boolean sleep(long delayMs) {
         try {
@@ -257,7 +335,8 @@ public class InMemoryLlmRuntimePort implements ILlmRuntimePort {
     }
 
     /**
-     * 处理retry Delay Ms相关逻辑。
+     * 计算下一次重试延迟。
+     * <p>流程：读取基础延迟 → 应用指数退避和上限 → 返回等待毫秒数。</p>
      */
     private long retryDelayMs(
             ResolvedRetryPolicy policy,
@@ -277,7 +356,11 @@ public class InMemoryLlmRuntimePort implements ILlmRuntimePort {
     }
 
     /**
-     * 处理with Retry Count相关逻辑。
+     * 处理with Retry 数量。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param failure failure参数。
+     * @param retryCount retry 数量参数。
+     * @return 方法执行结果。
      */
     private LlmFailure withRetryCount(LlmFailure failure, int retryCount) {
         String suffix = "（已重试 " + retryCount + " 次）";

@@ -8,13 +8,16 @@ import java.util.Map;
  * model, and tools, so it shares no parent context. Corresponds to TS
  * {@code subagent-acp}.
  *
+ * <p>调用流程：领域端口 → 基础设施适配器 → 外部系统。</p>
+ * <p>示例：适配器只实现端口契约，业务规则保留在 domain。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
 public class AcpSubagentProvider extends OutOfProcessSubagentProvider {
 
     /**
-     * 处理Acp Subagent Provider相关逻辑。
+     * 初始化 ACP 子智能体提供者。
+     * <p>流程：配置子进程命令和工作目录 → 建立 ACP 会话。</p>
      */
     public AcpSubagentProvider(String command, List<String> args, String cwd,
                                Map<String, String> env, long timeoutMs) {

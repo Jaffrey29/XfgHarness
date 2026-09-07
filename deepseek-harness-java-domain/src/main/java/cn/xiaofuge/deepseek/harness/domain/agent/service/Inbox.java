@@ -55,7 +55,8 @@ public final class Inbox {
     }
 
     /**
-     * 处理replay相关逻辑。
+     * 处理replay。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
      */
     private void replay() {
         int seedLength = session.header() != null
@@ -192,7 +193,10 @@ public final class Inbox {
     }
 
     /**
-     * 处理locate相关逻辑。
+     * 处理locate。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param messageId 消息 ID参数。
+     * @return 方法执行结果。
      */
     private Optional<Location> locate(String messageId) {
         for (InboxTarget target : InboxTarget.values()) {
@@ -207,7 +211,8 @@ public final class Inbox {
     }
 
     /**
-     * 处理mutate相关逻辑。
+     * 按 Inbox 目标修改消息队列。
+     * <p>流程：定位目标队列 → 应用插入/删除规则 → 返回新的消息列表。</p>
      */
     private List<Message> mutate(
             InboxTarget target,

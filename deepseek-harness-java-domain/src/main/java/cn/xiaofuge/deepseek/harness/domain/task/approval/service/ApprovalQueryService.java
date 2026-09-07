@@ -14,7 +14,10 @@ public class ApprovalQueryService implements IApprovalQueryService {
     private final IConversationQueryService conversationQueryService;
 
     /**
-     * 处理Approval Query Service相关逻辑。
+     * 处理审批 Query Service。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param conversationQueryService conversation Query Service参数。
+     * @return 方法执行结果。
      */
     public ApprovalQueryService(IConversationQueryService conversationQueryService) {
         this.conversationQueryService = conversationQueryService;

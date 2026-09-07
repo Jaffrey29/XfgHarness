@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RestController;
  * 2. 交给任务用例完成校验、排队和状态落库；
  * 3. 返回任务提交结果。
  *
+ * <p>调用流程：HTTP/Web 层 → API 适配器 → 应用门面。</p>
+ * <p>示例：控制器只负责协议转换，不写业务规则。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -26,7 +28,10 @@ public class HarnessTaskController {
     private final IHarnessTaskApi harnessTaskApi;
 
     /**
-     * 处理Harness Task Controller相关逻辑。
+     * 处理Harness 任务 Controller。
+     * 流程：解析请求参数 → 调用应用门面 → 返回响应。
+     * @param harnessTaskApi harness 任务 API参数。
+     * @return 方法执行结果。
      */
     public HarnessTaskController(IHarnessTaskApi harnessTaskApi) {
         this.harnessTaskApi = harnessTaskApi;

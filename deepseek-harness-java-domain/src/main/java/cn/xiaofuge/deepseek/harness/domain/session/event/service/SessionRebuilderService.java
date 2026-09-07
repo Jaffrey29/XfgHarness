@@ -41,7 +41,10 @@ public class SessionRebuilderService {
     private final ISessionEventLogService eventLogService;
 
     /**
-     * 处理Session Rebuilder Service相关逻辑。
+     * 处理会话 Rebuilder Service。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param eventLogService 事件 Log Service参数。
+     * @return 方法执行结果。
      */
     public SessionRebuilderService(ISessionEventLogService eventLogService) {
         this.eventLogService = eventLogService;
@@ -106,7 +109,10 @@ public class SessionRebuilderService {
     // ── Projection helpers ───────────────────────────────────────
 
     /**
-     * 处理project Messages相关逻辑。
+     * 处理project Messages。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param events events参数。
+     * @return 方法执行结果。
      */
     private List<Message> projectMessages(List<SessionEvent> events) {
         List<Message> messages = new ArrayList<>();
@@ -123,7 +129,10 @@ public class SessionRebuilderService {
     }
 
     /**
-     * 处理derive Phase相关逻辑。
+     * 处理derive Phase。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param events events参数。
+     * @return 方法执行结果。
      */
     private Phase derivePhase(List<SessionEvent> events) {
         boolean inTurn = false;
@@ -147,7 +156,10 @@ public class SessionRebuilderService {
     }
 
     /**
-     * 处理extract Latest Todo相关逻辑。
+     * 提取 Latest 待办。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param events events参数。
+     * @return 方法执行结果。
      */
     private Optional<TodoWritePayload> extractLatestTodo(List<SessionEvent> events) {
         TodoWritePayload latest = null;
@@ -160,7 +172,10 @@ public class SessionRebuilderService {
     }
 
     /**
-     * 处理extract Latest Request Header相关逻辑。
+     * 提取 Latest 请求 头信息。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param events events参数。
+     * @return 方法执行结果。
      */
     private Optional<RequestHeaderPayload> extractLatestRequestHeader(List<SessionEvent> events) {
         RequestHeaderPayload latest = null;
@@ -173,7 +188,10 @@ public class SessionRebuilderService {
     }
 
     /**
-     * 处理extract Latest Request Context相关逻辑。
+     * 提取 Latest 请求 上下文。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param events events参数。
+     * @return 方法执行结果。
      */
     private Optional<RequestContextPayload> extractLatestRequestContext(List<SessionEvent> events) {
         RequestContextPayload latest = null;
@@ -186,7 +204,10 @@ public class SessionRebuilderService {
     }
 
     /**
-     * 处理count Turns相关逻辑。
+     * 处理数量 Turns。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param events events参数。
+     * @return 方法执行结果。
      */
     private int countTurns(List<SessionEvent> events) {
         int count = 0;
@@ -199,7 +220,10 @@ public class SessionRebuilderService {
     }
 
     /**
-     * 处理count Steps相关逻辑。
+     * 处理数量 Steps。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param events events参数。
+     * @return 方法执行结果。
      */
     private int countSteps(List<SessionEvent> events) {
         int count = 0;
@@ -212,7 +236,10 @@ public class SessionRebuilderService {
     }
 
     /**
-     * 处理extract Last Turn End Reason相关逻辑。
+     * 提取 Last Turn End Reason。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param events events参数。
+     * @return 方法执行结果。
      */
     private Optional<TurnEndReason> extractLastTurnEndReason(List<SessionEvent> events) {
         TurnEndReason reason = null;
@@ -225,7 +252,10 @@ public class SessionRebuilderService {
     }
 
     /**
-     * 处理extract Last Assistant Message相关逻辑。
+     * 提取 Last Assistant 消息。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param events events参数。
+     * @return 方法执行结果。
      */
     private Optional<Message> extractLastAssistantMessage(List<SessionEvent> events) {
         Message last = null;

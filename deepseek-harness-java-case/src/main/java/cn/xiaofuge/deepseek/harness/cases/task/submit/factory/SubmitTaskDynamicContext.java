@@ -13,6 +13,8 @@ import java.util.List;
  * 任务提交策略树中流转的可变上下文。
  * 每个节点读取已累积状态，并写入自己的处理结果。
  *
+ * <p>调用流程：SubmissionRootNode → ProfileResolutionNode → ToolResolutionNode → PermissionCheckNode → EnqueueNode。</p>
+ * <p>示例：提交一条任务后，先解析执行画像，再校验权限，最后进入待执行队列。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */

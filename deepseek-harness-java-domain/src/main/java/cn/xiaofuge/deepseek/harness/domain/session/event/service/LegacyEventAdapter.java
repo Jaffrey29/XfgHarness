@@ -31,7 +31,10 @@ public class LegacyEventAdapter {
     private final SurfaceProjector surfaceProjector;
 
     /**
-     * 处理Legacy Event Adapter相关逻辑。
+     * 处理Legacy 事件 Adapter。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param eventLogService 事件 Log Service参数。
+     * @return 方法执行结果。
      */
     public LegacyEventAdapter(ISessionEventLogService eventLogService) {
         this.eventLogService = eventLogService;
@@ -123,7 +126,10 @@ public class LegacyEventAdapter {
     // ── Helpers ──────────────────────────────────────────────────
 
     /**
-     * 处理to Visible Message相关逻辑。
+     * 转换为 Visible 消息。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param event 领域事件。
+     * @return 转换后的目标对象。
      */
     private VisibleMessage toVisibleMessage(SessionEvent event) {
         if (event instanceof SessionEvent.UserMessage e) {
@@ -139,7 +145,10 @@ public class LegacyEventAdapter {
     }
 
     /**
-     * 处理extract Text相关逻辑。
+     * 提取 Text。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param msg msg参数。
+     * @return 方法执行结果。
      */
     private String extractText(Message msg) {
         if (msg == null || msg.content() == null) return "";

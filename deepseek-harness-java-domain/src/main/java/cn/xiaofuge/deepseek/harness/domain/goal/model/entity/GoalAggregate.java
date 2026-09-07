@@ -16,6 +16,8 @@ import java.util.Objects;
  * 2. 变更时校验状态机约束；
  * 3. 输出可持久化的最新快照。
  *
+ * <p>调用流程：应用领域规则 → 更新聚合或值对象 → 发布事件/返回结果。</p>
+ * <p>示例：领域对象只暴露业务语言方法，不直接依赖基础设施。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -186,7 +188,12 @@ public record GoalAggregate(
     }
 
     /**
-     * 处理with Status相关逻辑。
+     * 处理with Status。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param nextStatus next Status参数。
+     * @param nextBlockedReason next Blocked Reason参数。
+     * @param now now参数。
+     * @return 方法执行结果。
      */
     private GoalAggregate withStatus(GoalStatus nextStatus, String nextBlockedReason, Instant now) {
         return new GoalAggregate(
@@ -229,7 +236,11 @@ public record GoalAggregate(
     }
 
     /**
-     * 处理normalize Goal Id相关逻辑。
+     * 规范化 目标 ID。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @param goalId 目标 ID。
+     * @return 方法执行结果。
      */
     private static String normalizeGoalId(String sessionId, String goalId) {
         String value = trimToNull(goalId);
@@ -264,7 +275,10 @@ public record GoalAggregate(
     }
 
     /**
-     * 处理trim To Null相关逻辑。
+     * 处理trim To Null。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param value 参数值。
+     * @return 方法执行结果。
      */
     private static String trimToNull(String value) {
         if (value == null) {

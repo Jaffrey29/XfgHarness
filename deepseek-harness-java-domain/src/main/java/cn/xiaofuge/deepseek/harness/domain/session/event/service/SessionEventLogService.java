@@ -29,7 +29,10 @@ public class SessionEventLogService implements ISessionEventLogService {
     private final Map<String, SessionLog> logs = new ConcurrentHashMap<>();
 
     /**
-     * 处理Session Event Log Service相关逻辑。
+     * 处理会话 事件 Log Service。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param store store参数。
+     * @return 方法执行结果。
      */
     public SessionEventLogService(ISessionEventStore store) {
         this.store = Objects.requireNonNull(store, "store");
@@ -42,6 +45,14 @@ public class SessionEventLogService implements ISessionEventLogService {
         logs.put(header.sessionId(), log);
         return header;
     }
+    /**
+     * 追加目标对象。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @param event 领域事件。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public SessionEvent append(String sessionId, SessionEvent event) {
@@ -50,6 +61,14 @@ public class SessionEventLogService implements ISessionEventLogService {
         store.append(sessionId, appended);
         return appended;
     }
+    /**
+     * 追加Batch。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @param events events参数。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public List<SessionEvent> appendBatch(String sessionId, List<SessionEvent> events) {
@@ -58,6 +77,13 @@ public class SessionEventLogService implements ISessionEventLogService {
         store.appendBatch(sessionId, appended);
         return appended;
     }
+    /**
+     * 读取All。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public List<SessionEvent> readAll(String sessionId) {
@@ -67,6 +93,14 @@ public class SessionEventLogService implements ISessionEventLogService {
         }
         return store.readAll(sessionId);
     }
+    /**
+     * 读取After。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @param afterSeq after Seq参数。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public List<SessionEvent> readAfter(String sessionId, long afterSeq) {
@@ -76,12 +110,26 @@ public class SessionEventLogService implements ISessionEventLogService {
         }
         return store.readAfter(sessionId, afterSeq);
     }
+    /**
+     * 获取Header。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @return 获取到的Header。
+     */
+
 
     @Override
     public SessionHeader getHeader(String sessionId) {
         return store.getHeader(sessionId)
                 .orElseThrow(() -> new IllegalStateException("No session header for: " + sessionId));
     }
+    /**
+     * 获取Last Seq。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @return 获取到的Last Seq。
+     */
+
 
     @Override
     public long getLastSeq(String sessionId) {
@@ -91,6 +139,12 @@ public class SessionEventLogService implements ISessionEventLogService {
         }
         return store.getLastSeq(sessionId);
     }
+    /**
+     * restore。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param sessionId 会话 ID。
+     */
+
 
     @Override
     public void restore(String sessionId) {

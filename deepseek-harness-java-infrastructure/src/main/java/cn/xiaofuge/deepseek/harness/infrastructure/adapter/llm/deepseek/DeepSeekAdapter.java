@@ -29,6 +29,8 @@ import org.slf4j.LoggerFactory;
  * 通过 HTTP POST 调用 {@code /chat/completions}，接收 SSE 流式分片，
  * 并转换为 Harness 的 {@link StreamChunk}。对应 TS 侧 {@code DeepSeekAdapter}。
  *
+ * <p>调用流程：模型请求 → HTTP 客户端 → 解析 JSON/SSE → 归一化为领域事件。</p>
+ * <p>示例：上游返回 token delta 时，适配器转换为 LLM 增量事件。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -54,7 +56,11 @@ public class DeepSeekAdapter implements LlmAdapter {
     private final HttpClient httpClient;
 
     /**
-     * 处理Deep Seek Adapter相关逻辑。
+     * 处理Deep Seek Adapter。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param options Agent 配置。
+     * @param objectMapper object Mapper参数。
+     * @return 方法执行结果。
      */
     public DeepSeekAdapter(DeepSeekAdapterOptions options, ObjectMapper objectMapper) {
         this.options = options;
@@ -68,16 +74,37 @@ public class DeepSeekAdapter implements LlmAdapter {
     public String providerId() {
         return "deepseek";
     }
+    /**
+     * 返回 provider Info。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param provider 模型提供方。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public LlmProviderInfo providerInfo(String provider) {
         return new LlmProviderInfo(provider, "DeepSeek");
     }
+    /**
+     * retry Policy。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param provider 模型提供方。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public ResolvedRetryPolicy retryPolicy(String provider) {
         return options.retryPolicy();
     }
+    /**
+     * 列出Models。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param provider 模型提供方。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public List<LlmModelInfo> listModels(String provider) {
@@ -92,6 +119,14 @@ public class DeepSeekAdapter implements LlmAdapter {
                 ))
                 .toList();
     }
+    /**
+     * 解析Model。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param provider 模型提供方。
+     * @param model 模型设置。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public LlmResolvedModelInfo resolveModel(String provider, String model) {
@@ -113,6 +148,13 @@ public class DeepSeekAdapter implements LlmAdapter {
                 null // reasoning info not supported in Java adapter yet
         );
     }
+    /**
+     * stream。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param genOptions gen Options参数。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public Flow.Publisher<StreamChunk> stream(GenerateOptions genOptions) {
@@ -130,7 +172,10 @@ public class DeepSeekAdapter implements LlmAdapter {
     }
 
     /**
-     * 处理do Stream相关逻辑。
+     * 处理do 流。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param genOptions gen 配置参数。
+     * @param publisher publisher参数。
      */
     private void doStream(GenerateOptions genOptions, SubmissionPublisher<StreamChunk> publisher) throws Exception {
         String apiKey = genOptions.apiKey() != null && !genOptions.apiKey().isBlank()
@@ -192,7 +237,11 @@ public class DeepSeekAdapter implements LlmAdapter {
     }
 
     /**
-     * 处理do Non Stream Fallback相关逻辑。
+     * 处理do Non 流 Fallback。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param genOptions gen 配置参数。
+     * @param effectiveModel effective 模型参数。
+     * @param publisher publisher参数。
      */
     private void doNonStreamFallback(GenerateOptions genOptions, String effectiveModel, SubmissionPublisher<StreamChunk> publisher) throws Exception {
         String apiKey = genOptions.apiKey() != null && !genOptions.apiKey().isBlank()
@@ -288,7 +337,10 @@ public class DeepSeekAdapter implements LlmAdapter {
     }
 
     /**
-     * 处理serialize Request相关逻辑。
+     * 处理serialize 请求。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param options Agent 配置。
+     * @return 转换后的目标对象。
      */
     private ObjectNode serializeRequest(GenerateOptions options) {
         ObjectNode root = objectMapper.createObjectNode();
@@ -416,7 +468,11 @@ public class DeepSeekAdapter implements LlmAdapter {
     }
 
     /**
-     * 处理with Model相关逻辑。
+     * 处理with 模型。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param options Agent 配置。
+     * @param model 模型设置。
+     * @return 方法执行结果。
      */
     private GenerateOptions withModel(GenerateOptions options, String model) {
         return new GenerateOptions(
@@ -479,7 +535,9 @@ public class DeepSeekAdapter implements LlmAdapter {
     }
 
     /**
-     * 处理discover Upstream Models相关逻辑。
+     * 发现 Upstream Models。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @return 方法执行结果。
      */
     private List<DirectSeekCatalogModel> discoverUpstreamModels() {
         String apiKey = options.resolveApiKey();
@@ -519,14 +577,21 @@ public class DeepSeekAdapter implements LlmAdapter {
     }
 
     /**
-     * 处理preferred Discovered Model相关逻辑。
+     * 处理preferred Discovered 模型。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param discovered discovered参数。
+     * @return 方法执行结果。
      */
     private String preferredDiscoveredModel(List<DirectSeekCatalogModel> discovered) {
         return discovered.get(0).id();
     }
 
     /**
-     * 处理translate Sse相关逻辑。
+     * 转换 SSE。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param reader reader参数。
+     * @param publisher publisher参数。
+     * @return 方法执行结果。
      */
     private boolean translateSse(BufferedReader reader, SubmissionPublisher<StreamChunk> publisher) throws IOException {
         int nextIndex = 0;
@@ -678,7 +743,10 @@ public class DeepSeekAdapter implements LlmAdapter {
     }
 
     /**
-     * 处理map Finish Reason相关逻辑。
+     * 映射 Finish Reason。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param reason reason参数。
+     * @return 方法执行结果。
      */
     private static FinishReason mapFinishReason(String reason) {
         return switch (reason) {
@@ -692,7 +760,10 @@ public class DeepSeekAdapter implements LlmAdapter {
     }
 
     /**
-     * 处理map Usage相关逻辑。
+     * 映射 用量。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param usage 用量参数。
+     * @return 方法执行结果。
      */
     private static TokenUsage mapUsage(JsonNode usage) {
         int promptTokens = usage.path("prompt_tokens").asInt(0);
@@ -749,7 +820,11 @@ public class DeepSeekAdapter implements LlmAdapter {
     }
 
     /**
-     * 处理http Error Code相关逻辑。
+     * 处理HTTP Error 编码。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param status 状态对象。
+     * @param errorBody error Body参数。
+     * @return 方法执行结果。
      */
     private String httpErrorCode(int status, String errorBody) {
         if (status == 401 || status == 403) return LlmErrorCodes.AUTH;
@@ -760,7 +835,10 @@ public class DeepSeekAdapter implements LlmAdapter {
     }
 
     /**
-     * 处理extract Error Message相关逻辑。
+     * 提取 Error 消息。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param body body参数。
+     * @return 方法执行结果。
      */
     private String extractErrorMessage(String body) {
         try {
@@ -774,7 +852,10 @@ public class DeepSeekAdapter implements LlmAdapter {
     }
 
     /**
-     * 处理publish Error相关逻辑。
+     * 发布 Error。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param publisher publisher参数。
+     * @param e 异常对象。
      */
     private void publishError(SubmissionPublisher<StreamChunk> publisher, Exception e) {
         LlmFailure failure;
@@ -824,14 +905,23 @@ public class DeepSeekAdapter implements LlmAdapter {
         private final Integer status;
 
         /**
-         * 处理Llm Adapter Exception相关逻辑。
+         * 处理LLM Adapter Exception。
+         * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+         * @param message 消息内容或对象。
+         * @param code 编码参数。
+         * @return 方法执行结果。
          */
         public LlmAdapterException(String message, String code) {
             this(message, code, null);
         }
 
         /**
-         * 处理Llm Adapter Exception相关逻辑。
+         * 处理LLM Adapter Exception。
+         * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+         * @param message 消息内容或对象。
+         * @param code 编码参数。
+         * @param status 状态对象。
+         * @return 方法执行结果。
          */
         public LlmAdapterException(String message, String code, Integer status) {
             super(message);
@@ -840,11 +930,13 @@ public class DeepSeekAdapter implements LlmAdapter {
         }
 
         /**
-         * 处理code相关逻辑。
+         * 处理编码。
+         * @return 方法执行结果。
          */
         public String code() { return code; }
         /**
-         * 处理status相关逻辑。
+         * 处理status。
+         * @return 方法执行结果。
          */
         public Integer status() { return status; }
     }

@@ -19,6 +19,8 @@ import org.springframework.web.bind.annotation.RestController;
  * 2. 调用终端命令适配器；
  * 3. 返回结果响应。
  *
+ * <p>调用流程：Controller → API 适配器 → 用例/领域命令服务 → 返回响应。</p>
+ * <p>示例：POST 请求携带 JSON，命令服务更新状态后返回最新视图。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -29,14 +31,20 @@ public class TerminalCommandController {
     private final TerminalCommandApi terminalCommandApi;
 
     /**
-     * 处理Terminal Command Controller相关逻辑。
+     * 处理终端 命令 Controller。
+     * 流程：解析请求参数 → 调用应用门面 → 返回响应。
+     * @param terminalCommandApi 终端 命令 API参数。
+     * @return 方法执行结果。
      */
     public TerminalCommandController(TerminalCommandApi terminalCommandApi) {
         this.terminalCommandApi = terminalCommandApi;
     }
 
     /**
-     * 处理Post Mapping相关逻辑。
+     * 打开目标对象。
+     * 流程：解析请求参数 → 调用应用门面 → 返回响应。
+     * @param request 请求对象。
+     * @return 方法执行结果。
      */
     @PostMapping("/sessions")
     public TerminalSessionResponse open(@RequestBody TerminalOpenRequest request) {
@@ -44,7 +52,11 @@ public class TerminalCommandController {
     }
 
     /**
-     * 处理Post Mapping相关逻辑。
+     * 发送目标对象。
+     * 流程：解析请求参数 → 调用应用门面 → 返回响应。
+     * @param sessionId 会话 ID。
+     * @param request 请求对象。
+     * @return 方法执行结果。
      */
     @PostMapping("/sessions/{sessionId}/send")
     public TerminalSendResponse send(@PathVariable("sessionId") String sessionId, @RequestBody TerminalSendRequest request) {
@@ -52,7 +64,10 @@ public class TerminalCommandController {
     }
 
     /**
-     * 处理Post Mapping相关逻辑。
+     * 关闭目标对象。
+     * 流程：解析请求参数 → 调用应用门面 → 返回响应。
+     * @param sessionId 会话 ID。
+     * @return 方法执行结果。
      */
     @PostMapping("/sessions/{sessionId}/close")
     public TerminalSessionResponse close(@PathVariable("sessionId") String sessionId) {

@@ -12,6 +12,8 @@ import java.util.concurrent.CompletableFuture;
  * 继承 {@link AbstractTool}，只需实现 name/description/parameters/run。
  * 演示一个无副作用、可并发调用的只读工具。
  *
+ * <p>调用流程：接收输入 → 执行本类职责 → 返回结果。</p>
+ * <p>示例：根据调用方传入参数完成一次独立操作。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -26,6 +28,12 @@ public class WeatherQueryTool extends AbstractTool {
     public String description() {
         return "查询指定城市的天气信息（温度、天气状况、湿度）。";
     }
+    /**
+     * 返回 parameters。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public Map<String, Object> parameters() {
@@ -34,6 +42,12 @@ public class WeatherQueryTool extends AbstractTool {
                 .required("city")
                 .build();
     }
+    /**
+     * 返回 output Schema。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public Map<String, Object> outputSchema() {
@@ -44,17 +58,40 @@ public class WeatherQueryTool extends AbstractTool {
                 .prop("humidity", stringSchema(null))
                 .build();
     }
+    /**
+     * 判断当前状态是否满足条件。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @return 布尔结果：满足条件为 true，否则 false。
+     */
+
 
     @Override
     public boolean isConcurrencySafe(Object args) {
         return true;
     }
+    /**
+     * 运行目标对象。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param Map<String Map String参数。
+     * @param args 启动参数。
+     * @param ctx ctx参数。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     protected CompletableFuture<ToolExecutionResult> run(Map<String, Object> args, ToolRunContext ctx) {
         String city = str(args, "city", "未知");
         return ok(mockWeather(city));
     }
+    /**
+     * mock Weather。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param city city参数。
+     * @return 方法执行结果。
+     */
+
 
     private String mockWeather(String city) {
         int temp = switch (city) {

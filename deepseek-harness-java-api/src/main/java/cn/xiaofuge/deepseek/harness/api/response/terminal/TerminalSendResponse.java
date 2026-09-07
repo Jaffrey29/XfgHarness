@@ -11,6 +11,8 @@ import java.time.Instant;
  * 2. 映射为前端结构；
  * 3. 返回输出与终端状态。
  *
+ * <p>调用流程：Controller/DTO → 应用门面 → 用例；响应对象由用例结果转换。</p>
+ * <p>示例：DTO 只做协议隔离，不承载领域规则。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -27,7 +29,10 @@ public record TerminalSendResponse(
 ) {
 
     /**
-     * 处理from相关逻辑。
+     * 根据目标对象。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param result 结果对象。
+     * @return 创建的领域对象。
      */
     public static TerminalSendResponse from(TerminalSendResultVO result) {
         return new TerminalSendResponse(

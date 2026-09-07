@@ -26,14 +26,19 @@ public class InMemoryUserQuestionsPort implements UserQuestionsPort {
     private final long defaultTimeoutMs;
 
     /**
-     * 处理In Memory User Questions Port相关逻辑。
+     * 处理In Memory 用户 Questions Port。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @return 方法执行结果。
      */
     public InMemoryUserQuestionsPort() {
         this(300_000); // 5 min default timeout
     }
 
     /**
-     * 处理In Memory User Questions Port相关逻辑。
+     * 处理In Memory 用户 Questions Port。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param defaultTimeoutMs default Timeout Ms参数。
+     * @return 方法执行结果。
      */
     public InMemoryUserQuestionsPort(long defaultTimeoutMs) {
         this.defaultTimeoutMs = defaultTimeoutMs;
@@ -60,6 +65,12 @@ public class InMemoryUserQuestionsPort implements UserQuestionsPort {
             pending.remove(requestId);
         }
     }
+    /**
+     * 判断当前状态是否满足条件。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @return 布尔结果：满足条件为 true，否则 false。
+     */
+
 
     @Override
     public boolean isAvailable() {

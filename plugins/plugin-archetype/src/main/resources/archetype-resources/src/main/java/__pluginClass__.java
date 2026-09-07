@@ -27,6 +27,12 @@ public class ${pluginClass} extends AbstractHarnessPlugin {
     public List<ToolDefinition> tools() {
         return List.of(new ExampleTool());
     }
+    /**
+     * configure。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param context 上下文对象。
+     */
+
 
     @Override
     public void configure(PluginContext context) {

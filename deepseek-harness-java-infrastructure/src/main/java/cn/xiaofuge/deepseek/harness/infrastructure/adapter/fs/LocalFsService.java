@@ -17,6 +17,8 @@ import java.util.stream.Stream;
  * 2. 将相对路径解析到智能体工作目录；
  * 3. 返回文件系统操作结果。
  *
+ * <p>调用流程：路径规范化 → 沙箱边界校验 → 本地文件操作。</p>
+ * <p>示例：读取文件前先确认路径位于允许的工作区内。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -26,14 +28,21 @@ public class LocalFsService implements IFsPort {
     private final boolean restrictWritesToBase;
 
     /**
-     * 处理Local Fs Service相关逻辑。
+     * 处理Local Fs Service。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param baseDir base Dir参数。
+     * @return 方法执行结果。
      */
     public LocalFsService(String baseDir) {
         this(baseDir, Boolean.parseBoolean(System.getProperty("harness.fs.restrict-writes", "true")));
     }
 
     /**
-     * 处理Local Fs Service相关逻辑。
+     * 处理Local Fs Service。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param baseDir base Dir参数。
+     * @param restrictWritesToBase restrict Writes To Base参数。
+     * @return 方法执行结果。
      */
     public LocalFsService(String baseDir, boolean restrictWritesToBase) {
         this.baseDir = baseDir != null
@@ -69,6 +78,13 @@ public class LocalFsService implements IFsPort {
             throw new RuntimeException("Read error: " + e.getMessage(), e);
         }
     }
+    /**
+     * 写入目标对象。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param path 文件或资源路径。
+     * @param content 内容文本。
+     */
+
 
     @Override
     public void write(String path, String content) {
@@ -82,6 +98,15 @@ public class LocalFsService implements IFsPort {
             throw new RuntimeException("Write error: " + e.getMessage(), e);
         }
     }
+    /**
+     * search。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param directory directory参数。
+     * @param pattern pattern参数。
+     * @param maxResults max Results参数。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public List<String> search(String directory, String pattern, int maxResults) {
@@ -105,11 +130,25 @@ public class LocalFsService implements IFsPort {
         }
         return results;
     }
+    /**
+     * exists。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param path 文件或资源路径。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public boolean exists(String path) {
         return Files.exists(resolve(path));
     }
+    /**
+     * 列出Dir。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param directory directory参数。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public List<DirEntry> listDir(String directory) {
@@ -214,6 +253,13 @@ public class LocalFsService implements IFsPort {
         }
         return results;
     }
+    /**
+     * 读取Bytes。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param path 文件或资源路径。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public byte[] readBytes(String path) {

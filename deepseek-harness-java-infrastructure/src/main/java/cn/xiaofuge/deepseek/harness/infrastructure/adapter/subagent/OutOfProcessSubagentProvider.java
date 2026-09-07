@@ -26,7 +26,8 @@ public abstract class OutOfProcessSubagentProvider implements SubagentProvider {
     protected final long timeoutMs;
 
     /**
-     * 处理Out Of Process Subagent Provider相关逻辑。
+     * 初始化进程外子智能体提供者。
+     * <p>流程：准备命令和工作目录 → 启动子进程 → 转换输出。</p>
      */
     protected OutOfProcessSubagentProvider(String command, List<String> args, String cwd,
                                            Map<String, String> env, long timeoutMs) {
@@ -41,6 +42,12 @@ public abstract class OutOfProcessSubagentProvider implements SubagentProvider {
     public CompletableFuture<SubagentResult> start(SubagentStartRequest request) {
         return CompletableFuture.supplyAsync(() -> runChild(request));
     }
+    /**
+     * 返回 capabilities。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public SubagentCapabilities capabilities() {

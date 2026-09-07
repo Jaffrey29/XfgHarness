@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
  * SDK client service: sends requests over the transport port and routes
  * notifications to registered handlers.
  *
+ * <p>调用流程：应用领域规则 → 更新聚合或值对象 → 发布事件/返回结果。</p>
+ * <p>示例：领域对象只暴露业务语言方法，不直接依赖基础设施。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -25,7 +27,10 @@ public class SdkClientService implements ISdkClientService {
     private volatile Consumer<Object> eventHandler;
 
     /**
-     * 处理Sdk Client Service相关逻辑。
+     * 处理Sdk Client Service。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param transport transport参数。
+     * @return 方法执行结果。
      */
     public SdkClientService(ISdkTransportPort transport) {
         this.transport = transport;
@@ -42,6 +47,13 @@ public class SdkClientService implements ISdkClientService {
     }
 
     @Override
+    /**
+     * initialize。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param params params参数。
+     * @return 方法执行结果。
+     */
+
     @SuppressWarnings("unchecked")
     public InitializeResult initialize(InitializeParams params) {
         Map<String, Object> result = (Map<String, Object>) transport.request("initialize", params);
@@ -52,22 +64,46 @@ public class SdkClientService implements ISdkClientService {
     }
 
     @Override
+    /**
+     * session Prompt。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param params params参数。
+     * @return 方法执行结果。
+     */
+
     @SuppressWarnings("unchecked")
     public SessionPromptResult sessionPrompt(SessionPromptParams params) {
         Map<String, Object> result = (Map<String, Object>) transport.request("session/prompt", params);
         return new SessionPromptResult((String) result.get("messageId"));
     }
+    /**
+     * shutdown。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     */
+
 
     @Override
     public void shutdown() {
         transport.request("shutdown", null);
         transport.close();
     }
+    /**
+     * on Session Status。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param handler handler参数。
+     */
+
 
     @Override
     public void onSessionStatus(Consumer<SessionStatus> handler) {
         this.statusHandler = handler;
     }
+    /**
+     * on Session Event。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param handler handler参数。
+     */
+
 
     @Override
     public void onSessionEvent(Consumer<Object> handler) {

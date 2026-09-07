@@ -22,14 +22,20 @@ public class HarnessPluginCommandController {
     private final HarnessPluginCommandApi harnessPluginCommandApi;
 
     /**
-     * 处理Harness Plugin Command Controller相关逻辑。
+     * 处理Harness 插件 命令 Controller。
+     * 流程：解析请求参数 → 调用应用门面 → 返回响应。
+     * @param harnessPluginCommandApi harness 插件 命令 API参数。
+     * @return 方法执行结果。
      */
     public HarnessPluginCommandController(HarnessPluginCommandApi harnessPluginCommandApi) {
         this.harnessPluginCommandApi = harnessPluginCommandApi;
     }
 
     /**
-     * 处理Post Mapping相关逻辑。
+     * 安装 插件。
+     * 流程：解析请求参数 → 调用应用门面 → 返回响应。
+     * @param request 请求对象。
+     * @return 方法执行结果。
      */
     @PostMapping("/install")
     public InstallPluginResponse installPlugin(@RequestBody InstallPluginRequest request) {
@@ -37,7 +43,10 @@ public class HarnessPluginCommandController {
     }
 
     /**
-     * 处理Post Mapping相关逻辑。
+     * 激活 插件。
+     * 流程：解析请求参数 → 调用应用门面 → 返回响应。
+     * @param request 请求对象。
+     * @return 方法执行结果。
      */
     @PostMapping("/activate")
     public ActivatePluginResponse activatePlugin(@RequestBody ActivatePluginRequest request) {
@@ -45,7 +54,10 @@ public class HarnessPluginCommandController {
     }
 
     /**
-     * 处理Post Mapping相关逻辑。
+     * 运行 插件。
+     * 流程：解析请求参数 → 调用应用门面 → 返回响应。
+     * @param request 请求对象。
+     * @return 方法执行结果。
      */
     @PostMapping("/run")
     public RunPluginResponse runPlugin(@RequestBody RunPluginRequest request) {
@@ -53,7 +65,10 @@ public class HarnessPluginCommandController {
     }
 
     /**
-     * 处理Post Mapping相关逻辑。
+     * 停用 插件。
+     * 流程：解析请求参数 → 调用应用门面 → 返回响应。
+     * @param pluginId 插件 ID。
+     * @return 方法执行结果。
      */
     @PostMapping("/{pluginId}/disable")
     public PluginLifecycleResponse disablePlugin(@PathVariable("pluginId") String pluginId) {
@@ -61,7 +76,10 @@ public class HarnessPluginCommandController {
     }
 
     /**
-     * 处理Post Mapping相关逻辑。
+     * 启用 插件。
+     * 流程：解析请求参数 → 调用应用门面 → 返回响应。
+     * @param pluginId 插件 ID。
+     * @return 方法执行结果。
      */
     @PostMapping("/{pluginId}/enable")
     public PluginLifecycleResponse enablePlugin(@PathVariable("pluginId") String pluginId) {
@@ -69,7 +87,10 @@ public class HarnessPluginCommandController {
     }
 
     /**
-     * 处理Post Mapping相关逻辑。
+     * 卸载 插件。
+     * 流程：解析请求参数 → 调用应用门面 → 返回响应。
+     * @param pluginId 插件 ID。
+     * @return 方法执行结果。
      */
     @PostMapping("/{pluginId}/uninstall")
     public PluginLifecycleResponse uninstallPlugin(@PathVariable("pluginId") String pluginId) {

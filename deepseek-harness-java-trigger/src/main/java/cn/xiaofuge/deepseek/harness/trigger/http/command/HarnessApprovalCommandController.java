@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RestController;
  * 2. 调用命令适配器推进会话状态；
  * 3. 返回执行结果。
  *
+ * <p>调用流程：Controller → API 适配器 → 用例/领域命令服务 → 返回响应。</p>
+ * <p>示例：POST 请求携带 JSON，命令服务更新状态后返回最新视图。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -25,7 +27,10 @@ public class HarnessApprovalCommandController {
     private final HarnessApprovalCommandApi harnessApprovalCommandApi;
 
     /**
-     * 处理Harness Approval Command Controller相关逻辑。
+     * 处理Harness 审批 命令 Controller。
+     * 流程：解析请求参数 → 调用应用门面 → 返回响应。
+     * @param harnessApprovalCommandApi harness 审批 命令 API参数。
+     * @return 方法执行结果。
      */
     public HarnessApprovalCommandController(HarnessApprovalCommandApi harnessApprovalCommandApi) {
         this.harnessApprovalCommandApi = harnessApprovalCommandApi;

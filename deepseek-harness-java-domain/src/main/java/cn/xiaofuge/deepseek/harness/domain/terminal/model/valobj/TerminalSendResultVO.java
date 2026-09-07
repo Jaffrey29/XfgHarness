@@ -10,6 +10,8 @@ import java.time.Instant;
  * 2. 收集新输出片段；
  * 3. 返回执行状态与耗时信息。
  *
+ * <p>调用流程：打开会话 → 发送命令 → 读取输出 → 关闭会话。</p>
+ * <p>示例：发送 pwd 后读取标准输出，超时后可关闭终端会话。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */

@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 /**
  * 协调插件生命周期管理纵切面。
  *
+ * <p>调用流程：Controller/API → 插件用例 → 领域插件服务 → PluginRuntime/Bridge。</p>
+ * <p>示例：安装插件后先激活，再通过统一工具名调用插件工具。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -22,7 +24,8 @@ public class ManageHarnessPluginCaseImpl implements IManageHarnessPluginCase {
     private final IPluginRuntimeService pluginRuntimeService;
 
     /**
-     * 处理Manage Harness Plugin Case Impl相关逻辑。
+     * 初始化插件生命周期管理用例。
+     * <p>流程：接收启用/停用/卸载命令 → 委托插件领域服务执行。</p>
      */
     public ManageHarnessPluginCaseImpl(
             IPluginRegistryService pluginRegistryService,
@@ -32,6 +35,13 @@ public class ManageHarnessPluginCaseImpl implements IManageHarnessPluginCase {
         this.pluginRuntimeService = pluginRuntimeService;
     }
 
+    /**
+     * enable。
+     * 流程：读取命令 → 执行用例编排 → 返回结果。
+     * @param pluginId 插件 ID。
+     * @return 方法执行结果。
+     */
+
     @Override
     public PluginLifecycleResult disable(String pluginId) {
         pluginRuntimeService.stop(pluginId);
@@ -39,11 +49,25 @@ public class ManageHarnessPluginCaseImpl implements IManageHarnessPluginCase {
         return new PluginLifecycleResult(pluginId, status.name(), "plugin disabled", Instant.now());
     }
 
+    /**
+     * uninstall。
+     * 流程：读取命令 → 执行用例编排 → 返回结果。
+     * @param pluginId 插件 ID。
+     * @return 方法执行结果。
+     */
+
     @Override
     public PluginLifecycleResult enable(String pluginId) {
         PluginInstallStatusEnumVO status = pluginRegistryService.enablePlugin(pluginId);
         return new PluginLifecycleResult(pluginId, status.name(), "plugin enabled", Instant.now());
     }
+
+    /**
+     * 停止目标对象。
+     * 流程：读取命令 → 执行用例编排 → 返回结果。
+     * @param pluginId 插件 ID。
+     * @return 方法执行结果。
+     */
 
     @Override
     public PluginLifecycleResult uninstall(String pluginId) {

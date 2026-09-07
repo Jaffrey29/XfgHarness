@@ -9,6 +9,8 @@ import java.util.List;
 /**
  * Agent-scoped durable one-shot and fixed-rate reminders over the session event log.
  *
+ * <p>调用流程：创建计划 → 到期扫描 → 执行任务 → 更新状态。</p>
+ * <p>示例：设置固定间隔后，调度器到期触发任务并记录结果。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */

@@ -35,7 +35,12 @@ public class StdioSdkTransportPort implements ISdkTransportPort {
     private volatile boolean closed = false;
 
     /**
-     * 处理Stdio Sdk Transport Port相关逻辑。
+     * 处理Stdio Sdk Transport Port。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param in in参数。
+     * @param out out参数。
+     * @param mapper mapper参数。
+     * @return 方法执行结果。
      */
     public StdioSdkTransportPort(InputStream in, OutputStream out, ObjectMapper mapper) {
         this.mapper = mapper;
@@ -72,6 +77,13 @@ public class StdioSdkTransportPort implements ISdkTransportPort {
             throw new RuntimeException("request failed: " + e.getMessage(), e);
         }
     }
+    /**
+     * notify。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param method method参数。
+     * @param params params参数。
+     */
+
 
     @Override
     public void notify(String method, Object params) {
@@ -85,11 +97,22 @@ public class StdioSdkTransportPort implements ISdkTransportPort {
             throw new RuntimeException("failed to send notification: " + e.getMessage(), e);
         }
     }
+    /**
+     * on Notification。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param handler handler参数。
+     */
+
 
     @Override
     public void onNotification(Consumer<NotificationFrame> handler) {
         notificationHandlers.add(handler);
     }
+    /**
+     * 关闭目标对象。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     */
+
 
     @Override
     public void close() {
@@ -99,7 +122,8 @@ public class StdioSdkTransportPort implements ISdkTransportPort {
     }
 
     /**
-     * 处理read Loop相关逻辑。
+     * 读取 Loop。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
      */
     private void readLoop() {
         while (!closed) {
@@ -120,7 +144,10 @@ public class StdioSdkTransportPort implements ISdkTransportPort {
     }
 
     /**
-     * 处理Suppress Warnings相关逻辑。
+     * 处理一行 JSON-RPC 帧。
+     * <p>流程：解析 JSON → 区分请求/响应/通知 → 分发到对应回调。</p>
+     *
+     * @param line 一行 JSON 文本。
      */
     @SuppressWarnings("unchecked")
     private void handleLine(String line) {
@@ -160,7 +187,10 @@ public class StdioSdkTransportPort implements ISdkTransportPort {
     }
 
     /**
-     * 处理write Frame相关逻辑。
+     * 写入 Frame。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param Map<String 映射 String参数。
+     * @param frame frame参数。
      */
     private void writeFrame(Map<String, Object> frame) throws IOException {
         synchronized (writer) {
@@ -171,7 +201,9 @@ public class StdioSdkTransportPort implements ISdkTransportPort {
     }
 
     /**
-     * 处理fail Pending相关逻辑。
+     * 处理fail Pending。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param e 异常对象。
      */
     private void failPending(Exception e) {
         for (CompletableFuture<Object> f : pending.values()) {

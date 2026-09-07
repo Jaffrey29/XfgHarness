@@ -12,6 +12,8 @@ import java.util.Map;
  *
  * <p>使用 {@link #isError()} 区分成功与失败。
  *
+ * <p>调用流程：应用领域规则 → 更新聚合或值对象 → 发布事件/返回结果。</p>
+ * <p>示例：领域对象只暴露业务语言方法，不直接依赖基础设施。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -43,7 +45,10 @@ public sealed interface ToolExecutionResult
             additionalContexts = additionalContexts == null ? List.of() : List.copyOf(additionalContexts);
             meta = meta == null ? null : Map.copyOf(meta);
         }
+        /** 成功结果不作为失败返回。 */
         @Override public boolean isError() { return false; }
+
+        /** 判断该结果是否结束当前回合。 */
         @Override public boolean concludesTurn() { return concludesTurn; }
     }
 
@@ -59,7 +64,10 @@ public sealed interface ToolExecutionResult
             additionalContexts = additionalContexts == null ? List.of() : List.copyOf(additionalContexts);
             meta = meta == null ? null : Map.copyOf(meta);
         }
+        /** 失败结果始终作为失败返回。 */
         @Override public boolean isError() { return true; }
+
+        /** 工具失败通常需要回填给模型并结束当前回合。 */
         @Override public boolean concludesTurn() { return false; }
     }
 

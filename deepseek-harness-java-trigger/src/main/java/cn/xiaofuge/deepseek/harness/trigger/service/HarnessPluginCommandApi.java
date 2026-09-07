@@ -28,6 +28,8 @@ import org.springframework.stereotype.Service;
  * 2. 映射为 case 层 Command，转交对应的用例层执行；
  * 3. 将 case 层 Result 映射回 api Response 返回给 Trigger 层输出。
  *
+ * <p>调用流程：HTTP/Web 层 → API 适配器 → 应用门面。</p>
+ * <p>示例：控制器只负责协议转换，不写业务规则。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -40,7 +42,8 @@ public class HarnessPluginCommandApi {
     private final IManageHarnessPluginCase manageHarnessPluginCase;
 
     /**
-     * 处理Harness Plugin Command Api相关逻辑。
+     * 初始化插件命令适配器，并注入安装、激活、运行和生命周期用例。
+     * <p>流程：HTTP 请求 → API 适配器 → 用例层。</p>
      */
     public HarnessPluginCommandApi(
             IInstallHarnessPluginCase installHarnessPluginCase,

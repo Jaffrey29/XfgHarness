@@ -16,6 +16,8 @@ import org.springframework.stereotype.Component;
  * Copies plugin source trees (Node plugins) or JAR files (Java plugins) into
  * the managed install root.
  *
+ * <p>调用流程：领域端口 → 基础设施适配器 → 外部系统。</p>
+ * <p>示例：适配器只实现端口契约，业务规则保留在 domain。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -25,7 +27,10 @@ public class PluginArtifactInstallerPort implements IPluginArtifactInstallerPort
     private final Path installRoot;
 
     /**
-     * 处理Plugin Artifact Installer Port相关逻辑。
+     * 处理插件 Artifact Installer Port。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param installRoot install 根路径参数。
+     * @return 方法执行结果。
      */
     public PluginArtifactInstallerPort(@Value("${harness.plugin.install-root:./plugins}") String installRoot) {
         this.installRoot = Path.of(installRoot).toAbsolutePath().normalize();
@@ -47,6 +52,12 @@ public class PluginArtifactInstallerPort implements IPluginArtifactInstallerPort
 
         return installDirectory(pluginId, source, entrypoint);
     }
+    /**
+     * uninstall。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param pluginId 插件 ID。
+     */
+
 
     @Override
     public void uninstall(String pluginId) {
@@ -102,7 +113,11 @@ public class PluginArtifactInstallerPort implements IPluginArtifactInstallerPort
     }
 
     /**
-     * 处理normalize Entrypoint相关逻辑。
+     * 规范化 入口。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param sourceRoot 来源 根路径参数。
+     * @param entrypoint 插件入口。
+     * @return 方法执行结果。
      */
     private Path normalizeEntrypoint(Path sourceRoot, String entrypoint) {
         Path entrypointPath = Path.of(entrypoint);
@@ -119,7 +134,10 @@ public class PluginArtifactInstallerPort implements IPluginArtifactInstallerPort
     }
 
     /**
-     * 处理replace Directory相关逻辑。
+     * 处理replace 目录。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param sourceRoot 来源 根路径参数。
+     * @param targetRoot target 根路径参数。
      */
     private void replaceDirectory(Path sourceRoot, Path targetRoot) throws IOException {
         deleteDirectoryIfExists(targetRoot);
@@ -141,7 +159,9 @@ public class PluginArtifactInstallerPort implements IPluginArtifactInstallerPort
     }
 
     /**
-     * 处理delete Directory If Exists相关逻辑。
+     * 删除 目录 If Exists。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param targetRoot target 根路径参数。
      */
     private void deleteDirectoryIfExists(Path targetRoot) throws IOException {
         if (!Files.exists(targetRoot)) {

@@ -34,7 +34,8 @@ public class ForkInProcessProvider implements SubagentProvider {
     private final AgentOptions defaultOptions;
 
     /**
-     * 处理Fork In Process Provider相关逻辑。
+     * 初始化进程内 Fork 子智能体提供者。
+     * <p>流程：继承当前 Agent 上下文 → 派生独立会话 → 回传执行结果。</p>
      */
     public ForkInProcessProvider(
             String providerName,
@@ -47,16 +48,35 @@ public class ForkInProcessProvider implements SubagentProvider {
         this.agentFactory = agentFactory;
         this.defaultOptions = defaultOptions;
     }
+    /**
+     * 返回 name。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public String name() {
         return providerName;
     }
+    /**
+     * 返回 capabilities。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public SubagentCapabilities capabilities() {
         return new SubagentCapabilities(true, true, true);
     }
+    /**
+     * 启动目标对象。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param request 请求对象。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public CompletableFuture<SubagentResult> start(SubagentStartRequest request) {
@@ -115,7 +135,10 @@ public class ForkInProcessProvider implements SubagentProvider {
     }
 
     /**
-     * 处理collect Last Assistant Output相关逻辑。
+     * 处理collect Last Assistant Output。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param agent Agent参数。
+     * @return 方法执行结果。
      */
     private List<ContentBlock> collectLastAssistantOutput(ReactLoopAgent agent) {
         var events = agent.session().events();
@@ -136,7 +159,10 @@ public class ForkInProcessProvider implements SubagentProvider {
     }
 
     /**
-     * 处理determine Stop Reason相关逻辑。
+     * 处理determine Stop Reason。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param agent Agent参数。
+     * @return 方法执行结果。
      */
     private String determineStopReason(ReactLoopAgent agent) {
         var events = agent.session().events();

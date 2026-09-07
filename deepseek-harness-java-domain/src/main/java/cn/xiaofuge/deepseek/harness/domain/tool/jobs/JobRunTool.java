@@ -24,6 +24,8 @@ import java.util.concurrent.CompletableFuture;
  * 2. 任务在线程池中异步执行，输出在结束时一次性捕获；
  * 3. 立即返回 job_id，模型可用 job_output 轮询结果。
  *
+ * <p>调用流程：Agent 发起 tool call → ToolRegistry 查找工具 → Guard 校验 → ToolExecutor 执行 → 结果回填。</p>
+ * <p>示例：工具名 fs_read 与 JSON 参数先经过校验，再生成 ToolExecutionResult。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -37,7 +39,13 @@ public class JobRunTool implements ToolDefinition {
     private final String defaultCwd;
 
     /**
-     * 处理Job Run Tool相关逻辑。
+     * 处理后台作业 Run 工具。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param jobs jobs参数。
+     * @param shellExecutor Shell Executor参数。
+     * @param sessionId 会话 ID。
+     * @param defaultCwd default Cwd参数。
+     * @return 方法执行结果。
      */
     public JobRunTool(IJobRegistryService jobs, IShellExecutor shellExecutor, String sessionId, String defaultCwd) {
         this.jobs = jobs;
@@ -54,6 +62,12 @@ public class JobRunTool implements ToolDefinition {
                 "Use for long-running commands (builds, servers, watchers). " +
                 "Poll with job_output and cancel with job_kill.";
     }
+    /**
+     * 返回 parameters。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public Map<String, Object> parameters() {
@@ -71,6 +85,14 @@ public class JobRunTool implements ToolDefinition {
     }
 
     @Override
+    /**
+     * 执行工具调用。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @param ctx ctx参数。
+     * @return 方法执行结果。
+     */
+
     @SuppressWarnings("unchecked")
     public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext ctx) {
         try {
@@ -102,6 +124,13 @@ public class JobRunTool implements ToolDefinition {
                     ToolExecutionResult.fail("job_run failed: " + e.getMessage(), "EXECUTION_ERROR"));
         }
     }
+    /**
+     * 判断当前状态是否满足条件。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @return 布尔结果：满足条件为 true，否则 false。
+     */
+
 
     @Override
     public boolean isConcurrencySafe(Object args) { return false; }

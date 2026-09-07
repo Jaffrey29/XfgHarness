@@ -7,6 +7,8 @@ import org.mybatis.spring.annotation.MapperScan;
 /**
  * 启动 deepseek-harness 的 Java 版工程。
  *
+ * <p>调用流程：Spring Boot 启动 → 加载模型/插件预设 → 注册运行时组件。</p>
+ * <p>示例：启动器同步默认模型并装载预置插件。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */

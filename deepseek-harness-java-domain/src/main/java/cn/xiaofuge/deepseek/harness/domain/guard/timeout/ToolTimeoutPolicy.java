@@ -65,14 +65,18 @@ public class ToolTimeoutPolicy {
     public static class ToolTimeoutException extends RuntimeException {
         private final long timeoutMs;
         /**
-         * 处理Tool Timeout Exception相关逻辑。
+         * 转换为 ol Timeout Exception。
+         * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+         * @param timeoutMs 超时时间，毫秒。
+         * @return 方法执行结果。
          */
         public ToolTimeoutException(long timeoutMs) {
             super("tool call timed out after " + timeoutMs + "ms");
             this.timeoutMs = timeoutMs;
         }
         /**
-         * 处理timeout Ms相关逻辑。
+         * 处理timeout Ms。
+         * @return 方法执行结果。
          */
         public long timeoutMs() { return timeoutMs; }
     }

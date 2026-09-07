@@ -12,6 +12,8 @@ import org.springframework.web.servlet.HandlerInterceptor;
  * 当 harness.auth.api-keys 为空时，所有请求直接放行，用于本地开发。
  * 否则要求携带 X-API-Key 或 Bearer Token。
  *
+ * <p>调用流程：HTTP/Web 层 → API 适配器 → 应用门面。</p>
+ * <p>示例：控制器只负责协议转换，不写业务规则。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */

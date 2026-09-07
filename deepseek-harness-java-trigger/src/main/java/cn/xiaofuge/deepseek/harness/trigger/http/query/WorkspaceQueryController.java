@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.RestController;
  * 2. 调用工作区查询适配器读取目录与排序信息；
  * 3. 返回给前端用于下拉选择和目录浏览。
  *
+ * <p>调用流程：Controller → API 适配器 → 查询服务 → 数据库或事件日志。</p>
+ * <p>示例：GET 请求使用查询参数过滤，只读返回视图对象。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -27,7 +29,10 @@ public class WorkspaceQueryController {
     private final WorkspaceQueryApi workspaceQueryApi;
 
     /**
-     * 处理Workspace Query Controller相关逻辑。
+     * 处理工作区 Query Controller。
+     * 流程：解析请求参数 → 调用应用门面 → 返回响应。
+     * @param workspaceQueryApi 工作区 Query API参数。
+     * @return 方法执行结果。
      */
     public WorkspaceQueryController(WorkspaceQueryApi workspaceQueryApi) {
         this.workspaceQueryApi = workspaceQueryApi;

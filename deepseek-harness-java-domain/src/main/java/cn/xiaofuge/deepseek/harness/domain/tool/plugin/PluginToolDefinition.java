@@ -26,7 +26,8 @@ public class PluginToolDefinition implements ToolDefinition {
     private final IPluginToolBridge.PluginToolDescriptor descriptor;
 
     /**
-     * 处理Plugin Tool Definition相关逻辑。
+     * 创建插件工具定义。
+     * <p>用途：把插件提供的工具转换成 Harness 通用工具目录条目。</p>
      */
     public PluginToolDefinition(
             String pluginId,
@@ -41,16 +42,34 @@ public class PluginToolDefinition implements ToolDefinition {
     public String name() {
         return "plugin__" + pluginId + "__" + descriptor.name();
     }
+    /**
+     * 返回 description。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public String description() {
         return descriptor.description() != null ? descriptor.description() : "Plugin tool: " + descriptor.name();
     }
+    /**
+     * 返回 parameters。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public Map<String, Object> parameters() {
         return descriptor.inputSchema() != null ? descriptor.inputSchema() : Map.of("type", "object");
     }
+    /**
+     * 返回 output Schema。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public Map<String, Object> outputSchema() {
@@ -58,6 +77,14 @@ public class PluginToolDefinition implements ToolDefinition {
     }
 
     @Override
+    /**
+     * 执行工具调用。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @param ctx ctx参数。
+     * @return 方法执行结果。
+     */
+
     @SuppressWarnings("unchecked")
     public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext ctx) {
         Map<String, Object> argMap = args instanceof Map ? (Map<String, Object>) args : Map.of();
@@ -80,6 +107,13 @@ public class PluginToolDefinition implements ToolDefinition {
                 .exceptionally(e -> ToolExecutionResult.fail(
                         "Plugin tool call failed: " + e.getMessage(), "PLUGIN_CALL_ERROR"));
     }
+    /**
+     * 判断当前状态是否满足条件。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @return 布尔结果：满足条件为 true，否则 false。
+     */
+
 
     @Override
     public boolean isConcurrencySafe(Object args) { return true; }

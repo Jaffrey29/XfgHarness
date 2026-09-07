@@ -31,7 +31,13 @@ public final class PluginManifest {
     private final String entrypoint;
 
     /**
-     * 处理Plugin Manifest相关逻辑。
+     * 创建插件清单。
+     * @param id 插件 ID。
+     * @param name 插件名称。
+     * @param version 插件版本。
+     * @param author 作者。
+     * @param description 描述。
+     * @param entrypoint 插件入口。
      */
     public PluginManifest(String id, String name, String version, String author, String description, String entrypoint) {
         this.id = Objects.requireNonNull(id, "id");
@@ -43,27 +49,33 @@ public final class PluginManifest {
     }
 
     /**
-     * 处理id相关逻辑。
+     * 处理ID。
+     * @return 方法执行结果。
      */
     public String id() { return id; }
     /**
-     * 处理name相关逻辑。
+     * 处理名称。
+     * @return 方法执行结果。
      */
     public String name() { return name; }
     /**
-     * 处理version相关逻辑。
+     * 处理版本。
+     * @return 方法执行结果。
      */
     public String version() { return version; }
     /**
-     * 处理author相关逻辑。
+     * 处理author。
+     * @return 方法执行结果。
      */
     public String author() { return author; }
     /**
-     * 处理description相关逻辑。
+     * 处理description。
+     * @return 方法执行结果。
      */
     public String description() { return description; }
     /**
-     * 处理entrypoint相关逻辑。
+     * 处理入口。
+     * @return 方法执行结果。
      */
     public String entrypoint() { return entrypoint; }
 }

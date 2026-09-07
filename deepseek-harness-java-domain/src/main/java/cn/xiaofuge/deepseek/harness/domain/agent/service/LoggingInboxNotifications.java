@@ -16,6 +16,20 @@ public final class LoggingInboxNotifications implements InboxNotifications {
 
     public static final LoggingInboxNotifications INSTANCE = new LoggingInboxNotifications();
 
+    /**
+     * claimed。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param message 消息内容或对象。
+     * @param turn 当前回合。
+     */
+
+    /**
+     * claimed。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param message 消息内容或对象。
+     * @param turn 当前回合。
+     */
+
     @Override
     public void inserted(Message message) {
         // no-op

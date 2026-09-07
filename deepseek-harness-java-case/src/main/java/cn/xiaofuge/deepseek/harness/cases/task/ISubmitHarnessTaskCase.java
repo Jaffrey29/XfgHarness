@@ -6,6 +6,8 @@ import cn.xiaofuge.deepseek.harness.cases.task.SubmitTaskResult;
 /**
  * 编排任务提交用例。
  *
+ * <p>调用流程：应用门面 → 用例编排 → 领域服务。</p>
+ * <p>示例：调用方只依赖用例接口，不直接访问领域内部类。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */

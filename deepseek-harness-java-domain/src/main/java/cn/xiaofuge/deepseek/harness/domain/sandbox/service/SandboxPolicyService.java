@@ -23,7 +23,8 @@ public class SandboxPolicyService implements ISandboxPolicyService {
     private final Path fallbackWorkspaceRoot;
 
     /**
-     * 处理Sandbox Policy Service相关逻辑。
+     * 初始化沙箱策略服务。
+     * <p>流程：读取执行上下文 → 解析读写模式 → 返回允许的操作边界。</p>
      */
     public SandboxPolicyService(
             @Value("${harness.sandbox.default-mode:READ_ONLY}") String defaultMode,
@@ -45,7 +46,10 @@ public class SandboxPolicyService implements ISandboxPolicyService {
     }
 
     /**
-     * 处理render Policy Context相关逻辑。
+     * 处理render 策略 上下文。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param policy 策略对象。
+     * @return 方法执行结果。
      */
     public String renderPolicyContext(SandboxExecutionPolicy policy) {
         return switch (policy.mode()) {

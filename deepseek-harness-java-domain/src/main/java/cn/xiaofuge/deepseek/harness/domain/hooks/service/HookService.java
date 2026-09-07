@@ -25,14 +25,21 @@ public class HookService implements IHookService {
     private final Map<HookDialect, Map<HookPoint, List<MatcherGroup>>> config = new ConcurrentHashMap<>();
 
     /**
-     * 处理Hook Service相关逻辑。
+     * 处理Hook Service。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param runnerPort runner Port参数。
+     * @return 方法执行结果。
      */
     public HookService(IHookRunnerPort runnerPort) {
         this.runnerPort = runnerPort;
     }
 
     /**
-     * 处理register Matchers相关逻辑。
+     * 注册 Matchers。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param dialect dialect参数。
+     * @param point point参数。
+     * @param groups groups参数。
      */
     public void registerMatchers(HookDialect dialect, HookPoint point, List<MatcherGroup> groups) {
         config.computeIfAbsent(dialect, d -> new EnumMap<>(HookPoint.class))
@@ -61,7 +68,9 @@ public class HookService implements IHookService {
     }
 
     /**
-     * 处理empty Outcome相关逻辑。
+     * 处理empty Outcome。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
      */
     private static MergedHookOutcome emptyOutcome() {
         return new MergedHookOutcome(Optional.empty(), "", "", false, Optional.empty());

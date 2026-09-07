@@ -15,6 +15,8 @@ import org.springframework.stereotype.Service;
  * 2. 转交终端领域服务；
  * 3. 返回最新会话状态。
  *
+ * <p>调用流程：Controller/DTO → 应用门面 → 用例；响应对象由用例结果转换。</p>
+ * <p>示例：DTO 只做协议隔离，不承载领域规则。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -24,14 +26,20 @@ public class TerminalCommandApi {
     private final ITerminalCommandService terminalCommandService;
 
     /**
-     * 处理Terminal Command Api相关逻辑。
+     * 处理终端 命令 API。
+     * 流程：转换请求 → 调用用例或领域服务 → 转换响应。
+     * @param terminalCommandService 终端 命令 Service参数。
+     * @return 方法执行结果。
      */
     public TerminalCommandApi(ITerminalCommandService terminalCommandService) {
         this.terminalCommandService = terminalCommandService;
     }
 
     /**
-     * 处理open相关逻辑。
+     * 打开目标对象。
+     * 流程：转换请求 → 调用用例或领域服务 → 转换响应。
+     * @param request 请求对象。
+     * @return 方法执行结果。
      */
     public TerminalSessionResponse open(TerminalOpenRequest request) {
         if (request == null) {

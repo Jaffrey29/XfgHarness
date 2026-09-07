@@ -8,7 +8,6 @@ import cn.xiaofuge.deepseek.harness.domain.agent.model.entity.AgentOptions;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.AgentFactoryPort;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.ReactLoopAgent;
 import cn.xiaofuge.deepseek.harness.domain.model.valobj.ToolCallBlock;
-import cn.xiaofuge.deepseek.harness.domain.runtime.setting.IModelSettingQueryService;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
@@ -18,6 +17,8 @@ import org.slf4j.LoggerFactory;
  * Agent 交互用例。
  * 消息发送通过工厂委托给策略树处理。
  *
+ * <p>调用流程：HTTP/API 门面 → AgentUseCase → AgentMessageFactory → 策略树 → ReactLoopAgent；会话事件写入 SessionEventLog。</p>
+ * <p>示例：调用方传入 agentId、用户消息和可选模型配置，返回助手文本与工具调用结果。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -33,10 +34,14 @@ public class AgentUseCase implements IAgentUseCase {
     private AgentFactoryPort agentFactory;
 
     @Autowired
-    private IModelSettingQueryService modelSettingQueryService;
+    private AgentModelOptionsResolver modelOptionsResolver;
 
-    @org.springframework.beans.factory.annotation.Value("${harness.llm.deepseek.default-model:gpt-5.5}")
-    private String defaultModel;
+    /**
+     * 发送Message。
+     * 流程：读取命令 → 执行用例编排 → 返回结果。
+     * @param request 请求对象。
+     * @return 方法执行结果。
+     */
 
     @Override
     public SendMessageResult sendMessage(SendMessageCommand request) {
@@ -53,6 +58,15 @@ public class AgentUseCase implements IAgentUseCase {
             throw new RuntimeException(e);
         }
     }
+
+    /**
+     * 发送Message Streaming。
+     * 流程：读取命令 → 执行用例编排 → 返回结果。
+     * @param request 请求对象。
+     * @param deltaSink 文本增量接收器。
+     * @param toolCallSink 工具调用事件接收器。
+     * @return 方法执行结果。
+     */
 
     @Override
     public SendMessageResult sendMessageStreaming(
@@ -87,12 +101,25 @@ public class AgentUseCase implements IAgentUseCase {
         }
     }
 
+    /**
+     * 获取Agent Status。
+     * 流程：读取命令 → 执行用例编排 → 返回结果。
+     * @param agentId Agent ID。
+     * @return 获取到的Agent Status。
+     */
+
     @Override
     public String getAgentStatus(String agentId) {
         ReactLoopAgent agent = agentFactory.get(agentId);
         if (agent == null) return "not-found";
         return agent.status().name().toLowerCase();
     }
+
+    /**
+     * 取消Agent。
+     * 流程：读取命令 → 执行用例编排 → 返回结果。
+     * @param agentId Agent ID。
+     */
 
     @Override
     public void cancelAgent(String agentId) {
@@ -104,29 +131,9 @@ public class AgentUseCase implements IAgentUseCase {
 
     /**
      * 构建Agent Options。
+     * <p>统一交给 {@link AgentModelOptionsResolver} 处理，避免文件兜底值和数据库设置分散竞争。
      */
     private AgentOptions buildAgentOptions(SendMessageCommand request) {
-        String provider = request.provider() != null ? request.provider() : "deepseek";
-        // 与 AgentResolveNode 保持一致：默认模型用 yml 的 harness.llm.deepseek.default-model（gpt-5.5），
-        // 而不是写死的 "deepseek"（库里没有该 modelCode，会匹配不到 → apiKey=null → Missing API key）。
-        String model = request.model() != null ? request.model() : defaultModel;
-        String baseUrl = null;
-        String apiKey = null;
-        var setting = modelSettingQueryService.queryAll().stream()
-                .filter(s -> s.enabled())
-                .filter(s -> s.modelCode() != null && s.modelCode().equals(model))
-                .findFirst();
-        if (setting.isPresent()) {
-            provider = setting.get().providerCode();
-            baseUrl = setting.get().baseUrl();
-            apiKey = setting.get().apiKeyRef();
-        }
-        return new AgentOptions(
-                provider,
-                model,
-                request.maxTokens() != null ? request.maxTokens() : 8192,
-                baseUrl,
-                apiKey
-        );
+        return modelOptionsResolver.resolve(request);
     }
 }

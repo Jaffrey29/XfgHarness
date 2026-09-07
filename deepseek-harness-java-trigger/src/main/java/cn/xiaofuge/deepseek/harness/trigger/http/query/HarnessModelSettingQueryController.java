@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RestController;
  * 2. 调用查询适配器读取持久化模型配置；
  * 3. 直接返回模型设置列表。
  *
+ * <p>调用流程：Controller → API 适配器 → 查询服务 → 数据库或事件日志。</p>
+ * <p>示例：GET 请求使用查询参数过滤，只读返回视图对象。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -25,7 +27,10 @@ public class HarnessModelSettingQueryController {
     private final HarnessModelSettingQueryApi harnessModelSettingQueryApi;
 
     /**
-     * 处理Harness Model Setting Query Controller相关逻辑。
+     * 处理Harness 模型 Setting Query Controller。
+     * 流程：解析请求参数 → 调用应用门面 → 返回响应。
+     * @param harnessModelSettingQueryApi harness 模型 Setting Query API参数。
+     * @return 方法执行结果。
      */
     public HarnessModelSettingQueryController(HarnessModelSettingQueryApi harnessModelSettingQueryApi) {
         this.harnessModelSettingQueryApi = harnessModelSettingQueryApi;

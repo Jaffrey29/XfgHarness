@@ -19,6 +19,8 @@ import org.springframework.core.annotation.Order;
  * 启动时安装 application.yml 中尚未注册的预置插件；
  * 如果请求 auto-enable，还会重新启用处于 DISABLED 状态的预置插件。
  *
+ * <p>调用流程：Spring Boot 启动 → 加载模型/插件预设 → 注册运行时组件。</p>
+ * <p>示例：启动器同步默认模型并装载预置插件。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -34,7 +36,8 @@ public class PresetPluginLoader implements ApplicationRunner {
     private final IPluginRegistryService pluginRegistryService;
 
     /**
-     * 处理Preset Plugin Loader相关逻辑。
+     * 初始化预置插件加载器。
+     * <p>流程：读取 application.yml 中的预置插件配置 → 调用插件注册服务安装/激活。</p>
      */
     public PresetPluginLoader(
             PresetPluginProperties properties,

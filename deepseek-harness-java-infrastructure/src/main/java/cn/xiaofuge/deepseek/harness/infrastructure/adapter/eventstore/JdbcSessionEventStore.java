@@ -32,6 +32,8 @@ import org.springframework.transaction.annotation.Transactional;
  * Persists typed session events and headers via MyBatis DAO.
  * Payloads are serialized as JSON.
  *
+ * <p>调用流程：领域端口 → 基础设施适配器 → 外部系统。</p>
+ * <p>示例：适配器只实现端口契约，业务规则保留在 domain。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -42,7 +44,10 @@ public class JdbcSessionEventStore implements ISessionEventStore {
     private final ObjectMapper objectMapper;
 
     /**
-     * 处理Jdbc Session Event Store相关逻辑。
+     * 处理Jdbc 会话 事件 Store。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param dao dao参数。
+     * @return 方法执行结果。
      */
     public JdbcSessionEventStore(ISessionEventRowDao dao) {
         this.dao = dao;
@@ -65,6 +70,13 @@ public class JdbcSessionEventStore implements ISessionEventStore {
                 header.agentPreset()
         );
     }
+    /**
+     * 获取Header。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @return 获取到的Header。
+     */
+
 
     @Override
     public Optional<SessionHeader> getHeader(String sessionId) {
@@ -84,12 +96,26 @@ public class JdbcSessionEventStore implements ISessionEventStore {
                 row.agentPreset()
         ));
     }
+    /**
+     * 追加目标对象。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @param event 领域事件。
+     */
+
 
     @Override
     @Transactional
     public void append(String sessionId, SessionEvent event) {
         dao.insert(toRow(sessionId, event));
     }
+    /**
+     * 追加Batch。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @param events events参数。
+     */
+
 
     @Override
     @Transactional
@@ -98,6 +124,13 @@ public class JdbcSessionEventStore implements ISessionEventStore {
             dao.insert(toRow(sessionId, event));
         }
     }
+    /**
+     * 读取All。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public List<SessionEvent> readAll(String sessionId) {
@@ -105,6 +138,14 @@ public class JdbcSessionEventStore implements ISessionEventStore {
                 .map(this::toEvent)
                 .toList();
     }
+    /**
+     * 读取After。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @param afterSeq after Seq参数。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public List<SessionEvent> readAfter(String sessionId, long afterSeq) {
@@ -112,6 +153,15 @@ public class JdbcSessionEventStore implements ISessionEventStore {
                 .map(this::toEvent)
                 .toList();
     }
+    /**
+     * 读取Range。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @param fromSeq from Seq参数。
+     * @param toSeq to Seq参数。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public List<SessionEvent> readRange(String sessionId, long fromSeq, long toSeq) {
@@ -119,17 +169,38 @@ public class JdbcSessionEventStore implements ISessionEventStore {
                 .map(this::toEvent)
                 .toList();
     }
+    /**
+     * 获取Last Seq。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @return 获取到的Last Seq。
+     */
+
 
     @Override
     public long getLastSeq(String sessionId) {
         Long result = dao.getMaxSeq(sessionId);
         return result == null ? -1 : result;
     }
+    /**
+     * count。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public long count(String sessionId) {
         return dao.count(sessionId);
     }
+    /**
+     * 列出Headers。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param limit limit参数。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public List<SessionHeader> listHeaders(int limit) {
@@ -151,7 +222,11 @@ public class JdbcSessionEventStore implements ISessionEventStore {
     // ── Serialization ────────────────────────────────────────────
 
     /**
-     * 处理to Row相关逻辑。
+     * 转换为 Row。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @param event 领域事件。
+     * @return 转换后的目标对象。
      */
     private SessionEventRowPO toRow(String sessionId, SessionEvent event) {
         String payloadJson = serializePayload(event);
@@ -169,7 +244,10 @@ public class JdbcSessionEventStore implements ISessionEventStore {
     }
 
     /**
-     * 处理to Event相关逻辑。
+     * 转换为 事件。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param row row参数。
+     * @return 转换后的目标对象。
      */
     private SessionEvent toEvent(SessionEventRowPO row) {
         SessionEventType type = SessionEventType.fromWireName(row.eventType());
@@ -210,7 +288,10 @@ public class JdbcSessionEventStore implements ISessionEventStore {
     }
 
     /**
-     * 处理serialize Payload相关逻辑。
+     * 处理serialize 载荷。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param event 领域事件。
+     * @return 转换后的目标对象。
      */
     private String serializePayload(SessionEvent event) {
         try {
@@ -255,7 +336,10 @@ public class JdbcSessionEventStore implements ISessionEventStore {
     }
 
     /**
-     * 处理serialize Surface Op相关逻辑。
+     * 处理serialize Surface Op。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param event 领域事件。
+     * @return 转换后的目标对象。
      */
     private String serializeSurfaceOp(SessionEvent event) {
         SurfaceIntent intent = event.surfaceIntent();
@@ -272,7 +356,10 @@ public class JdbcSessionEventStore implements ISessionEventStore {
     }
 
     /**
-     * 处理serialize Source Seqs相关逻辑。
+     * 处理serialize 来源 Seqs。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param event 领域事件。
+     * @return 转换后的目标对象。
      */
     private String serializeSourceSeqs(SessionEvent event) {
         SurfaceIntent intent = event.surfaceIntent();
@@ -285,7 +372,11 @@ public class JdbcSessionEventStore implements ISessionEventStore {
     }
 
     /**
-     * 处理deserialize Surface Intent相关逻辑。
+     * 反序列化 Surface Intent。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param surfaceOpStr surface Op Str参数。
+     * @param sourceSeqsStr 来源 Seqs Str参数。
+     * @return 方法执行结果。
      */
     private SurfaceIntent deserializeSurfaceIntent(String surfaceOpStr, String sourceSeqsStr) {
         if (surfaceOpStr == null || surfaceOpStr.isBlank()) {
@@ -310,7 +401,11 @@ public class JdbcSessionEventStore implements ISessionEventStore {
     }
 
     /**
-     * 处理deserialize Payload相关逻辑。
+     * 反序列化 载荷。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param type 类型参数。
+     * @param json JSON参数。
+     * @return 方法执行结果。
      */
     private Object deserializePayload(SessionEventType type, String json) {
         if (json == null || json.isBlank()) {
@@ -337,7 +432,10 @@ public class JdbcSessionEventStore implements ISessionEventStore {
     }
 
     /**
-     * 处理deserialize User Message Payload相关逻辑。
+     * 反序列化 用户 消息 载荷。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param json JSON参数。
+     * @return 方法执行结果。
      */
     private UserMessagePayload deserializeUserMessagePayload(String json) {
         try {
@@ -353,7 +451,10 @@ public class JdbcSessionEventStore implements ISessionEventStore {
     }
 
     /**
-     * 处理deserialize Assistant Message Payload相关逻辑。
+     * 反序列化 Assistant 消息 载荷。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param json JSON参数。
+     * @return 方法执行结果。
      */
     private AssistantMessagePayload deserializeAssistantMessagePayload(String json) {
         try {
@@ -373,7 +474,10 @@ public class JdbcSessionEventStore implements ISessionEventStore {
     }
 
     /**
-     * 处理deserialize Tool Result Payload相关逻辑。
+     * 反序列化 工具 结果 载荷。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param json JSON参数。
+     * @return 方法执行结果。
      */
     private ToolResultPayload deserializeToolResultPayload(String json) {
         try {
@@ -397,7 +501,10 @@ public class JdbcSessionEventStore implements ISessionEventStore {
     }
 
     /**
-     * 处理deserialize Inbox Spliced Payload相关逻辑。
+     * 反序列化 Inbox Spliced 载荷。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param json JSON参数。
+     * @return 方法执行结果。
      */
     private InboxSplicedPayload deserializeInboxSplicedPayload(String json) {
         try {
@@ -425,7 +532,10 @@ public class JdbcSessionEventStore implements ISessionEventStore {
     }
 
     /**
-     * 处理deserialize Message相关逻辑。
+     * 反序列化 消息。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param node 策略树节点。
+     * @return 方法执行结果。
      */
     private Message deserializeMessage(JsonNode node) {
         if (node == null || node.isMissingNode() || node.isNull()) {
@@ -448,7 +558,11 @@ public class JdbcSessionEventStore implements ISessionEventStore {
     }
 
     /**
-     * 处理deserialize Message Source相关逻辑。
+     * 反序列化 消息 来源。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param node 策略树节点。
+     * @param role role参数。
+     * @return 方法执行结果。
      */
     private MessageSource deserializeMessageSource(JsonNode node, String role) {
         if (node == null || node.isMissingNode() || node.isNull()) {
@@ -476,7 +590,10 @@ public class JdbcSessionEventStore implements ISessionEventStore {
     }
 
     /**
-     * 处理deserialize Content Block相关逻辑。
+     * 反序列化 Content Block。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param node 策略树节点。
+     * @return 方法执行结果。
      */
     private ContentBlock deserializeContentBlock(JsonNode node) {
         if (node == null || node.isMissingNode() || node.isNull()) {
@@ -513,7 +630,10 @@ public class JdbcSessionEventStore implements ISessionEventStore {
     }
 
     /**
-     * 处理deserialize Turn End Reason相关逻辑。
+     * 反序列化 Turn End Reason。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param json JSON参数。
+     * @return 方法执行结果。
      */
     private TurnEndReason deserializeTurnEndReason(String json) {
         try {
@@ -541,7 +661,10 @@ public class JdbcSessionEventStore implements ISessionEventStore {
     }
 
     /**
-     * 处理turn End Reason To Json相关逻辑。
+     * 处理turn End Reason To JSON。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param reason reason参数。
+     * @return 方法执行结果。
      */
     private java.util.Map<String, Object> turnEndReasonToJson(TurnEndReason reason) {
         if (reason instanceof TurnEndReason.Completed) {

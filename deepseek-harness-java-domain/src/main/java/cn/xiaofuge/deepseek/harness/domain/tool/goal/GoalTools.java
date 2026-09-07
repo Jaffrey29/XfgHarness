@@ -19,13 +19,17 @@ import java.util.concurrent.CompletableFuture;
  * Mirrors TS {@code tool-goal}. 目标是跨回合的长期任务状态机，
  * 适合多步骤、需要续跑的任务。
  *
+ * <p>调用流程：Agent 发起 tool call → ToolRegistry 查找工具 → Guard 校验 → ToolExecutor 执行 → 结果回填。</p>
+ * <p>示例：工具名 fs_read 与 JSON 参数先经过校验，再生成 ToolExecutionResult。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
 public final class GoalTools {
 
     /**
-     * 处理Goal Tools相关逻辑。
+     * 处理目标 Tools。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
      */
     private GoalTools() {}
 
@@ -51,6 +55,13 @@ public final class GoalTools {
         CompletableFuture<ToolExecutionResult> fail(String msg, String code) {
             return CompletableFuture.completedFuture(ToolExecutionResult.fail(msg, code));
         }
+        /**
+         * snapshot。
+         * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+         * @param s s参数。
+         * @return 方法执行结果。
+         */
+
 
         static String snapshot(GoalSnapshotVO s) {
             return s == null ? "(no goal)" : s.toString();
@@ -79,6 +90,14 @@ public final class GoalTools {
         }
         @Override public Map<String, Object> parameters() {
             return Map.of("type", "object", "additionalProperties", false, "properties", Map.of());
+        /**
+         * 执行工具调用。
+         * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+         * @param args 启动参数。
+         * @param ctx ctx参数。
+         * @return 方法执行结果。
+         */
+
         }
         @Override public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext ctx) {
             try {
@@ -87,6 +106,12 @@ public final class GoalTools {
             } catch (Exception e) {
                 return fail("goal_get failed: " + e.getMessage(), "EXECUTION_ERROR");
             }
+        /**
+         * 判断当前状态是否满足条件。
+         * @param args 启动参数。
+         * @return 布尔结果：满足条件为 true，否则 false。
+         */
+
         }
         @Override public boolean isConcurrencySafe(Object args) { return true; }
     }
@@ -119,6 +144,14 @@ public final class GoalTools {
                             "description", Map.of("type", "string", "description", "Detailed goal description."),
                             "max_rounds", Map.of("type", "integer", "description", "Optional cap on continuation rounds.")),
                     "required", List.of("title"));
+        /**
+         * 执行工具调用。
+         * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+         * @param args 启动参数。
+         * @param ctx ctx参数。
+         * @return 方法执行结果。
+         */
+
         }
         @Override public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext ctx) {
             Map<String, Object> m = argMap(args);
@@ -141,7 +174,11 @@ public final class GoalTools {
         private final String sessionId;
 
         /**
-         * 处理Update相关逻辑。
+         * 更新目标对象。
+         * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+         * @param command 命令对象。
+         * @param sessionId 会话 ID。
+         * @return 方法执行结果。
          */
         public Update(IGoalCommandService command, String sessionId) {
             this.command = command;
@@ -163,6 +200,14 @@ public final class GoalTools {
                             "description", Map.of("type", "string", "description", "New description (for update)."),
                             "blocked_reason", Map.of("type", "string", "description", "Why blocked (for block)."),
                             "continuation_enabled", Map.of("type", "boolean", "description", "Toggle auto-continuation.")));
+        /**
+         * 执行工具调用。
+         * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+         * @param args 启动参数。
+         * @param ctx ctx参数。
+         * @return 方法执行结果。
+         */
+
         }
         @Override public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext ctx) {
             Map<String, Object> m = argMap(args);

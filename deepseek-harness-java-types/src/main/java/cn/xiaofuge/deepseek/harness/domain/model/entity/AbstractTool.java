@@ -118,7 +118,10 @@ public abstract class AbstractTool implements ToolDefinition {
     }
 
     /**
-     * 处理completed相关逻辑。
+     * 处理completed。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param r r参数。
+     * @return 方法执行结果。
      */
     private static CompletableFuture<ToolExecutionResult> completed(ToolExecutionResult r) {
         return CompletableFuture.completedFuture(r);

@@ -8,6 +8,8 @@ package cn.xiaofuge.deepseek.harness.api.dto.goal;
  * 2. API 层转换为领域命令；
  * 3. 领域服务执行状态机。
  *
+ * <p>调用流程：Controller/DTO → 应用门面 → 用例；响应对象由用例结果转换。</p>
+ * <p>示例：DTO 只做协议隔离，不承载领域规则。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */

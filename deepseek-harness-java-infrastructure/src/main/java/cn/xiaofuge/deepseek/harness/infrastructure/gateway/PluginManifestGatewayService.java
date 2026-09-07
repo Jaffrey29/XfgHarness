@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 /**
  * Reads plugin manifest files from the local filesystem.
  *
+ * <p>调用流程：领域端口 → 基础设施适配器 → 外部系统。</p>
+ * <p>示例：适配器只实现端口契约，业务规则保留在 domain。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -21,7 +23,10 @@ public class PluginManifestGatewayService {
     private final ObjectMapper objectMapper;
 
     /**
-     * 处理Plugin Manifest Gateway Service相关逻辑。
+     * 处理插件 清单 Gateway Service。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param objectMapper object Mapper参数。
+     * @return 方法执行结果。
      */
     public PluginManifestGatewayService(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;

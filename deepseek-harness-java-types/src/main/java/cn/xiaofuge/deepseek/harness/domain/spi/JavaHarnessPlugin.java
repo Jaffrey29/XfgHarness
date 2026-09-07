@@ -15,7 +15,7 @@ import java.util.List;
  * module (this interface + {@link ToolDefinition}). No Spring types leak
  * into the plugin contract.
  *
- * <h3>How to use</h3>
+ * <p><b>How to use</b></p>
  * <p>
  * <b>1. Maven 依赖（provided scope，JAR 不打入插件包）：</b>
  * <pre>{@code

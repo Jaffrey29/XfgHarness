@@ -3,15 +3,15 @@ server:
 
 logging:
   level:
-    cn.walioffice.deepseek.harness: info
+    cn.xiaofuge.deepseek.harness: info
 
 spring:
   application:
     name: deepseek-harness-java
   datasource:
-    url: jdbc:mysql://127.0.0.1:3306/deepseek_harness_java?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://192.168.1.108:13306/deepseek_harness_java?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: root
-    password: 12345678
+    password: 123456
     driver-class-name: com.mysql.cj.jdbc.Driver
   sql:
     init:
@@ -25,12 +25,13 @@ mybatis:
 
 harness:
   llm:
+    # 运行时优先读取 harness_model_setting；这里的 deepseek 配置只在数据库无默认记录时用于初始化。
     deepseek:
       base-url: http://127.0.0.1:8777/v1
-      api-key: ${DEEPSEEK_API_KEY:sk-waliapi-272d9aafb16145e2b25e8a7340a57ada}
+      api-key: ${DEEPSEEK_API_KEY:sk-waliapi-7ae2ec845ed04815b6374a058d025439}
       max-tokens: 8192
       context-window: 128000
-      default-model: gpt-5.5
+      default-model: glm-5.3-flash
   approval:
     required-profiles:
       - web

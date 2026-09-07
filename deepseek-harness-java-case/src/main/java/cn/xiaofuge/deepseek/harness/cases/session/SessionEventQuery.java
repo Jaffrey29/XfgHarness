@@ -10,6 +10,8 @@ import java.util.List;
  * @param toSeq 结束序列号，包含边界；为空表示直到末尾
  * @param eventTypes 事件类型过滤；为空表示不过滤
  *
+ * <p>调用流程：Controller/API → 会话用例 → SessionQueryService/SessionRebuilderService → SessionEventStore。</p>
+ * <p>示例：按 sessionId 查询事件后，可重建完整消息时间线。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */

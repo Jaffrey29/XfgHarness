@@ -18,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
  * 2. 映射为持久化对象；
  * 3. 通过 DAO 读写数据库。
  *
+ * <p>调用流程：领域端口 → 基础设施适配器 → 外部系统。</p>
+ * <p>示例：适配器只实现端口契约，业务规则保留在 domain。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -27,7 +29,10 @@ public class GoalRepository implements IGoalRepository {
     private final IGoalStateDao goalStateDao;
 
     /**
-     * 处理Goal Repository相关逻辑。
+     * 处理目标 Repository。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param goalStateDao 目标 状态 Dao参数。
+     * @return 方法执行结果。
      */
     public GoalRepository(IGoalStateDao goalStateDao) {
         this.goalStateDao = goalStateDao;
@@ -56,6 +61,12 @@ public class GoalRepository implements IGoalRepository {
                 aggregate.updatedAt()
         ));
     }
+    /**
+     * 查询All。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public List<GoalAggregate> queryAll() {
@@ -63,7 +74,10 @@ public class GoalRepository implements IGoalRepository {
     }
 
     /**
-     * 处理to Aggregate相关逻辑。
+     * 转换为 Aggregate。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param po PO参数。
+     * @return 转换后的目标对象。
      */
     private GoalAggregate toAggregate(GoalStatePO po) {
         return new GoalAggregate(

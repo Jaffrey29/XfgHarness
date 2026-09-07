@@ -44,7 +44,11 @@ public class McpBootstrapConfig implements ApplicationRunner, ApplicationListene
     private volatile McpBootstrap bootstrap;
 
     /**
-     * 处理Mcp Bootstrap Config相关逻辑。
+     * 处理MCP Bootstrap 配置。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param properties properties参数。
+     * @param toolRegistry 工具 Registry参数。
+     * @return 方法执行结果。
      */
     public McpBootstrapConfig(McpServersProperties properties, ToolRegistry toolRegistry) {
         this.properties = properties;
@@ -83,6 +87,12 @@ public class McpBootstrapConfig implements ApplicationRunner, ApplicationListene
             log.warn("[mcp] server connection errors: {}", bootstrap.errors());
         }
     }
+    /**
+     * on Application Event。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param event 领域事件。
+     */
+
 
     @Override
     public void onApplicationEvent(ContextClosedEvent event) {

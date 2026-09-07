@@ -27,7 +27,9 @@ public enum SurfaceEventType {
     }
 
     /**
-     * 处理to Session Event Type相关逻辑。
+     * 转换为 会话 事件 类型。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 转换后的目标对象。
      */
     public SessionEventType toSessionEventType() {
         return switch (this) {

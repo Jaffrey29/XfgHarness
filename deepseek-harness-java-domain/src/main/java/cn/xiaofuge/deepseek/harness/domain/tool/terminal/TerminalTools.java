@@ -19,13 +19,17 @@ import java.util.concurrent.CompletableFuture;
  * 环境变量（cd、export 等持久生效），适合交互式/多步命令。
  * Mirrors TS {@code tool-terminal}.
  *
+ * <p>调用流程：Agent 发起 tool call → ToolRegistry 查找工具 → Guard 校验 → ToolExecutor 执行 → 结果回填。</p>
+ * <p>示例：工具名 fs_read 与 JSON 参数先经过校验，再生成 ToolExecutionResult。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
 public final class TerminalTools {
 
     /**
-     * 处理Terminal Tools相关逻辑。
+     * 处理终端 Tools。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
      */
     private TerminalTools() {}
 
@@ -45,6 +49,16 @@ public final class TerminalTools {
             Object v = m.get(k);
             return v == null ? "" : String.valueOf(v).trim();
         }
+        /**
+         * long Val。
+         * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+         * @param Map<String Map String参数。
+         * @param m m参数。
+         * @param k k参数。
+         * @param def def参数。
+         * @return 方法执行结果。
+         */
+
 
         static long longVal(Map<String, Object> m, String k, long def) {
             Object v = m.get(k);
@@ -52,6 +66,16 @@ public final class TerminalTools {
             if (v == null) return def;
             try { return Long.parseLong(String.valueOf(v)); } catch (NumberFormatException e) { return def; }
         }
+        /**
+         * int Val。
+         * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+         * @param Map<String Map String参数。
+         * @param m m参数。
+         * @param k k参数。
+         * @param def def参数。
+         * @return 方法执行结果。
+         */
+
 
         static int intVal(Map<String, Object> m, String k, int def) {
             return (int) longVal(m, k, def);
@@ -65,6 +89,13 @@ public final class TerminalTools {
         CompletableFuture<ToolExecutionResult> fail(String msg, String code) {
             return CompletableFuture.completedFuture(ToolExecutionResult.fail(msg, code));
         }
+        /**
+         * snapshot Line。
+         * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+         * @param s s参数。
+         * @return 方法执行结果。
+         */
+
 
         static String snapshotLine(TerminalSessionSnapshotVO s) {
             return "- " + s.sessionId() + " [" + s.status() + "] " + s.name()
@@ -75,7 +106,10 @@ public final class TerminalTools {
     /** terminal_open：开启持久终端会话。 */
     public static final class Open extends Base {
         /**
-         * 处理Open相关逻辑。
+         * 打开目标对象。
+         * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+         * @param port port参数。
+         * @return 方法执行结果。
          */
         public Open(ITerminalPort port) { super(port); }
         @Override public String name() { return "terminal_open"; }
@@ -88,6 +122,14 @@ public final class TerminalTools {
                     "properties", Map.of(
                             "name", Map.of("type", "string", "description", "Optional session name."),
                             "cwd", Map.of("type", "string", "description", "Optional working directory.")));
+        /**
+         * 执行工具调用。
+         * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+         * @param args 启动参数。
+         * @param ctx ctx参数。
+         * @return 方法执行结果。
+         */
+
         }
         @Override public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext ctx) {
             Map<String, Object> m = argMap(args);
@@ -120,6 +162,14 @@ public final class TerminalTools {
                             "command", Map.of("type", "string", "description", "Command to send."),
                             "timeout_ms", Map.of("type", "integer", "description", "Optional wait timeout (default 120s).")),
                     "required", List.of("session_id", "command"));
+        /**
+         * 执行工具调用。
+         * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+         * @param args 启动参数。
+         * @param ctx ctx参数。
+         * @return 方法执行结果。
+         */
+
         }
         @Override public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext ctx) {
             Map<String, Object> m = argMap(args);
@@ -145,7 +195,10 @@ public final class TerminalTools {
     /** terminal_read：读取会话尾部输出。 */
     public static final class Read extends Base {
         /**
-         * 处理Read相关逻辑。
+         * 读取目标对象。
+         * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+         * @param port port参数。
+         * @return 方法执行结果。
          */
         public Read(ITerminalPort port) { super(port); }
         @Override public String name() { return "terminal_read"; }
@@ -158,6 +211,14 @@ public final class TerminalTools {
                             "session_id", Map.of("type", "string", "description", "Terminal session id."),
                             "max_chars", Map.of("type", "integer", "description", "Max chars to read (default 8000).")),
                     "required", List.of("session_id"));
+        /**
+         * 执行工具调用。
+         * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+         * @param args 启动参数。
+         * @param ctx ctx参数。
+         * @return 方法执行结果。
+         */
+
         }
         @Override public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext ctx) {
             Map<String, Object> m = argMap(args);
@@ -171,6 +232,12 @@ public final class TerminalTools {
             } catch (Exception e) {
                 return fail("terminal_read failed: " + e.getMessage(), "EXECUTION_ERROR");
             }
+        /**
+         * 判断当前状态是否满足条件。
+         * @param args 启动参数。
+         * @return 布尔结果：满足条件为 true，否则 false。
+         */
+
         }
         @Override public boolean isConcurrencySafe(Object args) { return true; }
     }
@@ -223,6 +290,12 @@ public final class TerminalTools {
             StringBuilder sb = new StringBuilder("Terminal sessions:\n");
             for (TerminalSessionSnapshotVO s : sessions) sb.append(snapshotLine(s)).append("\n");
             return ok(sb.toString());
+        /**
+         * 判断当前状态是否满足条件。
+         * @param args 启动参数。
+         * @return 布尔结果：满足条件为 true，否则 false。
+         */
+
         }
         @Override public boolean isConcurrencySafe(Object args) { return true; }
     }

@@ -5,6 +5,8 @@ import java.util.Objects;
 /**
  * Stores one persisted tool catalog entry.
  *
+ * <p>调用流程：应用领域规则 → 更新聚合或值对象 → 发布事件/返回结果。</p>
+ * <p>示例：领域对象只暴露业务语言方法，不直接依赖基础设施。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -17,7 +19,8 @@ public class ToolCatalogEntryEntity {
     private final boolean requiresApproval;
 
     /**
-     * 处理Tool Catalog Entry Entity相关逻辑。
+     * 创建工具目录条目。
+     * <p>用途：保存工具名称、描述、参数 Schema 和权限标识。</p>
      */
     public ToolCatalogEntryEntity(
             String toolCode,

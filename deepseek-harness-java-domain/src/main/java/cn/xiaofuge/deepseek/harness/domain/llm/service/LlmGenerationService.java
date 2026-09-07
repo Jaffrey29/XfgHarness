@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
 /**
  * Synchronous helper for assembling a complete LLM response from a stream.
  *
+ * <p>调用流程：应用领域规则 → 更新聚合或值对象 → 发布事件/返回结果。</p>
+ * <p>示例：领域对象只暴露业务语言方法，不直接依赖基础设施。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -23,14 +25,20 @@ public class LlmGenerationService {
     private final ILlmRuntimePort llmRuntimePort;
 
     /**
-     * 处理Llm Generation Service相关逻辑。
+     * 处理LLM Generation Service。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param llmRuntimePort LLM 运行时 Port参数。
+     * @return 方法执行结果。
      */
     public LlmGenerationService(ILlmRuntimePort llmRuntimePort) {
         this.llmRuntimePort = llmRuntimePort;
     }
 
     /**
-     * 处理generate相关逻辑。
+     * 处理generate。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param options Agent 配置。
+     * @return 方法执行结果。
      */
     public CompletableFuture<Message> generate(GenerateOptions options) {
         var assembler = new BlockAssembler();
@@ -47,12 +55,23 @@ public class LlmGenerationService {
             public void onNext(StreamChunk item) {
                 assembler.push(item);
             }
+            /**
+             * on Error。
+             * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+             * @param throwable throwable参数。
+             */
+
 
             @Override
             public void onError(Throwable throwable) {
                 error.set(throwable);
                 done.countDown();
             }
+            /**
+             * on Complete。
+             * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+             */
+
 
             @Override
             public void onComplete() {

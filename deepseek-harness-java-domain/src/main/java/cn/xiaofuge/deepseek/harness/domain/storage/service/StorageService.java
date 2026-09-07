@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
  * Delegates to a configured {@link IStorageBackendPort}; the port owns all
  * physical-medium semantics (file layout, atomicity, permissions).
  *
+ * <p>调用流程：应用领域规则 → 更新聚合或值对象 → 发布事件/返回结果。</p>
+ * <p>示例：领域对象只暴露业务语言方法，不直接依赖基础设施。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -21,7 +23,10 @@ public class StorageService implements IStorageService {
     private final IStorageBackendPort backendPort;
 
     /**
-     * 处理Storage Service相关逻辑。
+     * 处理Storage Service。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param backendPort backend Port参数。
+     * @return 方法执行结果。
      */
     public StorageService(IStorageBackendPort backendPort) {
         this.backendPort = backendPort;
@@ -50,11 +55,28 @@ public class StorageService implements IStorageService {
     public void put(KvUnitDescriptor descriptor, String table, String key, String value) {
         backendPort.put(descriptor, table, key, value);
     }
+    /**
+     * 移除目标对象。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param descriptor descriptor参数。
+     * @param table table参数。
+     * @param key key参数。
+     */
+
 
     @Override
     public void remove(KvUnitDescriptor descriptor, String table, String key) {
         backendPort.remove(descriptor, table, key);
     }
+    /**
+     * put All。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param descriptor descriptor参数。
+     * @param Map<String Map String参数。
+     * @param Map<String Map String参数。
+     * @param puts puts参数。
+     */
+
 
     @Override
     public void putAll(KvUnitDescriptor descriptor, Map<String, Map<String, String>> puts) {

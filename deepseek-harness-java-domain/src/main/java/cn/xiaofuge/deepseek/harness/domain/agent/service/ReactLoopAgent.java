@@ -46,6 +46,8 @@ import org.slf4j.LoggerFactory;
  * <p>
  * 该驱动器是线程安全的，所有阶段切换都在同步控制下完成，每次唤醒在虚拟线程中异步执行。
  *
+ * <p>调用流程：模型输出 → 工具调用 → 结果回填 → 下一步模型调用；每一步写入会话事件。</p>
+ * <p>示例：模型请求执行 fs_read 后，工具结果作为观察值进入下一轮模型输入。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -112,6 +114,9 @@ public class ReactLoopAgent implements Agent {
 
     // ── Agent 接口实现 ──────────────────────────────────────────
 
+    /**
+     * 返回 Agent 唯一标识。
+     */
     @Override public String id() { return id; }
     @Override public AgentOptions options() { return options; }
 
@@ -492,10 +497,22 @@ public class ReactLoopAgent implements Agent {
 
             Flow.Publisher<StreamChunk> publisher = llm.stream(generateOptions);
             publisher.subscribe(new Flow.Subscriber<>() {
+                /**
+                 * on Subscribe。
+                 * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+                 * @param s s参数。
+                 */
+
                 Flow.Subscription subscription;
                 @Override public void onSubscribe(Flow.Subscription s) {
                     this.subscription = s;
                     s.request(Long.MAX_VALUE);
+                /**
+                 * on Next。
+                 * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+                 * @param chunk chunk参数。
+                 */
+
                 }
                 @Override public void onNext(StreamChunk chunk) {
                     if (running.abort().get()) {
@@ -530,10 +547,21 @@ public class ReactLoopAgent implements Agent {
                             }
                         }
                     }
+                /**
+                 * on Error。
+                 * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+                 * @param t t参数。
+                 */
+
                 }
                 @Override public void onError(Throwable t) {
                     streamError.set(t);
                     done.countDown();
+                /**
+                 * on Complete。
+                 * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+                 */
+
                 }
                 @Override public void onComplete() {
                     done.countDown();

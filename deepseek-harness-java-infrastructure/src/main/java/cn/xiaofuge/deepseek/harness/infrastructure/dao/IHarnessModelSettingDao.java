@@ -17,6 +17,8 @@ import org.apache.ibatis.annotations.Select;
  * 2. DAO 负责 PO 与表结构映射；
  * 3. 返回数据库记录或完成写入。
  *
+ * <p>调用流程：领域端口 → 基础设施适配器 → 外部系统。</p>
+ * <p>示例：适配器只实现端口契约，业务规则保留在 domain。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */

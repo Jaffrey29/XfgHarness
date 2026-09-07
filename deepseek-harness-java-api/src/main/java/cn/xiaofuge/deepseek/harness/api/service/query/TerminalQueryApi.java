@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
  * 2. 调用终端领域服务；
  * 3. 返回会话或输出结果。
  *
+ * <p>调用流程：Controller/DTO → 应用门面 → 用例；响应对象由用例结果转换。</p>
+ * <p>示例：DTO 只做协议隔离，不承载领域规则。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -23,7 +25,10 @@ public class TerminalQueryApi {
     private final ITerminalQueryService terminalQueryService;
 
     /**
-     * 处理Terminal Query Api相关逻辑。
+     * 处理终端 Query API。
+     * 流程：转换请求 → 调用用例或领域服务 → 转换响应。
+     * @param terminalQueryService 终端 Query Service参数。
+     * @return 方法执行结果。
      */
     public TerminalQueryApi(ITerminalQueryService terminalQueryService) {
         this.terminalQueryService = terminalQueryService;
@@ -37,7 +42,11 @@ public class TerminalQueryApi {
     }
 
     /**
-     * 处理read相关逻辑。
+     * 读取目标对象。
+     * 流程：转换请求 → 调用用例或领域服务 → 转换响应。
+     * @param sessionId 会话 ID。
+     * @param maxChars max Chars参数。
+     * @return 方法执行结果。
      */
     public TerminalReadResponse read(String sessionId, int maxChars) {
         validateSessionId(sessionId);

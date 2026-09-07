@@ -10,13 +10,17 @@ import java.util.Map;
  * Minimal YAML key=value store for credential files — no external dependency.
  * Format: {@code KEY: value} per line, blank lines and comments ignored.
  *
+ * <p>调用流程：领域端口 → 基础设施适配器 → 外部系统。</p>
+ * <p>示例：适配器只实现端口契约，业务规则保留在 domain。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
 final class CredentialsYamlStore {
 
     /**
-     * 处理Credentials Yaml Store相关逻辑。
+     * 处理Credentials YAML Store。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @return 方法执行结果。
      */
     private CredentialsYamlStore() {}
 
@@ -33,6 +37,14 @@ final class CredentialsYamlStore {
         }
         return result;
     }
+    /**
+     * 写入目标对象。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param path 文件或资源路径。
+     * @param Map<String Map String参数。
+     * @param store store参数。
+     */
+
 
     static void write(Path path, Map<String, String> store) throws IOException {
         StringBuilder sb = new StringBuilder();

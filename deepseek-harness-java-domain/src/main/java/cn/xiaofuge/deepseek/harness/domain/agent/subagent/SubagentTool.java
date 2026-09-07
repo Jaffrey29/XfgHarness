@@ -33,7 +33,8 @@ public class SubagentTool implements ToolDefinition {
     private final String providerName;
 
     /**
-     * 处理Subagent Tool相关逻辑。
+     * 初始化子智能体工具。
+     * <p>流程：注册可用提供者 → 校验工具参数 → 调用目标子智能体。</p>
      */
     public SubagentTool(
             SubagentRegistry registry,
@@ -43,7 +44,8 @@ public class SubagentTool implements ToolDefinition {
     }
 
     /**
-     * 处理Subagent Tool相关逻辑。
+     * 初始化指定提供者名称的子智能体工具。
+     * <p>流程：按 providerName 选择提供者 → 校验工具参数 → 调用目标子智能体。</p>
      */
     public SubagentTool(
             SubagentRegistry registry,
@@ -59,6 +61,12 @@ public class SubagentTool implements ToolDefinition {
     public String name() {
         return toolName;
     }
+    /**
+     * 返回 description。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public String description() {
@@ -68,6 +76,12 @@ public class SubagentTool implements ToolDefinition {
                 benefit from focused multi-step reasoning. The subagent's final answer is \
                 returned as this tool's result.""";
     }
+    /**
+     * 返回 parameters。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public Map<String, Object> parameters() {
@@ -91,6 +105,12 @@ public class SubagentTool implements ToolDefinition {
 
         return props;
     }
+    /**
+     * 返回 output Schema。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public Map<String, Object> outputSchema() {
@@ -98,6 +118,14 @@ public class SubagentTool implements ToolDefinition {
     }
 
     @Override
+    /**
+     * 执行工具调用。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @param exec exec参数。
+     * @return 方法执行结果。
+     */
+
     @SuppressWarnings("unchecked")
     public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext exec) {
         Map<String, Object> argMap;
@@ -151,12 +179,25 @@ public class SubagentTool implements ToolDefinition {
                 "SUBAGENT_ERROR"
         ));
     }
+    /**
+     * 判断当前状态是否满足条件。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @return 布尔结果：满足条件为 true，否则 false。
+     */
+
 
     @Override
     public boolean isConcurrencySafe(Object args) {
         // Subagent runs are exclusive — they create child agents
         return false;
     }
+    /**
+     * 返回 timeout Ms。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public long timeoutMs() {

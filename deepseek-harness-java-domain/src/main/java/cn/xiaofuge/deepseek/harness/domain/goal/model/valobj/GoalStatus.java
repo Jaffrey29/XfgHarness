@@ -8,6 +8,8 @@ package cn.xiaofuge.deepseek.harness.domain.goal.model.valobj;
  * 2. 仓储持久化最新快照；
  * 3. 查询接口直接读取当前状态。
  *
+ * <p>调用流程：应用领域规则 → 更新聚合或值对象 → 发布事件/返回结果。</p>
+ * <p>示例：领域对象只暴露业务语言方法，不直接依赖基础设施。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */

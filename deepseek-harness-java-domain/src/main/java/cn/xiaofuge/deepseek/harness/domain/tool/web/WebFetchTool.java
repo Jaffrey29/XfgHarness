@@ -17,6 +17,8 @@ import java.util.concurrent.CompletableFuture;
  * 2. 抓取网页并提取可读内容；
  * 3. 返回给调用方继续分析。
  *
+ * <p>调用流程：Agent 发起 tool call → ToolRegistry 查找工具 → Guard 校验 → ToolExecutor 执行 → 结果回填。</p>
+ * <p>示例：工具名 fs_read 与 JSON 参数先经过校验，再生成 ToolExecutionResult。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -33,7 +35,10 @@ public class WebFetchTool implements ToolDefinition {
     private final IWebPort webService;
 
     /**
-     * 处理Web Fetch Tool相关逻辑。
+     * 处理Web Fetch 工具。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param webService Web Service参数。
+     * @return 方法执行结果。
      */
     public WebFetchTool(IWebPort webService) {
         this.webService = webService;
@@ -60,6 +65,12 @@ public class WebFetchTool implements ToolDefinition {
                 "required", List.of("url")
         );
     }
+    /**
+     * 返回 output Schema。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public Map<String, Object> outputSchema() {
@@ -76,6 +87,14 @@ public class WebFetchTool implements ToolDefinition {
     }
 
     @Override
+    /**
+     * 执行工具调用。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @param ctx ctx参数。
+     * @return 方法执行结果。
+     */
+
     @SuppressWarnings("unchecked")
     public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext ctx) {
         try {
@@ -116,9 +135,22 @@ public class WebFetchTool implements ToolDefinition {
                     ToolExecutionResult.fail("web_fetch failed: " + e.getMessage(), "EXECUTION_ERROR"));
         }
     }
+    /**
+     * 判断当前状态是否满足条件。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @return 布尔结果：满足条件为 true，否则 false。
+     */
+
 
     @Override
     public boolean isConcurrencySafe(Object args) { return true; }
+    /**
+     * 返回 timeout Ms。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public long timeoutMs() { return TIMEOUT_MS; }

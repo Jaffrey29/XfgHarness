@@ -15,6 +15,8 @@ import org.springframework.stereotype.Service;
  * Durable reminder service. Creates after/at/every records, lists active views,
  * deletes by id, and drives due reminders.
  *
+ * <p>调用流程：创建计划 → 到期扫描 → 执行任务 → 更新状态。</p>
+ * <p>示例：设置固定间隔后，调度器到期触发任务并记录结果。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -26,7 +28,10 @@ public class ScheduleService implements IScheduleService {
     private final IScheduleRepository repository;
 
     /**
-     * 处理Schedule Service相关逻辑。
+     * 处理调度 Service。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param repository repository参数。
+     * @return 方法执行结果。
      */
     public ScheduleService(IScheduleRepository repository) {
         this.repository = repository;
@@ -43,6 +48,15 @@ public class ScheduleService implements IScheduleService {
         repository.save(record);
         return record;
     }
+    /**
+     * 创建At。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @param prompt prompt参数。
+     * @param target 目标对象。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public ScheduleRecord createAt(String sessionId, String prompt, Instant target) {
@@ -54,6 +68,15 @@ public class ScheduleService implements IScheduleService {
         repository.save(record);
         return record;
     }
+    /**
+     * 创建Every。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @param prompt prompt参数。
+     * @param interval interval参数。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public ScheduleRecord createEvery(String sessionId, String prompt, Duration interval) {
@@ -78,6 +101,14 @@ public class ScheduleService implements IScheduleService {
                 .map(r -> ScheduleView.of(r, now))
                 .toList();
     }
+    /**
+     * 删除目标对象。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @param id id参数。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public boolean delete(String sessionId, String id) {
@@ -86,6 +117,14 @@ public class ScheduleService implements IScheduleService {
                 .map(r -> { repository.deleteById(id); return true; })
                 .orElse(false);
     }
+    /**
+     * drive。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @param now now参数。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public List<ScheduleRecord> drive(String sessionId, Instant now) {
@@ -111,7 +150,9 @@ public class ScheduleService implements IScheduleService {
     }
 
     /**
-     * 处理allocate Id相关逻辑。
+     * 列出全部 ocate ID。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 查询到的数据。
      */
     private static String allocateId() {
         return "sch_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);

@@ -8,6 +8,8 @@ package cn.xiaofuge.deepseek.harness.domain.todo.model.valobj;
  * 2. 领域层校验内容和状态；
  * 3. 写入会话事件并返回最新快照。
  *
+ * <p>调用流程：应用领域规则 → 更新聚合或值对象 → 发布事件/返回结果。</p>
+ * <p>示例：领域对象只暴露业务语言方法，不直接依赖基础设施。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -28,14 +30,19 @@ public record TodoItem(
         }
 
         /**
-         * 处理wire相关逻辑。
+         * 处理wire。
+         * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+         * @return 方法执行结果。
          */
         public String wire() {
             return wire;
         }
 
         /**
-         * 处理from Wire相关逻辑。
+         * 根据 Wire。
+         * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+         * @param value 参数值。
+         * @return 创建的领域对象。
          */
         public static Status fromWire(String value) {
             return switch (value) {

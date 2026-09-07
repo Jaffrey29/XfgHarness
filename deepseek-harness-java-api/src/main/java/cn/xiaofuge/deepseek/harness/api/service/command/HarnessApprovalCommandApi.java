@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
  * 2. 调用领域命令服务推进会话状态；
  * 3. 将执行结果包装成响应对象。
  *
+ * <p>调用流程：Controller/DTO → 应用门面 → 用例；响应对象由用例结果转换。</p>
+ * <p>示例：DTO 只做协议隔离，不承载领域规则。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -21,7 +23,10 @@ public class HarnessApprovalCommandApi {
     private final IApprovalCommandService approvalCommandService;
 
     /**
-     * 处理Harness Approval Command Api相关逻辑。
+     * 处理Harness 审批 命令 API。
+     * 流程：转换请求 → 调用用例或领域服务 → 转换响应。
+     * @param approvalCommandService 审批 命令 Service参数。
+     * @return 方法执行结果。
      */
     public HarnessApprovalCommandApi(IApprovalCommandService approvalCommandService) {
         this.approvalCommandService = approvalCommandService;

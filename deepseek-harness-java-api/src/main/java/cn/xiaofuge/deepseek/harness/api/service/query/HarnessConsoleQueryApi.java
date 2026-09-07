@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
  * 2. 调用领域查询服务读取会话摘要和消息；
  * 3. 映射成前端可直接使用的响应对象。
  *
+ * <p>调用流程：Controller/DTO → 应用门面 → 用例；响应对象由用例结果转换。</p>
+ * <p>示例：DTO 只做协议隔离，不承载领域规则。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -23,7 +25,10 @@ public class HarnessConsoleQueryApi {
     private final IConversationQueryService conversationQueryService;
 
     /**
-     * 处理Harness Console Query Api相关逻辑。
+     * 处理Harness Console Query API。
+     * 流程：转换请求 → 调用用例或领域服务 → 转换响应。
+     * @param conversationQueryService conversation Query Service参数。
+     * @return 方法执行结果。
      */
     public HarnessConsoleQueryApi(IConversationQueryService conversationQueryService) {
         this.conversationQueryService = conversationQueryService;

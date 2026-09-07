@@ -17,6 +17,8 @@ import java.util.concurrent.CompletableFuture;
  * 2. 对目标文件执行对应编辑动作；
  * 3. 返回编辑结果或错误信息。
  *
+ * <p>调用流程：Agent 发起 tool call → ToolRegistry 查找工具 → Guard 校验 → ToolExecutor 执行 → 结果回填。</p>
+ * <p>示例：工具名 fs_read 与 JSON 参数先经过校验，再生成 ToolExecutionResult。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -43,7 +45,10 @@ public class StrReplaceEditorTool implements ToolDefinition {
     private final IFsPort fsService;
 
     /**
-     * 处理Str Replace Editor Tool相关逻辑。
+     * 处理Str Replace Editor 工具。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param fsService fs Service参数。
+     * @return 方法执行结果。
      */
     public StrReplaceEditorTool(IFsPort fsService) {
         this.fsService = fsService;
@@ -83,6 +88,12 @@ public class StrReplaceEditorTool implements ToolDefinition {
                 "required", List.of("command", "path")
         );
     }
+    /**
+     * 返回 output Schema。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public Map<String, Object> outputSchema() {
@@ -96,6 +107,14 @@ public class StrReplaceEditorTool implements ToolDefinition {
     }
 
     @Override
+    /**
+     * 执行工具调用。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @param ctx ctx参数。
+     * @return 方法执行结果。
+     */
+
     @SuppressWarnings("unchecked")
     public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext ctx) {
         try {
@@ -134,12 +153,22 @@ public class StrReplaceEditorTool implements ToolDefinition {
                     ToolExecutionResult.fail("str_replace_editor failed: " + e.getMessage(), "EXECUTION_ERROR"));
         }
     }
+    /**
+     * 判断当前状态是否满足条件。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @return 布尔结果：满足条件为 true，否则 false。
+     */
+
 
     @Override
     public boolean isConcurrencySafe(Object args) { return false; }
 
     /**
-     * 处理do View相关逻辑。
+     * 处理do View。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param path 文件或资源路径。
+     * @return 方法执行结果。
      */
     private String doView(String path) {
         if (!fsService.exists(path)) {
@@ -179,7 +208,11 @@ public class StrReplaceEditorTool implements ToolDefinition {
     }
 
     /**
-     * 处理do Create相关逻辑。
+     * 处理do Create。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param path 文件或资源路径。
+     * @param content 内容文本。
+     * @return 方法执行结果。
      */
     private String doCreate(String path, String content) {
         if (fsService.exists(path)) {
@@ -190,7 +223,12 @@ public class StrReplaceEditorTool implements ToolDefinition {
     }
 
     /**
-     * 处理do Str Replace相关逻辑。
+     * 处理do Str Replace。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param path 文件或资源路径。
+     * @param oldStr old Str参数。
+     * @param newStr new Str参数。
+     * @return 方法执行结果。
      */
     private String doStrReplace(String path, String oldStr, String newStr) {
         if (oldStr == null || oldStr.isEmpty()) {
@@ -218,7 +256,12 @@ public class StrReplaceEditorTool implements ToolDefinition {
     }
 
     /**
-     * 处理do Insert相关逻辑。
+     * 处理do Insert。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param path 文件或资源路径。
+     * @param content 内容文本。
+     * @param insertLine insert Line参数。
+     * @return 方法执行结果。
      */
     private String doInsert(String path, String content, int insertLine) {
         String existing = fsService.read(path, 1, 0);
@@ -246,7 +289,11 @@ public class StrReplaceEditorTool implements ToolDefinition {
     }
 
     /**
-     * 处理count Occurrences相关逻辑。
+     * 处理数量 Occurrences。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param text text参数。
+     * @param substr substr参数。
+     * @return 方法执行结果。
      */
     private static int countOccurrences(String text, String substr) {
         int count = 0;

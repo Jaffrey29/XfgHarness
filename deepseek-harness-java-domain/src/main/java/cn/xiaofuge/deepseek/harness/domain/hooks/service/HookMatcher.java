@@ -17,12 +17,19 @@ import java.util.regex.Pattern;
 public final class HookMatcher {
 
     /**
-     * 处理Hook Matcher相关逻辑。
+     * 处理Hook Matcher。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
      */
     private HookMatcher() {}
 
     /**
-     * 处理matches相关逻辑。
+     * 处理matches。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param dialect dialect参数。
+     * @param matcher matcher参数。
+     * @param toolName 工具 名称参数。
+     * @return 方法执行结果。
      */
     public static boolean matches(HookDialect dialect, String matcher, String toolName) {
         if (matcher == null || matcher.isEmpty() || "*".equals(matcher)) return true;
@@ -44,7 +51,12 @@ public final class HookMatcher {
     }
 
     /**
-     * 处理filter Matching相关逻辑。
+     * 过滤 Matching。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param dialect dialect参数。
+     * @param groups groups参数。
+     * @param toolName 工具 名称参数。
+     * @return 方法执行结果。
      */
     public static List<MatcherGroup> filterMatching(HookDialect dialect, List<MatcherGroup> groups, String toolName) {
         return groups.stream()

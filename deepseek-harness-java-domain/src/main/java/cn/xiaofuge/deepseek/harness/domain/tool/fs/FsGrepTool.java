@@ -37,7 +37,10 @@ public class FsGrepTool implements ToolDefinition {
     private final IFsPort fsService;
 
     /**
-     * 处理Fs Grep Tool相关逻辑。
+     * 处理Fs Grep 工具。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param fsService fs Service参数。
+     * @return 方法执行结果。
      */
     public FsGrepTool(IFsPort fsService) {
         this.fsService = fsService;
@@ -76,6 +79,12 @@ public class FsGrepTool implements ToolDefinition {
                 "required", List.of("pattern")
         );
     }
+    /**
+     * 返回 output Schema。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public Map<String, Object> outputSchema() {
@@ -90,6 +99,14 @@ public class FsGrepTool implements ToolDefinition {
     }
 
     @Override
+    /**
+     * 执行工具调用。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @param ctx ctx参数。
+     * @return 方法执行结果。
+     */
+
     @SuppressWarnings("unchecked")
     public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext ctx) {
         try {
@@ -121,6 +138,13 @@ public class FsGrepTool implements ToolDefinition {
                     ToolExecutionResult.fail("fs_grep failed: " + e.getMessage(), "EXECUTION_ERROR"));
         }
     }
+    /**
+     * 判断当前状态是否满足条件。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @return 布尔结果：满足条件为 true，否则 false。
+     */
+
 
     @Override
     public boolean isConcurrencySafe(Object args) { return true; }

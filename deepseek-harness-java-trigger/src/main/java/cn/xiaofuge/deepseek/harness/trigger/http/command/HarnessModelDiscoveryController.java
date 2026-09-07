@@ -18,7 +18,10 @@ public class HarnessModelDiscoveryController {
     private final HarnessModelDiscoveryApi harnessModelDiscoveryApi;
 
     /**
-     * 处理Harness Model Discovery Controller相关逻辑。
+     * 处理Harness 模型 Discovery Controller。
+     * 流程：解析请求参数 → 调用应用门面 → 返回响应。
+     * @param harnessModelDiscoveryApi harness 模型 Discovery API参数。
+     * @return 方法执行结果。
      */
     public HarnessModelDiscoveryController(HarnessModelDiscoveryApi harnessModelDiscoveryApi) {
         this.harnessModelDiscoveryApi = harnessModelDiscoveryApi;

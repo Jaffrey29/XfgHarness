@@ -17,6 +17,8 @@ import org.springframework.stereotype.Service;
 /**
  * Executes stored session prompts against the configured model provider.
  *
+ * <p>调用流程：提交 → 权限评估 → 审批 → 队列 → 执行 → 状态回写。</p>
+ * <p>示例：需要审批的命令先挂起，批准后进入执行队列。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -29,7 +31,8 @@ public class HarnessExecutionService implements IHarnessExecutionService {
     private final ISessionLogService sessionLogService;
 
     /**
-     * 处理Harness Execution Service相关逻辑。
+     * 初始化任务执行服务。
+     * <p>流程：读取队列任务 → 委托模型执行 → 回写执行状态和事件。</p>
      */
     public HarnessExecutionService(
             IModelExecutionPort modelExecutionPort,
@@ -42,6 +45,13 @@ public class HarnessExecutionService implements IHarnessExecutionService {
         this.sessionEventRepository = sessionEventRepository;
         this.sessionLogService = sessionLogService;
     }
+    /**
+     * 执行Session。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public HarnessExecutionResultVO executeSession(String sessionId) {
@@ -84,7 +94,10 @@ public class HarnessExecutionService implements IHarnessExecutionService {
     }
 
     /**
-     * 处理extract Failure Message相关逻辑。
+     * 提取 Failure 消息。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param exception 异常对象。
+     * @return 方法执行结果。
      */
     private String extractFailureMessage(RuntimeException exception) {
         Throwable current = exception;

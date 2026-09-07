@@ -8,6 +8,8 @@ import java.util.List;
  * <p>
  * 对应 TS 侧 {@code DeepSeekConnectionOptions} 和 {@code DeepSeekAdapterOptions}。
  *
+ * <p>调用流程：模型请求 → HTTP 客户端 → 解析 JSON/SSE → 归一化为领域事件。</p>
+ * <p>示例：上游返回 token delta 时，适配器转换为 LLM 增量事件。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */

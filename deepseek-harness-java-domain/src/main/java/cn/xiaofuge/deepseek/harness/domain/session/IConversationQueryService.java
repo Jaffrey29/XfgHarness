@@ -13,6 +13,8 @@ import java.util.List;
  * 2. 领域层从持久化数据装配读模型；
  * 3. 返回 UI 可直接渲染的数据结构。
  *
+ * <p>调用流程：事件写入 SessionEventLog → 事件溯源重建会话 → 查询或恢复。</p>
+ * <p>示例：追加用户消息、模型消息和工具结果事件后，可按序号回放完整对话。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */

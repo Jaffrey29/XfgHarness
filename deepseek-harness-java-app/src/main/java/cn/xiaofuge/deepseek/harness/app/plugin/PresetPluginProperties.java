@@ -9,6 +9,8 @@ import org.springframework.context.annotation.Configuration;
  * 绑定 application.yml 中的 {@code harness.plugin.preset} 插件列表。
  * 启动时未注册的预置插件会被自动安装。
  *
+ * <p>调用流程：Spring Boot 启动 → 加载模型/插件预设 → 注册运行时组件。</p>
+ * <p>示例：启动器同步默认模型并装载预置插件。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */

@@ -36,7 +36,12 @@ public class PersistingAgentEventListener implements AgentEventListener {
     private final ObjectMapper objectMapper;
 
     /**
-     * 处理Persisting Agent Event Listener相关逻辑。
+     * 处理Persisting Agent 事件 Listener。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @param store store参数。
+     * @param objectMapper object Mapper参数。
+     * @return 方法执行结果。
      */
     public PersistingAgentEventListener(String sessionId, ISessionEventStore store, ObjectMapper objectMapper) {
         this.sessionId = sessionId;
@@ -57,6 +62,14 @@ public class PersistingAgentEventListener implements AgentEventListener {
             log.warn("[AgentEvent] emit 持久化失败 name={} sessionId={}：{}", name, sessionId, e.getMessage());
         }
     }
+    /**
+     * serial。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param name 名称。
+     * @param payload 载荷数据。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public CompletableFuture<Void> serial(String name, Object payload) {
@@ -73,6 +86,15 @@ public class PersistingAgentEventListener implements AgentEventListener {
             return CompletableFuture.completedFuture(null);
         }
     }
+    /**
+     * waterfall。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param name 名称。
+     * @param payload 载荷数据。
+     * @param defaultAction default Action参数。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public <T> CompletableFuture<T> waterfall(String name, Object payload, CompletableFuture<T> defaultAction) {
@@ -82,7 +104,10 @@ public class PersistingAgentEventListener implements AgentEventListener {
     }
 
     /**
-     * 处理serialize Payload相关逻辑。
+     * 处理serialize 载荷。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param payload 载荷数据。
+     * @return 转换后的目标对象。
      */
     private String serializePayload(Object payload) {
         try {

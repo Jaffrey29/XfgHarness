@@ -31,7 +31,10 @@ public final class MatrixRuntimeApprovalGate implements RuntimeApprovalGate {
     private final BiFunction<ApprovalRequest, MatrixRuntimeApprovalGate, ApprovalVerdict> askHandler;
 
     /**
-     * 处理Matrix Runtime Approval Gate相关逻辑。
+     * 处理Matrix 运行时 审批 Gate。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param permissionMatrixPort permission Matrix Port参数。
+     * @return 方法执行结果。
      */
     public MatrixRuntimeApprovalGate(IPermissionMatrixPort permissionMatrixPort) {
         this(permissionMatrixPort, null, null);
@@ -93,7 +96,11 @@ public final class MatrixRuntimeApprovalGate implements RuntimeApprovalGate {
     }
 
     /**
-     * 处理ask相关逻辑。
+     * 询问目标对象。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param toolName 工具 名称参数。
+     * @param arguments arguments参数。
+     * @return 方法执行结果。
      */
     private ApprovalVerdict ask(String toolName, Object arguments) {
         @SuppressWarnings("unchecked")

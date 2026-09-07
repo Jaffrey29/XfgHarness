@@ -210,9 +210,9 @@ public ModelProviderProfileVO route(AgentOptions opts) {
 
 ### ④ 注意事项
 
-1. **`api_key_ref` 不影响 Agent 对话链路**——`InMemoryLlmRuntimePort.stream(options)` 透传 options 给 adapter，没有任何"DB key 覆盖 yml key"的逻辑。它只给另一条路径（`DeepSeekGatewayService` / execution profile）用。
-2. **`schema.sql` 用 `WHERE NOT EXISTS` + `INSERT IGNORE` 默认初始化**——上线新模型不会 UPDATE 老行；想切默认模型需手动 SQL。
-3. 模型上/下线一定要重新核对：UI 显示的"当前生效模型"是来自 setting，不来自 schema 默认。
+1. **模型配置以数据库为准**——`AgentModelOptionsResolver` 先读取 `harness_model_setting`，application.yml 只作为数据库缺省时的兜底和首次种子。
+2. **`ModelSyncRunner` 只做按需初始化**——数据库已有 deepseek 默认行时不会覆盖控制台保存的设置。
+3. `api_key_ref` 当前由模型设置链路透传给 LLM 适配器；字段名沿用历史命名，实际保存的是运行时使用的连接信息。
 
 ---
 

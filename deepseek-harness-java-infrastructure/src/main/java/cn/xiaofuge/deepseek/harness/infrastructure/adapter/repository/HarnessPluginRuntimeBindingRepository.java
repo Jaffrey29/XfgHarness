@@ -11,6 +11,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 持久化某插件最近一次桥接解析结果。
  *
+ * <p>调用流程：领域端口 → 基础设施适配器 → 外部系统。</p>
+ * <p>示例：适配器只实现端口契约，业务规则保留在 domain。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -20,7 +22,10 @@ public class HarnessPluginRuntimeBindingRepository implements IHarnessPluginRunt
     private final IHarnessPluginRuntimeBindingDao harnessPluginRuntimeBindingDao;
 
     /**
-     * 处理Harness Plugin Runtime Binding Repository相关逻辑。
+     * 处理Harness 插件 运行时 Binding Repository。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param harnessPluginRuntimeBindingDao harness 插件 运行时 Binding Dao参数。
+     * @return 方法执行结果。
      */
     public HarnessPluginRuntimeBindingRepository(IHarnessPluginRuntimeBindingDao harnessPluginRuntimeBindingDao) {
         this.harnessPluginRuntimeBindingDao = harnessPluginRuntimeBindingDao;

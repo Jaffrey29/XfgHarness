@@ -20,7 +20,7 @@ public interface PluginContext {
 
     /**
      * 注册一个工具。
-     * <p>工具名会被宿主限定为 `plugin__<pluginId>__<toolName>`；
+     * <p>工具名会被宿主限定为 {@literal plugin__<pluginId>__<toolName>}；
      * 返回的关闭器由宿主管理，并在停止时逆序调用。
      */
     AutoCloseable registerTool(ToolDefinition tool);
@@ -65,7 +65,7 @@ public interface PluginContext {
 
     /**
      * 注册插件贡献的系统提示词段落。
-     * <p>段落名自动加 `plugin__<pluginId>__` 前缀，避免插件之间冲突；插件停止时移除。
+     * <p>段落名自动加 {@literal plugin__<pluginId>__} 前缀，避免插件之间冲突；插件停止时移除。
      *
      * @param name  不含插件前缀的短名称
      * @param order 排序值，数字越小越靠前

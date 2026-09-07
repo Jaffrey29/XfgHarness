@@ -18,6 +18,8 @@ import java.util.concurrent.CompletableFuture;
  *   <li>每个工具继承 {@link AbstractTool}，获得参数转换、Schema 构建和结果工厂</li>
  * </ul>
  *
+ * <p>调用流程：接收输入 → 执行本类职责 → 返回结果。</p>
+ * <p>示例：根据调用方传入参数完成一次独立操作。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -44,6 +46,15 @@ public class ExampleJavaPlugin extends AbstractHarnessPlugin {
                     .required("text")
                     .build();
         }
+        /**
+         * 运行目标对象。
+         * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+         * @param Map<String Map String参数。
+         * @param args 启动参数。
+         * @param ctx ctx参数。
+         * @return 方法执行结果。
+         */
+
 
         @Override
         protected CompletableFuture<ToolExecutionResult> run(Map<String, Object> args, ToolRunContext ctx) {
@@ -67,6 +78,12 @@ public class ExampleJavaPlugin extends AbstractHarnessPlugin {
                     .required("operation", "a", "b")
                     .build();
         }
+        /**
+         * 返回 output Schema。
+         * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+         * @return 方法执行结果。
+         */
+
 
         @Override
         public Map<String, Object> outputSchema() {
@@ -74,6 +91,15 @@ public class ExampleJavaPlugin extends AbstractHarnessPlugin {
                     .prop("result", numberSchema(null))
                     .build();
         }
+        /**
+         * 运行目标对象。
+         * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+         * @param Map<String Map String参数。
+         * @param args 启动参数。
+         * @param ctx ctx参数。
+         * @return 方法执行结果。
+         */
+
 
         @Override
         protected CompletableFuture<ToolExecutionResult> run(Map<String, Object> args, ToolRunContext ctx) {

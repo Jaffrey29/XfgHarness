@@ -46,7 +46,10 @@ public class JsonlSessionEventStore implements ISessionEventStore {
     private final ConcurrentMap<String, Object> fileLocks = new ConcurrentHashMap<>();
 
     /**
-     * 处理Jsonl Session Event Store相关逻辑。
+     * 处理Jsonl 会话 事件 Store。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param baseDir base Dir参数。
+     * @return 方法执行结果。
      */
     public JsonlSessionEventStore(String baseDir) {
         this.baseDir = Paths.get(baseDir).toAbsolutePath().normalize();
@@ -76,6 +79,13 @@ public class JsonlSessionEventStore implements ISessionEventStore {
             throw new RuntimeException("Failed to save header for session " + header.sessionId(), e);
         }
     }
+    /**
+     * 获取Header。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @return 获取到的Header。
+     */
+
 
     @Override
     public Optional<SessionHeader> getHeader(String sessionId) {
@@ -100,6 +110,13 @@ public class JsonlSessionEventStore implements ISessionEventStore {
             throw new RuntimeException("Failed to read header for session " + sessionId, e);
         }
     }
+    /**
+     * 追加目标对象。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @param event 领域事件。
+     */
+
 
     @Override
     public void append(String sessionId, SessionEvent event) {
@@ -116,6 +133,13 @@ public class JsonlSessionEventStore implements ISessionEventStore {
             }
         }
     }
+    /**
+     * 追加Batch。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @param events events参数。
+     */
+
 
     @Override
     public void appendBatch(String sessionId, List<SessionEvent> events) {
@@ -135,21 +159,52 @@ public class JsonlSessionEventStore implements ISessionEventStore {
             }
         }
     }
+    /**
+     * 读取All。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public List<SessionEvent> readAll(String sessionId) {
         return readEvents(sessionId, 0, Long.MAX_VALUE);
     }
+    /**
+     * 读取After。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @param afterSeq after Seq参数。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public List<SessionEvent> readAfter(String sessionId, long afterSeq) {
         return readEvents(sessionId, afterSeq + 1, Long.MAX_VALUE);
     }
+    /**
+     * 读取Range。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @param fromSeq from Seq参数。
+     * @param toSeq to Seq参数。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public List<SessionEvent> readRange(String sessionId, long fromSeq, long toSeq) {
         return readEvents(sessionId, fromSeq, toSeq);
     }
+    /**
+     * 获取Last Seq。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @return 获取到的Last Seq。
+     */
+
 
     @Override
     public long getLastSeq(String sessionId) {
@@ -170,6 +225,13 @@ public class JsonlSessionEventStore implements ISessionEventStore {
         }
         return lastSeq;
     }
+    /**
+     * count。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public long count(String sessionId) {
@@ -185,6 +247,13 @@ public class JsonlSessionEventStore implements ISessionEventStore {
             throw new RuntimeException("Failed to count events for session " + sessionId, e);
         }
     }
+    /**
+     * 列出Headers。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param limit limit参数。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public List<SessionHeader> listHeaders(int limit) {
@@ -214,7 +283,12 @@ public class JsonlSessionEventStore implements ISessionEventStore {
     // ── Internal helpers ─────────────────────────────────────────
 
     /**
-     * 处理read Events相关逻辑。
+     * 读取 Events。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @param fromSeq from Seq参数。
+     * @param toSeq to Seq参数。
+     * @return 方法执行结果。
      */
     private List<SessionEvent> readEvents(String sessionId, long fromSeq, long toSeq) {
         Path eventsFile = sessionDir(sessionId).resolve("events.jsonl");
@@ -237,7 +311,11 @@ public class JsonlSessionEventStore implements ISessionEventStore {
     }
 
     /**
-     * 处理serialize Event相关逻辑。
+     * 处理serialize 事件。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @param event 领域事件。
+     * @return 转换后的目标对象。
      */
     private String serializeEvent(String sessionId, SessionEvent event) {
         try {
@@ -273,7 +351,10 @@ public class JsonlSessionEventStore implements ISessionEventStore {
     }
 
     /**
-     * 处理deserialize Event相关逻辑。
+     * 反序列化 事件。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param node 策略树节点。
+     * @return 方法执行结果。
      */
     private SessionEvent deserializeEvent(com.fasterxml.jackson.databind.JsonNode node) {
         long seq = node.get("seq").asLong();
@@ -337,7 +418,10 @@ public class JsonlSessionEventStore implements ISessionEventStore {
     }
 
     /**
-     * 处理serialize Payload相关逻辑。
+     * 处理serialize 载荷。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param event 领域事件。
+     * @return 转换后的目标对象。
      */
     private String serializePayload(SessionEvent event) {
         try {
@@ -369,7 +453,11 @@ public class JsonlSessionEventStore implements ISessionEventStore {
     }
 
     /**
-     * 处理deserialize Payload相关逻辑。
+     * 反序列化 载荷。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param type 类型参数。
+     * @param json JSON参数。
+     * @return 方法执行结果。
      */
     private Object deserializePayload(SessionEventType type, String json) {
         if (json == null || json.isBlank() || json.equals("{}")) return null;
@@ -395,7 +483,10 @@ public class JsonlSessionEventStore implements ISessionEventStore {
     }
 
     /**
-     * 处理deserialize User Message Payload相关逻辑。
+     * 反序列化 用户 消息 载荷。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param json JSON参数。
+     * @return 方法执行结果。
      */
     private UserMessagePayload deserializeUserMessagePayload(String json) {
         try {
@@ -411,7 +502,10 @@ public class JsonlSessionEventStore implements ISessionEventStore {
     }
 
     /**
-     * 处理deserialize Assistant Message Payload相关逻辑。
+     * 反序列化 Assistant 消息 载荷。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param json JSON参数。
+     * @return 方法执行结果。
      */
     private AssistantMessagePayload deserializeAssistantMessagePayload(String json) {
         try {
@@ -431,7 +525,10 @@ public class JsonlSessionEventStore implements ISessionEventStore {
     }
 
     /**
-     * 处理deserialize Tool Result Payload相关逻辑。
+     * 反序列化 工具 结果 载荷。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param json JSON参数。
+     * @return 方法执行结果。
      */
     private ToolResultPayload deserializeToolResultPayload(String json) {
         try {
@@ -455,7 +552,10 @@ public class JsonlSessionEventStore implements ISessionEventStore {
     }
 
     /**
-     * 处理deserialize Inbox Spliced Payload相关逻辑。
+     * 反序列化 Inbox Spliced 载荷。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param json JSON参数。
+     * @return 方法执行结果。
      */
     private InboxSplicedPayload deserializeInboxSplicedPayload(String json) {
         try {
@@ -483,7 +583,10 @@ public class JsonlSessionEventStore implements ISessionEventStore {
     }
 
     /**
-     * 处理deserialize Message相关逻辑。
+     * 反序列化 消息。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param node 策略树节点。
+     * @return 方法执行结果。
      */
     private Message deserializeMessage(JsonNode node) {
         if (node == null || node.isMissingNode() || node.isNull()) {
@@ -506,7 +609,11 @@ public class JsonlSessionEventStore implements ISessionEventStore {
     }
 
     /**
-     * 处理deserialize Message Source相关逻辑。
+     * 反序列化 消息 来源。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param node 策略树节点。
+     * @param role role参数。
+     * @return 方法执行结果。
      */
     private MessageSource deserializeMessageSource(JsonNode node, String role) {
         if (node == null || node.isMissingNode() || node.isNull()) {
@@ -534,7 +641,10 @@ public class JsonlSessionEventStore implements ISessionEventStore {
     }
 
     /**
-     * 处理deserialize Content Block相关逻辑。
+     * 反序列化 Content Block。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param node 策略树节点。
+     * @return 方法执行结果。
      */
     private ContentBlock deserializeContentBlock(JsonNode node) {
         if (node == null || node.isMissingNode() || node.isNull()) {
@@ -571,7 +681,10 @@ public class JsonlSessionEventStore implements ISessionEventStore {
     }
 
     /**
-     * 处理deserialize Turn End Reason相关逻辑。
+     * 反序列化 Turn End Reason。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param json JSON参数。
+     * @return 方法执行结果。
      */
     private TurnEndReason deserializeTurnEndReason(String json) {
         try {
@@ -596,7 +709,10 @@ public class JsonlSessionEventStore implements ISessionEventStore {
     }
 
     /**
-     * 处理turn End Reason To Json相关逻辑。
+     * 处理turn End Reason To JSON。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param reason reason参数。
+     * @return 方法执行结果。
      */
     private java.util.Map<String, Object> turnEndReasonToJson(TurnEndReason reason) {
         if (reason instanceof TurnEndReason.Completed) return java.util.Map.of("type", "Completed");
@@ -609,7 +725,10 @@ public class JsonlSessionEventStore implements ISessionEventStore {
     }
 
     /**
-     * 处理session Dir相关逻辑。
+     * 处理会话 Dir。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @return 方法执行结果。
      */
     private Path sessionDir(String sessionId) {
         // Sanitize sessionId to prevent path traversal

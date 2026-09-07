@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
  * 2. 将 VO 映射为接口返回的响应对象；
  * 3. 返回给 Trigger 层直接输出。
  *
+ * <p>调用流程：Controller/DTO → 应用门面 → 用例；响应对象由用例结果转换。</p>
+ * <p>示例：DTO 只做协议隔离，不承载领域规则。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -22,7 +24,10 @@ public class HarnessModelSettingQueryApi {
     private final IModelSettingQueryService modelSettingQueryService;
 
     /**
-     * 处理Harness Model Setting Query Api相关逻辑。
+     * 处理Harness 模型 Setting Query API。
+     * 流程：转换请求 → 调用用例或领域服务 → 转换响应。
+     * @param modelSettingQueryService 模型 Setting Query Service参数。
+     * @return 方法执行结果。
      */
     public HarnessModelSettingQueryApi(IModelSettingQueryService modelSettingQueryService) {
         this.modelSettingQueryService = modelSettingQueryService;

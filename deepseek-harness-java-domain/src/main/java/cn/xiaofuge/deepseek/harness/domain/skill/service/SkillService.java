@@ -15,6 +15,8 @@ import org.springframework.stereotype.Service;
  * Skill registry: merges provider catalogs, resolves the winning skill for a
  * name (lowest rank wins), and exposes summaries and definitions.
  *
+ * <p>调用流程：应用领域规则 → 更新聚合或值对象 → 发布事件/返回结果。</p>
+ * <p>示例：领域对象只暴露业务语言方法，不直接依赖基础设施。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -26,7 +28,10 @@ public class SkillService implements ISkillService {
     private final Map<String, List<SkillCandidate>> cache = new ConcurrentHashMap<>();
 
     /**
-     * 处理Skill Service相关逻辑。
+     * 处理Skill Service。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param providers providers参数。
+     * @return 方法执行结果。
      */
     public SkillService(List<ISkillProviderPort> providers) {
         this.providers = providers;
@@ -76,7 +81,10 @@ public class SkillService implements ISkillService {
     }
 
     /**
-     * 处理discover All相关逻辑。
+     * 发现 All。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param cwd 工作目录。
+     * @return 方法执行结果。
      */
     private List<SkillCandidate> discoverAll(String cwd) {
         List<SkillCandidate> all = new ArrayList<>();

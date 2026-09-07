@@ -7,6 +7,8 @@ import java.util.Optional;
  * <p>
  * 对应 TS 侧 {@code DeepSeekCatalogModel}。
  *
+ * <p>调用流程：模型请求 → HTTP 客户端 → 解析 JSON/SSE → 归一化为领域事件。</p>
+ * <p>示例：上游返回 token delta 时，适配器转换为 LLM 增量事件。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -22,19 +24,27 @@ public record DirectSeekCatalogModel(
     }
 
     /**
-     * 处理name Opt相关逻辑。
+     * 处理名称 Opt。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @return 方法执行结果。
      */
     public Optional<String> nameOpt() { return Optional.ofNullable(name); }
     /**
-     * 处理description Opt相关逻辑。
+     * 处理description Opt。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @return 方法执行结果。
      */
     public Optional<String> descriptionOpt() { return Optional.ofNullable(description); }
     /**
-     * 处理context Window Opt相关逻辑。
+     * 处理上下文 Window Opt。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @return 方法执行结果。
      */
     public Optional<Integer> contextWindowOpt() { return Optional.ofNullable(contextWindow); }
     /**
-     * 处理max Tokens Opt相关逻辑。
+     * 处理max Tokens Opt。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @return 方法执行结果。
      */
     public Optional<Integer> maxTokensOpt() { return Optional.ofNullable(maxTokens); }
 }

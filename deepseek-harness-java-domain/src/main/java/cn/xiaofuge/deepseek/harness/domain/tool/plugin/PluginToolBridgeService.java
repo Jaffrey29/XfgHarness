@@ -35,7 +35,11 @@ public class PluginToolBridgeService {
     private final Map<String, List<String>> pluginToolNames = new ConcurrentHashMap<>();
 
     /**
-     * 处理Plugin Tool Bridge Service相关逻辑。
+     * 处理插件 工具 Bridge Service。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param toolRegistry 工具 Registry参数。
+     * @param pluginToolBridge 插件 工具 Bridge参数。
+     * @return 方法执行结果。
      */
     public PluginToolBridgeService(ToolRegistry toolRegistry, IPluginToolBridge pluginToolBridge) {
         this(toolRegistry, pluginToolBridge, null);
@@ -128,7 +132,8 @@ public class PluginToolBridgeService {
     }
 
     /**
-     * 处理register Prompt Section相关逻辑。
+     * 注册插件贡献的系统提示词片段。
+     * <p>流程：校验片段来源 → 登记到提示词装配器 → 供下一轮模型调用使用。</p>
      */
     private void registerPromptSection(
             String pluginId,
@@ -152,7 +157,9 @@ public class PluginToolBridgeService {
     }
 
     /**
-     * 处理remove Prompt Section相关逻辑。
+     * 移除 提示词 Section。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param pluginId 插件 ID。
      */
     private void removePromptSection(String pluginId) {
         if (promptAssembler instanceof ScopedSystemPromptAssembler scoped) {
@@ -161,7 +168,10 @@ public class PluginToolBridgeService {
     }
 
     /**
-     * 处理prompt Section Name相关逻辑。
+     * 发起提示词 Section 名称。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param pluginId 插件 ID。
+     * @return 方法执行结果。
      */
     private String promptSectionName(String pluginId) {
         return "plugin:" + pluginId + ":capabilities";

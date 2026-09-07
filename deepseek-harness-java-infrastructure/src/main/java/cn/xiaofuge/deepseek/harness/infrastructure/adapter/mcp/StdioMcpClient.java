@@ -36,7 +36,15 @@ public class StdioMcpClient implements IMcpClient {
     private volatile boolean connected = false;
 
     /**
-     * 处理Stdio Mcp Client相关逻辑。
+     * 处理Stdio MCP Client。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param command 命令对象。
+     * @param args 启动参数。
+     * @param Map<String 映射 String参数。
+     * @param env env参数。
+     * @param cwd 工作目录。
+     * @param callTimeoutMs call Timeout Ms参数。
+     * @return 方法执行结果。
      */
     public StdioMcpClient(String command, List<String> args, Map<String, String> env, String cwd, long callTimeoutMs) {
         this.command = command;
@@ -87,6 +95,12 @@ public class StdioMcpClient implements IMcpClient {
             }
         });
     }
+    /**
+     * disconnect。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public CompletableFuture<Void> disconnect() {
@@ -107,11 +121,23 @@ public class StdioMcpClient implements IMcpClient {
             }
         });
     }
+    /**
+     * 判断当前状态是否满足条件。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @return 布尔结果：满足条件为 true，否则 false。
+     */
+
 
     @Override
     public boolean isConnected() {
         return connected && process != null && process.isAlive();
     }
+    /**
+     * 列出Tools。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public CompletableFuture<List<McpToolDescriptor>> listTools() {
@@ -131,6 +157,15 @@ public class StdioMcpClient implements IMcpClient {
                     return tools;
                 });
     }
+    /**
+     * call Tool。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param toolName tool Name参数。
+     * @param Map<String Map String参数。
+     * @param arguments arguments参数。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public CompletableFuture<McpToolResult> callTool(String toolName, Map<String, Object> arguments) {
@@ -214,7 +249,8 @@ public class StdioMcpClient implements IMcpClient {
     }
 
     /**
-     * 处理read Loop相关逻辑。
+     * 读取 Loop。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
      */
     private void readLoop() {
         try {

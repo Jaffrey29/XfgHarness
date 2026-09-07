@@ -34,7 +34,10 @@ public class TypertProtocolLoader {
     private final ObjectMapper mapper;
 
     /**
-     * 处理Typert Protocol Loader相关逻辑。
+     * 处理Typert Protocol Loader。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param mapper mapper参数。
+     * @return 方法执行结果。
      */
     public TypertProtocolLoader(ObjectMapper mapper) {
         this.mapper = mapper;
@@ -71,7 +74,10 @@ public class TypertProtocolLoader {
     }
 
     /**
-     * 处理Suppress Warnings相关逻辑。
+     * 转换为 映射。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param node 策略树节点。
+     * @return 转换后的目标对象。
      */
     @SuppressWarnings("unchecked")
     private Map<String, Object> toMap(JsonNode node) {

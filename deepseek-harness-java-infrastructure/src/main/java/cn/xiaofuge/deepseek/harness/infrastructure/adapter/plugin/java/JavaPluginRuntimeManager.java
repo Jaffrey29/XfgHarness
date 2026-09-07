@@ -276,10 +276,22 @@ public class JavaPluginRuntimeManager {
             this.startedAt = startedAt;
             this.toolNames = List.copyOf(toolNames);
         }
+        /**
+         * 返回 state。
+         * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+         * @return 方法执行结果。
+         */
+
 
         private AtomicReference<PluginLifecycleState> state() {
             return state;
         }
+        /**
+         * context。
+         * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+         * @return 方法执行结果。
+         */
+
 
         private SpringPluginContext context() {
             return context;

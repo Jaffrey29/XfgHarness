@@ -49,6 +49,8 @@ import java.util.concurrent.ConcurrentMap;
  * 2. 维护当前活跃智能体的注册表；
  * 3. 在应用关闭时统一释放资源。
  *
+ * <p>调用流程：领域端口 → 基础设施适配器 → 外部系统。</p>
+ * <p>示例：适配器只实现端口契约，业务规则保留在 domain。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -72,7 +74,8 @@ public class AgentFactory implements AgentFactoryPort {
     private final ConcurrentMap<String, ReactLoopAgent> liveAgents = new ConcurrentHashMap<>();
 
     /**
-     * 处理Agent Factory相关逻辑。
+     * 初始化默认 Agent 工厂。
+     * <p>流程：装配共享依赖 → 缓存 Agent 实例 → 支持创建/查找/取消。</p>
      */
     public AgentFactory(
             ILlmRuntimePort llm,
@@ -94,7 +97,8 @@ public class AgentFactory implements AgentFactoryPort {
     }
 
     /**
-     * 处理Agent Factory相关逻辑。
+     * 初始化带自定义运行时的 Agent 工厂。
+     * <p>流程：装配共享依赖 → 注册自定义 LLM 端口 → 缓存 Agent 实例。</p>
      */
     public AgentFactory(
             ILlmRuntimePort llm,
@@ -187,7 +191,13 @@ public class AgentFactory implements AgentFactoryPort {
     }
 
     /**
-     * 处理wire Agent相关逻辑。
+     * 处理wire Agent。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param agentId Agent ID。
+     * @param options Agent 配置。
+     * @param cwd 工作目录。
+     * @param session 会话参数。
+     * @return 方法执行结果。
      */
     private ReactLoopAgent wireAgent(String agentId, AgentOptions options, String cwd, SessionLog session) {
         Inbox inbox = new Inbox(session, LoggingInboxNotifications.INSTANCE);
@@ -215,17 +225,37 @@ public class AgentFactory implements AgentFactoryPort {
             agentTools.register(new SubagentTool(subagentRegistry, firstProvider));
         }
 
+            /**
+             * register。
+             * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+             * @param definition definition参数。
+             * @return 方法执行结果。
+             */
+
         ToolRegistry toolView = new ToolRegistry() {
             @Override
             public Runnable register(ToolDefinition definition) {
                 return agentTools.register(definition);
             }
+            /**
+             * lookup。
+             * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+             * @param name 名称。
+             * @return 方法执行结果。
+             */
+
 
             @Override
             public java.util.Optional<ToolDefinition> lookup(String name) {
                 java.util.Optional<ToolDefinition> local = agentTools.lookup(name);
                 return local.isPresent() ? local : sharedToolRegistry.lookup(name);
             }
+            /**
+             * all。
+             * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+             * @return 方法执行结果。
+             */
+
 
             @Override
             public java.util.Collection<ToolDefinition> all() {
@@ -234,6 +264,13 @@ public class AgentFactory implements AgentFactoryPort {
                 agentTools.all().forEach(tool -> merged.put(tool.name(), tool));
                 return merged.values();
             }
+            /**
+             * execution Mode。
+             * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+             * @param exec exec参数。
+             * @return 方法执行结果。
+             */
+
 
             @Override
             public ToolExecutionMode executionMode(

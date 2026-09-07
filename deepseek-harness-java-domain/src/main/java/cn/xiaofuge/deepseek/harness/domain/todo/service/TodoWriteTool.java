@@ -21,6 +21,8 @@ import java.util.concurrent.CompletableFuture;
  * 2. 交由领域服务做校验和事件写入；
  * 3. 返回统计后的结果文本。
  *
+ * <p>调用流程：应用领域规则 → 更新聚合或值对象 → 发布事件/返回结果。</p>
+ * <p>示例：领域对象只暴露业务语言方法，不直接依赖基础设施。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -45,7 +47,12 @@ public class TodoWriteTool implements ToolDefinition {
     private final TodoWriteService todoWriteService;
 
     /**
-     * 处理Todo Write Tool相关逻辑。
+     * 转换为 do Write 工具。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param session 会话参数。
+     * @param allowParallelInProgress allow Parallel In Progress参数。
+     * @param todoWriteService 待办 Write Service参数。
+     * @return 方法执行结果。
      */
     public TodoWriteTool(SessionLog session, boolean allowParallelInProgress, TodoWriteService todoWriteService) {
         this.session = session;
@@ -80,11 +87,25 @@ public class TodoWriteTool implements ToolDefinition {
                 "required", List.of("todos")
         );
     }
+    /**
+     * 返回 output Schema。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public Map<String, Object> outputSchema() { return Map.of(); }
 
     @Override
+    /**
+     * 执行工具调用。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @param ctx ctx参数。
+     * @return 方法执行结果。
+     */
+
     @SuppressWarnings("unchecked")
     public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext ctx) {
         try {
@@ -123,12 +144,21 @@ public class TodoWriteTool implements ToolDefinition {
                     ToolExecutionResult.fail("todo_write failed: " + e.getMessage(), "EXECUTION_ERROR"));
         }
     }
+    /**
+     * 判断当前状态是否满足条件。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @return 布尔结果：满足条件为 true，否则 false。
+     */
+
 
     @Override
     public boolean isConcurrencySafe(Object args) { return false; }
 
     /**
-     * 处理to Schema相关逻辑。
+     * 转换为 Schema。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 转换后的目标对象。
      */
     public ToolSchema toSchema() {
         return new ToolSchema(NAME, DESCRIPTION, parameters());

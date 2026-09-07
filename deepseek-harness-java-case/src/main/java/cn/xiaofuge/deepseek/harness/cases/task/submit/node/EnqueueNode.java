@@ -25,6 +25,8 @@ import java.time.Instant;
  * 保证原子性；executeSession（可能长时间运行的模型调用）在事务外执行，
  * 避免 DB 连接被长时间占用。
  *
+ * <p>调用流程：SubmissionRootNode → ProfileResolutionNode → ToolResolutionNode → PermissionCheckNode → EnqueueNode。</p>
+ * <p>示例：提交一条任务后，先解析执行画像，再校验权限，最后进入待执行队列。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -47,6 +49,14 @@ public class EnqueueNode extends AbstractSubmitTaskNode {
 
     @Autowired
     private PlatformTransactionManager transactionManager;
+
+    /**
+     * do Apply。
+     * 流程：读取命令 → 执行用例编排 → 返回结果。
+     * @param request 请求对象。
+     * @param ctx ctx参数。
+     * @return 方法执行结果。
+     */
 
     @Override
     protected SubmitTaskResult doApply(SubmitTaskCommand request,
@@ -114,6 +124,14 @@ public class EnqueueNode extends AbstractSubmitTaskNode {
 
     @Override
     public StrategyHandler<SubmitTaskCommand, SubmitTaskDynamicContext, SubmitTaskResult>
+    /**
+     * 获取Next。
+     * 流程：读取命令 → 执行用例编排 → 返回结果。
+     * @param request 请求对象。
+     * @param ctx ctx参数。
+     * @return 获取到的Next。
+     */
+
     getNext(SubmitTaskCommand request, SubmitTaskDynamicContext ctx) {
         return defaultStrategyHandler;
     }

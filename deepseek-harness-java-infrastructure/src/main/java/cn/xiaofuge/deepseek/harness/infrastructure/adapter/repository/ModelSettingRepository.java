@@ -17,6 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
  * 2. 通过 DAO 层完成持久化；
  * 3. 读取时再映射回领域实体。
  *
+ * <p>调用流程：领域端口 → 基础设施适配器 → 外部系统。</p>
+ * <p>示例：适配器只实现端口契约，业务规则保留在 domain。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -26,7 +28,10 @@ public class ModelSettingRepository implements IModelSettingRepository {
     private final IHarnessModelSettingDao harnessModelSettingDao;
 
     /**
-     * 处理Model Setting Repository相关逻辑。
+     * 处理模型 Setting Repository。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param harnessModelSettingDao harness 模型 Setting Dao参数。
+     * @return 方法执行结果。
      */
     public ModelSettingRepository(IHarnessModelSettingDao harnessModelSettingDao) {
         this.harnessModelSettingDao = harnessModelSettingDao;
@@ -45,16 +50,35 @@ public class ModelSettingRepository implements IModelSettingRepository {
                 setting.getUpdatedAt()
         ));
     }
+    /**
+     * 查询All。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public List<ModelSettingEntity> queryAll() {
         return harnessModelSettingDao.queryAll().stream().map(this::toEntity).toList();
     }
+    /**
+     * 查找By Profile Code。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param profileCode profile Code参数。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public Optional<ModelSettingEntity> findByProfileCode(String profileCode) {
         return harnessModelSettingDao.findByProfileCode(profileCode).map(this::toEntity);
     }
+    /**
+     * 删除By Profile Code。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param profileCode profile Code参数。
+     */
+
 
     @Override
     @Transactional
@@ -63,7 +87,10 @@ public class ModelSettingRepository implements IModelSettingRepository {
     }
 
     /**
-     * 处理to Entity相关逻辑。
+     * 转换为 Entity。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param po PO参数。
+     * @return 转换后的目标对象。
      */
     private ModelSettingEntity toEntity(HarnessModelSettingPO po) {
         return new ModelSettingEntity(

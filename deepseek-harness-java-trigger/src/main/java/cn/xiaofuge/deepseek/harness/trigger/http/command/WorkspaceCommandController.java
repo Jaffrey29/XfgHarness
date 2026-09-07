@@ -27,14 +27,20 @@ public class WorkspaceCommandController {
     private final WorkspaceCommandApi workspaceCommandApi;
 
     /**
-     * 处理Workspace Command Controller相关逻辑。
+     * 处理工作区 命令 Controller。
+     * 流程：解析请求参数 → 调用应用门面 → 返回响应。
+     * @param workspaceCommandApi 工作区 命令 API参数。
+     * @return 方法执行结果。
      */
     public WorkspaceCommandController(WorkspaceCommandApi workspaceCommandApi) {
         this.workspaceCommandApi = workspaceCommandApi;
     }
 
     /**
-     * 处理Post Mapping相关逻辑。
+     * 创建 工作区。
+     * 流程：解析请求参数 → 调用应用门面 → 返回响应。
+     * @param request 请求对象。
+     * @return 创建的领域对象。
      */
     @PostMapping("/workspaces")
     public List<WorkspaceEntryResponse> createWorkspace(@RequestBody CreateWorkspaceRequest request) throws IOException {
@@ -42,7 +48,10 @@ public class WorkspaceCommandController {
     }
 
     /**
-     * 处理Delete Mapping相关逻辑。
+     * 删除 工作区。
+     * 流程：解析请求参数 → 调用应用门面 → 返回响应。
+     * @param name 名称。
+     * @return 方法执行结果。
      */
     @DeleteMapping("/workspaces/{name}")
     public List<WorkspaceEntryResponse> deleteWorkspace(@PathVariable("name") String name) throws IOException {
@@ -50,7 +59,12 @@ public class WorkspaceCommandController {
     }
 
     /**
-     * 处理Patch Mapping相关逻辑。
+     * 重命名工作区并刷新目录顺序。
+     * <p>流程：读取路径参数和请求体 → 调用工作区命令服务 → 返回更新后的工作区列表。</p>
+     *
+     * @param name 原工作区名称。
+     * @param request 新工作区名称。
+     * @return 更新后的工作区列表。
      */
     @PatchMapping("/workspaces/{name}")
     public List<WorkspaceEntryResponse> renameWorkspace(@PathVariable("name") String name,
@@ -59,7 +73,10 @@ public class WorkspaceCommandController {
     }
 
     /**
-     * 处理Put Mapping相关逻辑。
+     * 处理reorder Workspaces。
+     * 流程：解析请求参数 → 调用应用门面 → 返回响应。
+     * @param request 请求对象。
+     * @return 方法执行结果。
      */
     @PutMapping("/workspaces/order")
     public List<WorkspaceEntryResponse> reorderWorkspaces(@RequestBody ReorderWorkspaceRequest request) throws IOException {
@@ -67,7 +84,8 @@ public class WorkspaceCommandController {
     }
 
     /**
-     * 处理Exception Handler相关逻辑。
+     * 将非法参数异常转换为 400 响应。
+     * <p>流程：捕获 IllegalArgumentException → 设置状态码 → 不输出响应体。</p>
      */
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)

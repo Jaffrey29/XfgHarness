@@ -28,11 +28,27 @@ public class AgentApi implements IAgentApi {
     private final IAgentUseCase agentUseCase;
 
     /**
-     * 处理Agent Api相关逻辑。
+     * 处理Agent API。
+     * 流程：转换协议 → 调用应用门面 → 返回结果。
+     * @param agentUseCase Agent Use Case参数。
+     * @return 方法执行结果。
      */
     public AgentApi(IAgentUseCase agentUseCase) {
         this.agentUseCase = agentUseCase;
     }
+
+    /**
+     * 获取Agent Status。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param agentId Agent ID。
+     * @return 获取到的Agent Status。
+     */
+
+    /**
+     * 取消Agent。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param agentId Agent ID。
+     */
 
     @Override
     public AgentMessageResponse sendMessage(AgentMessageRequest request) {
@@ -40,6 +56,12 @@ public class AgentApi implements IAgentApi {
         SendMessageResult result = agentUseCase.sendMessage(command);
         return toResponse(result);
     }
+
+    /**
+     * 取消Agent。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param agentId Agent ID。
+     */
 
     @Override
     public AgentMessageResponse sendMessageStreaming(
@@ -55,6 +77,12 @@ public class AgentApi implements IAgentApi {
     public String getAgentStatus(String agentId) {
         return agentUseCase.getAgentStatus(agentId);
     }
+    /**
+     * 取消Agent。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param agentId Agent ID。
+     */
+
 
     @Override
     public void cancelAgent(String agentId) {
@@ -64,7 +92,10 @@ public class AgentApi implements IAgentApi {
     // ── DTO ↔ Command 映射 ───────────────────────────────────────
 
     /**
-     * 处理to Command相关逻辑。
+     * 转换为 命令。
+     * 流程：转换协议 → 调用应用门面 → 返回结果。
+     * @param request 请求对象。
+     * @return 转换后的目标对象。
      */
     private SendMessageCommand toCommand(AgentMessageRequest request) {
         return new SendMessageCommand(
@@ -79,7 +110,10 @@ public class AgentApi implements IAgentApi {
     }
 
     /**
-     * 处理to Response相关逻辑。
+     * 转换为 响应。
+     * 流程：转换协议 → 调用应用门面 → 返回结果。
+     * @param result 结果对象。
+     * @return 转换后的目标对象。
      */
     private AgentMessageResponse toResponse(SendMessageResult result) {
         return new AgentMessageResponse(

@@ -35,16 +35,37 @@ class InProcessToolBridge implements IPluginToolBridge {
     public CompletableFuture<Void> connect(String pluginId, Process process) {
         return CompletableFuture.completedFuture(null);
     }
+    /**
+     * disconnect。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param pluginId 插件 ID。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public CompletableFuture<Void> disconnect(String pluginId) {
         return CompletableFuture.completedFuture(null);
     }
+    /**
+     * 判断当前状态是否满足条件。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param pluginId 插件 ID。
+     * @return 布尔结果：满足条件为 true，否则 false。
+     */
+
 
     @Override
     public boolean isConnected(String pluginId) {
         return true;
     }
+    /**
+     * 列出Tools。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param pluginId 插件 ID。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public CompletableFuture<List<PluginToolDescriptor>> listTools(String pluginId) {
@@ -54,6 +75,16 @@ class InProcessToolBridge implements IPluginToolBridge {
     }
 
     @Override
+    /**
+     * call Tool。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param pluginId 插件 ID。
+     * @param toolName tool Name参数。
+     * @param Map<String Map String参数。
+     * @param arguments arguments参数。
+     * @return 方法执行结果。
+     */
+
     @SuppressWarnings("unchecked")
     public CompletableFuture<PluginToolResult> callTool(String pluginId, String toolName, Map<String, Object> arguments) {
         ToolExecution exec = new ToolExecution(

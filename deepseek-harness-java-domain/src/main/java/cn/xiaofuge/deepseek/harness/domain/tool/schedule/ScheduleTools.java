@@ -18,13 +18,17 @@ import java.util.concurrent.CompletableFuture;
  * <p>
  * Mirrors TS {@code tool-schedule}. 提醒在当前会话内到期后被派发为一条提示。
  *
+ * <p>调用流程：Agent 发起 tool call → ToolRegistry 查找工具 → Guard 校验 → ToolExecutor 执行 → 结果回填。</p>
+ * <p>示例：工具名 fs_read 与 JSON 参数先经过校验，再生成 ToolExecutionResult。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
 public final class ScheduleTools {
 
     /**
-     * 处理Schedule Tools相关逻辑。
+     * 处理调度 Tools。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
      */
     private ScheduleTools() {}
 
@@ -44,11 +48,30 @@ public final class ScheduleTools {
         static Map<String, Object> argMap(Object args) {
             return args instanceof Map ? (Map<String, Object>) args : Map.of();
         }
+        /**
+         * 转换为字符串。
+         * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+         * @param Map<String Map String参数。
+         * @param m m参数。
+         * @param k k参数。
+         * @return 方法执行结果。
+         */
+
 
         static String str(Map<String, Object> m, String k) {
             Object v = m.get(k);
             return v == null ? "" : String.valueOf(v).trim();
         }
+        /**
+         * long Val。
+         * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+         * @param Map<String Map String参数。
+         * @param m m参数。
+         * @param k k参数。
+         * @param def def参数。
+         * @return 方法执行结果。
+         */
+
 
         static long longVal(Map<String, Object> m, String k, long def) {
             Object v = m.get(k);
@@ -65,6 +88,13 @@ public final class ScheduleTools {
         CompletableFuture<ToolExecutionResult> fail(String msg, String code) {
             return CompletableFuture.completedFuture(ToolExecutionResult.fail(msg, code));
         }
+        /**
+         * record Line。
+         * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+         * @param r r参数。
+         * @return 方法执行结果。
+         */
+
 
         static String recordLine(ScheduleRecord r) {
             return "- " + r.id() + " [" + r.kind() + "] at " + r.scheduledAt() + ": " + r.prompt();
@@ -93,6 +123,14 @@ public final class ScheduleTools {
                             "at", Map.of("type", "string", "description", "One-shot: fire at ISO-8601 instant (UTC)."),
                             "every_seconds", Map.of("type", "integer", "description", "Recurring: fire every N seconds (min 300).")),
                     "required", List.of("prompt"));
+        /**
+         * 执行工具调用。
+         * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+         * @param args 启动参数。
+         * @param ctx ctx参数。
+         * @return 方法执行结果。
+         */
+
         }
         @Override public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext ctx) {
             Map<String, Object> m = argMap(args);
@@ -139,6 +177,12 @@ public final class ScheduleTools {
                 sb.append(recordLine(v.record())).append(" [").append(v.state()).append("]\n");
             }
             return ok(sb.toString());
+        /**
+         * 判断当前状态是否满足条件。
+         * @param args 启动参数。
+         * @return 布尔结果：满足条件为 true，否则 false。
+         */
+
         }
         @Override public boolean isConcurrencySafe(Object args) { return true; }
     }
@@ -146,7 +190,11 @@ public final class ScheduleTools {
     /** schedule_delete：删除提醒。 */
     public static final class Delete extends Base {
         /**
-         * 处理Delete相关逻辑。
+         * 删除目标对象。
+         * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+         * @param schedules schedules参数。
+         * @param sessionId 会话 ID。
+         * @return 方法执行结果。
          */
         public Delete(IScheduleService schedules, String sessionId) { super(schedules, sessionId); }
         @Override public String name() { return "schedule_delete"; }

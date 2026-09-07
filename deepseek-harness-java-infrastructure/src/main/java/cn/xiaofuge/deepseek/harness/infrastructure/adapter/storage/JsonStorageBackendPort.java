@@ -34,7 +34,11 @@ public class JsonStorageBackendPort implements IStorageBackendPort {
     private final ConcurrentHashMap<String, Object> unitLocks = new ConcurrentHashMap<>();
 
     /**
-     * 处理Json Storage Backend Port相关逻辑。
+     * 处理JSON Storage Backend Port。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param root 根路径。
+     * @param objectMapper object Mapper参数。
+     * @return 方法执行结果。
      */
     public JsonStorageBackendPort(Path root, ObjectMapper objectMapper) {
         this.root = root;
@@ -66,6 +70,15 @@ public class JsonStorageBackendPort implements IStorageBackendPort {
                     "cannot read unit file: " + file, e);
         }
     }
+    /**
+     * put。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param descriptor descriptor参数。
+     * @param table table参数。
+     * @param key key参数。
+     * @param value 参数值。
+     */
+
 
     @Override
     public void put(KvUnitDescriptor descriptor, String table, String key, String value) {
@@ -75,6 +88,14 @@ public class JsonStorageBackendPort implements IStorageBackendPort {
             writeRaw(descriptor, data);
         }
     }
+    /**
+     * 移除目标对象。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param descriptor descriptor参数。
+     * @param table table参数。
+     * @param key key参数。
+     */
+
 
     @Override
     public void remove(KvUnitDescriptor descriptor, String table, String key) {
@@ -88,6 +109,15 @@ public class JsonStorageBackendPort implements IStorageBackendPort {
             }
         }
     }
+    /**
+     * put All。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param descriptor descriptor参数。
+     * @param Map<String Map String参数。
+     * @param Map<String Map String参数。
+     * @param puts puts参数。
+     */
+
 
     @Override
     public void putAll(KvUnitDescriptor descriptor, Map<String, Map<String, String>> puts) {
@@ -102,7 +132,10 @@ public class JsonStorageBackendPort implements IStorageBackendPort {
     }
 
     /**
-     * 处理read Raw相关逻辑。
+     * 读取 Raw。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param descriptor descriptor参数。
+     * @return 方法执行结果。
      */
     private Map<String, Map<String, String>> readRaw(KvUnitDescriptor descriptor) {
         Path file = unitFile(descriptor);
@@ -117,7 +150,12 @@ public class JsonStorageBackendPort implements IStorageBackendPort {
     }
 
     /**
-     * 处理write Raw相关逻辑。
+     * 写入 Raw。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param descriptor descriptor参数。
+     * @param Map<String 映射 String参数。
+     * @param Map<String 映射 String参数。
+     * @param data 数据内容。
      */
     private void writeRaw(KvUnitDescriptor descriptor, Map<String, Map<String, String>> data) {
         Path file = unitFile(descriptor);
@@ -130,14 +168,20 @@ public class JsonStorageBackendPort implements IStorageBackendPort {
     }
 
     /**
-     * 处理unit File相关逻辑。
+     * 处理unit 文件。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param descriptor descriptor参数。
+     * @return 方法执行结果。
      */
     private Path unitFile(KvUnitDescriptor descriptor) {
         return root.resolve(descriptor.name() + ".json");
     }
 
     /**
-     * 处理lock For相关逻辑。
+     * 处理lock For。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param descriptor descriptor参数。
+     * @return 方法执行结果。
      */
     private Object lockFor(KvUnitDescriptor descriptor) {
         return unitLocks.computeIfAbsent(descriptor.name(), n -> new Object());

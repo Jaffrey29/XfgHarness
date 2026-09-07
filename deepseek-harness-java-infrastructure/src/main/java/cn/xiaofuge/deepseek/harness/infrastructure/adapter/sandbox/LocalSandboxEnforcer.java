@@ -8,6 +8,8 @@ import java.nio.file.Path;
  * Local filesystem sandbox enforcer. Checks whether a path operation is allowed
  * under the resolved policy.
  *
+ * <p>调用流程：沙箱策略解析 → 路径/命令校验 → 委托本地执行器。</p>
+ * <p>示例：工作区写模式下，cwd 越界或危险命令会被拒绝。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -43,7 +45,10 @@ public class LocalSandboxEnforcer {
     }
 
     /**
-     * 处理mode Of相关逻辑。
+     * 处理模式 Of。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param policy 策略对象。
+     * @return 方法执行结果。
      */
     public SandboxMode modeOf(SandboxExecutionPolicy policy) {
         return policy.mode();

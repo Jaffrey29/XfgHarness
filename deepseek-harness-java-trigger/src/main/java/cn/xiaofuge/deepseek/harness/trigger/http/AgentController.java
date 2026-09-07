@@ -30,6 +30,8 @@ import org.slf4j.LoggerFactory;
  * 2. 调用智能体适配器完成会话编排或状态读取；
  * 3. 返回普通 JSON 或 SSE 流式响应。
  *
+ * <p>调用流程：HTTP/Web 层 → API 适配器 → 应用门面。</p>
+ * <p>示例：控制器只负责协议转换，不写业务规则。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -47,7 +49,11 @@ public class AgentController {
     private final ExecutorService sseExecutor;
 
     /**
-     * 处理Agent Controller相关逻辑。
+     * 处理Agent Controller。
+     * 流程：解析请求参数 → 调用应用门面 → 返回响应。
+     * @param agentApi Agent API参数。
+     * @param objectMapper object Mapper参数。
+     * @return 方法执行结果。
      */
     public AgentController(IAgentApi agentApi, ObjectMapper objectMapper) {
         this.agentApi = agentApi;
@@ -63,7 +69,10 @@ public class AgentController {
     }
 
     /**
-     * 处理Post Mapping相关逻辑。
+     * 发送 消息。
+     * 流程：解析请求参数 → 调用应用门面 → 返回响应。
+     * @param request 请求对象。
+     * @return 方法执行结果。
      */
     @PostMapping("/message")
     public AgentMessageResponse sendMessage(@RequestBody AgentMessageRequest request) {
@@ -72,7 +81,10 @@ public class AgentController {
     }
 
     /**
-     * 处理Post Mapping相关逻辑。
+     * 处理流 消息。
+     * 流程：解析请求参数 → 调用应用门面 → 返回响应。
+     * @param request 请求对象。
+     * @return 方法执行结果。
      */
     @PostMapping(value = "/stream")
     public org.springframework.http.ResponseEntity<SseEmitter> streamMessage(@RequestBody AgentMessageRequest request) {
@@ -184,7 +196,9 @@ public class AgentController {
     }
 
     /**
-     * 处理Post Mapping相关逻辑。
+     * 取消 Agent。
+     * 流程：解析请求参数 → 调用应用门面 → 返回响应。
+     * @param agentId Agent ID。
      */
     @PostMapping("/{agentId}/cancel")
     public void cancelAgent(@PathVariable("agentId") String agentId) {
@@ -193,7 +207,10 @@ public class AgentController {
     }
 
     /**
-     * 处理extract Assistant Text相关逻辑。
+     * 提取 Assistant Text。
+     * 流程：解析请求参数 → 调用应用门面 → 返回响应。
+     * @param response 响应对象。
+     * @return 方法执行结果。
      */
     private String extractAssistantText(AgentMessageResponse response) {
         if (response.messages() == null || response.messages().isEmpty()) {

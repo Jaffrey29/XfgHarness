@@ -10,6 +10,8 @@ import java.util.Map;
  * subprocess using the Codex wire protocol. Corresponds to TS
  * {@code subagent-codex}.
  *
+ * <p>调用流程：领域端口 → 基础设施适配器 → 外部系统。</p>
+ * <p>示例：适配器只实现端口契约，业务规则保留在 domain。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -18,7 +20,8 @@ public class CodexSubagentProvider extends OutOfProcessSubagentProvider {
     private final ObjectMapper mapper = new ObjectMapper();
 
     /**
-     * 处理Codex Subagent Provider相关逻辑。
+     * 初始化 Codex 子智能体提供者。
+     * <p>流程：配置子进程命令和工作目录 → 调用外部 Agent 执行任务。</p>
      */
     public CodexSubagentProvider(String command, List<String> args, String cwd,
                                  Map<String, String> env, long timeoutMs) {

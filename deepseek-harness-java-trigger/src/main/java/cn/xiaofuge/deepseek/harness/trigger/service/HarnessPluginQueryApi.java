@@ -16,6 +16,8 @@ import org.springframework.stereotype.Service;
  * 2. 调用领域查询服务或查询用例组装读模型；
  * 3. 将 case 层 Result 映射为 api Response 返回前端可直接渲染的响应对象。
  *
+ * <p>调用流程：HTTP/Web 层 → API 适配器 → 应用门面。</p>
+ * <p>示例：控制器只负责协议转换，不写业务规则。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -26,7 +28,8 @@ public class HarnessPluginQueryApi {
     private final IQueryHarnessPluginStatusCase queryHarnessPluginStatusCase;
 
     /**
-     * 处理Harness Plugin Query Api相关逻辑。
+     * 初始化插件查询适配器，并注入已安装插件与运行状态查询能力。
+     * <p>流程：HTTP 请求 → API 适配器 → 查询用例。</p>
      */
     public HarnessPluginQueryApi(HarnessInstalledPluginQueryApi harnessInstalledPluginQueryApi,
                                  IQueryHarnessPluginStatusCase queryHarnessPluginStatusCase) {

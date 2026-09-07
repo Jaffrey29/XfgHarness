@@ -19,6 +19,8 @@ import org.springframework.stereotype.Component;
 /**
  * Adapts the execution-domain port to the unified LLM runtime.
  * Routes through the same adapter chain used by the agent loop.
+ * <p>调用流程：领域端口 → 基础设施适配器 → 外部系统。</p>
+ * <p>示例：适配器只实现端口契约，业务规则保留在 domain。</p>
  */
 @Component
 public class ModelExecutionPort implements IModelExecutionPort {
@@ -56,10 +58,22 @@ public class ModelExecutionPort implements IModelExecutionPort {
         AtomicReference<Throwable> error = new AtomicReference<>(null);
 
         llmRuntimePort.stream(options).subscribe(new Flow.Subscriber<>() {
+            /**
+             * on Subscribe。
+             * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+             * @param s s参数。
+             */
+
             private Flow.Subscription subscription;
             @Override public void onSubscribe(Flow.Subscription s) {
                 this.subscription = s;
                 s.request(Long.MAX_VALUE);
+            /**
+             * on Next。
+             * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+             * @param item item参数。
+             */
+
             }
             @Override public void onNext(StreamChunk item) {
                 if (item instanceof StreamChunk.TextDelta delta) {
@@ -68,10 +82,21 @@ public class ModelExecutionPort implements IModelExecutionPort {
                     latch.countDown();
                     latch.countDown();
                 }
+            /**
+             * on Error。
+             * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+             * @param t t参数。
+             */
+
             }
             @Override public void onError(Throwable t) {
                 error.set(t);
                 latch.countDown();
+            /**
+             * on Complete。
+             * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+             */
+
             }
             @Override public void onComplete() { latch.countDown(); }
         });

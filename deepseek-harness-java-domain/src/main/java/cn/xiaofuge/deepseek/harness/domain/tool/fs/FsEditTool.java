@@ -34,7 +34,10 @@ public class FsEditTool implements ToolDefinition {
     private final IFsPort fsService;
 
     /**
-     * 处理Fs Edit Tool相关逻辑。
+     * 处理Fs Edit 工具。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param fsService fs Service参数。
+     * @return 方法执行结果。
      */
     public FsEditTool(IFsPort fsService) {
         this.fsService = fsService;
@@ -69,6 +72,12 @@ public class FsEditTool implements ToolDefinition {
                 "required", List.of("path", "old_string", "new_string")
         );
     }
+    /**
+     * 返回 output Schema。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public Map<String, Object> outputSchema() {
@@ -83,6 +92,14 @@ public class FsEditTool implements ToolDefinition {
     }
 
     @Override
+    /**
+     * 执行工具调用。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @param ctx ctx参数。
+     * @return 方法执行结果。
+     */
+
     @SuppressWarnings("unchecked")
     public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext ctx) {
         try {
@@ -139,12 +156,23 @@ public class FsEditTool implements ToolDefinition {
                     ToolExecutionResult.fail("fs_edit failed: " + e.getMessage(), "EXECUTION_ERROR"));
         }
     }
+    /**
+     * 判断当前状态是否满足条件。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @return 布尔结果：满足条件为 true，否则 false。
+     */
+
 
     @Override
     public boolean isConcurrencySafe(Object args) { return false; }
 
     /**
-     * 处理count Occurrences相关逻辑。
+     * 处理数量 Occurrences。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param haystack haystack参数。
+     * @param needle needle参数。
+     * @return 方法执行结果。
      */
     private static int countOccurrences(String haystack, String needle) {
         int count = 0, idx = 0;
@@ -156,7 +184,12 @@ public class FsEditTool implements ToolDefinition {
     }
 
     /**
-     * 处理replace First相关逻辑。
+     * 处理replace First。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param content 内容文本。
+     * @param oldString old String参数。
+     * @param newString new String参数。
+     * @return 方法执行结果。
      */
     private static String replaceFirst(String content, String oldString, String newString) {
         int idx = content.indexOf(oldString);

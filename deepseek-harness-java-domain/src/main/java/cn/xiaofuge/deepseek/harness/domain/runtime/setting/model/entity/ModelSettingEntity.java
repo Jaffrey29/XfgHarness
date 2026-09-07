@@ -11,6 +11,8 @@ import java.util.Objects;
  * 2. 实体负责约束必填字段和更新时间；
  * 3. 仓储将实体持久化到数据库或配置源。
  *
+ * <p>调用流程：应用领域规则 → 更新聚合或值对象 → 发布事件/返回结果。</p>
+ * <p>示例：领域对象只暴露业务语言方法，不直接依赖基础设施。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -25,7 +27,8 @@ public class ModelSettingEntity {
     private final Instant updatedAt;
 
     /**
-     * 处理Model Setting Entity相关逻辑。
+     * 创建模型设置实体。
+     * <p>用途：承载模型提供方、模型编码、基础地址和启用状态。</p>
      */
     public ModelSettingEntity(
             String profileCode,
@@ -139,7 +142,10 @@ public class ModelSettingEntity {
     }
 
     /**
-     * 处理blank To Null相关逻辑。
+     * 处理blank To Null。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param value 参数值。
+     * @return 方法执行结果。
      */
     private static String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value;

@@ -1,23 +1,24 @@
 package cn.xiaofuge.deepseek.harness.cases.agent.node;
 
 import cn.xiaofuge.deepseek.harness.cases.agent.SendMessageCommand;
+import cn.xiaofuge.deepseek.harness.cases.agent.AgentModelOptionsResolver;
 import cn.xiaofuge.deepseek.harness.cases.agent.SendMessageResult;
 import cn.xiaofuge.deepseek.harness.cases.agent.factory.AgentMessageDynamicContext;
 import cn.xiaofuge.deepseek.harness.domain.agent.model.entity.AgentOptions;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.AgentFactoryPort;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.ReactLoopAgent;
-import cn.xiaofuge.deepseek.harness.domain.runtime.setting.IModelSettingQueryService;
 import cn.xiaofuge.deepseek.harness.domain.shared.StrategyHandler;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * 解析节点：获取或创建目标 Agent。
  *
+ * <p>调用流程：HTTP/API 门面 → AgentUseCase → AgentMessageFactory → 策略树 → ReactLoopAgent；会话事件写入 SessionEventLog。</p>
+ * <p>示例：调用方传入 agentId、用户消息和可选模型配置，返回助手文本与工具调用结果。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -30,14 +31,11 @@ public class AgentResolveNode extends AbstractAgentMessageNode {
     private AgentFactoryPort agentFactory;
 
     @Autowired
-    private IModelSettingQueryService modelSettingQueryService;
+    private AgentModelOptionsResolver modelOptionsResolver;
 
     @Autowired
     @Qualifier("agentMessageIntentNode")
     private AgentIntentNode intentNode;
-
-    @Value("${harness.llm.deepseek.default-model:deepseek}")
-    private String defaultModel;
 
     /**
      * 解析或创建本次消息要使用的 Agent。
@@ -64,33 +62,24 @@ public class AgentResolveNode extends AbstractAgentMessageNode {
 
     @Override
     public StrategyHandler<SendMessageCommand, AgentMessageDynamicContext, SendMessageResult>
+    /**
+     * 获取Next。
+     * 流程：读取命令 → 执行用例编排 → 返回结果。
+     * @param request 请求对象。
+     * @param ctx ctx参数。
+     * @return 获取到的Next。
+     */
+
     getNext(SendMessageCommand request, AgentMessageDynamicContext ctx) {
         return intentNode;
     }
 
     /**
      * 将 HTTP 请求字段转换为 Agent 运行参数。
-     * <p>provider 为空时默认 deepseek；model 为空时读取配置项；baseUrl/apiKey 只在请求显式传入时生效。
+     * <p>统一使用 {@link AgentModelOptionsResolver}：请求显式值优先，其次数据库默认配置，
+     * 最后才使用 application.yml 的模型兜底。
      */
     private AgentOptions buildAgentOptions(SendMessageCommand request) {
-        String provider = request.provider() != null ? request.provider() : "deepseek";
-        String model = request.model() != null ? request.model() : defaultModel;
-        String baseUrl = null;
-        String apiKey = null;
-        var setting = modelSettingQueryService.queryAll().stream()
-                .filter(s -> s.enabled())
-                .filter(s -> s.modelCode() != null && s.modelCode().equals(model))
-                .findFirst();
-        if (setting.isPresent()) {
-            baseUrl = setting.get().baseUrl();
-            apiKey = setting.get().apiKeyRef();
-        }
-        return new AgentOptions(
-                provider,
-                model,
-                request.maxTokens() != null ? request.maxTokens() : 8192,
-                baseUrl,
-                apiKey
-        );
+        return modelOptionsResolver.resolve(request);
     }
 }

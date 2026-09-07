@@ -15,6 +15,8 @@ import java.util.Map;
  * agent 执行到需审批工具时实时挂起；前端轮询 {@code GET /runtime/pending}
  * 拿到待决条目，用户选择后 {@code POST /runtime/{approvalId}/resolve} 提交裁决，
  * 挂起的 agent 随即继续。对齐原版 TS 的 allow-once / allow-session / deny / cancel。
+ * <p>调用流程：Controller → API 适配器 → 用例/领域命令服务 → 返回响应。</p>
+ * <p>示例：POST 请求携带 JSON，命令服务更新状态后返回最新视图。</p>
  */
 @RestController
 @RequestMapping("/api/harness/approvals/runtime")

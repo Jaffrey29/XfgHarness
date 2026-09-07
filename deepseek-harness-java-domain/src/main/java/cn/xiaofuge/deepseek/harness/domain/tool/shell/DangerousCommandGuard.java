@@ -42,14 +42,19 @@ public final class DangerousCommandGuard {
     private final List<Pattern> extraPatterns;
 
     /**
-     * 处理Dangerous Command Guard相关逻辑。
+     * 处理Dangerous 命令 Guard。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
      */
     public DangerousCommandGuard() {
         this(List.of());
     }
 
     /**
-     * 处理Dangerous Command Guard相关逻辑。
+     * 处理Dangerous 命令 Guard。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param extraRegexes extra Regexes参数。
+     * @return 方法执行结果。
      */
     public DangerousCommandGuard(List<String> extraRegexes) {
         this.extraPatterns = extraRegexes == null ? List.of()

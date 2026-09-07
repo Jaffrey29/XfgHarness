@@ -86,7 +86,10 @@ public class LocalShellExecutor implements IShellExecutor {
     }
 
     /**
-     * 处理read Stream相关逻辑。
+     * 读取 流。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param is is参数。
+     * @param buf buf参数。
      */
     private void readStream(InputStream is, StringBuilder buf) {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {

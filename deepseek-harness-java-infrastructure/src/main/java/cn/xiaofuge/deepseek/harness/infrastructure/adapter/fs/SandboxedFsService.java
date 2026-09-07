@@ -35,7 +35,11 @@ public class SandboxedFsService implements IFsPort {
     private final Path baseDir;
 
     /**
-     * 处理Sandboxed Fs Service相关逻辑。
+     * 处理Sandboxed Fs Service。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param baseDir base Dir参数。
+     * @param sandboxPolicyService sandbox 策略 Service参数。
+     * @return 方法执行结果。
      */
     public SandboxedFsService(String baseDir, ISandboxPolicyService sandboxPolicyService) {
         this.baseDir = Paths.get(baseDir != null ? baseDir : ".").toAbsolutePath().normalize();
@@ -44,7 +48,9 @@ public class SandboxedFsService implements IFsPort {
     }
 
     /**
-     * 处理policy相关逻辑。
+     * 处理策略。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @return 方法执行结果。
      */
     private SandboxExecutionPolicy policy() {
         return sandboxPolicyService.resolve(new SandboxPolicyRequest(
@@ -57,6 +63,13 @@ public class SandboxedFsService implements IFsPort {
     public String read(String path, int offset, int limit) {
         return delegate.read(path, offset, limit);
     }
+    /**
+     * 写入目标对象。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param path 文件或资源路径。
+     * @param content 内容文本。
+     */
+
 
     @Override
     public void write(String path, String content) {
@@ -83,26 +96,67 @@ public class SandboxedFsService implements IFsPort {
             throw new RuntimeException("Write error: " + e.getMessage(), e);
         }
     }
+    /**
+     * search。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param directory directory参数。
+     * @param pattern pattern参数。
+     * @param maxResults max Results参数。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public List<String> search(String directory, String pattern, int maxResults) {
         return delegate.search(directory, pattern, maxResults);
     }
+    /**
+     * exists。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param path 文件或资源路径。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public boolean exists(String path) {
         return delegate.exists(path);
     }
+    /**
+     * 列出Dir。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param directory directory参数。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public List<DirEntry> listDir(String directory) {
         return delegate.listDir(directory);
     }
+    /**
+     * grep。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param directory directory参数。
+     * @param pattern pattern参数。
+     * @param include include参数。
+     * @param isRegex is Regex参数。
+     * @param maxResults max Results参数。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public List<String> grep(String directory, String pattern, String include, boolean isRegex, int maxResults) {
         return delegate.grep(directory, pattern, include, isRegex, maxResults);
     }
+    /**
+     * 读取Bytes。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param path 文件或资源路径。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public byte[] readBytes(String path) {

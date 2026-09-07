@@ -15,6 +15,8 @@ import org.springframework.stereotype.Service;
  * 2. 将运行句柄登记到内存表；
  * 3. 在运行结束后自动移除句柄。
  *
+ * <p>调用流程：定义工作流 → 启动 → 节点推进 → 事件/状态回写。</p>
+ * <p>示例：工作流按节点顺序执行，每个节点可写回下一步上下文。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -25,7 +27,10 @@ public class WorkflowService implements IWorkflowService {
     private final ConcurrentHashMap<String, WorkflowRun> liveRuns = new ConcurrentHashMap<>();
 
     /**
-     * 处理Workflow Service相关逻辑。
+     * 处理工作流 Service。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param enginePort engine Port参数。
+     * @return 方法执行结果。
      */
     public WorkflowService(IWorkflowEnginePort enginePort) {
         this.enginePort = enginePort;

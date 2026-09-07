@@ -1,6 +1,7 @@
 package cn.xiaofuge.deepseek.harness.infrastructure.adapter.plugin.java;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.StandardWatchEventKinds;
@@ -57,6 +58,13 @@ public final class PluginHotReloader {
         }
         this.listener = reloadListener;
         Path dir = Path.of(installRoot).toAbsolutePath().normalize();
+        try {
+            Files.createDirectories(dir);
+        } catch (IOException exception) {
+            running.set(false);
+            log.error("Plugin hot reloader could not create install directory {}: {}", dir, exception.getMessage(), exception);
+            return;
+        }
         watchThread = new Thread(() -> watchLoop(dir), "plugin-hot-reloader");
         watchThread.setDaemon(true);
         watchThread.start();

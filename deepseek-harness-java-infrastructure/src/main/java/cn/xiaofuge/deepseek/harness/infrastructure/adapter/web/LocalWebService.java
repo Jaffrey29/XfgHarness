@@ -24,6 +24,8 @@ import java.util.regex.Pattern;
  * 2. 抓取页面后提取可读文本；
  * 3. 搜索优先走配置源，未配置时回落到公开搜索页面解析。
  *
+ * <p>调用流程：领域端口 → 基础设施适配器 → 外部系统。</p>
+ * <p>示例：适配器只实现端口契约，业务规则保留在 domain。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -93,6 +95,14 @@ public class LocalWebService implements IWebPort {
                 false
         );
     }
+    /**
+     * fetch。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param url url参数。
+     * @param maxChars max Chars参数。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public FetchResult fetch(String url, int maxChars) {
@@ -155,7 +165,10 @@ public class LocalWebService implements IWebPort {
             "(?is)class=\"[^\"]*result__snippet[^\"]*\"[^>]*>(.*?)</");
 
     /**
-     * 处理extract Title相关逻辑。
+     * 提取 Title。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param html html参数。
+     * @return 方法执行结果。
      */
     private String extractTitle(String html) {
         Matcher m = TITLE_PATTERN.matcher(html);
@@ -166,7 +179,10 @@ public class LocalWebService implements IWebPort {
     }
 
     /**
-     * 处理strip Html相关逻辑。
+     * 处理strip Html。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param html html参数。
+     * @return 方法执行结果。
      */
     private String stripHtml(String html) {
         // 移除脚本和样式块
@@ -180,7 +196,11 @@ public class LocalWebService implements IWebPort {
     }
 
     /**
-     * 处理search With Configured Endpoint相关逻辑。
+     * 搜索 With Configured Endpoint。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param query query参数。
+     * @param maxResults max Results参数。
+     * @return 方法执行结果。
      */
     private SearchResult searchWithConfiguredEndpoint(String query, int maxResults) {
         try {
@@ -207,7 +227,11 @@ public class LocalWebService implements IWebPort {
     }
 
     /**
-     * 处理search With Duck Duck Go相关逻辑。
+     * 搜索 With Duck Duck Go。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param query query参数。
+     * @param maxResults max Results参数。
+     * @return 方法执行结果。
      */
     private SearchResult searchWithDuckDuckGo(String query, int maxResults) {
         try {
@@ -228,7 +252,11 @@ public class LocalWebService implements IWebPort {
     }
 
     /**
-     * 处理parse Search Page相关逻辑。
+     * 解析 搜索 Page。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param html html参数。
+     * @param maxResults max Results参数。
+     * @return 方法执行结果。
      */
     private SearchResult parseSearchPage(String html, int maxResults) {
         List<IWebPort.WebSource> sources = new ArrayList<>();
@@ -264,7 +292,11 @@ public class LocalWebService implements IWebPort {
     }
 
     /**
-     * 处理extract Snippet相关逻辑。
+     * 提取 Snippet。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param html html参数。
+     * @param fromIndex from Index参数。
+     * @return 方法执行结果。
      */
     private String extractSnippet(String html, int fromIndex) {
         int endIndex = Math.min(html.length(), fromIndex + 1200);
@@ -290,7 +322,10 @@ public class LocalWebService implements IWebPort {
     }
 
     /**
-     * 处理decode Search Url相关逻辑。
+     * 处理decode 搜索 URL。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param url URL参数。
+     * @return 方法执行结果。
      */
     private String decodeSearchUrl(String url) {
         try {

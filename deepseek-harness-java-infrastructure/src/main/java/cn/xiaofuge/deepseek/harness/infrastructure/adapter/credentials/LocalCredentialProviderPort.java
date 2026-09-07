@@ -33,7 +33,10 @@ public class LocalCredentialProviderPort implements ICredentialProviderPort {
     private final Map<String, String> envCache = new ConcurrentHashMap<>();
 
     /**
-     * 处理Local Credential Provider Port相关逻辑。
+     * 处理Local 凭证 模型提供方 Port。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param dshHome dsh Home参数。
+     * @return 方法执行结果。
      */
     public LocalCredentialProviderPort(Path dshHome) {
         this.credentialsPath = dshHome.resolve(CREDENTIALS_FILE);
@@ -49,7 +52,8 @@ public class LocalCredentialProviderPort implements ICredentialProviderPort {
 
     
     /**
-     * 处理init相关逻辑。
+     * 处理init。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
      */
     public void init() {
         loadManagedStore();
@@ -76,6 +80,13 @@ public class LocalCredentialProviderPort implements ICredentialProviderPort {
         }
         return Optional.empty();
     }
+    /**
+     * describe。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param ref ref参数。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public CredentialInfoVO describe(CredentialRef ref) {
@@ -98,6 +109,12 @@ public class LocalCredentialProviderPort implements ICredentialProviderPort {
         managedStore.put(ref.value(), value);
         writeCredentialsFile();
     }
+    /**
+     * unset。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param ref ref参数。
+     */
+
 
     @Override
     public void unset(CredentialRef ref) {
@@ -107,7 +124,9 @@ public class LocalCredentialProviderPort implements ICredentialProviderPort {
     }
 
     /**
-     * 处理assert Unshadowed相关逻辑。
+     * 处理assert Unshadowed。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param ref ref参数。
      */
     private void assertUnshadowed(CredentialRef ref) {
         if (System.getenv(ref.value()) != null) {
@@ -150,7 +169,8 @@ public class LocalCredentialProviderPort implements ICredentialProviderPort {
     }
 
     /**
-     * 处理write Credentials File相关逻辑。
+     * 写入 Credentials 文件。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
      */
     private void writeCredentialsFile() {
         try {

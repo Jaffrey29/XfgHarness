@@ -43,7 +43,8 @@ public class ConversationQueryService implements IConversationQueryService {
     private final ISessionEventStore sessionEventStore;
 
     /**
-     * 处理Conversation Query Service相关逻辑。
+     * 初始化会话查询服务。
+     * <p>流程：读取会话仓储和事件日志 → 拼装会话与消息视图。</p>
      */
     public ConversationQueryService(
             IHarnessSessionRepository harnessSessionRepository,
@@ -208,7 +209,10 @@ public class ConversationQueryService implements IConversationQueryService {
     }
 
     /**
-     * 处理to Message相关逻辑。
+     * 转换为 消息。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param event 领域事件。
+     * @return 转换后的目标对象。
      */
     private ConversationMessageVO toMessage(SessionEventEntity event) {
         String role = event.eventType().startsWith("user") ? "user" : "assistant";
@@ -270,7 +274,10 @@ public class ConversationQueryService implements IConversationQueryService {
     }
 
     /**
-     * 处理extract Text相关逻辑。
+     * 提取 Text。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param message 消息内容或对象。
+     * @return 方法执行结果。
      */
     private String extractText(Message message) {
         if (message == null || message.content() == null) return "";
@@ -284,7 +291,11 @@ public class ConversationQueryService implements IConversationQueryService {
     }
 
     /**
-     * 处理abbreviate相关逻辑。
+     * 处理abbreviate。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param text text参数。
+     * @param maxLength max Length参数。
+     * @return 方法执行结果。
      */
     private String abbreviate(String text, int maxLength) {
         if (text == null || text.length() <= maxLength) {

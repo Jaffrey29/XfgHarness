@@ -19,6 +19,8 @@ import java.util.regex.Pattern;
  *
  * 在 Agent 消息策略树中位于 Resolve 和 Dispatch 之间。
  *
+ * <p>调用流程：HTTP/API 门面 → AgentUseCase → AgentMessageFactory → 策略树 → ReactLoopAgent；会话事件写入 SessionEventLog。</p>
+ * <p>示例：调用方传入 agentId、用户消息和可选模型配置，返回助手文本与工具调用结果。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -76,6 +78,14 @@ public class AgentIntentNode extends AbstractAgentMessageNode {
 
     @Override
     public StrategyHandler<SendMessageCommand, AgentMessageDynamicContext, SendMessageResult>
+    /**
+     * 获取Next。
+     * 流程：读取命令 → 执行用例编排 → 返回结果。
+     * @param request 请求对象。
+     * @param ctx ctx参数。
+     * @return 获取到的Next。
+     */
+
     getNext(SendMessageCommand request, AgentMessageDynamicContext ctx) {
         return dispatchNode;
     }

@@ -20,6 +20,8 @@ import org.springframework.stereotype.Service;
  * 2. 依据动作驱动聚合状态机；
  * 3. 将最新快照落盘并返回。
  *
+ * <p>调用流程：应用领域规则 → 更新聚合或值对象 → 发布事件/返回结果。</p>
+ * <p>示例：领域对象只暴露业务语言方法，不直接依赖基础设施。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -30,7 +32,8 @@ public class GoalService implements IGoalQueryService, IGoalCommandService {
     private final int defaultMaxRounds;
 
     /**
-     * 处理Goal Service相关逻辑。
+     * 初始化目标领域服务。
+     * <p>流程：加载目标仓储 → 应用目标状态机 → 写回快照。</p>
      */
     public GoalService(
             IGoalRepository goalRepository,
@@ -44,6 +47,14 @@ public class GoalService implements IGoalQueryService, IGoalCommandService {
     public Optional<GoalSnapshotVO> getGoal(String sessionId) {
         return goalRepository.findBySessionId(sessionId).map(GoalAggregate::toSnapshot);
     }
+    /**
+     * apply。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @param command 命令对象。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public GoalSnapshotVO apply(String sessionId, GoalCommandVO command) {
@@ -70,7 +81,10 @@ public class GoalService implements IGoalQueryService, IGoalCommandService {
     }
 
     /**
-     * 处理normalize相关逻辑。
+     * 规范化目标对象。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param command 命令对象。
+     * @return 方法执行结果。
      */
     private GoalCommandVO normalize(GoalCommandVO command) {
         if (command == null) {
@@ -103,7 +117,10 @@ public class GoalService implements IGoalQueryService, IGoalCommandService {
     }
 
     /**
-     * 处理trim To Null相关逻辑。
+     * 处理trim To Null。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param value 参数值。
+     * @return 方法执行结果。
      */
     private static String trimToNull(String value) {
         if (value == null) {

@@ -6,6 +6,8 @@ import cn.xiaofuge.deepseek.harness.domain.task.queue.model.valobj.QueuedTaskRes
 /**
  * Owns queued-task lifecycle behavior.
  *
+ * <p>调用流程：提交 → 权限评估 → 审批 → 队列 → 执行 → 状态回写。</p>
+ * <p>示例：需要审批的命令先挂起，批准后进入执行队列。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */

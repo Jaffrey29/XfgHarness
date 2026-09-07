@@ -32,7 +32,10 @@ public sealed interface Phase
             AtomicBoolean wakeRequested
     ) implements Phase {
         /**
-         * 处理Maintenance相关逻辑。
+         * 处理Maintenance。
+         * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+         * @param lastTurn last Turn参数。
+         * @return 方法执行结果。
          */
         public Maintenance(long lastTurn) {
             this(new AtomicBoolean(false), lastTurn, new AtomicBoolean(false));

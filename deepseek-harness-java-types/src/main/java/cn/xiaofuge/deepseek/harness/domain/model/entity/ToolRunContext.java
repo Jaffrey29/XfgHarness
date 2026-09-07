@@ -25,7 +25,8 @@ public final class ToolRunContext {
     private final AtomicBoolean turnConcluded = new AtomicBoolean(false);
 
     /**
-     * 处理Tool Run Context相关逻辑。
+     * 创建工具执行上下文。
+     * @param execution 工具执行定义。
      */
     public ToolRunContext(ToolExecution execution) {
         this.execution = execution;

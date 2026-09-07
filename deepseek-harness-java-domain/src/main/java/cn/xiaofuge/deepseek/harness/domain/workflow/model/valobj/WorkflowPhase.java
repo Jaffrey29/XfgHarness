@@ -15,6 +15,8 @@ import java.util.Optional;
  * @param provider 提供方覆盖信息
  * @param model 模型覆盖信息
  *
+ * <p>调用流程：定义工作流 → 启动 → 节点推进 → 事件/状态回写。</p>
+ * <p>示例：工作流按节点顺序执行，每个节点可写回下一步上下文。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */

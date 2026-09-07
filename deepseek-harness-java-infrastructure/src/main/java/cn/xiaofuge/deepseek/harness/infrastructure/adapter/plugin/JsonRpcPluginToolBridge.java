@@ -63,6 +63,13 @@ public class JsonRpcPluginToolBridge implements IPluginToolBridge {
             }
         });
     }
+    /**
+     * disconnect。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param pluginId 插件 ID。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public CompletableFuture<Void> disconnect(String pluginId) {
@@ -74,12 +81,26 @@ public class JsonRpcPluginToolBridge implements IPluginToolBridge {
             }
         });
     }
+    /**
+     * 判断当前状态是否满足条件。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param pluginId 插件 ID。
+     * @return 布尔结果：满足条件为 true，否则 false。
+     */
+
 
     @Override
     public boolean isConnected(String pluginId) {
         PluginConnection conn = connections.get(pluginId);
         return conn != null && conn.isConnected();
     }
+    /**
+     * 列出Tools。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param pluginId 插件 ID。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public CompletableFuture<List<PluginToolDescriptor>> listTools(String pluginId) {
@@ -99,6 +120,16 @@ public class JsonRpcPluginToolBridge implements IPluginToolBridge {
                     return tools;
                 });
     }
+    /**
+     * call Tool。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param pluginId 插件 ID。
+     * @param toolName tool Name参数。
+     * @param Map<String Map String参数。
+     * @param arguments arguments参数。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public CompletableFuture<PluginToolResult> callTool(String pluginId, String toolName, Map<String, Object> arguments) {
@@ -217,7 +248,8 @@ public class JsonRpcPluginToolBridge implements IPluginToolBridge {
         }
 
         /**
-         * 处理plugin Id相关逻辑。
+         * 处理插件 ID。
+         * @return 方法执行结果。
          */
         private String pluginId() {
             // Best-effort identification for thread name
@@ -225,7 +257,8 @@ public class JsonRpcPluginToolBridge implements IPluginToolBridge {
         }
 
         /**
-         * 处理read Loop相关逻辑。
+         * 读取 Loop。
+         * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
          */
         private void readLoop() {
             try {

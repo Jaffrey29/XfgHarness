@@ -8,13 +8,16 @@ import java.util.Map;
  * spawned subprocess using the Claude Code CLI. Corresponds to TS
  * {@code subagent-claude-code}.
  *
+ * <p>调用流程：领域端口 → 基础设施适配器 → 外部系统。</p>
+ * <p>示例：适配器只实现端口契约，业务规则保留在 domain。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
 public class ClaudeCodeSubagentProvider extends OutOfProcessSubagentProvider {
 
     /**
-     * 处理Claude Code Subagent Provider相关逻辑。
+     * 初始化 Claude Code 子智能体提供者。
+     * <p>流程：配置子进程命令和工作目录 → 通过外部进程执行任务。</p>
      */
     public ClaudeCodeSubagentProvider(String command, List<String> args, String cwd,
                                       Map<String, String> env, long timeoutMs) {

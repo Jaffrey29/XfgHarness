@@ -16,6 +16,8 @@ import org.springframework.stereotype.Component;
 /**
  * Resolves execution plans for both Java-native and Node-bridge plugins.
  *
+ * <p>调用流程：领域端口 → 基础设施适配器 → 外部系统。</p>
+ * <p>示例：适配器只实现端口契约，业务规则保留在 domain。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -26,7 +28,8 @@ public class PluginRuntimeBridgePort implements IPluginRuntimeBridgePort {
     private final JavaPluginRuntimeManager javaPluginRuntimeManager;
 
     /**
-     * 处理Plugin Runtime Bridge Port相关逻辑。
+     * 初始化插件运行时桥接端口。
+     * <p>流程：适配插件协议 → 转换工具调用 → 回传执行结果。</p>
      */
     public PluginRuntimeBridgePort(
             PluginManifestGatewayService pluginManifestGatewayService,
@@ -58,7 +61,11 @@ public class PluginRuntimeBridgePort implements IPluginRuntimeBridgePort {
     }
 
     /**
-     * 处理inspect Java Native相关逻辑。
+     * 检查 Java Native。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param plugin 插件参数。
+     * @param sourcePath 源码或制品路径。
+     * @return 方法执行结果。
      */
     private PluginBridgePlanVO inspectJavaNative(HarnessPluginEntity plugin, Path sourcePath) {
         Optional<Path> jarPath = javaPluginRuntimeManager.resolveJarPath(
@@ -92,7 +99,11 @@ public class PluginRuntimeBridgePort implements IPluginRuntimeBridgePort {
     }
 
     /**
-     * 处理inspect Node Bridge相关逻辑。
+     * 检查 Node Bridge。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param plugin 插件参数。
+     * @param sourcePath 源码或制品路径。
+     * @return 方法执行结果。
      */
     private PluginBridgePlanVO inspectNodeBridge(HarnessPluginEntity plugin, Path sourcePath) {
         Path codexManifestPath = sourcePath.resolve(".codex-plugin/plugin.json");
@@ -129,7 +140,12 @@ public class PluginRuntimeBridgePort implements IPluginRuntimeBridgePort {
     }
 
     /**
-     * 处理inspect Codex Plugin相关逻辑。
+     * 检查 Codex 插件。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param plugin 插件参数。
+     * @param sourcePath 源码或制品路径。
+     * @param codexManifestPath codex 清单 路径参数。
+     * @return 方法执行结果。
      */
     private PluginBridgePlanVO inspectCodexPlugin(HarnessPluginEntity plugin, Path sourcePath, Path codexManifestPath) {
         Optional<Map<String, Object>> manifest = pluginManifestGatewayService.readJson(codexManifestPath);
@@ -148,7 +164,13 @@ public class PluginRuntimeBridgePort implements IPluginRuntimeBridgePort {
     }
 
     /**
-     * 处理inspect Dsh Package相关逻辑。
+     * 检查 Dsh Package。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param plugin 插件参数。
+     * @param sourcePath 源码或制品路径。
+     * @param packageJsonPath package JSON 路径参数。
+     * @param cordisPath cordis 路径参数。
+     * @return 方法执行结果。
      */
     private PluginBridgePlanVO inspectDshPackage(HarnessPluginEntity plugin, Path sourcePath, Path packageJsonPath, Path cordisPath) {
         Map<String, Object> manifest = pluginManifestGatewayService.readJson(packageJsonPath)

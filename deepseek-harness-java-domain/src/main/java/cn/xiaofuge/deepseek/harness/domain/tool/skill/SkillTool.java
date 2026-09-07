@@ -37,7 +37,11 @@ public class SkillTool implements ToolDefinition {
     private final String cwd;
 
     /**
-     * 处理Skill Tool相关逻辑。
+     * 处理Skill 工具。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param skillService skill Service参数。
+     * @param cwd 工作目录。
+     * @return 方法执行结果。
      */
     public SkillTool(ISkillService skillService, String cwd) {
         this.skillService = skillService;
@@ -61,6 +65,12 @@ public class SkillTool implements ToolDefinition {
                 "required", List.of("name")
         );
     }
+    /**
+     * 返回 output Schema。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public Map<String, Object> outputSchema() {
@@ -75,6 +85,14 @@ public class SkillTool implements ToolDefinition {
     }
 
     @Override
+    /**
+     * 执行工具调用。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @param ctx ctx参数。
+     * @return 方法执行结果。
+     */
+
     @SuppressWarnings("unchecked")
     public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext ctx) {
         Map<String, Object> argMap = args instanceof Map ? (Map<String, Object>) args : Map.of();
@@ -98,6 +116,13 @@ public class SkillTool implements ToolDefinition {
         List<ContentBlock> content = List.of(new TextBlock(body));
         return CompletableFuture.completedFuture(ToolExecutionResult.ok(content));
     }
+    /**
+     * 判断当前状态是否满足条件。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @return 布尔结果：满足条件为 true，否则 false。
+     */
+
 
     @Override
     public boolean isConcurrencySafe(Object args) { return true; }

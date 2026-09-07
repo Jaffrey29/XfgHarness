@@ -45,6 +45,13 @@ public class PersistingSessionLog extends SessionLog {
         store.append(sessionId(), appended);
         return appended;
     }
+    /**
+     * 追加Batch。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param batch batch参数。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public synchronized List<SessionEvent> appendBatch(List<SessionEvent> batch) {

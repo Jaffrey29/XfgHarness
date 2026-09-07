@@ -17,6 +17,8 @@ import org.springframework.stereotype.Component;
  * Adapts plugin process lifecycle calls to either the Java in-process runtime
  * (for JAVA_NATIVE plugins) or the Node sidecar gateway (for DSH_NODE_BRIDGE).
  *
+ * <p>调用流程：领域端口 → 基础设施适配器 → 外部系统。</p>
+ * <p>示例：适配器只实现端口契约，业务规则保留在 domain。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -28,7 +30,8 @@ public class PluginProcessPort implements IPluginProcessPort {
     private final PluginToolBridgeService pluginToolBridgeService;
 
     /**
-     * 处理Plugin Process Port相关逻辑。
+     * 初始化插件进程端口。
+     * <p>流程：定位插件入口 → 启动/停止子进程 → 回传状态。</p>
      */
     public PluginProcessPort(
             PluginSidecarGatewayService pluginSidecarGatewayService,
@@ -56,6 +59,13 @@ public class PluginProcessPort implements IPluginProcessPort {
         }
         return result;
     }
+    /**
+     * 返回 status。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param pluginId 插件 ID。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public PluginProcessStatusVO status(String pluginId) {
@@ -68,6 +78,13 @@ public class PluginProcessPort implements IPluginProcessPort {
         if (nodeStatus.running()) return nodeStatus;
         return new PluginProcessStatusVO(pluginId, null, false, null, null, null, javaStatus.message());
     }
+    /**
+     * 停止目标对象。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param pluginId 插件 ID。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public PluginProcessStatusVO stop(String pluginId) {
@@ -81,7 +98,11 @@ public class PluginProcessPort implements IPluginProcessPort {
     }
 
     /**
-     * 处理start Java Plugin相关逻辑。
+     * 启动 Java 插件。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param plugin 插件参数。
+     * @param plan 计划参数。
+     * @return 方法执行结果。
      */
     private PluginRunResultVO startJavaPlugin(HarnessPluginEntity plugin, PluginBridgePlanVO plan) {
         Path jarPath = Path.of(plan.entrypointPath());

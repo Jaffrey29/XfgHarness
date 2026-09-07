@@ -12,6 +12,8 @@ import java.util.concurrent.CompletableFuture;
  * 继承 {@link AbstractTool}，实现 name/description/parameters/run 即可。
  * 参数读取用 {@code str/dbl/intVal/bool}，结果用 {@code ok/fail}。
  *
+ * <p>调用流程：接收输入 → 执行本类职责 → 返回结果。</p>
+ * <p>示例：根据调用方传入参数完成一次独立操作。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -26,6 +28,12 @@ public class ExampleTool extends AbstractTool {
     public String description() {
         return "Echoes back the provided text.";
     }
+    /**
+     * 返回 parameters。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public Map<String, Object> parameters() {
@@ -34,6 +42,15 @@ public class ExampleTool extends AbstractTool {
                 .required("text")
                 .build();
     }
+    /**
+     * 运行目标对象。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param Map<String Map String参数。
+     * @param args 启动参数。
+     * @param ctx ctx参数。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     protected CompletableFuture<ToolExecutionResult> run(Map<String, Object> args, ToolRunContext ctx) {

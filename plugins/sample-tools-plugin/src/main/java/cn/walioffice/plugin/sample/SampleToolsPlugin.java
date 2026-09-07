@@ -17,6 +17,8 @@ import org.slf4j.LoggerFactory;
  * 继承 {@link AbstractHarnessPlugin}，只需传 pluginId 并实现 {@link #tools()}。
  * 通过 application.yml preset 预装，启动即可用。
  *
+ * <p>调用流程：接收输入 → 执行本类职责 → 返回结果。</p>
+ * <p>示例：根据调用方传入参数完成一次独立操作。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -34,6 +36,12 @@ public class SampleToolsPlugin extends AbstractHarnessPlugin {
     public List<ToolDefinition> tools() {
         return List.of(new WeatherQueryTool(), new FileSummaryTool());
     }
+    /**
+     * configure。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param context 上下文对象。
+     */
+
 
     @Override
     public void configure(PluginContext context) {

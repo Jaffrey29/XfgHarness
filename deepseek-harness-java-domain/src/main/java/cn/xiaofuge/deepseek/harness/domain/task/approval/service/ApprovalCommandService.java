@@ -20,7 +20,8 @@ public class ApprovalCommandService implements IApprovalCommandService {
     private final IHarnessExecutionService harnessExecutionService;
 
     /**
-     * 处理Approval Command Service相关逻辑。
+     * 初始化审批命令服务。
+     * <p>流程：接收批准/拒绝命令 → 更新审批状态 → 通知任务执行。</p>
      */
     public ApprovalCommandService(
             IHarnessSessionRepository harnessSessionRepository,

@@ -37,16 +37,36 @@ public class InMemoryToolRegistry implements ToolRegistry {
         disposers.put(name, disposer);
         return disposer;
     }
+    /**
+     * lookup。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param name 名称。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public Optional<ToolDefinition> lookup(String name) {
         return Optional.ofNullable(tools.get(name));
     }
+    /**
+     * all。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public Collection<ToolDefinition> all() {
         return tools.values();
     }
+    /**
+     * execution Mode。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param exec exec参数。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public ToolExecutionMode executionMode(ToolExecutionInput exec) {

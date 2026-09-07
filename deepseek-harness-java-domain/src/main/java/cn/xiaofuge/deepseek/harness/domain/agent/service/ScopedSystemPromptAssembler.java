@@ -42,7 +42,12 @@ public class ScopedSystemPromptAssembler implements SystemPromptAssembler {
     private final List<String> toolOrder;
 
     /**
-     * 处理Scoped System Prompt Assembler相关逻辑。
+     * 处理Scoped System 提示词 Assembler。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param harnessIdentity harness Identity参数。
+     * @param persona persona参数。
+     * @param toolOrder 工具 Order参数。
+     * @return 方法执行结果。
      */
     public ScopedSystemPromptAssembler(String harnessIdentity, String persona, List<String> toolOrder) {
         this.harnessIdentity = harnessIdentity != null ? harnessIdentity
@@ -63,42 +68,57 @@ public class ScopedSystemPromptAssembler implements SystemPromptAssembler {
     // ── Registration API ─────────────────────────────────────────
 
     /**
-     * 处理register Section相关逻辑。
+     * 注册 Section。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param section section参数。
      */
     public synchronized void registerSection(PromptSection section) {
         sections.put(section.name(), section);
     }
 
     /**
-     * 处理remove Section相关逻辑。
+     * 移除 Section。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param name 名称。
      */
     public synchronized void removeSection(String name) {
         sections.remove(name);
     }
 
     /**
-     * 处理register Context相关逻辑。
+     * 注册 上下文。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param context 上下文对象。
      */
     public synchronized void registerContext(PromptContext context) {
         contexts.put(context.name(), context);
     }
 
     /**
-     * 处理remove Context相关逻辑。
+     * 移除 上下文。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param name 名称。
      */
     public synchronized void removeContext(String name) {
         contexts.remove(name);
     }
 
     /**
-     * 处理register Tool Provider相关逻辑。
+     * 注册 工具 模型提供方。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param Function<AssembleContext Function Assemble 上下文参数。
+     * @param provider 模型提供方。
      */
     public synchronized void registerToolProvider(Function<AssembleContext, ToolProviderResult> provider) {
         toolProviders.add(provider);
     }
 
     /**
-     * 处理register Variable相关逻辑。
+     * 注册 Variable。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param name 名称。
+     * @param Function<AssembleContext Function Assemble 上下文参数。
+     * @param provider 模型提供方。
      */
     public synchronized void registerVariable(String name, Function<AssembleContext, String> provider) {
         if (!isValidVariableName(name)) {
@@ -108,7 +128,8 @@ public class ScopedSystemPromptAssembler implements SystemPromptAssembler {
     }
 
     /**
-     * 处理suppress Runtime Context相关逻辑。
+     * 处理suppress 运行时 上下文。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
      */
     public synchronized void suppressRuntimeContext() {
         runtimeContextSuppressors.add(() -> {});
@@ -226,14 +247,26 @@ public class ScopedSystemPromptAssembler implements SystemPromptAssembler {
     }
 
     /**
-     * 处理interpolate相关逻辑。
+     * 插值目标对象。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param input 输入内容。
+     * @param Map<String 映射 String参数。
+     * @param variables variables参数。
+     * @return 方法执行结果。
      */
     private static String interpolate(AssembledContext input, Map<String, String> variables) {
         return doInterpolate(input.text(), variables, "context", input.name());
     }
 
     /**
-     * 处理do Interpolate相关逻辑。
+     * 处理do Interpolate。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param text text参数。
+     * @param Map<String 映射 String参数。
+     * @param variables variables参数。
+     * @param kind kind参数。
+     * @param name 名称。
+     * @return 方法执行结果。
      */
     private static String doInterpolate(String text, Map<String, String> variables, String kind, String name) {
         if (text == null || text.isEmpty()) return "";
@@ -273,7 +306,10 @@ public class ScopedSystemPromptAssembler implements SystemPromptAssembler {
     private static final String TOOL_ORDER_REST = "<unlisted-tools>";
 
     /**
-     * 处理order Tools相关逻辑。
+     * 处理order Tools。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param tools 工具列表。
+     * @return 方法执行结果。
      */
     private List<ToolSchema> orderTools(List<ToolSchema> tools) {
         if (toolOrder == null || toolOrder.isEmpty()) {
@@ -314,13 +350,23 @@ public class ScopedSystemPromptAssembler implements SystemPromptAssembler {
             boolean complete
     ) {
         /**
-         * 处理Prompt Section相关逻辑。
+         * 发起提示词 Section。
+         * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+         * @param name 名称。
+         * @param order 排序规则。
+         * @param text text参数。
+         * @return 方法执行结果。
          */
         public PromptSection(String name, int order, String text) {
             this(name, order, text, false);
         }
         /**
-         * 处理Prompt Section相关逻辑。
+         * 发起提示词 Section。
+         * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+         * @param name 名称。
+         * @param order 排序规则。
+         * @param text text参数。
+         * @return 方法执行结果。
          */
         public PromptSection(String name, int order, Object text) {
             this(name, order, text, false);
@@ -346,7 +392,10 @@ public class ScopedSystemPromptAssembler implements SystemPromptAssembler {
             List<String> knownNames
     ) {
         /**
-         * 处理Tool Provider Result相关逻辑。
+         * 转换为 ol 模型提供方 结果。
+         * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+         * @param schemas schemas参数。
+         * @return 方法执行结果。
          */
         public ToolProviderResult(List<ToolSchema> schemas) {
             this(schemas, schemas.stream().map(ToolSchema::name).toList());

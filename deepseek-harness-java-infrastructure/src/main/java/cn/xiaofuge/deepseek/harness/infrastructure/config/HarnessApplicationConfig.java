@@ -91,6 +91,8 @@ import org.springframework.context.annotation.Configuration;
  * 2. 按功能域装配各类 Bean；
  * 3. 为触发层和用例层提供统一注入入口。
  *
+ * <p>调用流程：领域端口 → 基础设施适配器 → 外部系统。</p>
+ * <p>示例：适配器只实现端口契约，业务规则保留在 domain。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -108,6 +110,13 @@ public class HarnessApplicationConfig {
     }
 
     // ── 大模型层 Bean ───────────────────────────────────────
+    /**
+     * llm Runtime Port。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param adapterList adapter List参数。
+     * @return 方法执行结果。
+     */
+
 
     @Bean
     public ILlmRuntimePort llmRuntimePort(List<LlmAdapter> adapterList) {
@@ -139,6 +148,13 @@ public class HarnessApplicationConfig {
                 DeepSeekAdapter.DEFAULT_STREAM_IDLE_TIMEOUT_MS, models, retryPolicy);
         return new DeepSeekAdapter(options, objectMapper);
     }
+    /**
+     * openai Adapter。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param objectMapper object Mapper参数。
+     * @return 方法执行结果。
+     */
+
 
     @Bean
     public OpenAiCompatibleAdapter openaiAdapter(ObjectMapper objectMapper) {
@@ -149,6 +165,13 @@ public class HarnessApplicationConfig {
                 List.of(), null);
         return new OpenAiCompatibleAdapter("openai", options, objectMapper);
     }
+    /**
+     * ollama Adapter。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param objectMapper object Mapper参数。
+     * @return 方法执行结果。
+     */
+
 
     @Bean
     public OpenAiCompatibleAdapter ollamaAdapter(ObjectMapper objectMapper) {
@@ -161,11 +184,23 @@ public class HarnessApplicationConfig {
     }
 
     // ── 智能体层 Bean ─────────────────────────────────────
+    /**
+     * 转换为ol Registry。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @return 转换后的目标对象。
+     */
+
 
     @Bean
     public ToolRegistry toolRegistry() {
         return new InMemoryToolRegistry();
     }
+    /**
+     * system Prompt Assembler。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Bean
     public SystemPromptAssembler systemPromptAssembler() {
@@ -216,6 +251,14 @@ public class HarnessApplicationConfig {
         ));
         return assembler;
     }
+    /**
+     * agent Factory Subagent Init。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param subagentRegistry subagent Registry参数。
+     * @param agentFactory agent Factory参数。
+     * @return 方法执行结果。
+     */
+
 
     @Bean
     public Object agentFactorySubagentInit(
@@ -233,6 +276,12 @@ public class HarnessApplicationConfig {
         subagentRegistry.register(spawn);
         return spawn;
     }
+    /**
+     * user Questions Port。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Bean
     public InMemoryUserQuestionsPort userQuestionsPort() {
@@ -286,6 +335,25 @@ public class HarnessApplicationConfig {
         }
         return new LocalWebService();
     }
+    /**
+     * agent Factory。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param llmRuntimePort llm Runtime Port参数。
+     * @param toolRegistry tool Registry参数。
+     * @param systemPromptAssembler system Prompt Assembler参数。
+     * @param userQuestionsPort user Questions Port参数。
+     * @param shellExecutor shell Executor参数。
+     * @param fsService fs Service参数。
+     * @param webService web Service参数。
+     * @param planModeService plan Mode Service参数。
+     * @param todoWriteService todo Write Service参数。
+     * @param subagentRegistry subagent Registry参数。
+     * @param hookService hook Service参数。
+     * @param objectMapper object Mapper参数。
+     * @param sessionEventStore session Event Store参数。
+     * @return 方法执行结果。
+     */
+
 
     @Bean
     public AgentFactory agentFactory(
@@ -353,6 +421,12 @@ public class HarnessApplicationConfig {
     }
 
     // ── 调度层 ───────────────────────────────────────────
+    /**
+     * schedule Repository。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Bean
     public IScheduleRepository scheduleRepository() {
@@ -360,6 +434,12 @@ public class HarnessApplicationConfig {
     }
 
     // ── 任务层 ───────────────────────────────────────────────
+    /**
+     * job Registry Repository。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Bean
     public IJobRegistryRepository jobRegistryRepository() {
@@ -367,6 +447,12 @@ public class HarnessApplicationConfig {
     }
 
     // ── 钩子层 ──────────────────────────────────────────────
+    /**
+     * hook Runner Port。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Bean
     public IHookRunnerPort hookRunnerPort() {
@@ -385,6 +471,12 @@ public class HarnessApplicationConfig {
     // ── LSP 层 ────────────────────────────────────────────────
 
     // ── 代码运行时层 ───────────────────────────────────────
+    /**
+     * code Runtime Port。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Bean
     public ICodeRuntimePort codeRuntimePort() {
@@ -431,6 +523,12 @@ public class HarnessApplicationConfig {
     }
 
     // ── 工作流层 ───────────────────────────────────────────
+    /**
+     * workflow Engine Port。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Bean
     public IWorkflowEnginePort workflowEnginePort() {
@@ -438,11 +536,24 @@ public class HarnessApplicationConfig {
     }
 
     // ── Typert 层 ─────────────────────────────────────────────
+    /**
+     * typert Registry Contract。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Bean
     public ITypertRegistryContract typertRegistryContract() {
         return new InMemoryTypertRegistry();
     }
+    /**
+     * typert Protocol Loader。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param objectMapper object Mapper参数。
+     * @return 方法执行结果。
+     */
+
 
     @Bean
     public TypertProtocolLoader typertProtocolLoader(ObjectMapper objectMapper) {

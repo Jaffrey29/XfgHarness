@@ -22,6 +22,8 @@ import java.util.concurrent.CompletableFuture;
  * <p>
  * Mirrors TS {@code read_image}.
  *
+ * <p>调用流程：Agent 发起 tool call → ToolRegistry 查找工具 → Guard 校验 → ToolExecutor 执行 → 结果回填。</p>
+ * <p>示例：工具名 fs_read 与 JSON 参数先经过校验，再生成 ToolExecutionResult。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -37,7 +39,10 @@ public class FsReadImageTool implements ToolDefinition {
     private final IFsPort fsService;
 
     /**
-     * 处理Fs Read Image Tool相关逻辑。
+     * 处理Fs Read Image 工具。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param fsService fs Service参数。
+     * @return 方法执行结果。
      */
     public FsReadImageTool(IFsPort fsService) {
         this.fsService = fsService;
@@ -60,6 +65,12 @@ public class FsReadImageTool implements ToolDefinition {
                 "required", List.of("path")
         );
     }
+    /**
+     * 返回 output Schema。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public Map<String, Object> outputSchema() {
@@ -75,6 +86,14 @@ public class FsReadImageTool implements ToolDefinition {
     }
 
     @Override
+    /**
+     * 执行工具调用。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @param ctx ctx参数。
+     * @return 方法执行结果。
+     */
+
     @SuppressWarnings("unchecked")
     public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext ctx) {
         try {
@@ -118,12 +137,22 @@ public class FsReadImageTool implements ToolDefinition {
                     ToolExecutionResult.fail("fs_read_image failed: " + e.getMessage(), "EXECUTION_ERROR"));
         }
     }
+    /**
+     * 判断当前状态是否满足条件。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @return 布尔结果：满足条件为 true，否则 false。
+     */
+
 
     @Override
     public boolean isConcurrencySafe(Object args) { return true; }
 
     /**
-     * 处理mime Type Of相关逻辑。
+     * 处理mime 类型 Of。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param path 文件或资源路径。
+     * @return 方法执行结果。
      */
     private static String mimeTypeOf(String path) {
         String n = path.toLowerCase(Locale.ROOT);
@@ -177,19 +206,35 @@ public class FsReadImageTool implements ToolDefinition {
     }
 
     /**
-     * 处理be16相关逻辑。
+     * 处理be16。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param d d参数。
+     * @param o o参数。
+     * @return 方法执行结果。
      */
     private static int be16(byte[] d, int o) { return ((d[o] & 0xFF) << 8) | (d[o + 1] & 0xFF); }
     /**
-     * 处理be32相关逻辑。
+     * 处理be32。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param d d参数。
+     * @param o o参数。
+     * @return 方法执行结果。
      */
     private static int be32(byte[] d, int o) { return (be16(d, o) << 16) | be16(d, o + 2); }
     /**
-     * 处理le16相关逻辑。
+     * 处理le16。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param d d参数。
+     * @param o o参数。
+     * @return 方法执行结果。
      */
     private static int le16(byte[] d, int o) { return (d[o] & 0xFF) | ((d[o + 1] & 0xFF) << 8); }
     /**
-     * 处理le32相关逻辑。
+     * 处理le32。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param d d参数。
+     * @param o o参数。
+     * @return 方法执行结果。
      */
     private static int le32(byte[] d, int o) { return le16(d, o) | (le16(d, o + 2) << 16); }
 }

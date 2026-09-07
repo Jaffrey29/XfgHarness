@@ -21,6 +21,8 @@ import java.util.concurrent.CompletableFuture;
  * <p>
  * Mirrors TS {@code tool-session-query}（简化为单工具两模式）。
  *
+ * <p>调用流程：Agent 发起 tool call → ToolRegistry 查找工具 → Guard 校验 → ToolExecutor 执行 → 结果回填。</p>
+ * <p>示例：工具名 fs_read 与 JSON 参数先经过校验，再生成 ToolExecutionResult。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -32,7 +34,10 @@ public class SessionSearchTool implements ToolDefinition {
     private final IConversationQueryService conversations;
 
     /**
-     * 处理Session Search Tool相关逻辑。
+     * 处理会话 搜索 工具。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param conversations conversations参数。
+     * @return 方法执行结果。
      */
     public SessionSearchTool(IConversationQueryService conversations) {
         this.conversations = conversations;
@@ -45,6 +50,12 @@ public class SessionSearchTool implements ToolDefinition {
         return "Search past conversation sessions. Without 'query', lists recent sessions. " +
                 "With 'query', finds sessions whose messages contain the text and shows matching snippets.";
     }
+    /**
+     * 返回 parameters。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public Map<String, Object> parameters() {
@@ -61,6 +72,14 @@ public class SessionSearchTool implements ToolDefinition {
     }
 
     @Override
+    /**
+     * 执行工具调用。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @param ctx ctx参数。
+     * @return 方法执行结果。
+     */
+
     @SuppressWarnings("unchecked")
     public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext ctx) {
         try {
@@ -126,6 +145,13 @@ public class SessionSearchTool implements ToolDefinition {
                     ToolExecutionResult.fail("session_search failed: " + e.getMessage(), "EXECUTION_ERROR"));
         }
     }
+    /**
+     * 判断当前状态是否满足条件。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @return 布尔结果：满足条件为 true，否则 false。
+     */
+
 
     @Override
     public boolean isConcurrencySafe(Object args) { return true; }

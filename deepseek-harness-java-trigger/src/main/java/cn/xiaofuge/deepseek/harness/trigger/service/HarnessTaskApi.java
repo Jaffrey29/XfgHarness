@@ -27,7 +27,10 @@ public class HarnessTaskApi implements IHarnessTaskApi {
     private final ISubmitHarnessTaskCase submitHarnessTaskCase;
 
     /**
-     * 处理Harness Task Api相关逻辑。
+     * 处理Harness 任务 API。
+     * 流程：转换协议 → 调用应用门面 → 返回结果。
+     * @param submitHarnessTaskCase submit Harness 任务 Case参数。
+     * @return 方法执行结果。
      */
     public HarnessTaskApi(ISubmitHarnessTaskCase submitHarnessTaskCase) {
         this.submitHarnessTaskCase = submitHarnessTaskCase;
@@ -43,7 +46,10 @@ public class HarnessTaskApi implements IHarnessTaskApi {
     // ── DTO ↔ Command 映射 ───────────────────────────────────────
 
     /**
-     * 处理to Command相关逻辑。
+     * 转换为 命令。
+     * 流程：转换协议 → 调用应用门面 → 返回结果。
+     * @param request 请求对象。
+     * @return 转换后的目标对象。
      */
     private SubmitTaskCommand toCommand(SubmitTaskRequest request) {
         return new SubmitTaskCommand(
@@ -55,7 +61,10 @@ public class HarnessTaskApi implements IHarnessTaskApi {
     }
 
     /**
-     * 处理to Response相关逻辑。
+     * 转换为 响应。
+     * 流程：转换协议 → 调用应用门面 → 返回结果。
+     * @param result 结果对象。
+     * @return 转换后的目标对象。
      */
     private SubmitTaskResponse toResponse(SubmitTaskResult result) {
         return new SubmitTaskResponse(

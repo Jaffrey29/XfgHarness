@@ -103,13 +103,8 @@ CREATE TABLE IF NOT EXISTS harness_session_event_log (
     KEY idx_harness_session_event_log_session (session_id)
 );
 
-INSERT INTO harness_model_setting (profile_code, provider_code, model_code, base_url, api_key_ref, enabled, updated_at)
-SELECT 'headless', 'deepseek', 'gpt-5.5', 'http://127.0.0.1:8777/v1', 'sk-waliapi-272d9aafb16145e2b25e8a7340a57ada', TRUE, CURRENT_TIMESTAMP
-WHERE NOT EXISTS (SELECT 1 FROM harness_model_setting WHERE profile_code = 'headless');
-
-INSERT INTO harness_model_setting (profile_code, provider_code, model_code, base_url, api_key_ref, enabled, updated_at)
-SELECT 'web', 'deepseek', 'gpt-5.5', 'http://127.0.0.1:8777/v1', 'sk-waliapi-272d9aafb16145e2b25e8a7340a57ada', TRUE, CURRENT_TIMESTAMP
-WHERE NOT EXISTS (SELECT 1 FROM harness_model_setting WHERE profile_code = 'web');
+-- 模型配置的权威来源是本表；默认模型种子由 ModelSyncRunner 按 application.yml 初始化，
+-- 不在 schema 中重复写入可能过期的 base_url、api_key 或模型编码。
 
 -- ── Tool catalog & per-profile bindings ──────────────────────
 CREATE TABLE IF NOT EXISTS harness_tool_catalog (

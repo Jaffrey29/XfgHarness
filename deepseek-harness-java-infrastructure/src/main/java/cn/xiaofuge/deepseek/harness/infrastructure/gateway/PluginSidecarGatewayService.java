@@ -16,6 +16,8 @@ import org.springframework.stereotype.Service;
 /**
  * Starts and tracks local Node plugin processes inside the configured install root.
  *
+ * <p>调用流程：领域端口 → 基础设施适配器 → 外部系统。</p>
+ * <p>示例：适配器只实现端口契约，业务规则保留在 domain。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -27,7 +29,8 @@ public class PluginSidecarGatewayService {
     private final Path installRoot;
 
     /**
-     * 处理Plugin Sidecar Gateway Service相关逻辑。
+     * 初始化 Node sidecar 插件网关。
+     * <p>流程：定位 sidecar 入口 → 启动子进程 → 转发 JSON-RPC 请求。</p>
      */
     public PluginSidecarGatewayService(
             @Value("${harness.plugin.node-bridge-enabled:true}") boolean nodeBridgeEnabled,

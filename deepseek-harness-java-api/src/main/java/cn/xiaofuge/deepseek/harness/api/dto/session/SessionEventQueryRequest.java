@@ -10,6 +10,8 @@ import java.util.List;
  * @param toSeq 结束序列号，包含边界；为空表示直到末尾
  * @param eventTypes 事件类型过滤；为空表示不过滤
  *
+ * <p>调用流程：Controller/DTO → 应用门面 → 用例；响应对象由用例结果转换。</p>
+ * <p>示例：DTO 只做协议隔离，不承载领域规则。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */

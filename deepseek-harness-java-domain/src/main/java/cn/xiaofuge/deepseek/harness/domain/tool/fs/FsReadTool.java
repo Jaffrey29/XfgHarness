@@ -19,6 +19,8 @@ import java.util.concurrent.CompletableFuture;
  * 2. 读取文件内容并转成 UTF-8 文本；
  * 3. 将结果返回给调用方。
  *
+ * <p>调用流程：Agent 发起 tool call → ToolRegistry 查找工具 → Guard 校验 → ToolExecutor 执行 → 结果回填。</p>
+ * <p>示例：工具名 fs_read 与 JSON 参数先经过校验，再生成 ToolExecutionResult。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -35,7 +37,10 @@ public class FsReadTool implements ToolDefinition {
     private final IFsPort fsService;
 
     /**
-     * 处理Fs Read Tool相关逻辑。
+     * 处理Fs Read 工具。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param fsService fs Service参数。
+     * @return 方法执行结果。
      */
     public FsReadTool(IFsPort fsService) {
         this.fsService = fsService;
@@ -66,6 +71,12 @@ public class FsReadTool implements ToolDefinition {
                 "required", List.of("path")
         );
     }
+    /**
+     * 返回 output Schema。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public Map<String, Object> outputSchema() {
@@ -81,6 +92,14 @@ public class FsReadTool implements ToolDefinition {
     }
 
     @Override
+    /**
+     * 执行工具调用。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @param ctx ctx参数。
+     * @return 方法执行结果。
+     */
+
     @SuppressWarnings("unchecked")
     public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext ctx) {
         try {
@@ -109,6 +128,13 @@ public class FsReadTool implements ToolDefinition {
                     ToolExecutionResult.fail("fs_read failed: " + e.getMessage(), "EXECUTION_ERROR"));
         }
     }
+    /**
+     * 判断当前状态是否满足条件。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @return 布尔结果：满足条件为 true，否则 false。
+     */
+
 
     @Override
     public boolean isConcurrencySafe(Object args) { return true; }

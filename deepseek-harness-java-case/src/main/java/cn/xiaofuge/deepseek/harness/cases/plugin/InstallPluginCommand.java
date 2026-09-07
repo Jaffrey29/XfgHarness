@@ -10,6 +10,8 @@ package cn.xiaofuge.deepseek.harness.cases.plugin;
  * @param sourcePath 插件本地来源路径
  * @param entrypoint 插件入口文件或符号
  *
+ * <p>调用流程：Controller/API → 插件用例 → 领域插件服务 → PluginRuntime/Bridge。</p>
+ * <p>示例：安装插件后先激活，再通过统一工具名调用插件工具。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */

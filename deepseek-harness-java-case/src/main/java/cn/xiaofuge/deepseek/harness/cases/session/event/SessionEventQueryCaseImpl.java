@@ -13,6 +13,8 @@ import java.util.List;
 /**
  * 薄委托到 {@link ISessionEventLogService}。
  *
+ * <p>调用流程：Controller/API → 会话用例 → SessionQueryService/SessionRebuilderService → SessionEventStore。</p>
+ * <p>示例：按 sessionId 查询事件后，可重建完整消息时间线。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -22,7 +24,10 @@ public class SessionEventQueryCaseImpl implements ISessionEventQueryCase {
     private final ISessionEventLogService sessionEventLogService;
 
     /**
-     * 处理Session Event Query Case Impl相关逻辑。
+     * 处理会话 事件 Query Case Impl。
+     * 流程：读取命令 → 执行用例编排 → 返回结果。
+     * @param sessionEventLogService 会话 事件 Log Service参数。
+     * @return 方法执行结果。
      */
     public SessionEventQueryCaseImpl(ISessionEventLogService sessionEventLogService) {
         this.sessionEventLogService = sessionEventLogService;
@@ -56,7 +61,10 @@ public class SessionEventQueryCaseImpl implements ISessionEventQueryCase {
     }
 
     /**
-     * 处理to Map相关逻辑。
+     * 转换为 映射。
+     * 流程：读取命令 → 执行用例编排 → 返回结果。
+     * @param e 异常对象。
+     * @return 转换后的目标对象。
      */
     private java.util.Map<String, Object> toMap(SessionEvent e) {
         java.util.Map<String, Object> m = new LinkedHashMap<>();

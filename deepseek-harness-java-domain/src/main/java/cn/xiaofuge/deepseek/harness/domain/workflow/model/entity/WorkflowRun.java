@@ -12,6 +12,8 @@ import java.util.concurrent.CompletableFuture;
  * 2. 运行过程中可查询结果或发起取消；
  * 3. 运行结束后由句柄负责完成收敛和清理。
  *
+ * <p>调用流程：定义工作流 → 启动 → 节点推进 → 事件/状态回写。</p>
+ * <p>示例：工作流按节点顺序执行，每个节点可写回下一步上下文。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -23,7 +25,12 @@ public class WorkflowRun {
     private volatile boolean cancelled = false;
 
     /**
-     * 处理Workflow Run相关逻辑。
+     * 处理工作流 Run。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param id ID参数。
+     * @param meta meta参数。
+     * @param result 结果对象。
+     * @return 方法执行结果。
      */
     public WorkflowRun(String id, WorkflowMeta meta, CompletableFuture<WorkflowResult> result) {
         this.id = id;
@@ -32,15 +39,20 @@ public class WorkflowRun {
     }
 
     /**
-     * 处理id相关逻辑。
+     * 处理ID。
+     * @return 方法执行结果。
      */
     public String id() { return id; }
     /**
-     * 处理meta相关逻辑。
+     * 处理meta。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
      */
     public WorkflowMeta meta() { return meta; }
     /**
-     * 处理result相关逻辑。
+     * 处理结果。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
      */
     public CompletableFuture<WorkflowResult> result() { return result; }
 

@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory;
  * }
  * }</pre>
  *
- * <h3>完整工程结构</h3>
+ * <p><b>完整工程结构</b></p>
  * <pre>
  * my-plugin/
  * ├── pom.xml                          ← 依赖 types，scope=provided
@@ -71,6 +71,10 @@ public abstract class AbstractHarnessPlugin implements JavaHarnessPlugin {
         log.info("[{}] plugin started", pluginId);
     }
 
+    /**
+     * 插件停止回调，默认空实现。
+     * 子类可在此释放运行时资源。
+     */
     @Override
     public void onStop() {
         log.info("[{}] plugin stopped", pluginId);

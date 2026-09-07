@@ -15,6 +15,8 @@ import java.util.regex.Pattern;
  * Local filesystem skill provider. Discovers directory-bundle and flat Markdown
  * skills from project, custom, and user roots, parses YAML frontmatter.
  *
+ * <p>调用流程：领域端口 → 基础设施适配器 → 外部系统。</p>
+ * <p>示例：适配器只实现端口契约，业务规则保留在 domain。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -30,14 +32,23 @@ public class FilesystemSkillProviderPort implements ISkillProviderPort {
     private final String providerName;
 
     /**
-     * 处理Filesystem Skill Provider Port相关逻辑。
+     * 处理Filesystem Skill 模型提供方 Port。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param dshHome dsh Home参数。
+     * @param bundledDir bundled Dir参数。
+     * @return 方法执行结果。
      */
     public FilesystemSkillProviderPort(Path dshHome, Path bundledDir) {
         this(dshHome, bundledDir, "filesystem");
     }
 
     /**
-     * 处理Filesystem Skill Provider Port相关逻辑。
+     * 处理Filesystem Skill 模型提供方 Port。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param dshHome dsh Home参数。
+     * @param bundledDir bundled Dir参数。
+     * @param providerName 模型提供方 名称参数。
+     * @return 方法执行结果。
      */
     public FilesystemSkillProviderPort(Path dshHome, Path bundledDir, String providerName) {
         this.dshHome = dshHome;
@@ -88,7 +99,12 @@ public class FilesystemSkillProviderPort implements ISkillProviderPort {
     }
 
     /**
-     * 处理discover Root相关逻辑。
+     * 发现 根路径。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param root 根路径。
+     * @param source 消息来源。
+     * @param rank rank参数。
+     * @return 方法执行结果。
      */
     private List<SkillCandidate> discoverRoot(Path root, SkillSource source, int rank) {
         if (!Files.isDirectory(root)) return List.of();
@@ -134,7 +150,10 @@ public class FilesystemSkillProviderPort implements ISkillProviderPort {
     }
 
     /**
-     * 处理parse Skill相关逻辑。
+     * 解析 Skill。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param raw raw参数。
+     * @return 方法执行结果。
      */
     private ParsedSkill parseSkill(String raw) {
         String description = "";

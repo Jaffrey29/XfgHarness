@@ -29,6 +29,8 @@ import org.springframework.stereotype.Service;
  * 2. 合并磁盘上的实际目录；
  * 3. 维护排序文件并对外提供增删改查能力。
  *
+ * <p>调用流程：Controller/DTO → 应用门面 → 用例；响应对象由用例结果转换。</p>
+ * <p>示例：DTO 只做协议隔离，不承载领域规则。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -41,7 +43,8 @@ public class WorkspaceRegistryService {
     private final String workspaceRoot;
 
     /**
-     * 处理Workspace Registry Service相关逻辑。
+     * 初始化工作区注册中心。
+     * <p>流程：读取持久化工作区目录 → 建立内存索引 → 对外提供查询和变更。</p>
      */
     public WorkspaceRegistryService(
             @Value("${harness.workspaces:}") String configuredWorkspaces,
@@ -209,7 +212,9 @@ public class WorkspaceRegistryService {
     }
 
     /**
-     * 处理root Path相关逻辑。
+     * 处理根路径 路径。
+     * 流程：转换请求 → 调用用例或领域服务 → 转换响应。
+     * @return 方法执行结果。
      */
     private Path rootPath() {
         return Paths.get(workspaceRoot).toAbsolutePath().normalize();
@@ -223,7 +228,10 @@ public class WorkspaceRegistryService {
     }
 
     /**
-     * 处理safe Name相关逻辑。
+     * 处理safe 名称。
+     * 流程：转换请求 → 调用用例或领域服务 → 转换响应。
+     * @param name 名称。
+     * @return 方法执行结果。
      */
     private static String safeName(String name) {
         return name.replaceAll("[^\\p{L}\\p{N}._-]", "_");
@@ -238,14 +246,18 @@ public class WorkspaceRegistryService {
     }
 
     /**
-     * 处理order Path相关逻辑。
+     * 处理order 路径。
+     * 流程：转换请求 → 调用用例或领域服务 → 转换响应。
+     * @return 方法执行结果。
      */
     private Path orderPath() {
         return rootPath().resolve(ORDER_FILE);
     }
 
     /**
-     * 处理read Order相关逻辑。
+     * 读取 Order。
+     * 流程：转换请求 → 调用用例或领域服务 → 转换响应。
+     * @return 方法执行结果。
      */
     private List<String> readOrder() {
         try {
@@ -268,7 +280,9 @@ public class WorkspaceRegistryService {
     }
 
     /**
-     * 处理save Order相关逻辑。
+     * 保存 Order。
+     * 流程：转换请求 → 调用用例或领域服务 → 转换响应。
+     * @param order 排序规则。
      */
     private void saveOrder(Set<String> order) throws IOException {
         Files.createDirectories(rootPath());
@@ -276,7 +290,9 @@ public class WorkspaceRegistryService {
     }
 
     /**
-     * 处理remove From Order相关逻辑。
+     * 移除 From Order。
+     * 流程：转换请求 → 调用用例或领域服务 → 转换响应。
+     * @param name 名称。
      */
     private void removeFromOrder(String name) throws IOException {
         List<String> order = new ArrayList<>(readOrder());
@@ -285,7 +301,10 @@ public class WorkspaceRegistryService {
     }
 
     /**
-     * 处理rename In Order相关逻辑。
+     * 处理rename In Order。
+     * 流程：转换请求 → 调用用例或领域服务 → 转换响应。
+     * @param oldName old 名称参数。
+     * @param newName new 名称参数。
      */
     private void renameInOrder(String oldName, String newName) throws IOException {
         List<String> order = new ArrayList<>(readOrder());
@@ -300,7 +319,11 @@ public class WorkspaceRegistryService {
     }
 
     /**
-     * 处理ordered相关逻辑。
+     * 处理ordered。
+     * 流程：转换请求 → 调用用例或领域服务 → 转换响应。
+     * @param Map<String 映射 String参数。
+     * @param merged merged参数。
+     * @return 方法执行结果。
      */
     private Map<String, String> ordered(Map<String, String> merged) {
         List<String> order = readOrder();
@@ -316,7 +339,9 @@ public class WorkspaceRegistryService {
     }
 
     /**
-     * 处理delete Recursively相关逻辑。
+     * 删除 Recursively。
+     * 流程：转换请求 → 调用用例或领域服务 → 转换响应。
+     * @param dir dir参数。
      */
     private static void deleteRecursively(Path dir) throws IOException {
         if (!Files.exists(dir)) {
@@ -334,7 +359,11 @@ public class WorkspaceRegistryService {
     }
 
     /**
-     * 处理to Entries相关逻辑。
+     * 转换为 Entries。
+     * 流程：转换请求 → 调用用例或领域服务 → 转换响应。
+     * @param Map<String 映射 String参数。
+     * @param nameToPath 名称 To 路径参数。
+     * @return 转换后的目标对象。
      */
     private static List<WorkspaceEntryResponse> toEntries(Map<String, String> nameToPath) {
         List<WorkspaceEntryResponse> entries = new ArrayList<>();

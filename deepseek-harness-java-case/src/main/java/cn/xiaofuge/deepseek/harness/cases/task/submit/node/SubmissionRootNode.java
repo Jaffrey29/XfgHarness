@@ -19,6 +19,8 @@ import org.slf4j.LoggerFactory;
  * 链路：RootNode → ProfileResolutionNode → ToolResolutionNode →
  *       PermissionCheckNode → EnqueueNode
  *
+ * <p>调用流程：SubmissionRootNode → ProfileResolutionNode → ToolResolutionNode → PermissionCheckNode → EnqueueNode。</p>
+ * <p>示例：提交一条任务后，先解析执行画像，再校验权限，最后进入待执行队列。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -33,6 +35,14 @@ public class SubmissionRootNode extends AbstractSubmitTaskNode {
     @Autowired
     @Qualifier("submitTaskProfileResolutionNode")
     private ProfileResolutionNode profileResolutionNode;
+
+    /**
+     * do Apply。
+     * 流程：读取命令 → 执行用例编排 → 返回结果。
+     * @param request 请求对象。
+     * @param ctx ctx参数。
+     * @return 方法执行结果。
+     */
 
     @Override
     protected SubmitTaskResult doApply(SubmitTaskCommand request,
@@ -54,6 +64,14 @@ public class SubmissionRootNode extends AbstractSubmitTaskNode {
 
     @Override
     public StrategyHandler<SubmitTaskCommand, SubmitTaskDynamicContext, SubmitTaskResult>
+    /**
+     * 获取Next。
+     * 流程：读取命令 → 执行用例编排 → 返回结果。
+     * @param request 请求对象。
+     * @param ctx ctx参数。
+     * @return 获取到的Next。
+     */
+
     getNext(SubmitTaskCommand request, SubmitTaskDynamicContext ctx) {
         return profileResolutionNode;
     }

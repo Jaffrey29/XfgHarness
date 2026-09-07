@@ -31,7 +31,11 @@ public class SessionLog {
     private long nextSeq = 0;
 
     /**
-     * 处理Session Log相关逻辑。
+     * 处理会话 Log。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @param header 头信息参数。
+     * @return 方法执行结果。
      */
     public SessionLog(String sessionId, SessionHeader header) {
         this.sessionId = Objects.requireNonNull(sessionId, "sessionId");
@@ -39,14 +43,18 @@ public class SessionLog {
     }
 
     /**
-     * 处理session Id相关逻辑。
+     * 处理会话 ID。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
      */
     public String sessionId() {
         return sessionId;
     }
 
     /**
-     * 处理header相关逻辑。
+     * 处理头信息。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
      */
     public SessionHeader header() {
         return header;
@@ -94,14 +102,19 @@ public class SessionLog {
     }
 
     /**
-     * 处理events相关逻辑。
+     * 处理events。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
      */
     public synchronized List<SessionEvent> events() {
         return Collections.unmodifiableList(new ArrayList<>(events));
     }
 
     /**
-     * 处理events After相关逻辑。
+     * 处理events After。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param afterSeq after Seq参数。
+     * @return 方法执行结果。
      */
     public synchronized List<SessionEvent> eventsAfter(long afterSeq) {
         List<SessionEvent> result = new ArrayList<>();
@@ -114,7 +127,11 @@ public class SessionLog {
     }
 
     /**
-     * 处理events Range相关逻辑。
+     * 处理events Range。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param fromSeq from Seq参数。
+     * @param toSeq to Seq参数。
+     * @return 方法执行结果。
      */
     public synchronized List<SessionEvent> eventsRange(long fromSeq, long toSeq) {
         List<SessionEvent> result = new ArrayList<>();
@@ -127,14 +144,18 @@ public class SessionLog {
     }
 
     /**
-     * 处理last Event相关逻辑。
+     * 处理last 事件。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
      */
     public synchronized SessionEvent lastEvent() {
         return events.isEmpty() ? null : events.get(events.size() - 1);
     }
 
     /**
-     * 处理last Seq相关逻辑。
+     * 处理last Seq。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
      */
     public synchronized long lastSeq() {
         return events.isEmpty() ? -1 : events.get(events.size() - 1).seq();
@@ -316,7 +337,11 @@ public class SessionLog {
     // ── Helpers ──────────────────────────────────────────────────
 
     /**
-     * 处理reassign Seq相关逻辑。
+     * 处理reassign Seq。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param event 领域事件。
+     * @param seq 事件序号。
+     * @return 方法执行结果。
      */
     private SessionEvent reassignSeq(SessionEvent event, long seq) {
         if (event instanceof SessionEvent.TurnStart e) {

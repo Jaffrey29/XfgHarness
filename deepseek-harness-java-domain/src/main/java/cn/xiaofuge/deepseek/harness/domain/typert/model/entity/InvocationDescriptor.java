@@ -23,7 +23,9 @@ public record InvocationDescriptor(
         String description
 ) {
     /**
-     * 处理endpoint相关逻辑。
+     * 处理endpoint。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
      */
     public String endpoint() {
         return namespace + "/" + method;

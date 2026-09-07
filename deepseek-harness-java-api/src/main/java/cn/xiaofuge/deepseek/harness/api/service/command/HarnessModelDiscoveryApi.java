@@ -18,6 +18,8 @@ import org.springframework.stereotype.Service;
 /**
  * 代理上游模型发现，前端可以同步可用模型并避免浏览器 CORS 限制。
  *
+ * <p>调用流程：Controller/DTO → 应用门面 → 用例；响应对象由用例结果转换。</p>
+ * <p>示例：DTO 只做协议隔离，不承载领域规则。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -30,7 +32,10 @@ public class HarnessModelDiscoveryApi {
     private final HttpClient httpClient;
 
     /**
-     * 处理Harness Model Discovery Api相关逻辑。
+     * 处理Harness 模型 Discovery API。
+     * 流程：转换请求 → 调用用例或领域服务 → 转换响应。
+     * @param objectMapper object Mapper参数。
+     * @return 方法执行结果。
      */
     public HarnessModelDiscoveryApi(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
@@ -84,7 +89,10 @@ public class HarnessModelDiscoveryApi {
     }
 
     /**
-     * 处理normalize Base Url相关逻辑。
+     * 规范化 Base URL。
+     * 流程：转换请求 → 调用用例或领域服务 → 转换响应。
+     * @param baseUrl 服务基础地址。
+     * @return 方法执行结果。
      */
     private String normalizeBaseUrl(String baseUrl) {
         if (baseUrl == null || baseUrl.isBlank()) {
@@ -110,7 +118,10 @@ public class HarnessModelDiscoveryApi {
     }
 
     /**
-     * 处理extract Error相关逻辑。
+     * 提取 Error。
+     * 流程：转换请求 → 调用用例或领域服务 → 转换响应。
+     * @param body body参数。
+     * @return 方法执行结果。
      */
     private String extractError(String body) {
         try {

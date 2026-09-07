@@ -201,7 +201,7 @@ curl -X POST http://localhost:8090/api/agent/message \
   }'
 ```
 
-> `agentId` 和 `message` 必填；`provider`、`model`、`maxTokens`、`cwd` 省略后使用默认模型设置。
+> `agentId` 和 `message` 必填；`provider`、`model`、`maxTokens`、`cwd` 省略后使用 `harness_model_setting` 中的默认模型配置；文件配置只在数据库无默认记录时用于首次初始化。
 
 SSE 流式对话：
 
@@ -757,9 +757,9 @@ flowchart TD
 | --- | --- | --- |
 | `server.port` | HTTP 端口 | 默认 `8090` |
 | `spring.datasource.*` | JDBC 数据源 | 默认 MySQL；standalone profile 用 H2 |
-| `harness.llm.deepseek.base-url` | 模型 API 地址 | 支持 OpenAI 兼容 Chat Completions |
-| `harness.llm.deepseek.api-key` | 模型 API Key | **务必用环境变量注入**（`${DEEPSEEK_API_KEY}`），不要硬编码提交 |
-| `harness.llm.deepseek.default-model` | 默认模型 | 例如 `gpt-5.5` |
+| `harness.llm.deepseek.base-url` | 模型 API 地址兜底 | 支持 OpenAI 兼容 Chat Completions；数据库无对应设置时生效 |
+| `harness.llm.deepseek.api-key` | 模型 API Key 兜底 | **务必用环境变量注入**（`${DEEPSEEK_API_KEY}`），不要硬编码提交 |
+| `harness.llm.deepseek.default-model` | 默认模型种子 | 例如 `gpt-5.5`；数据库已有默认设置时不覆盖 |
 | `harness.llm.deepseek.context-window` | 上下文窗口 | 默认 `128000` |
 | `harness.auth.api-keys` | 宿主 API Key 列表 | 多个 Key 用英文逗号分隔；**为空则本地放行** |
 | `harness.approval.required-tools` | 需要审批的工具 | 默认含 `shell_execute`、`fs_write`、`plugin.run`、`subprocess.spawn` |

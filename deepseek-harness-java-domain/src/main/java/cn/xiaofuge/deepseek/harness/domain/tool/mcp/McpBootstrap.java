@@ -39,7 +39,11 @@ public final class McpBootstrap {
     private final List<String> errors = new CopyOnWriteArrayList<>();
 
     /**
-     * 处理Mcp Bootstrap相关逻辑。
+     * 处理MCP Bootstrap。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param registry registry参数。
+     * @param clientFactory client Factory参数。
+     * @return 方法执行结果。
      */
     public McpBootstrap(ToolRegistry registry, McpClientFactory clientFactory) {
         this.registry = registry;

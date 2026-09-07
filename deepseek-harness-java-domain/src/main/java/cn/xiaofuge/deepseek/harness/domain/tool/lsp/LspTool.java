@@ -20,6 +20,8 @@ import java.util.concurrent.CompletableFuture;
  * Mirrors TS {@code tool-lsp}. 依赖 {@link ILspService} 注册的 per-extension provider；
  * 无 provider 时返回明确提示而不是空结果。
  *
+ * <p>调用流程：Agent 发起 tool call → ToolRegistry 查找工具 → Guard 校验 → ToolExecutor 执行 → 结果回填。</p>
+ * <p>示例：工具名 fs_read 与 JSON 参数先经过校验，再生成 ToolExecutionResult。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -29,7 +31,11 @@ public class LspTool implements ToolDefinition {
     private final IFsPort fsService;
 
     /**
-     * 处理Lsp Tool相关逻辑。
+     * 处理Lsp 工具。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param lspService lsp Service参数。
+     * @param fsService fs Service参数。
+     * @return 方法执行结果。
      */
     public LspTool(ILspService lspService, IFsPort fsService) {
         this.lspService = lspService;
@@ -44,6 +50,12 @@ public class LspTool implements ToolDefinition {
                 "definition, references, implementation, or hover. " +
                 "Provide the file path plus 0-based line and character of the symbol.";
     }
+    /**
+     * 返回 parameters。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public Map<String, Object> parameters() {
@@ -64,6 +76,14 @@ public class LspTool implements ToolDefinition {
     }
 
     @Override
+    /**
+     * 执行工具调用。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @param ctx ctx参数。
+     * @return 方法执行结果。
+     */
+
     @SuppressWarnings("unchecked")
     public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext ctx) {
         try {
@@ -113,6 +133,13 @@ public class LspTool implements ToolDefinition {
                     ToolExecutionResult.fail("lsp failed: " + e.getMessage(), "EXECUTION_ERROR"));
         }
     }
+    /**
+     * 判断当前状态是否满足条件。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @return 布尔结果：满足条件为 true，否则 false。
+     */
+
 
     @Override
     public boolean isConcurrencySafe(Object args) { return true; }

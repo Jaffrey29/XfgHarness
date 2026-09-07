@@ -9,6 +9,8 @@ import java.util.Map;
  * @param message 人类可读的错误消息
  * @param info    结构化错误信息，包含名称和错误码
  *
+ * <p>调用流程：应用领域规则 → 更新聚合或值对象 → 发布事件/返回结果。</p>
+ * <p>示例：领域对象只暴露业务语言方法，不直接依赖基础设施。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -21,7 +23,9 @@ public record ToolFailure(String message, ToolErrorInfo info) {
     }
 
     /**
-     * 处理Tool Failure相关逻辑。
+     * 创建工具失败对象。
+     * @param message 错误消息。
+     * @param code 错误码。
      */
     public ToolFailure(String message, String code) {
         this(message, new ToolErrorInfo(code, code));

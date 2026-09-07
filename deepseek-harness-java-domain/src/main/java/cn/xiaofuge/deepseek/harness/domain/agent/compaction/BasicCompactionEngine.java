@@ -28,6 +28,8 @@ import org.springframework.stereotype.Service;
  * 2. 选取需要压缩的消息区间并请求大模型总结；
  * 3. 用一条摘要消息替换原始区间，减少上下文长度。
  *
+ * <p>调用流程：模型输出 → 工具调用 → 结果回填 → 下一步模型调用；每一步写入会话事件。</p>
+ * <p>示例：模型请求执行 fs_read 后，工具结果作为观察值进入下一轮模型输入。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -41,7 +43,8 @@ public class BasicCompactionEngine implements CompactionEngine {
     private final int minMessagesToCompact;
 
     /**
-     * 处理Basic Compaction Engine相关逻辑。
+     * 初始化基础会话压缩引擎。
+     * <p>流程：读取历史消息 → 按 token 预算裁剪 → 返回压缩后的上下文。</p>
      */
     public BasicCompactionEngine(
             LlmGenerationService llmGenerationService,
@@ -52,6 +55,22 @@ public class BasicCompactionEngine implements CompactionEngine {
         this.pressureThresholdTokens = pressureThresholdTokens;
         this.minMessagesToCompact = minMessagesToCompact;
     }
+
+    /**
+     * compact Now。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param session session参数。
+     * @param options Agent 配置。
+     * @return 方法执行结果。
+     */
+
+    /**
+     * compact Now。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param session session参数。
+     * @param options Agent 配置。
+     * @return 方法执行结果。
+     */
 
     @Override
     public CompletableFuture<CompactionResult> compactIfNeeded(
@@ -79,6 +98,14 @@ public class BasicCompactionEngine implements CompactionEngine {
                 session.sessionId(), trigger, messages.size(), estimatedTokens, pressureThresholdTokens);
         return compactNow(session, options);
     }
+
+    /**
+     * compact Now。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param session session参数。
+     * @param options Agent 配置。
+     * @return 方法执行结果。
+     */
 
     @Override
     public CompletableFuture<CompactionResult> compactNow(

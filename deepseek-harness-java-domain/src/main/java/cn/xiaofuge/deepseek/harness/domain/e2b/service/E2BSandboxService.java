@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 /**
  * E2B sandbox service: manages sandbox lifecycle and routes to per-sandbox ports.
  *
+ * <p>调用流程：应用领域规则 → 更新聚合或值对象 → 发布事件/返回结果。</p>
+ * <p>示例：领域对象只暴露业务语言方法，不直接依赖基础设施。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -23,7 +25,11 @@ public class E2BSandboxService implements IE2BSandboxService {
     private final IE2BSubprocessPort subprocessPort;
 
     /**
-     * 处理E2 B Sandbox Service相关逻辑。
+     * 处理E2 B Sandbox Service。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param fsPort fs Port参数。
+     * @param subprocessPort subprocess Port参数。
+     * @return 方法执行结果。
      */
     public E2BSandboxService(IE2BFsPort fsPort, IE2BSubprocessPort subprocessPort) {
         this.fsPort = fsPort;
@@ -44,11 +50,24 @@ public class E2BSandboxService implements IE2BSandboxService {
     public Optional<IE2BFsPort> fs(String sandboxId) {
         return sandboxes.containsKey(sandboxId) ? Optional.of(fsPort) : Optional.empty();
     }
+    /**
+     * subprocess。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param sandboxId sandbox Id参数。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public Optional<IE2BSubprocessPort> subprocess(String sandboxId) {
         return sandboxes.containsKey(sandboxId) ? Optional.of(subprocessPort) : Optional.empty();
     }
+    /**
+     * kill。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param sandboxId sandbox Id参数。
+     */
+
 
     @Override
     public void kill(String sandboxId) {

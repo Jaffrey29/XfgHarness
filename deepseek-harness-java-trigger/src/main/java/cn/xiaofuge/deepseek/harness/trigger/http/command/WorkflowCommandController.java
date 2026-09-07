@@ -14,18 +14,24 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-@RestController
-@RequestMapping("/api/workflow")
 /**
  * WorkflowCommandController 负责 HTTP 协议接入、参数转换和应用用例调用。
+ * <p>调用流程：Controller → API 适配器 → 用例/领域命令服务 → 返回响应。</p>
+ * <p>示例：POST 请求携带 JSON，命令服务更新状态后返回最新视图。</p>
  */
+@RestController
+@RequestMapping("/api/workflow")
 public class WorkflowCommandController {
 
     private final IWorkflowService workflowService;
     private final ObjectMapper objectMapper;
 
     /**
-     * 处理Workflow Command Controller相关逻辑。
+     * 处理工作流 命令 Controller。
+     * 流程：解析请求参数 → 调用应用门面 → 返回响应。
+     * @param workflowService 工作流 Service参数。
+     * @param objectMapper object Mapper参数。
+     * @return 方法执行结果。
      */
     public WorkflowCommandController(IWorkflowService workflowService, ObjectMapper objectMapper) {
         this.workflowService = workflowService;
@@ -34,6 +40,8 @@ public class WorkflowCommandController {
 
     /**
      * StartWorkflowRequest 负责 HTTP 协议接入、参数转换和应用用例调用。
+     * <p>用途：接收启动工作流请求体。</p>
+     * <p>示例：{@code {"script":"run.sh","args":{"env":"dev"}}}。</p>
      */
     public record StartWorkflowRequest(
             String script,
@@ -43,7 +51,10 @@ public class WorkflowCommandController {
     ) {}
 
     /**
-     * 处理Post Mapping相关逻辑。
+     * 启动目标对象。
+     * 流程：解析请求参数 → 调用应用门面 → 返回响应。
+     * @param request 请求对象。
+     * @return 方法执行结果。
      */
     @PostMapping("/start")
     public ResponseEntity<Map<String, Object>> start(@RequestBody StartWorkflowRequest request) {
@@ -68,7 +79,10 @@ public class WorkflowCommandController {
     }
 
     /**
-     * 处理Post Mapping相关逻辑。
+     * 处理流。
+     * 流程：解析请求参数 → 调用应用门面 → 返回响应。
+     * @param request 请求对象。
+     * @return 方法执行结果。
      */
     @PostMapping("/{runId}/cancel")
     public ResponseEntity<Map<String, Object>> cancel(
@@ -80,7 +94,12 @@ public class WorkflowCommandController {
     }
 
     /**
-     * 处理Post Mapping相关逻辑。
+     * 启动工作流并建立 SSE 输出通道。
+     * <p>流程：解析请求体 → 构造 WorkflowStartRequest → 启动 WorkflowRun → 推送完成或错误事件。</p>
+     * <p>示例：POST {@code /api/workflow/stream}，脚本执行完成后前端收到 done 事件。</p>
+     *
+     * @param request 工作流启动请求。
+     * @return SSE 输出通道。
      */
     @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream(@RequestBody StartWorkflowRequest request) {

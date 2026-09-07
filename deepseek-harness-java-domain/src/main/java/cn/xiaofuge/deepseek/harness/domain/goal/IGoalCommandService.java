@@ -11,13 +11,15 @@ import cn.xiaofuge.deepseek.harness.domain.goal.model.valobj.GoalSnapshotVO;
  * 2. 领域层驱动目标状态机；
  * 3. 返回最新目标快照。
  *
+ * <p>调用流程：应用领域规则 → 更新聚合或值对象 → 发布事件/返回结果。</p>
+ * <p>示例：领域对象只暴露业务语言方法，不直接依赖基础设施。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
 public interface IGoalCommandService {
 
     /**
-     * 执行目标动作。
+     * 执行目标状态变更动作。
      * <p>
      * 执行流程：
      * 1. 读取当前目标；

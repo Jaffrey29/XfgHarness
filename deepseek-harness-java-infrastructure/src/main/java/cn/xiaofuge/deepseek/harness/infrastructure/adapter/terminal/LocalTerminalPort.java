@@ -29,6 +29,8 @@ import java.util.concurrent.TimeUnit;
  * 2. 通过 stdin 写入命令并收集输出；
  * 3. 用内存会话表维护状态与缓冲区。
  *
+ * <p>调用流程：本地 PTY/Process → 命令发送 → 输出读取 → 会话销毁。</p>
+ * <p>示例：命令执行输出按流返回，超时后释放进程资源。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -42,7 +44,10 @@ public class LocalTerminalPort implements ITerminalPort {
     private final Map<String, TerminalSessionRuntime> sessions = new ConcurrentHashMap<>();
 
     /**
-     * 处理Local Terminal Port相关逻辑。
+     * 处理Local 终端 Port。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param defaultCwd default Cwd参数。
+     * @return 方法执行结果。
      */
     public LocalTerminalPort(String defaultCwd) {
         this.defaultCwd = defaultCwd;
@@ -57,18 +62,42 @@ public class LocalTerminalPort implements ITerminalPort {
         runtime.start();
         return runtime.snapshot();
     }
+    /**
+     * 发送目标对象。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @param command 命令对象。
+     * @param timeoutMs 超时时间，毫秒。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public TerminalSendResultVO send(String sessionId, String command, long timeoutMs) {
         TerminalSessionRuntime runtime = requireSession(sessionId);
         return runtime.send(command, timeoutMs > 0 ? timeoutMs : DEFAULT_WAIT_TIMEOUT_MS);
     }
+    /**
+     * 读取目标对象。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @param maxChars max Chars参数。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public TerminalReadResultVO read(String sessionId, int maxChars) {
         TerminalSessionRuntime runtime = requireSession(sessionId);
         return runtime.read(maxChars > 0 ? maxChars : DEFAULT_READ_CHARS);
     }
+    /**
+     * 关闭目标对象。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public TerminalSessionSnapshotVO close(String sessionId) {
@@ -104,7 +133,10 @@ public class LocalTerminalPort implements ITerminalPort {
     }
 
     /**
-     * 处理normalize Name相关逻辑。
+     * 规范化 名称。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param name 名称。
+     * @return 方法执行结果。
      */
     private String normalizeName(String name) {
         String value = name == null ? "" : name.trim();
@@ -112,7 +144,10 @@ public class LocalTerminalPort implements ITerminalPort {
     }
 
     /**
-     * 处理normalize Cwd相关逻辑。
+     * 规范化 Cwd。
+     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+     * @param cwd 工作目录。
+     * @return 方法执行结果。
      */
     private String normalizeCwd(String cwd) {
         String value = cwd == null ? "" : cwd.trim();
@@ -137,7 +172,12 @@ public class LocalTerminalPort implements ITerminalPort {
         private volatile String lastMessage = "";
 
         /**
-         * 处理Terminal Session Runtime相关逻辑。
+         * 处理终端 会话 运行时。
+         * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+         * @param sessionId 会话 ID。
+         * @param name 名称。
+         * @param cwd 工作目录。
+         * @return 方法执行结果。
          */
         private TerminalSessionRuntime(String sessionId, String name, String cwd) {
             this.sessionId = sessionId;
@@ -146,7 +186,8 @@ public class LocalTerminalPort implements ITerminalPort {
         }
 
         /**
-         * 处理start相关逻辑。
+         * 启动目标对象。
+         * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
          */
         private void start() {
             try {
@@ -209,7 +250,10 @@ public class LocalTerminalPort implements ITerminalPort {
         }
 
         /**
-         * 处理read相关逻辑。
+         * 读取目标对象。
+         * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+         * @param maxChars max Chars参数。
+         * @return 方法执行结果。
          */
         private TerminalReadResultVO read(int maxChars) {
             String content = readTail(maxChars);
@@ -218,7 +262,9 @@ public class LocalTerminalPort implements ITerminalPort {
         }
 
         /**
-         * 处理snapshot相关逻辑。
+         * 处理快照。
+         * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+         * @return 方法执行结果。
          */
         private TerminalSessionSnapshotVO snapshot() {
             return new TerminalSessionSnapshotVO(
@@ -255,7 +301,9 @@ public class LocalTerminalPort implements ITerminalPort {
         }
 
         /**
-         * 处理read Loop相关逻辑。
+         * 读取 Loop。
+         * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+         * @param inputStream input 流参数。
          */
         private void readLoop(InputStream inputStream) {
             try (InputStreamReader reader = new InputStreamReader(inputStream, StandardCharsets.UTF_8)) {
@@ -275,7 +323,11 @@ public class LocalTerminalPort implements ITerminalPort {
         }
 
         /**
-         * 处理wait For Marker相关逻辑。
+         * 等待 For Marker。
+         * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+         * @param marker marker参数。
+         * @param timeoutMs 超时时间，毫秒。
+         * @return 方法执行结果。
          */
         private boolean waitForMarker(String marker, long timeoutMs) {
             long deadline = System.currentTimeMillis() + timeoutMs;
@@ -307,7 +359,12 @@ public class LocalTerminalPort implements ITerminalPort {
         }
 
         /**
-         * 处理cut After Marker相关逻辑。
+         * 处理cut After Marker。
+         * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+         * @param before before参数。
+         * @param after after参数。
+         * @param marker marker参数。
+         * @return 方法执行结果。
          */
         private String cutAfterMarker(String before, String after, String marker) {
             String delta = after.startsWith(before) ? after.substring(before.length()) : after;
@@ -333,7 +390,10 @@ public class LocalTerminalPort implements ITerminalPort {
         }
 
         /**
-         * 处理read Tail相关逻辑。
+         * 读取 Tail。
+         * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+         * @param maxChars max Chars参数。
+         * @return 方法执行结果。
          */
         private String readTail(int maxChars) {
             synchronized (lock) {
@@ -342,7 +402,9 @@ public class LocalTerminalPort implements ITerminalPort {
         }
 
         /**
-         * 处理current Length相关逻辑。
+         * 处理current Length。
+         * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+         * @return 方法执行结果。
          */
         private int currentLength() {
             synchronized (lock) {
@@ -351,7 +413,10 @@ public class LocalTerminalPort implements ITerminalPort {
         }
 
         /**
-         * 处理tail相关逻辑。
+         * 处理tail。
+         * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+         * @param maxChars max Chars参数。
+         * @return 方法执行结果。
          */
         private String tail(int maxChars) {
             if (buffer.length() <= maxChars) {
@@ -361,7 +426,10 @@ public class LocalTerminalPort implements ITerminalPort {
         }
 
         /**
-         * 处理safe Exit Code相关逻辑。
+         * 处理safe Exit 编码。
+         * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+         * @param started started参数。
+         * @return 方法执行结果。
          */
         private int safeExitCode(Process started) {
             try {

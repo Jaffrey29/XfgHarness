@@ -15,6 +15,8 @@ import java.util.concurrent.CompletableFuture;
  * <p>
  * 继承 {@link AbstractTool}，演示一个有文件系统副作用的工具（非并发安全）。
  *
+ * <p>调用流程：接收输入 → 执行本类职责 → 返回结果。</p>
+ * <p>示例：根据调用方传入参数完成一次独立操作。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -31,6 +33,12 @@ public class FileSummaryTool extends AbstractTool {
     public String description() {
         return "读取指定文件并返回摘要：行数、字符数、前几行内容预览。";
     }
+    /**
+     * 返回 parameters。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public Map<String, Object> parameters() {
@@ -40,6 +48,12 @@ public class FileSummaryTool extends AbstractTool {
                 .required("path")
                 .build();
     }
+    /**
+     * 返回 output Schema。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public Map<String, Object> outputSchema() {
@@ -50,16 +64,38 @@ public class FileSummaryTool extends AbstractTool {
                 .prop("preview", stringSchema(null))
                 .build();
     }
+    /**
+     * 判断当前状态是否满足条件。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @return 布尔结果：满足条件为 true，否则 false。
+     */
+
 
     @Override
     public boolean isConcurrencySafe(Object args) {
         return false;
     }
+    /**
+     * 返回 timeout Ms。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public long timeoutMs() {
         return 10_000;
     }
+    /**
+     * 运行目标对象。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param Map<String Map String参数。
+     * @param args 启动参数。
+     * @param ctx ctx参数。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     protected CompletableFuture<ToolExecutionResult> run(Map<String, Object> args, ToolRunContext ctx) {

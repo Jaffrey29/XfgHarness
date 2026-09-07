@@ -12,8 +12,11 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
 /**
- * Startup runner that synchronizes the configured default model into H2.
- * Ensures the model settings endpoint reflects application.yml on each boot.
+ * 启动时按需初始化默认模型配置。
+ * <p>application.yml 中的模型只作为首次启动的种子数据；数据库中已存在 deepseek 画像配置时，
+ * 运行时以数据库为准，避免重启覆盖控制台保存的模型设置。
+ * <p>调用流程：Spring Boot 启动 → 加载模型/插件预设 → 注册运行时组件。</p>
+ * <p>示例：启动器同步默认模型并装载预置插件。</p>
  */
 @Component
 public class ModelSyncRunner implements ApplicationRunner {
@@ -53,9 +56,9 @@ public class ModelSyncRunner implements ApplicationRunner {
 
     @Override
     /**
-     * 应用启动后同步默认模型设置。
+     * 应用启动后按需写入默认模型种子。
      * <p>
-     * 流程：查询 deepseek profile → 若默认模型未变化则跳过 → 否则保存最新配置；失败仅记录日志，不阻断启动。
+     * 流程：查询 deepseek profile -> 已存在则直接返回 -> 不存在则用文件配置初始化；失败仅记录日志，不阻断启动。
      * <p>
      * 示例：配置默认模型为 glm-5.3-flash，首次启动后模型设置接口返回该模型。
      *
@@ -64,12 +67,11 @@ public class ModelSyncRunner implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         try {
             var existing = queryService.findByProfileCode("deepseek");
-            if (existing.isPresent() && defaultModel.equals(existing.get().modelCode())) {
+            if (existing.isPresent()) {
                 return;
             }
             commandService.save("deepseek", "deepseek", defaultModel, baseUrl, "", true);
-            log.info("Model sync: default model '{}' written to H2 (was '{}')",
-                    defaultModel, existing.map(s -> s.modelCode()).orElse("none"));
+            log.info("Model bootstrap: seeded default model '{}'", defaultModel);
         } catch (Exception e) {
             log.error("Model sync failed: {}", e.getMessage(), e);
         }

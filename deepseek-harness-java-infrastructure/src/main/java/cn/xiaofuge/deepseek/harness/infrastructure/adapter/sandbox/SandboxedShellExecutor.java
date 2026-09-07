@@ -42,7 +42,8 @@ public class SandboxedShellExecutor implements IShellExecutor {
     private final String fallbackWorkspaceRoot;
 
     /**
-     * 处理Sandboxed Shell Executor相关逻辑。
+     * 初始化沙箱 Shell 执行器。
+     * <p>流程：读取委托执行器和策略服务 → 对每次命令做边界校验。</p>
      */
     public SandboxedShellExecutor(
             IShellExecutor delegate,
@@ -75,7 +76,8 @@ public class SandboxedShellExecutor implements IShellExecutor {
     }
 
     /**
-     * 执行目标动作，并返回执行结果。
+     * 在工作区写模式内执行 Shell 命令。
+     * <p>流程：规范化 cwd → 校验工作区边界和逃逸命令 → 委托本地执行器。</p>
      */
     private ShellResult executeInWorkspace(String command, String cwd, long timeoutMs,
                                            SandboxExecutionPolicy policy) {

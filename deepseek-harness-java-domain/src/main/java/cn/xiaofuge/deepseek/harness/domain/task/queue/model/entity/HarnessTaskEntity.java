@@ -13,6 +13,8 @@ import java.util.Objects;
  * 2. 实体承载会话、提示词、工具和状态；
  * 3. 仓储负责将其持久化为待执行任务。
  *
+ * <p>调用流程：提交 → 权限评估 → 审批 → 队列 → 执行 → 状态回写。</p>
+ * <p>示例：需要审批的命令先挂起，批准后进入执行队列。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -26,7 +28,15 @@ public class HarnessTaskEntity {
     private final Instant submittedAt;
 
     /**
-     * 处理Harness Task Entity相关逻辑。
+     * 处理Harness 任务 Entity。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param taskId 任务 ID。
+     * @param sessionId 会话 ID。
+     * @param prompt 提示词参数。
+     * @param enabledTools enabled Tools参数。
+     * @param status 状态对象。
+     * @param submittedAt submitted At参数。
+     * @return 方法执行结果。
      */
     public HarnessTaskEntity(String taskId, String sessionId, String prompt, List<String> enabledTools, HarnessStatusEnumVO status, Instant submittedAt) {
         this.taskId = Objects.requireNonNull(taskId, "taskId");

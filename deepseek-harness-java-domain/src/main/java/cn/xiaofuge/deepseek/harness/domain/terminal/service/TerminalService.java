@@ -17,6 +17,8 @@ import org.springframework.stereotype.Service;
  * 2. 调用终端端口执行本地进程操作；
  * 3. 返回会话快照和输出结果。
  *
+ * <p>调用流程：打开会话 → 发送命令 → 读取输出 → 关闭会话。</p>
+ * <p>示例：发送 pwd 后读取标准输出，超时后可关闭终端会话。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -26,7 +28,10 @@ public class TerminalService implements ITerminalCommandService, ITerminalQueryS
     private final ITerminalPort terminalPort;
 
     /**
-     * 处理Terminal Service相关逻辑。
+     * 处理终端 Service。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param terminalPort 终端 Port参数。
+     * @return 方法执行结果。
      */
     public TerminalService(ITerminalPort terminalPort) {
         this.terminalPort = terminalPort;
@@ -43,6 +48,13 @@ public class TerminalService implements ITerminalCommandService, ITerminalQueryS
         validateCommand(command);
         return terminalPort.send(sessionId, command, timeoutMs);
     }
+    /**
+     * 关闭目标对象。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param sessionId 会话 ID。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public TerminalSessionSnapshotVO close(String sessionId) {

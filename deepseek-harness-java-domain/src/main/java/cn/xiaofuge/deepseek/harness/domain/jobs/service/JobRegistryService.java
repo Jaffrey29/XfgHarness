@@ -17,6 +17,8 @@ import org.springframework.stereotype.Service;
  * In-process job registry. Tracks running jobs, cancels on disposal, and
  * delegates execution to a virtual-thread pool.
  *
+ * <p>调用流程：应用领域规则 → 更新聚合或值对象 → 发布事件/返回结果。</p>
+ * <p>示例：领域对象只暴露业务语言方法，不直接依赖基础设施。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -30,7 +32,10 @@ public class JobRegistryService implements IJobRegistryService {
     private volatile boolean closed = false;
 
     /**
-     * 处理Job Registry Service相关逻辑。
+     * 处理后台作业 Registry Service。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param repository repository参数。
+     * @return 方法执行结果。
      */
     public JobRegistryService(IJobRegistryRepository repository) {
         this.repository = repository;
@@ -59,6 +64,14 @@ public class JobRegistryService implements IJobRegistryService {
 
         return JobSnapshot.from(record);
     }
+    /**
+     * 读取目标对象。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param id id参数。
+     * @param requestingSessionId requesting Session Id参数。
+     * @return 方法执行结果。
+     */
+
 
     @Override
     public Optional<JobSnapshot> read(String id, String requestingSessionId) {

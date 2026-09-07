@@ -16,6 +16,8 @@ import java.util.concurrent.CompletableFuture;
  * Mirrors TS {@code dsh-tool-ask-user}. Pauses the agent loop until the
  * user responds, then feeds the answer back as a tool result.
  *
+ * <p>调用流程：模型输出 → 工具调用 → 结果回填 → 下一步模型调用；每一步写入会话事件。</p>
+ * <p>示例：模型请求执行 fs_read 后，工具结果作为观察值进入下一轮模型输入。</p>
  * @author 小傅哥
  * @website bugstack.cn
  */
@@ -32,7 +34,11 @@ public class AskUserTool implements ToolDefinition {
     private final String agentId;
 
     /**
-     * 处理Ask User Tool相关逻辑。
+     * 询问 用户 工具。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param userQuestions 用户 Questions参数。
+     * @param agentId Agent ID。
+     * @return 方法执行结果。
      */
     public AskUserTool(UserQuestionsPort userQuestions, String agentId) {
         this.userQuestions = userQuestions;
@@ -41,6 +47,18 @@ public class AskUserTool implements ToolDefinition {
 
     @Override public String name() { return NAME; }
     @Override public String description() { return DESCRIPTION; }
+
+    /**
+     * 返回 output Schema。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
+     */
+
+    /**
+     * 返回 output Schema。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 方法执行结果。
+     */
 
     @Override
     public Map<String, Object> parameters() {
@@ -79,8 +97,38 @@ public class AskUserTool implements ToolDefinition {
         );
     }
 
+    /**
+     * 执行工具调用。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @param ctx ctx参数。
+     * @return 方法执行结果。
+     */
+
+    /**
+     * 执行工具调用。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @param ctx ctx参数。
+     * @return 方法执行结果。
+     */
+
     @Override
     public Map<String, Object> outputSchema() { return Map.of(); }
+
+    /**
+     * 判断当前状态是否满足条件。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @return 布尔结果：满足条件为 true，否则 false。
+     */
+
+    /**
+     * 判断当前状态是否满足条件。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @return 布尔结果：满足条件为 true，否则 false。
+     */
 
     @Override
     @SuppressWarnings("unchecked")
@@ -151,20 +199,39 @@ public class AskUserTool implements ToolDefinition {
                     ToolExecutionResult.fail("ask_user_question failed: " + e.getMessage(), "EXECUTION_ERROR"));
         }
     }
+    /**
+     * 判断当前状态是否满足条件。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @return 布尔结果：满足条件为 true，否则 false。
+     */
+
 
     @Override
     public boolean isConcurrencySafe(Object args) { return false; }
 
     /**
-     * 处理to Schema相关逻辑。
+     * 转换为 Schema。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @return 转换后的目标对象。
      */
     public ToolSchema toSchema() {
         return new ToolSchema(NAME, DESCRIPTION, parameters());
     }
 
     /**
-     * 处理escape Json相关逻辑。
+     * 处理escape JSON。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param s s参数。
+     * @return 方法执行结果。
      */
+    /**
+     * 判断当前状态是否满足条件。
+     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * @param args 启动参数。
+     * @return 布尔结果：满足条件为 true，否则 false。
+     */
+
     private static String escapeJson(String s) {
         if (s == null) return "";
         return s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t");
