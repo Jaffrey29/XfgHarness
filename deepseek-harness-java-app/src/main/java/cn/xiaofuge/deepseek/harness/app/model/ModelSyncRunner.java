@@ -26,6 +26,17 @@ public class ModelSyncRunner implements ApplicationRunner {
     private final String baseUrl;
     private final ApplicationContext applicationContext;
 
+    /**
+     * 初始化默认模型同步器。
+     * <p>
+     * 流程：读取启动配置 → 注入模型设置读写服务 → 供应用启动时执行同步。
+     *
+     * @param queryService 模型设置查询服务。
+     * @param commandService 模型设置命令服务。
+     * @param defaultModel 配置的默认模型编码。
+     * @param baseUrl 模型提供方基础地址。
+     * @param applicationContext Spring 应用上下文，用于记录启动环境。
+     */
     public ModelSyncRunner(
             IModelSettingQueryService queryService,
             IModelSettingCommandService commandService,
@@ -41,6 +52,15 @@ public class ModelSyncRunner implements ApplicationRunner {
     }
 
     @Override
+    /**
+     * 应用启动后同步默认模型设置。
+     * <p>
+     * 流程：查询 deepseek profile → 若默认模型未变化则跳过 → 否则保存最新配置；失败仅记录日志，不阻断启动。
+     * <p>
+     * 示例：配置默认模型为 glm-5.3-flash，首次启动后模型设置接口返回该模型。
+     *
+     * @param args Spring Boot 启动参数。
+     */
     public void run(ApplicationArguments args) {
         try {
             var existing = queryService.findByProfileCode("deepseek");

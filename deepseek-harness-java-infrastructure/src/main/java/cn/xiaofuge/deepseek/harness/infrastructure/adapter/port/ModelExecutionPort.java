@@ -44,7 +44,7 @@ public class ModelExecutionPort implements IModelExecutionPort {
                 null,
                 List.of(Message.createUser(
                         List.of(new TextBlock(prompt)),
-                        new cn.xiaofuge.deepseek.harness.domain.model.entity.MessageSource.UserMessageSource())),
+                        new cn.xiaofuge.deepseek.harness.domain.model.entity.MessageSource.UserSource())),
                 null, null, null, null, null, null, null,
                 setting.baseUrl(),
                 setting.apiKeyRef()
@@ -65,10 +65,7 @@ public class ModelExecutionPort implements IModelExecutionPort {
                 if (item instanceof StreamChunk.TextDelta delta) {
                     content.updateAndGet(c -> c + delta.text());
                 } else if (item instanceof StreamChunk.Finish finish) {
-                    if (!(finish.reason() instanceof FinishReason.Error)
-                            && !(finish.reason() instanceof FinishReason.Aborted)) {
-                        latch.countDown();
-                    }
+                    latch.countDown();
                     latch.countDown();
                 }
             }
