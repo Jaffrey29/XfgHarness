@@ -1,7 +1,7 @@
 package cn.xiaofuge.deepseek.harness.cases.agent.node;
 
-import cn.xiaofuge.deepseek.harness.api.dto.agent.AgentMessageRequest;
-import cn.xiaofuge.deepseek.harness.api.dto.agent.AgentMessageResponse;
+import cn.xiaofuge.deepseek.harness.cases.agent.SendMessageCommand;
+import cn.xiaofuge.deepseek.harness.cases.agent.SendMessageResult;
 import cn.xiaofuge.deepseek.harness.cases.agent.factory.AgentMessageDynamicContext;
 import cn.xiaofuge.deepseek.harness.domain.agent.model.entity.AgentOptions;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.AgentFactoryPort;
@@ -40,7 +40,7 @@ public class AgentResolveNode extends AbstractAgentMessageNode {
     private String defaultModel;
 
     @Override
-    protected AgentMessageResponse doApply(AgentMessageRequest request,
+    protected SendMessageResult doApply(SendMessageCommand request,
                                            AgentMessageDynamicContext ctx) throws Exception {
         ReactLoopAgent agent = agentFactory.get(request.agentId());
         if (agent == null) {
@@ -57,12 +57,12 @@ public class AgentResolveNode extends AbstractAgentMessageNode {
     }
 
     @Override
-    public StrategyHandler<AgentMessageRequest, AgentMessageDynamicContext, AgentMessageResponse>
-    getNext(AgentMessageRequest request, AgentMessageDynamicContext ctx) {
+    public StrategyHandler<SendMessageCommand, AgentMessageDynamicContext, SendMessageResult>
+    getNext(SendMessageCommand request, AgentMessageDynamicContext ctx) {
         return intentNode;
     }
 
-    private AgentOptions buildAgentOptions(AgentMessageRequest request) {
+    private AgentOptions buildAgentOptions(SendMessageCommand request) {
         String provider = request.provider() != null ? request.provider() : "deepseek";
         String model = request.model() != null ? request.model() : defaultModel;
         String baseUrl = null;

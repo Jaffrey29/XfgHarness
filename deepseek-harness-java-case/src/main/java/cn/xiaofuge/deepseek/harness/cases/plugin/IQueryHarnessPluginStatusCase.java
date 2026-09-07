@@ -1,6 +1,6 @@
 package cn.xiaofuge.deepseek.harness.cases.plugin;
 
-import cn.xiaofuge.deepseek.harness.api.dto.plugin.QueryPluginStatusResponse;
+import cn.xiaofuge.deepseek.harness.cases.plugin.QueryPluginStatusResult;
 
 /**
  * 编排插件进程状态查询。
@@ -10,5 +10,5 @@ import cn.xiaofuge.deepseek.harness.api.dto.plugin.QueryPluginStatusResponse;
  */
 public interface IQueryHarnessPluginStatusCase {
 
-    QueryPluginStatusResponse execute(String pluginId);
+    QueryPluginStatusResult execute(String pluginId);
 }

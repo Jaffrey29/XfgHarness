@@ -1,7 +1,7 @@
 package cn.xiaofuge.deepseek.harness.cases.plugin;
 
-import cn.xiaofuge.deepseek.harness.api.dto.plugin.ActivatePluginRequest;
-import cn.xiaofuge.deepseek.harness.api.dto.plugin.ActivatePluginResponse;
+import cn.xiaofuge.deepseek.harness.cases.plugin.ActivatePluginCommand;
+import cn.xiaofuge.deepseek.harness.cases.plugin.ActivatePluginResult;
 
 /**
  * 编排插件激活用例。
@@ -17,5 +17,5 @@ public interface IActivateHarnessPluginCase {
      * @param request 激活请求
      * @return 激活结果
      */
-    ActivatePluginResponse execute(ActivatePluginRequest request);
+    ActivatePluginResult execute(ActivatePluginCommand request);
 }

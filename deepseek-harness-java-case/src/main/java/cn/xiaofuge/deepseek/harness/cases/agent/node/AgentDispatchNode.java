@@ -1,7 +1,7 @@
 package cn.xiaofuge.deepseek.harness.cases.agent.node;
 
-import cn.xiaofuge.deepseek.harness.api.dto.agent.AgentMessageRequest;
-import cn.xiaofuge.deepseek.harness.api.dto.agent.AgentMessageResponse;
+import cn.xiaofuge.deepseek.harness.cases.agent.SendMessageCommand;
+import cn.xiaofuge.deepseek.harness.cases.agent.SendMessageResult;
 import cn.xiaofuge.deepseek.harness.cases.agent.factory.AgentMessageDynamicContext;
 import cn.xiaofuge.deepseek.harness.domain.agent.model.valobj.InboxTarget;
 import cn.xiaofuge.deepseek.harness.domain.model.entity.Message;
@@ -40,7 +40,7 @@ public class AgentDispatchNode extends AbstractAgentMessageNode {
     private AgentCollectNode collectNode;
 
     @Override
-    protected AgentMessageResponse doApply(AgentMessageRequest request,
+    protected SendMessageResult doApply(SendMessageCommand request,
                                            AgentMessageDynamicContext ctx) throws Exception {
         var intent = ctx.getIntent();
         String messageText = prepareMessageText(request.message(), intent);
@@ -64,7 +64,7 @@ public class AgentDispatchNode extends AbstractAgentMessageNode {
      * 支持两种形式：data URL（data:image/png;base64,xxx）或裸 base64（需配 mimeType）。
      * 解析失败的附件跳过并记录（不中断消息发送）。
      */
-    private static void appendImageBlocks(AgentMessageRequest request, List<ContentBlock> blocks) {
+    private static void appendImageBlocks(SendMessageCommand request, List<ContentBlock> blocks) {
         if (request.images() == null || request.images().isEmpty()) {
             return;
         }
@@ -102,8 +102,8 @@ public class AgentDispatchNode extends AbstractAgentMessageNode {
     }
 
     @Override
-    public StrategyHandler<AgentMessageRequest, AgentMessageDynamicContext, AgentMessageResponse>
-    getNext(AgentMessageRequest request, AgentMessageDynamicContext ctx) {
+    public StrategyHandler<SendMessageCommand, AgentMessageDynamicContext, SendMessageResult>
+    getNext(SendMessageCommand request, AgentMessageDynamicContext ctx) {
         return collectNode;
     }
 

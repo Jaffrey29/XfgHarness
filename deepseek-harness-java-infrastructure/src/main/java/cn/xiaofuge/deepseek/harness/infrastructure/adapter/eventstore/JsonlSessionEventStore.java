@@ -1,9 +1,18 @@
 package cn.xiaofuge.deepseek.harness.infrastructure.adapter.eventstore;
 
+import cn.xiaofuge.deepseek.harness.domain.model.entity.Message;
+import cn.xiaofuge.deepseek.harness.domain.model.entity.MessageSource;
+import cn.xiaofuge.deepseek.harness.domain.llm.model.valobj.TokenUsage;
+import cn.xiaofuge.deepseek.harness.domain.model.valobj.ContentBlock;
+import cn.xiaofuge.deepseek.harness.domain.model.valobj.ReasoningBlock;
+import cn.xiaofuge.deepseek.harness.domain.model.valobj.TextBlock;
+import cn.xiaofuge.deepseek.harness.domain.model.valobj.ToolCallBlock;
+import cn.xiaofuge.deepseek.harness.domain.model.valobj.ToolResultBlock;
 import cn.xiaofuge.deepseek.harness.domain.session.event.adapter.repository.ISessionEventStore;
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionEvent;
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionHeader;
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.valobj.*;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
@@ -309,7 +318,8 @@ public class JsonlSessionEventStore implements ISessionEventStore {
             case PLAN_MODE_CHANGE -> new SessionEvent.PlanModeChange(seq, time, (PlanModePayload) payload);
             case TASK_SUBMITTED, TASK_AUTO_APPROVED, TASK_APPROVAL_REQUIRED,
                  TASK_APPROVED, TASK_EXECUTION_STARTED,
-                 TASK_EXECUTION_COMPLETED, TASK_EXECUTION_FAILED ->
+                 TASK_EXECUTION_COMPLETED, TASK_EXECUTION_FAILED,
+                 AGENT_EVENT ->
                 new SessionEvent.Generic(seq, time, type, payloadJson);
         };
     }
@@ -349,21 +359,176 @@ public class JsonlSessionEventStore implements ISessionEventStore {
             return switch (type) {
                 case STEP_START -> objectMapper.readValue(json, StepStartPayload.class);
                 case STEP_END -> objectMapper.readValue(json, StepEndPayload.class);
-                case USER_MESSAGE -> objectMapper.readValue(json, UserMessagePayload.class);
+                case USER_MESSAGE -> deserializeUserMessagePayload(json);
                 case ASSISTANT_CHUNK -> objectMapper.readValue(json, AssistantChunkPayload.class);
-                case ASSISTANT_MESSAGE -> objectMapper.readValue(json, AssistantMessagePayload.class);
+                case ASSISTANT_MESSAGE -> deserializeAssistantMessagePayload(json);
                 case TOOL_CALL -> objectMapper.readValue(json, ToolCallPayload.class);
-                case TOOL_RESULT -> objectMapper.readValue(json, ToolResultPayload.class);
+                case TOOL_RESULT -> deserializeToolResultPayload(json);
                 case TODO_WRITE -> objectMapper.readValue(json, TodoWritePayload.class);
                 case REQUEST_HEADER -> objectMapper.readValue(json, RequestHeaderPayload.class);
                 case REQUEST_CONTEXT -> objectMapper.readValue(json, RequestContextPayload.class);
-                case AGENT_INBOX_SPLICED -> objectMapper.readValue(json, InboxSplicedPayload.class);
+                case AGENT_INBOX_SPLICED -> deserializeInboxSplicedPayload(json);
                 case PLAN_MODE_CHANGE -> objectMapper.readValue(json, PlanModePayload.class);
                 default -> null;
             };
         } catch (Exception e) {
             throw new RuntimeException("Failed to deserialize payload for type " + type, e);
         }
+    }
+
+    private UserMessagePayload deserializeUserMessagePayload(String json) {
+        try {
+            JsonNode node = objectMapper.readTree(json);
+            return new UserMessagePayload(
+                    node.path("turn").asLong(0),
+                    node.path("step").asLong(0),
+                    deserializeMessage(node.path("message"))
+            );
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to deserialize user message payload", e);
+        }
+    }
+
+    private AssistantMessagePayload deserializeAssistantMessagePayload(String json) {
+        try {
+            JsonNode node = objectMapper.readTree(json);
+            TokenUsage usage = node.hasNonNull("usage")
+                    ? objectMapper.treeToValue(node.get("usage"), TokenUsage.class)
+                    : null;
+            return new AssistantMessagePayload(
+                    node.path("turn").asLong(0),
+                    node.path("step").asLong(0),
+                    deserializeMessage(node.path("message")),
+                    usage
+            );
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to deserialize assistant message payload", e);
+        }
+    }
+
+    private ToolResultPayload deserializeToolResultPayload(String json) {
+        try {
+            JsonNode node = objectMapper.readTree(json);
+            java.util.Map<String, Object> error = node.hasNonNull("error")
+                    ? objectMapper.convertValue(node.get("error"), java.util.Map.class)
+                    : null;
+            java.util.Map<String, Object> meta = node.hasNonNull("meta")
+                    ? objectMapper.convertValue(node.get("meta"), java.util.Map.class)
+                    : null;
+            return new ToolResultPayload(
+                    node.path("turn").asLong(0),
+                    node.path("step").asLong(0),
+                    deserializeMessage(node.path("message")),
+                    error,
+                    meta
+            );
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to deserialize tool result payload", e);
+        }
+    }
+
+    private InboxSplicedPayload deserializeInboxSplicedPayload(String json) {
+        try {
+            JsonNode node = objectMapper.readTree(json);
+            List<Message> inserted = new ArrayList<>();
+            JsonNode insertedNode = node.path("inserted");
+            if (insertedNode.isArray()) {
+                for (JsonNode messageNode : insertedNode) {
+                    Message message = deserializeMessage(messageNode);
+                    if (message != null) {
+                        inserted.add(message);
+                    }
+                }
+            }
+            return new InboxSplicedPayload(
+                    node.path("target").asText(null),
+                    node.path("start").asInt(0),
+                    node.path("removedCount").asInt(0),
+                    inserted,
+                    node.path("outcome").isMissingNode() || node.path("outcome").isNull() ? null : node.path("outcome").asText(null)
+            );
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to deserialize inbox spliced payload", e);
+        }
+    }
+
+    private Message deserializeMessage(JsonNode node) {
+        if (node == null || node.isMissingNode() || node.isNull()) {
+            return null;
+        }
+        String id = node.path("id").asText(null);
+        String role = node.path("role").asText(null);
+        MessageSource source = deserializeMessageSource(node.path("source"), role);
+        List<ContentBlock> content = new ArrayList<>();
+        JsonNode contentNode = node.path("content");
+        if (contentNode.isArray()) {
+            for (JsonNode blockNode : contentNode) {
+                ContentBlock block = deserializeContentBlock(blockNode);
+                if (block != null) {
+                    content.add(block);
+                }
+            }
+        }
+        return new Message(id, role, content, source);
+    }
+
+    private MessageSource deserializeMessageSource(JsonNode node, String role) {
+        if (node == null || node.isMissingNode() || node.isNull()) {
+            return switch (role == null ? "" : role) {
+                case "assistant" -> new MessageSource.ModelMessageSource("unknown", "unknown");
+                case "tool" -> new MessageSource.ToolMessageSource("unknown");
+                case "user" -> new MessageSource.UserSource();
+                default -> new MessageSource.UserSource();
+            };
+        }
+        String kind = node.path("kind").asText("");
+        if (kind.equals("user") || "user".equals(role)) {
+            return new MessageSource.UserSource();
+        }
+        if (kind.equals("tool") || "tool".equals(role)) {
+            return new MessageSource.ToolMessageSource(node.path("callId").asText("unknown"));
+        }
+        if (kind.equals("model") || "assistant".equals(role)) {
+            return new MessageSource.ModelMessageSource(
+                    node.path("provider").asText("unknown"),
+                    node.path("model").asText("unknown")
+            );
+        }
+        return new MessageSource.UserSource();
+    }
+
+    private ContentBlock deserializeContentBlock(JsonNode node) {
+        if (node == null || node.isMissingNode() || node.isNull()) {
+            return null;
+        }
+        if (node.has("text") && node.size() == 1) {
+            return new TextBlock(node.get("text").asText(""));
+        }
+        if (node.has("text") && !node.has("toolCallId") && !node.has("attachment")) {
+            return new TextBlock(node.get("text").asText(""));
+        }
+        if (node.has("toolCallId")) {
+            List<ContentBlock> nested = new ArrayList<>();
+            JsonNode contentNode = node.path("content");
+            if (contentNode.isArray()) {
+                for (JsonNode child : contentNode) {
+                    ContentBlock block = deserializeContentBlock(child);
+                    if (block != null) nested.add(block);
+                }
+            }
+            return new ToolResultBlock(
+                    node.path("toolCallId").asText(""),
+                    nested,
+                    node.path("isError").asBoolean(false)
+            );
+        }
+        if (node.has("id") && node.has("name") && node.has("arguments")) {
+            return new ToolCallBlock(node.path("id").asText(""), node.path("name").asText(""), node.path("arguments").asText(""));
+        }
+        if (node.has("text") && node.has("reasoning")) {
+            return new ReasoningBlock(node.path("text").asText(""));
+        }
+        return null;
     }
 
     private TurnEndReason deserializeTurnEndReason(String json) {

@@ -1,7 +1,7 @@
 package cn.xiaofuge.deepseek.harness.cases.plugin.run;
 
-import cn.xiaofuge.deepseek.harness.api.dto.plugin.RunPluginRequest;
-import cn.xiaofuge.deepseek.harness.api.dto.plugin.RunPluginResponse;
+import cn.xiaofuge.deepseek.harness.cases.plugin.RunPluginCommand;
+import cn.xiaofuge.deepseek.harness.cases.plugin.RunPluginResult;
 import cn.xiaofuge.deepseek.harness.cases.plugin.IRunHarnessPluginCase;
 import cn.xiaofuge.deepseek.harness.domain.plugin.bridge.model.valobj.PluginBridgePlanVO;
 import cn.xiaofuge.deepseek.harness.domain.plugin.IPluginBridgeService;
@@ -36,7 +36,7 @@ public class RunHarnessPluginCaseImpl implements IRunHarnessPluginCase {
     }
 
     @Override
-    public RunPluginResponse execute(RunPluginRequest request) {
+    public RunPluginResult execute(RunPluginCommand request) {
         HarnessPluginEntity plugin = pluginRegistryService.loadPlugin(request.pluginId());
         PluginBridgePlanVO plan = pluginBridgeService.inspect(plugin);
         pluginRegistryService.refreshStatus(plugin, plan.bridgeReady());
@@ -45,7 +45,7 @@ public class RunHarnessPluginCaseImpl implements IRunHarnessPluginCase {
             throw new IllegalStateException("plugin bridge is not ready: " + plan.message());
         }
         PluginRunResultVO result = pluginRuntimeService.start(plugin, plan);
-        return new RunPluginResponse(
+        return new RunPluginResult(
                 result.pluginId(),
                 result.processId(),
                 result.runtimeCommand(),

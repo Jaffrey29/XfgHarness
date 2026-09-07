@@ -8,6 +8,7 @@ import cn.xiaofuge.deepseek.harness.infrastructure.dao.po.GoalStatePO;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 目标仓储实现。
@@ -35,6 +36,7 @@ public class GoalRepository implements IGoalRepository {
     }
 
     @Override
+    @Transactional
     public void save(GoalAggregate aggregate) {
         goalStateDao.save(new GoalStatePO(
                 aggregate.sessionId(),

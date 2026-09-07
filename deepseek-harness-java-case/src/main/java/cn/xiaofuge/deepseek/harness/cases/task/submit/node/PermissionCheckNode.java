@@ -1,7 +1,7 @@
 package cn.xiaofuge.deepseek.harness.cases.task.submit.node;
 
-import cn.xiaofuge.deepseek.harness.api.dto.task.SubmitTaskRequest;
-import cn.xiaofuge.deepseek.harness.api.dto.task.SubmitTaskResponse;
+import cn.xiaofuge.deepseek.harness.cases.task.SubmitTaskCommand;
+import cn.xiaofuge.deepseek.harness.cases.task.SubmitTaskResult;
 import cn.xiaofuge.deepseek.harness.cases.task.submit.factory.SubmitTaskDynamicContext;
 import cn.xiaofuge.deepseek.harness.domain.shared.StrategyHandler;
 import cn.xiaofuge.deepseek.harness.domain.task.IApprovalPolicyService;
@@ -34,7 +34,7 @@ public class PermissionCheckNode extends AbstractSubmitTaskNode {
     private EnqueueNode enqueueNode;
 
     @Override
-    protected SubmitTaskResponse doApply(SubmitTaskRequest request,
+    protected SubmitTaskResult doApply(SubmitTaskCommand request,
                                          SubmitTaskDynamicContext ctx) throws Exception {
         ctx.setPermissionAssessment(permissionPolicyService.assess(ctx.getEnabledTools()));
         log.info("[Submit] 权限评估完成，启用工具={}", ctx.getPermissionAssessment().enabledTools());
@@ -48,8 +48,8 @@ public class PermissionCheckNode extends AbstractSubmitTaskNode {
     }
 
     @Override
-    public StrategyHandler<SubmitTaskRequest, SubmitTaskDynamicContext, SubmitTaskResponse>
-    getNext(SubmitTaskRequest request, SubmitTaskDynamicContext ctx) {
+    public StrategyHandler<SubmitTaskCommand, SubmitTaskDynamicContext, SubmitTaskResult>
+    getNext(SubmitTaskCommand request, SubmitTaskDynamicContext ctx) {
         return enqueueNode;
     }
 }

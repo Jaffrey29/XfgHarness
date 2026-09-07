@@ -1,7 +1,7 @@
 package cn.xiaofuge.deepseek.harness.cases.plugin;
 
-import cn.xiaofuge.deepseek.harness.api.dto.plugin.InstallPluginRequest;
-import cn.xiaofuge.deepseek.harness.api.dto.plugin.InstallPluginResponse;
+import cn.xiaofuge.deepseek.harness.cases.plugin.InstallPluginCommand;
+import cn.xiaofuge.deepseek.harness.cases.plugin.InstallPluginResult;
 
 /**
  * 编排插件安装用例。
@@ -17,5 +17,5 @@ public interface IInstallHarnessPluginCase {
      * @param request 安装请求
      * @return 安装结果
      */
-    InstallPluginResponse execute(InstallPluginRequest request);
+    InstallPluginResult execute(InstallPluginCommand request);
 }

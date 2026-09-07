@@ -1,7 +1,7 @@
 package cn.xiaofuge.deepseek.harness.cases.agent.node;
 
-import cn.xiaofuge.deepseek.harness.api.dto.agent.AgentMessageRequest;
-import cn.xiaofuge.deepseek.harness.api.dto.agent.AgentMessageResponse;
+import cn.xiaofuge.deepseek.harness.cases.agent.SendMessageCommand;
+import cn.xiaofuge.deepseek.harness.cases.agent.SendMessageResult;
 import cn.xiaofuge.deepseek.harness.cases.agent.factory.AgentMessageDynamicContext;
 import cn.xiaofuge.deepseek.harness.domain.model.entity.Message;
 import cn.xiaofuge.deepseek.harness.domain.model.valobj.ContentBlock;
@@ -33,7 +33,7 @@ public class AgentCollectNode extends AbstractAgentMessageNode {
     private static final Logger log = LoggerFactory.getLogger(AgentCollectNode.class);
 
     @Override
-    protected AgentMessageResponse doApply(AgentMessageRequest request,
+    protected SendMessageResult doApply(SendMessageCommand request,
                                            AgentMessageDynamicContext ctx) throws Exception {
         var agent = ctx.getAgent();
         log.info("[Collect] Agent={} 等待 Agent 空闲，开始收集会话结果...", request.agentId());
@@ -93,7 +93,7 @@ public class AgentCollectNode extends AbstractAgentMessageNode {
 
         log.info("[Collect] Agent={} 收集完成，共 {} 条消息，status={}",
                 request.agentId(), messages.size(), agent.status().name().toLowerCase());
-        return new AgentMessageResponse(
+        return new SendMessageResult(
                 request.agentId(),
                 session.sessionId(),
                 agent.status().name().toLowerCase(),
@@ -102,8 +102,8 @@ public class AgentCollectNode extends AbstractAgentMessageNode {
     }
 
     @Override
-    public StrategyHandler<AgentMessageRequest, AgentMessageDynamicContext, AgentMessageResponse>
-    getNext(AgentMessageRequest request, AgentMessageDynamicContext ctx) {
+    public StrategyHandler<SendMessageCommand, AgentMessageDynamicContext, SendMessageResult>
+    getNext(SendMessageCommand request, AgentMessageDynamicContext ctx) {
         return defaultStrategyHandler;
     }
 

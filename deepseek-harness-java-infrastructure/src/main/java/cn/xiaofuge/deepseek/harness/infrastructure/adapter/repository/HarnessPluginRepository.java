@@ -10,6 +10,7 @@ import cn.xiaofuge.deepseek.harness.infrastructure.dao.po.HarnessPluginPO;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 通过 DAO 层持久化插件安装信息。
@@ -27,6 +28,7 @@ public class HarnessPluginRepository implements IHarnessPluginRepository {
     }
 
     @Override
+    @Transactional
     public void save(HarnessPluginEntity plugin) {
         harnessPluginDao.save(new HarnessPluginPO(
                 plugin.getPluginId(),
@@ -52,6 +54,7 @@ public class HarnessPluginRepository implements IHarnessPluginRepository {
     }
 
     @Override
+    @Transactional
     public void deleteByPluginId(String pluginId) {
         harnessPluginDao.deleteByPluginId(pluginId);
     }

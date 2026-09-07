@@ -15,17 +15,16 @@
     <dependencies>
         <dependency>
             <groupId>cn.xiaofuge</groupId>
-            <artifactId>deepseek-harness-java-api</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>cn.xiaofuge</groupId>
             <artifactId>deepseek-harness-java-domain</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-context</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-tx</artifactId>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>

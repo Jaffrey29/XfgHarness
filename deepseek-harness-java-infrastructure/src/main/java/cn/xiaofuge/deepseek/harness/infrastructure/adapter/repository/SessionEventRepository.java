@@ -6,6 +6,7 @@ import cn.xiaofuge.deepseek.harness.infrastructure.dao.ISessionEventDao;
 import cn.xiaofuge.deepseek.harness.infrastructure.dao.po.SessionEventPO;
 import java.util.List;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 通过 DAO 层持久化追加写的会话事件。
@@ -23,6 +24,7 @@ public class SessionEventRepository implements ISessionEventRepository {
     }
 
     @Override
+    @Transactional
     public void append(SessionEventEntity event) {
         sessionEventDao.append(new SessionEventPO(
                 event.sessionId(),

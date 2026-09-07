@@ -1,7 +1,7 @@
 package cn.xiaofuge.deepseek.harness.cases.task.submit.factory;
 
-import cn.xiaofuge.deepseek.harness.api.dto.task.SubmitTaskRequest;
-import cn.xiaofuge.deepseek.harness.api.dto.task.SubmitTaskResponse;
+import cn.xiaofuge.deepseek.harness.cases.task.SubmitTaskCommand;
+import cn.xiaofuge.deepseek.harness.cases.task.SubmitTaskResult;
 import cn.xiaofuge.deepseek.harness.cases.task.submit.node.SubmissionRootNode;
 import cn.xiaofuge.deepseek.harness.domain.shared.StrategyHandler;
 import org.springframework.stereotype.Service;
@@ -21,7 +21,7 @@ public class SubmitHarnessTaskFactory {
     @Qualifier("submitTaskRootNode")
     private SubmissionRootNode rootNode;
 
-    public StrategyHandler<SubmitTaskRequest, SubmitTaskDynamicContext, SubmitTaskResponse> strategyHandler() {
+    public StrategyHandler<SubmitTaskCommand, SubmitTaskDynamicContext, SubmitTaskResult> strategyHandler() {
         return rootNode;
     }
 

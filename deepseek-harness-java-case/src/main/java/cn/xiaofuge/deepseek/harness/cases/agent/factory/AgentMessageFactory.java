@@ -1,7 +1,7 @@
 package cn.xiaofuge.deepseek.harness.cases.agent.factory;
 
-import cn.xiaofuge.deepseek.harness.api.dto.agent.AgentMessageRequest;
-import cn.xiaofuge.deepseek.harness.api.dto.agent.AgentMessageResponse;
+import cn.xiaofuge.deepseek.harness.cases.agent.SendMessageCommand;
+import cn.xiaofuge.deepseek.harness.cases.agent.SendMessageResult;
 import cn.xiaofuge.deepseek.harness.cases.agent.node.AgentResolveNode;
 import cn.xiaofuge.deepseek.harness.domain.shared.StrategyHandler;
 import org.springframework.stereotype.Service;
@@ -21,7 +21,7 @@ public class AgentMessageFactory {
     @Qualifier("agentMessageResolveNode")
     private AgentResolveNode rootNode;
 
-    public StrategyHandler<AgentMessageRequest, AgentMessageDynamicContext, AgentMessageResponse> strategyHandler() {
+    public StrategyHandler<SendMessageCommand, AgentMessageDynamicContext, SendMessageResult> strategyHandler() {
         return rootNode;
     }
 

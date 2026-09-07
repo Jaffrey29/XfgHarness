@@ -1,6 +1,6 @@
 package cn.xiaofuge.deepseek.harness.cases.plugin.run;
 
-import cn.xiaofuge.deepseek.harness.api.dto.plugin.QueryPluginStatusResponse;
+import cn.xiaofuge.deepseek.harness.cases.plugin.QueryPluginStatusResult;
 import cn.xiaofuge.deepseek.harness.cases.plugin.IQueryHarnessPluginStatusCase;
 import cn.xiaofuge.deepseek.harness.domain.plugin.runtime.model.valobj.PluginProcessStatusVO;
 import cn.xiaofuge.deepseek.harness.domain.plugin.IPluginRuntimeService;
@@ -22,9 +22,9 @@ public class QueryHarnessPluginStatusCaseImpl implements IQueryHarnessPluginStat
     }
 
     @Override
-    public QueryPluginStatusResponse execute(String pluginId) {
+    public QueryPluginStatusResult execute(String pluginId) {
         PluginProcessStatusVO result = pluginRuntimeService.status(pluginId);
-        return new QueryPluginStatusResponse(
+        return new QueryPluginStatusResult(
                 result.pluginId(),
                 result.processId(),
                 result.running(),

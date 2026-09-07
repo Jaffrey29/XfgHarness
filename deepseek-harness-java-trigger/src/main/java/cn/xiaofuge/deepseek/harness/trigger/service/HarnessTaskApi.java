@@ -3,6 +3,8 @@ package cn.xiaofuge.deepseek.harness.trigger.service;
 import cn.xiaofuge.deepseek.harness.api.dto.task.SubmitTaskRequest;
 import cn.xiaofuge.deepseek.harness.api.dto.task.SubmitTaskResponse;
 import cn.xiaofuge.deepseek.harness.cases.task.ISubmitHarnessTaskCase;
+import cn.xiaofuge.deepseek.harness.cases.task.SubmitTaskCommand;
+import cn.xiaofuge.deepseek.harness.cases.task.SubmitTaskResult;
 import cn.xiaofuge.deepseek.harness.api.service.IHarnessTaskApi;
 import org.springframework.stereotype.Service;
 
@@ -10,9 +12,11 @@ import org.springframework.stereotype.Service;
  * 任务提交适配器。
  * <p>
  * 执行流程：
- * 1. 接收 Trigger 层提交的任务请求 DTO；
- * 2. 交给任务提交用例完成领域编排；
- * 3. 返回任务提交结果。
+ * 1. 接收 Trigger 层提交的任务请求 DTO（SubmitTaskRequest）；
+ * 2. 映射为 case 层 Command（SubmitTaskCommand），调用任务提交用例；
+ * 3. 将用例返回的 Result（SubmitTaskResult）映射回 API DTO（SubmitTaskResponse）。
+ * <p>
+ * 这一层是 DTO ↔ Command 的边界映射点，case 层不直接依赖 API DTO。
  *
  * @author 小傅哥
  * @website bugstack.cn
@@ -26,16 +30,34 @@ public class HarnessTaskApi implements IHarnessTaskApi {
         this.submitHarnessTaskCase = submitHarnessTaskCase;
     }
 
-    /**
-     * 提交一个任务。
-     * <p>
-     * 执行流程：
-     * 1. 读取请求体；
-     * 2. 调用任务提交用例执行；
-     * 3. 返回提交响应。
-     */
     @Override
     public SubmitTaskResponse submitTask(SubmitTaskRequest request) {
-        return submitHarnessTaskCase.execute(request);
+        SubmitTaskCommand command = toCommand(request);
+        SubmitTaskResult result = submitHarnessTaskCase.execute(command);
+        return toResponse(result);
+    }
+
+    // ── DTO ↔ Command 映射 ───────────────────────────────────────
+
+    private SubmitTaskCommand toCommand(SubmitTaskRequest request) {
+        return new SubmitTaskCommand(
+                request.workspaceId(),
+                request.prompt(),
+                request.profileCode(),
+                request.requestedTools()
+        );
+    }
+
+    private SubmitTaskResponse toResponse(SubmitTaskResult result) {
+        return new SubmitTaskResponse(
+                result.taskId(),
+                result.sessionId(),
+                result.status(),
+                result.resolvedModel(),
+                result.enabledTools(),
+                result.approvalRequired(),
+                result.approvalReason(),
+                result.acceptedAt()
+        );
     }
 }

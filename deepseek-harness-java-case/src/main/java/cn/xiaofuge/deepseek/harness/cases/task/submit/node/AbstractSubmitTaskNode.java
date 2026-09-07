@@ -1,7 +1,7 @@
 package cn.xiaofuge.deepseek.harness.cases.task.submit.node;
 
-import cn.xiaofuge.deepseek.harness.api.dto.task.SubmitTaskRequest;
-import cn.xiaofuge.deepseek.harness.api.dto.task.SubmitTaskResponse;
+import cn.xiaofuge.deepseek.harness.cases.task.SubmitTaskCommand;
+import cn.xiaofuge.deepseek.harness.cases.task.SubmitTaskResult;
 import cn.xiaofuge.deepseek.harness.cases.task.submit.factory.SubmitTaskDynamicContext;
 import cn.xiaofuge.deepseek.harness.domain.shared.strategy.AbstractStrategyRouter;
 
@@ -12,5 +12,5 @@ import cn.xiaofuge.deepseek.harness.domain.shared.strategy.AbstractStrategyRoute
  * @website bugstack.cn
  */
 public abstract class AbstractSubmitTaskNode
-        extends AbstractStrategyRouter<SubmitTaskRequest, SubmitTaskDynamicContext, SubmitTaskResponse> {
+        extends AbstractStrategyRouter<SubmitTaskCommand, SubmitTaskDynamicContext, SubmitTaskResult> {
 }

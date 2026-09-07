@@ -5,7 +5,6 @@ import cn.xiaofuge.deepseek.harness.infrastructure.dao.po.SessionHeaderRowPO;
 import java.util.List;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
@@ -47,7 +46,6 @@ public interface ISessionEventRowDao {
             VALUES
                 (#{sessionId}, #{seq}, #{eventType}, #{eventTime}, #{payloadJson}, #{surfaceOp}, #{sourceEventSeqs})
             """)
-    @Options(useGeneratedKeys = true, keyProperty = "id")
     void insert(SessionEventRowPO row);
 
     /**

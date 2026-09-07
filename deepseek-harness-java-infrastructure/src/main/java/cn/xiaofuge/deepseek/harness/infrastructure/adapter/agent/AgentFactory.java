@@ -15,6 +15,7 @@ import cn.xiaofuge.deepseek.harness.domain.hooks.IHookService;
 import cn.xiaofuge.deepseek.harness.domain.todo.service.TodoWriteTool;
 import cn.xiaofuge.deepseek.harness.domain.todo.service.TodoWriteService;
 import cn.xiaofuge.deepseek.harness.domain.llm.adapter.port.ILlmRuntimePort;
+import cn.xiaofuge.deepseek.harness.domain.session.event.adapter.repository.ISessionEventStore;
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionHeader;
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionLog;
 import cn.xiaofuge.deepseek.harness.domain.tool.adapter.ToolRegistry;
@@ -67,6 +68,7 @@ public class AgentFactory implements AgentFactoryPort {
     private final ObjectMapper objectMapper;
     private final IPermissionMatrixPort permissionMatrixPort;
     private final RuntimeApprovalBroker approvalBroker;
+    private final ISessionEventStore sessionEventStore;
     private final ConcurrentMap<String, ReactLoopAgent> liveAgents = new ConcurrentHashMap<>();
 
     public AgentFactory(
@@ -85,7 +87,7 @@ public class AgentFactory implements AgentFactoryPort {
     ) {
         this(llm, toolRegistry, systemPromptAssembler, userQuestionsPort, shellExecutor,
                 fsService, webService, planModeService, todoWriteService, subagentRegistry,
-                hookService, objectMapper, null, null);
+                hookService, objectMapper, null, null, null);
     }
 
     public AgentFactory(
@@ -104,6 +106,34 @@ public class AgentFactory implements AgentFactoryPort {
             IPermissionMatrixPort permissionMatrixPort,
             RuntimeApprovalBroker approvalBroker
     ) {
+        this(llm, toolRegistry, systemPromptAssembler, userQuestionsPort, shellExecutor,
+                fsService, webService, planModeService, todoWriteService, subagentRegistry,
+                hookService, objectMapper, permissionMatrixPort, approvalBroker, null);
+    }
+
+    /**
+     * 全参构造器——同时接入运行期审批门禁和事件溯源持久化。
+     * <p>
+     * 当 sessionEventStore 非空时，Agent 的会话事件会被镜像写入持久化存储，
+     * Agent 内部事件（emit/serial）也会被桥接记录，让事件溯源设施真正运转。
+     */
+    public AgentFactory(
+            ILlmRuntimePort llm,
+            ToolRegistry toolRegistry,
+            SystemPromptAssembler systemPromptAssembler,
+            UserQuestionsPort userQuestionsPort,
+            IShellExecutor shellExecutor,
+            IFsPort fsService,
+            IWebPort webService,
+            PlanModeService planModeService,
+            TodoWriteService todoWriteService,
+            SubagentRegistry subagentRegistry,
+            IHookService hookService,
+            ObjectMapper objectMapper,
+            IPermissionMatrixPort permissionMatrixPort,
+            RuntimeApprovalBroker approvalBroker,
+            ISessionEventStore sessionEventStore
+    ) {
         this.llm = llm;
         this.sharedToolRegistry = toolRegistry;
         this.systemPromptAssembler = systemPromptAssembler;
@@ -118,6 +148,7 @@ public class AgentFactory implements AgentFactoryPort {
         this.objectMapper = objectMapper;
         this.permissionMatrixPort = permissionMatrixPort;
         this.approvalBroker = approvalBroker;
+        this.sessionEventStore = sessionEventStore;
     }
 
     /**
@@ -131,7 +162,9 @@ public class AgentFactory implements AgentFactoryPort {
     public ReactLoopAgent create(String agentId, AgentOptions options, String cwd) {
         String sessionId = agentId + "-session-" + UUID.randomUUID();
         SessionHeader header = SessionHeader.create(sessionId, Instant.now(), cwd, agentId);
-        SessionLog session = new SessionLog(sessionId, header);
+        SessionLog session = sessionEventStore != null
+                ? new PersistingSessionLog(sessionId, header, sessionEventStore)
+                : new SessionLog(sessionId, header);
         return wireAgent(agentId, options, cwd, session);
     }
 
@@ -228,10 +261,16 @@ public class AgentFactory implements AgentFactoryPort {
             executor.setApprovalGate(gate);
         }
 
+        // Agent 事件监听器：当事件溯源存储就绪时，桥接 Agent 内部事件
+        // （emit/serial/waterfall）到持久化存储，让事件溯源覆盖 Agent 生命周期。
+        AgentEventListener agentEvents = sessionEventStore != null
+                ? new PersistingAgentEventListener(session.sessionId(), sessionEventStore, objectMapper)
+                : null;
+
         ReactLoopAgent agent = new ReactLoopAgent(
                 agentId, options, cwd, session, inbox,
                 llm, agentTools, executor,
-                systemPromptAssembler, null
+                systemPromptAssembler, agentEvents
         );
         liveAgents.put(agentId, agent);
         return agent;

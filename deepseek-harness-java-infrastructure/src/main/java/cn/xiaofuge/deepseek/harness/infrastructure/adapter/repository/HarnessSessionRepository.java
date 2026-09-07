@@ -8,6 +8,7 @@ import cn.xiaofuge.deepseek.harness.infrastructure.dao.po.HarnessSessionPO;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 通过 DAO 和缓存层持久化会话。
@@ -25,6 +26,7 @@ public class HarnessSessionRepository implements IHarnessSessionRepository {
     }
 
     @Override
+    @Transactional
     public void save(HarnessSessionAggregate session) {
         HarnessSessionPO sessionPO = new HarnessSessionPO(
                 session.getSessionId(),

@@ -1,7 +1,7 @@
 package cn.xiaofuge.deepseek.harness.cases.task.submit.node;
 
-import cn.xiaofuge.deepseek.harness.api.dto.task.SubmitTaskRequest;
-import cn.xiaofuge.deepseek.harness.api.dto.task.SubmitTaskResponse;
+import cn.xiaofuge.deepseek.harness.cases.task.SubmitTaskCommand;
+import cn.xiaofuge.deepseek.harness.cases.task.SubmitTaskResult;
 import cn.xiaofuge.deepseek.harness.cases.task.submit.factory.SubmitTaskDynamicContext;
 import cn.xiaofuge.deepseek.harness.domain.shared.StrategyHandler;
 import cn.xiaofuge.deepseek.harness.domain.runtime.IToolResolutionService;
@@ -26,7 +26,7 @@ public class ToolResolutionNode extends AbstractSubmitTaskNode {
     private PermissionCheckNode permissionCheckNode;
 
     @Override
-    protected SubmitTaskResponse doApply(SubmitTaskRequest request,
+    protected SubmitTaskResult doApply(SubmitTaskCommand request,
                                          SubmitTaskDynamicContext ctx) throws Exception {
         var submission = ctx.getSubmission();
         ctx.setEnabledTools(toolResolutionService.resolveEnabledTools(submission.toolSelection().toolCodes()));
@@ -34,8 +34,8 @@ public class ToolResolutionNode extends AbstractSubmitTaskNode {
     }
 
     @Override
-    public StrategyHandler<SubmitTaskRequest, SubmitTaskDynamicContext, SubmitTaskResponse>
-    getNext(SubmitTaskRequest request, SubmitTaskDynamicContext ctx) {
+    public StrategyHandler<SubmitTaskCommand, SubmitTaskDynamicContext, SubmitTaskResult>
+    getNext(SubmitTaskCommand request, SubmitTaskDynamicContext ctx) {
         return permissionCheckNode;
     }
 }

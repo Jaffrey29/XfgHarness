@@ -1,9 +1,9 @@
 package cn.xiaofuge.deepseek.harness.cases.session.query;
 
-import cn.xiaofuge.deepseek.harness.api.dto.session.SessionDetailRequest;
-import cn.xiaofuge.deepseek.harness.api.dto.session.SessionListRequest;
-import cn.xiaofuge.deepseek.harness.api.dto.session.SessionQueryResponse;
 import cn.xiaofuge.deepseek.harness.cases.session.ISessionQueryCase;
+import cn.xiaofuge.deepseek.harness.cases.session.SessionDetailQuery;
+import cn.xiaofuge.deepseek.harness.cases.session.SessionListQuery;
+import cn.xiaofuge.deepseek.harness.cases.session.SessionView;
 import cn.xiaofuge.deepseek.harness.domain.session.IConversationQueryService;
 import org.springframework.stereotype.Service;
 import java.util.List;
@@ -24,11 +24,11 @@ public class SessionQueryCaseImpl implements ISessionQueryCase {
     }
 
     @Override
-    public List<SessionQueryResponse> querySessionList(SessionListRequest request) {
+    public List<SessionView> querySessionList(SessionListQuery query) {
         return conversationQueryService.querySessions(
-                        request.workspaceId(), request.offset(), request.limit())
+                        query.workspaceId(), query.offset(), query.limit())
                 .stream()
-                .map(s -> new SessionQueryResponse(
+                .map(s -> new SessionView(
                         s.sessionId(),
                         s.workspaceId(),
                         s.status(),
@@ -42,8 +42,8 @@ public class SessionQueryCaseImpl implements ISessionQueryCase {
     }
 
     @Override
-    public SessionQueryResponse querySessionDetail(SessionDetailRequest request) {
-        var s = conversationQueryService.querySessionDetail(request.sessionId());
+    public SessionView querySessionDetail(SessionDetailQuery query) {
+        var s = conversationQueryService.querySessionDetail(query.sessionId());
         List<java.util.Map<String, Object>> messages = new java.util.ArrayList<>();
         if (s.messages() != null) {
             for (var msg : s.messages()) {
@@ -53,7 +53,7 @@ public class SessionQueryCaseImpl implements ISessionQueryCase {
                 messages.add(m);
             }
         }
-        return new SessionQueryResponse(
+        return new SessionView(
                 s.sessionId(),
                 s.workspaceId(),
                 s.status(),

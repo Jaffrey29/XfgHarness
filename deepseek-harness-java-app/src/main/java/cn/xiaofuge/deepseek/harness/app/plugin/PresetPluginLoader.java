@@ -1,6 +1,6 @@
 package cn.xiaofuge.deepseek.harness.app.plugin;
 
-import cn.xiaofuge.deepseek.harness.api.dto.plugin.InstallPluginRequest;
+import cn.xiaofuge.deepseek.harness.cases.plugin.InstallPluginCommand;
 import cn.xiaofuge.deepseek.harness.cases.plugin.IInstallHarnessPluginCase;
 import cn.xiaofuge.deepseek.harness.domain.plugin.IPluginRegistryService;
 import cn.xiaofuge.deepseek.harness.domain.plugin.registry.model.entity.HarnessPluginEntity;
@@ -63,7 +63,7 @@ public class PresetPluginLoader implements ApplicationRunner {
             }
             return;
         }
-        InstallPluginRequest request = new InstallPluginRequest(
+        InstallPluginCommand cmd = new InstallPluginCommand(
                 preset.getPluginId(),
                 preset.getDisplayName(),
                 preset.getPluginVersion(),
@@ -71,7 +71,7 @@ public class PresetPluginLoader implements ApplicationRunner {
                 preset.getSourcePath(),
                 preset.getEntrypoint()
         );
-        installCase.execute(request);
+        installCase.execute(cmd);
         log.info("Preset plugin '{}' installed from {}", preset.getPluginId(), preset.getSourcePath());
     }
 }

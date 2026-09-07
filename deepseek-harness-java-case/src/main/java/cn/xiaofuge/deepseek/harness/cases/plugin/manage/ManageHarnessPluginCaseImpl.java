@@ -1,6 +1,6 @@
 package cn.xiaofuge.deepseek.harness.cases.plugin.manage;
 
-import cn.xiaofuge.deepseek.harness.api.dto.plugin.PluginLifecycleResponse;
+import cn.xiaofuge.deepseek.harness.cases.plugin.PluginLifecycleResult;
 import cn.xiaofuge.deepseek.harness.cases.plugin.IManageHarnessPluginCase;
 import cn.xiaofuge.deepseek.harness.domain.plugin.IPluginRegistryService;
 import cn.xiaofuge.deepseek.harness.domain.plugin.IPluginRuntimeService;
@@ -30,28 +30,28 @@ public class ManageHarnessPluginCaseImpl implements IManageHarnessPluginCase {
     }
 
     @Override
-    public PluginLifecycleResponse disable(String pluginId) {
+    public PluginLifecycleResult disable(String pluginId) {
         pluginRuntimeService.stop(pluginId);
         PluginInstallStatusEnumVO status = pluginRegistryService.disablePlugin(pluginId);
-        return new PluginLifecycleResponse(pluginId, status.name(), "plugin disabled", Instant.now());
+        return new PluginLifecycleResult(pluginId, status.name(), "plugin disabled", Instant.now());
     }
 
     @Override
-    public PluginLifecycleResponse enable(String pluginId) {
+    public PluginLifecycleResult enable(String pluginId) {
         PluginInstallStatusEnumVO status = pluginRegistryService.enablePlugin(pluginId);
-        return new PluginLifecycleResponse(pluginId, status.name(), "plugin enabled", Instant.now());
+        return new PluginLifecycleResult(pluginId, status.name(), "plugin enabled", Instant.now());
     }
 
     @Override
-    public PluginLifecycleResponse uninstall(String pluginId) {
+    public PluginLifecycleResult uninstall(String pluginId) {
         pluginRuntimeService.stop(pluginId);
         PluginInstallStatusEnumVO status = pluginRegistryService.uninstallPlugin(pluginId);
-        return new PluginLifecycleResponse(pluginId, status.name(), "plugin uninstalled", Instant.now());
+        return new PluginLifecycleResult(pluginId, status.name(), "plugin uninstalled", Instant.now());
     }
 
     @Override
-    public PluginLifecycleResponse stop(String pluginId) {
+    public PluginLifecycleResult stop(String pluginId) {
         PluginProcessStatusVO result = pluginRuntimeService.stop(pluginId);
-        return new PluginLifecycleResponse(pluginId, result.running() ? "RUNNING" : "STOPPED", result.message(), Instant.now());
+        return new PluginLifecycleResult(pluginId, result.running() ? "RUNNING" : "STOPPED", result.message(), Instant.now());
     }
 }

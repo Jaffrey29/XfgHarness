@@ -1,8 +1,5 @@
 package cn.xiaofuge.deepseek.harness.cases.session;
 
-import cn.xiaofuge.deepseek.harness.api.dto.session.SessionRestoreRequest;
-import cn.xiaofuge.deepseek.harness.api.dto.session.SessionRestoreResponse;
-
 /**
  * 基于持久化事件日志恢复会话的用例。
  *
@@ -11,5 +8,5 @@ import cn.xiaofuge.deepseek.harness.api.dto.session.SessionRestoreResponse;
  */
 public interface ISessionRestoreCase {
 
-    SessionRestoreResponse execute(SessionRestoreRequest request);
+    SessionRestoreResult execute(SessionRestoreCommand command);
 }

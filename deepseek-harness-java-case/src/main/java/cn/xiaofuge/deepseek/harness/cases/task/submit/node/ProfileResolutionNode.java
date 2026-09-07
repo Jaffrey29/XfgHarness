@@ -1,7 +1,7 @@
 package cn.xiaofuge.deepseek.harness.cases.task.submit.node;
 
-import cn.xiaofuge.deepseek.harness.api.dto.task.SubmitTaskRequest;
-import cn.xiaofuge.deepseek.harness.api.dto.task.SubmitTaskResponse;
+import cn.xiaofuge.deepseek.harness.cases.task.SubmitTaskCommand;
+import cn.xiaofuge.deepseek.harness.cases.task.SubmitTaskResult;
 import cn.xiaofuge.deepseek.harness.cases.task.submit.factory.SubmitTaskDynamicContext;
 import cn.xiaofuge.deepseek.harness.domain.shared.StrategyHandler;
 import cn.xiaofuge.deepseek.harness.domain.runtime.IExecutionProfileService;
@@ -30,7 +30,7 @@ public class ProfileResolutionNode extends AbstractSubmitTaskNode {
     private ToolResolutionNode toolResolutionNode;
 
     @Override
-    protected SubmitTaskResponse doApply(SubmitTaskRequest request,
+    protected SubmitTaskResult doApply(SubmitTaskCommand request,
                                          SubmitTaskDynamicContext ctx) throws Exception {
         var submission = ctx.getSubmission();
         ctx.setExecutionProfile(executionProfileService.resolve(submission.profileCode()));
@@ -39,8 +39,8 @@ public class ProfileResolutionNode extends AbstractSubmitTaskNode {
     }
 
     @Override
-    public StrategyHandler<SubmitTaskRequest, SubmitTaskDynamicContext, SubmitTaskResponse>
-    getNext(SubmitTaskRequest request, SubmitTaskDynamicContext ctx) {
+    public StrategyHandler<SubmitTaskCommand, SubmitTaskDynamicContext, SubmitTaskResult>
+    getNext(SubmitTaskCommand request, SubmitTaskDynamicContext ctx) {
         return toolResolutionNode;
     }
 }

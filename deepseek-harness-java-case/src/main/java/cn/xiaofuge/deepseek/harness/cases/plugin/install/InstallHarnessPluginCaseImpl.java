@@ -1,7 +1,7 @@
 package cn.xiaofuge.deepseek.harness.cases.plugin.install;
 
-import cn.xiaofuge.deepseek.harness.api.dto.plugin.InstallPluginRequest;
-import cn.xiaofuge.deepseek.harness.api.dto.plugin.InstallPluginResponse;
+import cn.xiaofuge.deepseek.harness.cases.plugin.InstallPluginCommand;
+import cn.xiaofuge.deepseek.harness.cases.plugin.InstallPluginResult;
 import cn.xiaofuge.deepseek.harness.cases.plugin.IInstallHarnessPluginCase;
 import cn.xiaofuge.deepseek.harness.domain.plugin.registry.model.valobj.PluginInstallationResultVO;
 import cn.xiaofuge.deepseek.harness.domain.plugin.IPluginRegistryService;
@@ -23,7 +23,7 @@ public class InstallHarnessPluginCaseImpl implements IInstallHarnessPluginCase {
     }
 
     @Override
-    public InstallPluginResponse execute(InstallPluginRequest request) {
+    public InstallPluginResult execute(InstallPluginCommand request) {
         PluginInstallationResultVO result = pluginRegistryService.installPlugin(
                 request.pluginId(),
                 request.displayName(),
@@ -32,7 +32,7 @@ public class InstallHarnessPluginCaseImpl implements IInstallHarnessPluginCase {
                 request.sourcePath(),
                 request.entrypoint()
         );
-        return new InstallPluginResponse(
+        return new InstallPluginResult(
                 result.pluginId(),
                 result.runtimeType().name(),
                 result.installMode().name(),

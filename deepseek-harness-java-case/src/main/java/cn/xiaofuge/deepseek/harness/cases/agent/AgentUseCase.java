@@ -1,7 +1,7 @@
 package cn.xiaofuge.deepseek.harness.cases.agent;
 
-import cn.xiaofuge.deepseek.harness.api.dto.agent.AgentMessageRequest;
-import cn.xiaofuge.deepseek.harness.api.dto.agent.AgentMessageResponse;
+import cn.xiaofuge.deepseek.harness.cases.agent.SendMessageCommand;
+import cn.xiaofuge.deepseek.harness.cases.agent.SendMessageResult;
 import cn.xiaofuge.deepseek.harness.cases.agent.factory.AgentMessageFactory;
 import cn.xiaofuge.deepseek.harness.domain.agent.model.valobj.AgentCancelCause;
 import cn.xiaofuge.deepseek.harness.domain.agent.model.entity.AgentOptions;
@@ -39,7 +39,7 @@ public class AgentUseCase implements IAgentUseCase {
     private String defaultModel;
 
     @Override
-    public AgentMessageResponse sendMessage(AgentMessageRequest request) {
+    public SendMessageResult sendMessage(SendMessageCommand request) {
         log.info("[UseCase] Agent={} 收到消息发送请求（provider={} model={} streaming=false）",
                 request.agentId(), request.provider(), request.model());
         try {
@@ -55,8 +55,8 @@ public class AgentUseCase implements IAgentUseCase {
     }
 
     @Override
-    public AgentMessageResponse sendMessageStreaming(
-            AgentMessageRequest request,
+    public SendMessageResult sendMessageStreaming(
+            SendMessageCommand request,
             java.util.function.Consumer<String> deltaSink,
             java.util.function.Consumer<ToolCallBlock> toolCallSink) {
         log.info("[UseCase] Agent={} 收到流式消息发送请求（provider={} model={}）",
@@ -102,7 +102,7 @@ public class AgentUseCase implements IAgentUseCase {
         }
     }
 
-    private AgentOptions buildAgentOptions(AgentMessageRequest request) {
+    private AgentOptions buildAgentOptions(SendMessageCommand request) {
         String provider = request.provider() != null ? request.provider() : "deepseek";
         // 与 AgentResolveNode 保持一致：默认模型用 yml 的 harness.llm.deepseek.default-model（gpt-5.5），
         // 而不是写死的 "deepseek"（库里没有该 modelCode，会匹配不到 → apiKey=null → Missing API key）。

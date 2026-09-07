@@ -6,6 +6,7 @@ import cn.xiaofuge.deepseek.harness.infrastructure.dao.IHarnessPluginRuntimeBind
 import cn.xiaofuge.deepseek.harness.infrastructure.dao.po.HarnessPluginRuntimeBindingPO;
 import java.time.Instant;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 持久化某插件最近一次桥接解析结果。
@@ -23,6 +24,7 @@ public class HarnessPluginRuntimeBindingRepository implements IHarnessPluginRunt
     }
 
     @Override
+    @Transactional
     public void save(String pluginId, PluginBridgePlanVO plan, Instant checkedAt) {
         harnessPluginRuntimeBindingDao.save(new HarnessPluginRuntimeBindingPO(
                 pluginId,

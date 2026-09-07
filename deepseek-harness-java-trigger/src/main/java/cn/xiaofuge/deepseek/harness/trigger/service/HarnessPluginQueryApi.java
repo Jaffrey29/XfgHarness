@@ -4,6 +4,7 @@ import cn.xiaofuge.deepseek.harness.api.dto.plugin.QueryPluginStatusResponse;
 import cn.xiaofuge.deepseek.harness.api.response.plugin.InstalledPluginResponse;
 import cn.xiaofuge.deepseek.harness.api.service.query.HarnessInstalledPluginQueryApi;
 import cn.xiaofuge.deepseek.harness.cases.plugin.IQueryHarnessPluginStatusCase;
+import cn.xiaofuge.deepseek.harness.cases.plugin.QueryPluginStatusResult;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
@@ -13,7 +14,7 @@ import org.springframework.stereotype.Service;
  * 执行流程：
  * 1. 接收 Trigger 层的插件查询请求；
  * 2. 调用领域查询服务或查询用例组装读模型；
- * 3. 返回前端可直接渲染的响应对象。
+ * 3. 将 case 层 Result 映射为 api Response 返回前端可直接渲染的响应对象。
  *
  * @author 小傅哥
  * @website bugstack.cn
@@ -35,6 +36,9 @@ public class HarnessPluginQueryApi {
     }
 
     public QueryPluginStatusResponse queryPluginStatus(String pluginId) {
-        return queryHarnessPluginStatusCase.execute(pluginId);
+        QueryPluginStatusResult r = queryHarnessPluginStatusCase.execute(pluginId);
+        return new QueryPluginStatusResponse(
+                r.pluginId(), r.processId(), r.running(),
+                r.runtimeCommand(), r.workingDirectory(), r.startedAt(), r.message());
     }
 }

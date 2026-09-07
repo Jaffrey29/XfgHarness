@@ -1,7 +1,7 @@
 package cn.xiaofuge.deepseek.harness.cases.agent.node;
 
-import cn.xiaofuge.deepseek.harness.api.dto.agent.AgentMessageRequest;
-import cn.xiaofuge.deepseek.harness.api.dto.agent.AgentMessageResponse;
+import cn.xiaofuge.deepseek.harness.cases.agent.SendMessageCommand;
+import cn.xiaofuge.deepseek.harness.cases.agent.SendMessageResult;
 import cn.xiaofuge.deepseek.harness.cases.agent.factory.AgentMessageDynamicContext;
 import cn.xiaofuge.deepseek.harness.domain.shared.StrategyHandler;
 import org.springframework.stereotype.Service;
@@ -58,7 +58,7 @@ public class AgentIntentNode extends AbstractAgentMessageNode {
     );
 
     @Override
-    protected AgentMessageResponse doApply(AgentMessageRequest request,
+    protected SendMessageResult doApply(SendMessageCommand request,
                                            AgentMessageDynamicContext ctx) throws Exception {
         String msg = request.message() != null ? request.message().trim() : "";
         AgentMessageDynamicContext.MessageIntent intent = classify(msg);
@@ -70,8 +70,8 @@ public class AgentIntentNode extends AbstractAgentMessageNode {
     }
 
     @Override
-    public StrategyHandler<AgentMessageRequest, AgentMessageDynamicContext, AgentMessageResponse>
-    getNext(AgentMessageRequest request, AgentMessageDynamicContext ctx) {
+    public StrategyHandler<SendMessageCommand, AgentMessageDynamicContext, SendMessageResult>
+    getNext(SendMessageCommand request, AgentMessageDynamicContext ctx) {
         return dispatchNode;
     }
 

@@ -1,7 +1,7 @@
 package cn.xiaofuge.deepseek.harness.cases.task.submit.node;
 
-import cn.xiaofuge.deepseek.harness.api.dto.task.SubmitTaskRequest;
-import cn.xiaofuge.deepseek.harness.api.dto.task.SubmitTaskResponse;
+import cn.xiaofuge.deepseek.harness.cases.task.SubmitTaskCommand;
+import cn.xiaofuge.deepseek.harness.cases.task.SubmitTaskResult;
 import cn.xiaofuge.deepseek.harness.cases.task.submit.factory.SubmitTaskDynamicContext;
 import cn.xiaofuge.deepseek.harness.domain.shared.StrategyHandler;
 import cn.xiaofuge.deepseek.harness.domain.runtime.tool.model.valobj.ToolSelectionVO;
@@ -35,7 +35,7 @@ public class SubmissionRootNode extends AbstractSubmitTaskNode {
     private ProfileResolutionNode profileResolutionNode;
 
     @Override
-    protected SubmitTaskResponse doApply(SubmitTaskRequest request,
+    protected SubmitTaskResult doApply(SubmitTaskCommand request,
                                          SubmitTaskDynamicContext ctx) throws Exception {
         log.info("[Submit] 收到任务提交请求（workspaceId={} profileCode={} 请求工具={} prompt长度={}）",
                 request.workspaceId(), request.profileCode(),
@@ -53,8 +53,8 @@ public class SubmissionRootNode extends AbstractSubmitTaskNode {
     }
 
     @Override
-    public StrategyHandler<SubmitTaskRequest, SubmitTaskDynamicContext, SubmitTaskResponse>
-    getNext(SubmitTaskRequest request, SubmitTaskDynamicContext ctx) {
+    public StrategyHandler<SubmitTaskCommand, SubmitTaskDynamicContext, SubmitTaskResult>
+    getNext(SubmitTaskCommand request, SubmitTaskDynamicContext ctx) {
         return profileResolutionNode;
     }
 }

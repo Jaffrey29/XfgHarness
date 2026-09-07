@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 通过 DAO 和缓存层持久化任务。
@@ -30,6 +31,7 @@ public class HarnessTaskRepository implements IHarnessTaskQueueRepository {
     }
 
     @Override
+    @Transactional
     public void save(HarnessTaskEntity task) {
         HarnessTaskPO taskPO = new HarnessTaskPO(
                 task.getTaskId(),

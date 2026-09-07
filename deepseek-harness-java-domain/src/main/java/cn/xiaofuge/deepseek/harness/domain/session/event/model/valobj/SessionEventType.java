@@ -49,6 +49,9 @@ public enum SessionEventType {
     // ── Agent inbox ───────────────────────────────────────────────
     AGENT_INBOX_SPLICED("agent/inbox/spliced", false),
 
+    // ── Agent lifecycle events (emitted via AgentEventListener) ──
+    AGENT_EVENT("agent/event", true),  // informational; e.g. agent/cancelled, turn lifecycle
+
     // ── Legacy compatibility (mapped from old event types) ───────
     TASK_SUBMITTED("task/submitted", true),
     TASK_AUTO_APPROVED("task/auto-approved", true),

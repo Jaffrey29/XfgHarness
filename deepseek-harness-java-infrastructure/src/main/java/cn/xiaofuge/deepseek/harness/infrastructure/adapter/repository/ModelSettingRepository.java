@@ -7,6 +7,7 @@ import cn.xiaofuge.deepseek.harness.infrastructure.dao.po.HarnessModelSettingPO;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 模型设置仓储实现。
@@ -29,6 +30,7 @@ public class ModelSettingRepository implements IModelSettingRepository {
     }
 
     @Override
+    @Transactional
     public void save(ModelSettingEntity setting) {
         harnessModelSettingDao.save(new HarnessModelSettingPO(
                 setting.getProfileCode(),
@@ -52,6 +54,7 @@ public class ModelSettingRepository implements IModelSettingRepository {
     }
 
     @Override
+    @Transactional
     public void deleteByProfileCode(String profileCode) {
         harnessModelSettingDao.deleteByProfileCode(profileCode);
     }

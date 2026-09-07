@@ -617,7 +617,8 @@ public class HarnessApplicationConfig {
             TodoWriteService todoWriteService,
             SubagentRegistry subagentRegistry,
             IHookService hookService,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            ISessionEventStore sessionEventStore
     ) {
         return new AgentFactory(
                 llmRuntimePort,
@@ -631,7 +632,10 @@ public class HarnessApplicationConfig {
                 todoWriteService,
                 subagentRegistry,
                 hookService,
-                objectMapper
+                objectMapper,
+                null,
+                null,
+                sessionEventStore
         );
     }
 

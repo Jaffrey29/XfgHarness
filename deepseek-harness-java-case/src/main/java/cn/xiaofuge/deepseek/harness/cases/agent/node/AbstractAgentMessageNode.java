@@ -1,7 +1,7 @@
 package cn.xiaofuge.deepseek.harness.cases.agent.node;
 
-import cn.xiaofuge.deepseek.harness.api.dto.agent.AgentMessageRequest;
-import cn.xiaofuge.deepseek.harness.api.dto.agent.AgentMessageResponse;
+import cn.xiaofuge.deepseek.harness.cases.agent.SendMessageCommand;
+import cn.xiaofuge.deepseek.harness.cases.agent.SendMessageResult;
 import cn.xiaofuge.deepseek.harness.cases.agent.factory.AgentMessageDynamicContext;
 import cn.xiaofuge.deepseek.harness.domain.shared.strategy.AbstractStrategyRouter;
 
@@ -12,5 +12,5 @@ import cn.xiaofuge.deepseek.harness.domain.shared.strategy.AbstractStrategyRoute
  * @website bugstack.cn
  */
 public abstract class AbstractAgentMessageNode
-        extends AbstractStrategyRouter<AgentMessageRequest, AgentMessageDynamicContext, AgentMessageResponse> {
+        extends AbstractStrategyRouter<SendMessageCommand, AgentMessageDynamicContext, SendMessageResult> {
 }

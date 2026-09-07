@@ -1,8 +1,8 @@
 package cn.xiaofuge.deepseek.harness.cases.session.event;
 
-import cn.xiaofuge.deepseek.harness.api.dto.session.SessionEventQueryRequest;
-import cn.xiaofuge.deepseek.harness.api.dto.session.SessionEventQueryResponse;
 import cn.xiaofuge.deepseek.harness.cases.session.ISessionEventQueryCase;
+import cn.xiaofuge.deepseek.harness.cases.session.SessionEventQuery;
+import cn.xiaofuge.deepseek.harness.cases.session.SessionEventView;
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionEvent;
 import cn.xiaofuge.deepseek.harness.domain.session.ISessionEventLogService;
 import org.springframework.stereotype.Service;
@@ -26,23 +26,23 @@ public class SessionEventQueryCaseImpl implements ISessionEventQueryCase {
     }
 
     @Override
-    public List<SessionEventQueryResponse> queryEvents(SessionEventQueryRequest request) {
+    public List<SessionEventView> queryEvents(SessionEventQuery query) {
         List<SessionEvent> events;
-        if (request.fromSeq() != null) {
-            events = sessionEventLogService.readAfter(request.sessionId(), request.fromSeq());
+        if (query.fromSeq() != null) {
+            events = sessionEventLogService.readAfter(query.sessionId(), query.fromSeq());
         } else {
-            events = sessionEventLogService.readAll(request.sessionId());
+            events = sessionEventLogService.readAll(query.sessionId());
         }
 
-        List<SessionEventQueryResponse> result = new ArrayList<>();
+        List<SessionEventView> result = new ArrayList<>();
         for (SessionEvent e : events) {
-            if (request.toSeq() != null && e.seq() > request.toSeq()) break;
+            if (query.toSeq() != null && e.seq() > query.toSeq()) break;
             String eventType = e.getClass().getSimpleName();
-            if (request.eventTypes() != null && !request.eventTypes().isEmpty()
-                    && !request.eventTypes().contains(eventType)) {
+            if (query.eventTypes() != null && !query.eventTypes().isEmpty()
+                    && !query.eventTypes().contains(eventType)) {
                 continue;
             }
-            result.add(new SessionEventQueryResponse(
+            result.add(new SessionEventView(
                     e.seq(),
                     eventType,
                     e.time(),

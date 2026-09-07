@@ -1,7 +1,7 @@
 package cn.xiaofuge.deepseek.harness.cases.task.submit.node;
 
-import cn.xiaofuge.deepseek.harness.api.dto.task.SubmitTaskRequest;
-import cn.xiaofuge.deepseek.harness.api.dto.task.SubmitTaskResponse;
+import cn.xiaofuge.deepseek.harness.cases.task.SubmitTaskCommand;
+import cn.xiaofuge.deepseek.harness.cases.task.SubmitTaskResult;
 import cn.xiaofuge.deepseek.harness.cases.task.submit.factory.SubmitTaskDynamicContext;
 import cn.xiaofuge.deepseek.harness.domain.shared.StrategyHandler;
 import cn.xiaofuge.deepseek.harness.domain.session.IHarnessSessionRegistryService;
@@ -11,6 +11,8 @@ import cn.xiaofuge.deepseek.harness.domain.task.IHarnessTaskQueueService;
 import cn.xiaofuge.deepseek.harness.domain.task.execution.model.valobj.RuntimeExecutionPlanVO;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.time.Instant;
@@ -18,6 +20,10 @@ import java.time.Instant;
 /**
  * 入队节点：创建会话、任务入队、记录日志，并按条件继续执行。
  * 这是任务提交链路的终止节点。
+ * <p>
+ * 事务边界：「创建会话 + 任务入队 + 记录日志」三步在同一个事务中完成，
+ * 保证原子性；executeSession（可能长时间运行的模型调用）在事务外执行，
+ * 避免 DB 连接被长时间占用。
  *
  * @author 小傅哥
  * @website bugstack.cn
@@ -39,8 +45,11 @@ public class EnqueueNode extends AbstractSubmitTaskNode {
     @Autowired
     private IHarnessExecutionService harnessExecutionService;
 
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+
     @Override
-    protected SubmitTaskResponse doApply(SubmitTaskRequest request,
+    protected SubmitTaskResult doApply(SubmitTaskCommand request,
                                          SubmitTaskDynamicContext ctx) throws Exception {
         var submission = ctx.getSubmission();
         var profile = ctx.getExecutionProfile();
@@ -59,22 +68,28 @@ public class EnqueueNode extends AbstractSubmitTaskNode {
                 approval.status()
         );
 
-        ctx.setSessionResult(harnessSessionRegistryService.openQueuedSession(runtimePlan));
-        log.info("[Submit] 创建排队会话完成，sessionId={} resolvedModel={}",
-                ctx.getSessionResult().sessionId(), ctx.getSessionResult().resolvedModel());
-        ctx.setTaskResult(harnessTaskQueueService.createQueuedTask(ctx.getSessionResult().sessionId(), runtimePlan));
-        ctx.setCurrentStatus(ctx.getTaskResult().status().name());
-        log.info("[Submit] 任务入队完成，taskId={} status={}",
-                ctx.getTaskResult().taskId(), ctx.getTaskResult().status().name());
+        // 事务包裹「创建会话 + 任务入队 + 记录日志」三步写操作。
+        // executeSession 在事务外执行——它可能触发长时间模型调用，
+        // 不能占用 DB 连接。
+        TransactionTemplate txTemplate = new TransactionTemplate(transactionManager);
+        txTemplate.executeWithoutResult(status -> {
+            ctx.setSessionResult(harnessSessionRegistryService.openQueuedSession(runtimePlan));
+            log.info("[Submit] 创建排队会话完成，sessionId={} resolvedModel={}",
+                    ctx.getSessionResult().sessionId(), ctx.getSessionResult().resolvedModel());
+            ctx.setTaskResult(harnessTaskQueueService.createQueuedTask(ctx.getSessionResult().sessionId(), runtimePlan));
+            ctx.setCurrentStatus(ctx.getTaskResult().status().name());
+            log.info("[Submit] 任务入队完成，taskId={} status={}",
+                    ctx.getTaskResult().taskId(), ctx.getTaskResult().status().name());
 
-        sessionLogService.recordTaskSubmission(
-                ctx.getSessionResult().sessionId(),
-                ctx.getTaskResult().taskId(),
-                request.profileCode(),
-                request.prompt(),
-                approval.approvalRequired(),
-                approval.reason()
-        );
+            sessionLogService.recordTaskSubmission(
+                    ctx.getSessionResult().sessionId(),
+                    ctx.getTaskResult().taskId(),
+                    request.profileCode(),
+                    request.prompt(),
+                    approval.approvalRequired(),
+                    approval.reason()
+            );
+        });
 
         if (!approval.approvalRequired()) {
             log.info("[Submit] 无需审批，立即触发执行 sessionId={}...", ctx.getSessionResult().sessionId());
@@ -85,7 +100,7 @@ public class EnqueueNode extends AbstractSubmitTaskNode {
             log.info("[Submit] 需要审批，任务挂起等待审批 taskId={}", ctx.getTaskResult().taskId());
         }
 
-        return new SubmitTaskResponse(
+        return new SubmitTaskResult(
                 ctx.getTaskResult().taskId(),
                 ctx.getSessionResult().sessionId(),
                 ctx.getCurrentStatus(),
@@ -98,8 +113,8 @@ public class EnqueueNode extends AbstractSubmitTaskNode {
     }
 
     @Override
-    public StrategyHandler<SubmitTaskRequest, SubmitTaskDynamicContext, SubmitTaskResponse>
-    getNext(SubmitTaskRequest request, SubmitTaskDynamicContext ctx) {
+    public StrategyHandler<SubmitTaskCommand, SubmitTaskDynamicContext, SubmitTaskResult>
+    getNext(SubmitTaskCommand request, SubmitTaskDynamicContext ctx) {
         return defaultStrategyHandler;
     }
 }

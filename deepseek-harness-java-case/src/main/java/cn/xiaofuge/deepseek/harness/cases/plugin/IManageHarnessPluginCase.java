@@ -1,6 +1,6 @@
 package cn.xiaofuge.deepseek.harness.cases.plugin;
 
-import cn.xiaofuge.deepseek.harness.api.dto.plugin.PluginLifecycleResponse;
+import cn.xiaofuge.deepseek.harness.cases.plugin.PluginLifecycleResult;
 
 /**
  * 编排插件生命周期管理，包括启用、停用、卸载和停止。
@@ -10,11 +10,11 @@ import cn.xiaofuge.deepseek.harness.api.dto.plugin.PluginLifecycleResponse;
  */
 public interface IManageHarnessPluginCase {
 
-    PluginLifecycleResponse disable(String pluginId);
+    PluginLifecycleResult disable(String pluginId);
 
-    PluginLifecycleResponse enable(String pluginId);
+    PluginLifecycleResult enable(String pluginId);
 
-    PluginLifecycleResponse uninstall(String pluginId);
+    PluginLifecycleResult uninstall(String pluginId);
 
-    PluginLifecycleResponse stop(String pluginId);
+    PluginLifecycleResult stop(String pluginId);
 }

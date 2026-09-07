@@ -7,19 +7,26 @@ import cn.xiaofuge.deepseek.harness.api.dto.plugin.InstallPluginResponse;
 import cn.xiaofuge.deepseek.harness.api.dto.plugin.PluginLifecycleResponse;
 import cn.xiaofuge.deepseek.harness.api.dto.plugin.RunPluginRequest;
 import cn.xiaofuge.deepseek.harness.api.dto.plugin.RunPluginResponse;
+import cn.xiaofuge.deepseek.harness.cases.plugin.ActivatePluginCommand;
+import cn.xiaofuge.deepseek.harness.cases.plugin.ActivatePluginResult;
 import cn.xiaofuge.deepseek.harness.cases.plugin.IActivateHarnessPluginCase;
 import cn.xiaofuge.deepseek.harness.cases.plugin.IInstallHarnessPluginCase;
 import cn.xiaofuge.deepseek.harness.cases.plugin.IManageHarnessPluginCase;
 import cn.xiaofuge.deepseek.harness.cases.plugin.IRunHarnessPluginCase;
+import cn.xiaofuge.deepseek.harness.cases.plugin.InstallPluginCommand;
+import cn.xiaofuge.deepseek.harness.cases.plugin.InstallPluginResult;
+import cn.xiaofuge.deepseek.harness.cases.plugin.PluginLifecycleResult;
+import cn.xiaofuge.deepseek.harness.cases.plugin.RunPluginCommand;
+import cn.xiaofuge.deepseek.harness.cases.plugin.RunPluginResult;
 import org.springframework.stereotype.Service;
 
 /**
  * 插件命令适配器。
  * <p>
  * 执行流程：
- * 1. 接收 Trigger 层传入的插件命令请求；
- * 2. 转交对应的用例层执行安装、激活、运行或生命周期管理；
- * 3. 将结果直接返回给 Trigger 层输出。
+ * 1. 接收 Trigger 层传入的插件命令请求（api DTO）；
+ * 2. 映射为 case 层 Command，转交对应的用例层执行；
+ * 3. 将 case 层 Result 映射回 api Response 返回给 Trigger 层输出。
  *
  * @author 小傅哥
  * @website bugstack.cn
@@ -45,26 +52,43 @@ public class HarnessPluginCommandApi {
     }
 
     public InstallPluginResponse installPlugin(InstallPluginRequest request) {
-        return installHarnessPluginCase.execute(request);
+        InstallPluginCommand cmd = new InstallPluginCommand(
+                request.pluginId(), request.displayName(), request.pluginVersion(),
+                request.runtimeType(), request.sourcePath(), request.entrypoint());
+        InstallPluginResult r = installHarnessPluginCase.execute(cmd);
+        return new InstallPluginResponse(
+                r.pluginId(), r.runtimeType(), r.installMode(),
+                r.status(), r.directlyExecutable(), r.installedAt());
     }
 
     public ActivatePluginResponse activatePlugin(ActivatePluginRequest request) {
-        return activateHarnessPluginCase.execute(request);
+        ActivatePluginCommand cmd = new ActivatePluginCommand(request.pluginId());
+        ActivatePluginResult r = activateHarnessPluginCase.execute(cmd);
+        return new ActivatePluginResponse(
+                r.pluginId(), r.status(), r.packageType(),
+                r.runtimeCommand(), r.bridgeReady(), r.message(), r.checkedAt());
     }
 
     public RunPluginResponse runPlugin(RunPluginRequest request) {
-        return runHarnessPluginCase.execute(request);
+        RunPluginCommand cmd = new RunPluginCommand(request.pluginId());
+        RunPluginResult r = runHarnessPluginCase.execute(cmd);
+        return new RunPluginResponse(
+                r.pluginId(), r.processId(), r.runtimeCommand(),
+                r.workingDirectory(), r.running(), r.startedAt(), r.message());
     }
 
     public PluginLifecycleResponse disablePlugin(String pluginId) {
-        return manageHarnessPluginCase.disable(pluginId);
+        PluginLifecycleResult r = manageHarnessPluginCase.disable(pluginId);
+        return new PluginLifecycleResponse(r.pluginId(), r.status(), r.message(), r.updatedAt());
     }
 
     public PluginLifecycleResponse enablePlugin(String pluginId) {
-        return manageHarnessPluginCase.enable(pluginId);
+        PluginLifecycleResult r = manageHarnessPluginCase.enable(pluginId);
+        return new PluginLifecycleResponse(r.pluginId(), r.status(), r.message(), r.updatedAt());
     }
 
     public PluginLifecycleResponse uninstallPlugin(String pluginId) {
-        return manageHarnessPluginCase.uninstall(pluginId);
+        PluginLifecycleResult r = manageHarnessPluginCase.uninstall(pluginId);
+        return new PluginLifecycleResponse(r.pluginId(), r.status(), r.message(), r.updatedAt());
     }
 }

@@ -1,7 +1,7 @@
 package cn.xiaofuge.deepseek.harness.cases.plugin.activate;
 
-import cn.xiaofuge.deepseek.harness.api.dto.plugin.ActivatePluginRequest;
-import cn.xiaofuge.deepseek.harness.api.dto.plugin.ActivatePluginResponse;
+import cn.xiaofuge.deepseek.harness.cases.plugin.ActivatePluginCommand;
+import cn.xiaofuge.deepseek.harness.cases.plugin.ActivatePluginResult;
 import cn.xiaofuge.deepseek.harness.cases.plugin.IActivateHarnessPluginCase;
 import cn.xiaofuge.deepseek.harness.domain.plugin.bridge.model.valobj.PluginActivationResultVO;
 import cn.xiaofuge.deepseek.harness.domain.plugin.bridge.model.valobj.PluginBridgePlanVO;
@@ -33,7 +33,7 @@ public class ActivateHarnessPluginCaseImpl implements IActivateHarnessPluginCase
     }
 
     @Override
-    public ActivatePluginResponse execute(ActivatePluginRequest request) {
+    public ActivatePluginResult execute(ActivatePluginCommand request) {
         HarnessPluginEntity plugin = pluginRegistryService.loadPlugin(request.pluginId());
         PluginBridgePlanVO plan = pluginBridgeService.inspect(plugin);
         Instant checkedAt = Instant.now();
@@ -48,7 +48,7 @@ public class ActivateHarnessPluginCaseImpl implements IActivateHarnessPluginCase
                 plan.message(),
                 checkedAt
         );
-        return new ActivatePluginResponse(
+        return new ActivatePluginResult(
                 result.pluginId(),
                 result.status().name(),
                 result.packageType().name(),
