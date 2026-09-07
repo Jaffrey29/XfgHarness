@@ -27,7 +27,7 @@
         d = document.createElement('div');
         d.id = 'error-display';
         d.style.cssText = 'position:fixed;top:10px;left:10px;right:10px;background:#ff4444;color:#fff;padding:16px;border-radius:8px;z-index:99999;font-family:monospace;font-size:13px;white-space:pre-wrap;max-height:80vh;overflow:auto;';
-        document.body.appendChild(d);
+        (document.body || document.documentElement).appendChild(d);
       }
       d.textContent += 'Error: ' + msg + '\nSource: ' + src + ':' + line + ':' + col + '\n' + (err && err.stack ? err.stack : '') + '\n\n';
     };
@@ -39,8 +39,7 @@
     };
     window.__loadJs__('/lib/marked.min.js');
     window.__loadJs__('/lib/purify.min.js');
-    window.__loadJs__('/lib/highlight-core.min.js');
-    window.__loadJs__('/lib/highlight-common.min.js');
+    window.__loadJs__('/lib/highlight.min.js');
     window.__loadCss__('/lib/github-dark.min.css');
   </script>
 </head>

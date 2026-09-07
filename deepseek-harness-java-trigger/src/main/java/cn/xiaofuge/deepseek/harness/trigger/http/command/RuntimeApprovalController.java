@@ -44,7 +44,7 @@ public class RuntimeApprovalController {
      */
     @PostMapping("/{approvalId}/resolve")
     public Response<ResolveRuntimeApprovalResponseDTO> resolve(
-            @PathVariable String approvalId,
+            @PathVariable("approvalId") String approvalId,
             @RequestBody Map<String, String> body
     ) {
         return runtimeApprovalApi.resolve(

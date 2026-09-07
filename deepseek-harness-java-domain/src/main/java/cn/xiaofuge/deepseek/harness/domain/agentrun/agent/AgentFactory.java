@@ -10,6 +10,7 @@ import cn.xiaofuge.deepseek.harness.domain.plan.ExitPlanModeTool;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.*;
 import cn.xiaofuge.deepseek.harness.domain.agentrun.AgentRun;
 import cn.xiaofuge.deepseek.harness.domain.agentrun.AgentRunFactoryPort;
+import cn.xiaofuge.deepseek.harness.domain.agentrun.model.valobj.ApprovalModeVO;
 import cn.xiaofuge.deepseek.harness.domain.plan.model.valobj.PlanModeState;
 import cn.xiaofuge.deepseek.harness.domain.plan.service.PlanModeService;
 import cn.xiaofuge.deepseek.harness.domain.agent.subagent.SubagentRegistry;
@@ -75,6 +76,7 @@ public class AgentFactory implements AgentRunFactoryPort {
     private final IRuntimeApprovalBroker approvalBroker;
     private final ISessionEventStore sessionEventStore;
     private final ConcurrentMap<String, AgentRun> liveAgents = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, MatrixRuntimeApprovalGate> approvalGates = new ConcurrentHashMap<>();
 
     /**
      * 初始化默认 Agent 工厂。
@@ -307,7 +309,9 @@ public class AgentFactory implements AgentRunFactoryPort {
                     session.sessionId(),
                     (req, g) -> approvalBroker.requestApproval(req)
             );
+            gate.setApprovalMode(options.approvalMode());
             executor.setApprovalGate(gate);
+            approvalGates.put(agentId, gate);
         }
 
         // Agent 事件监听器：当事件溯源存储就绪时，桥接 Agent 内部事件
@@ -335,6 +339,14 @@ public class AgentFactory implements AgentRunFactoryPort {
      */
     public AgentRun get(String agentId) {
         return liveAgents.get(agentId);
+    }
+
+    @Override
+    public void configureApprovalMode(String agentId, ApprovalModeVO mode) {
+        MatrixRuntimeApprovalGate gate = approvalGates.get(agentId);
+        if (gate != null) {
+            gate.setApprovalMode(mode);
+        }
     }
 
     /**

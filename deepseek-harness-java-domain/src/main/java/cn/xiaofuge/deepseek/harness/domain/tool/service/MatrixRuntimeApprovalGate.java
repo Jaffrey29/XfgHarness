@@ -1,6 +1,7 @@
 package cn.xiaofuge.deepseek.harness.domain.tool.service;
 
 import cn.xiaofuge.deepseek.harness.domain.task.permission.adapter.port.IPermissionMatrixPort;
+import cn.xiaofuge.deepseek.harness.domain.agentrun.model.valobj.ApprovalModeVO;
 
 import java.util.Map;
 import java.util.Set;
@@ -29,6 +30,7 @@ public final class MatrixRuntimeApprovalGate implements RuntimeApprovalGate {
     private final Set<String> sessionAllowed = ConcurrentHashMap.newKeySet();
     private final String sessionId;
     private final BiFunction<ApprovalRequest, MatrixRuntimeApprovalGate, ApprovalVerdict> askHandler;
+    private volatile ApprovalModeVO approvalMode = ApprovalModeVO.REQUEST_APPROVAL;
 
     /**
      * 处理Matrix 运行时 审批 Gate。
@@ -61,13 +63,19 @@ public final class MatrixRuntimeApprovalGate implements RuntimeApprovalGate {
         if (toolName != null) sessionAllowed.add(toolName);
     }
 
+    public void setApprovalMode(ApprovalModeVO mode) {
+        this.approvalMode = mode == null ? ApprovalModeVO.REQUEST_APPROVAL : mode;
+    }
+
     @Override
     public Decision check(String toolName, Object arguments) {
         if (sessionAllowed.contains(toolName)) return Decision.ALLOW;
+        if (approvalMode == ApprovalModeVO.FULL_OPEN) return Decision.ALLOW;
         var matrix = permissionMatrixPort.load();
         if (!matrix.approvalRequiredTools().contains(toolName)) {
             return Decision.ALLOW;
         }
+        if (approvalMode == ApprovalModeVO.AUTO_APPROVE) return Decision.ALLOW;
         if (askHandler == null) {
             return Decision.DENY;
         }

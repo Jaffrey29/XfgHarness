@@ -6,6 +6,7 @@ import cn.xiaofuge.deepseek.harness.cases.agent.factory.AgentMessageDynamicConte
 import cn.xiaofuge.deepseek.harness.domain.agent.model.entity.AgentOptions;
 import cn.xiaofuge.deepseek.harness.domain.agentrun.AgentRun;
 import cn.xiaofuge.deepseek.harness.domain.agentrun.AgentRunFactoryPort;
+import cn.xiaofuge.deepseek.harness.domain.agentrun.model.valobj.ApprovalModeVO;
 import cn.xiaofuge.deepseek.harness.domain.runtime.setting.service.AgentModelSettingResolver;
 import cn.xiaofuge.deepseek.harness.cases.orchestration.StrategyHandler;
 import org.springframework.stereotype.Service;
@@ -53,9 +54,11 @@ public class AgentResolveNode extends AbstractAgentMessageNode {
             log.info("[Resolve] Agent={} 不存在，创建新实例（model={} provider={} cwd={}）",
                     request.agentId(), options.model(), options.provider(), workDir);
             agent = agentFactory.create(request.agentId(), options, workDir);
+            agentFactory.configureApprovalMode(request.agentId(), approvalMode(request));
         } else {
             log.debug("[Resolve] Agent={} 已存在，复用实例", request.agentId());
             agent.updateOptions(buildAgentOptions(request));
+            agentFactory.configureApprovalMode(request.agentId(), approvalMode(request));
         }
         ctx.attachSinks(agent);
         ctx.setAgent(agent);
@@ -83,5 +86,9 @@ public class AgentResolveNode extends AbstractAgentMessageNode {
      */
     private AgentOptions buildAgentOptions(AgentMessageRequestDTO request) {
         return modelSettingResolver.resolve(request.provider(), request.model(), request.maxTokens());
+    }
+
+    private ApprovalModeVO approvalMode(AgentMessageRequestDTO request) {
+        return ApprovalModeVO.from(request.approvalMode());
     }
 }

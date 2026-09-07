@@ -117,6 +117,8 @@ class ChatSession {
     this.lastMessage = '';
     this.createdAt = new Date().toISOString();
     this.workspace = state.currentWorkspace || '';
+    this.approvalMode = 'REQUEST_APPROVAL';
+    this.approvalPollTimer = null;
     // P0: 消息排队
     this.queue = [];
     // P1: To-do 列表
@@ -1341,39 +1343,59 @@ function removeAttachment(sess, index) {
 function renderApprovalBanner() {
   const banner = el('div', { class: 'approval-banner' });
   const approval = state.pendingApprovals[0];
+  const command = approval.displayCommand
+    || (approval.args && (approval.args.command || approval.args.path || approval.args.directory))
+    || approval.toolName;
   banner.appendChild(el('div', { class: 'approval-info' },
-    el('span', { class: 'approval-icon' }, '⚠'),
-    el('span', null, '工具 ' + approval.toolName + ' 请求执行，需要审批')
+    el('span', { class: 'approval-icon' }, '⚠️'),
+    el('span', null,
+      el('strong', null, '运行审批'),
+      el('div', { class: 'approval-command' }, approval.toolName + ' · ' + command)
+    )
   ));
   const actions = el('div', { class: 'approval-actions' });
-  actions.appendChild(el('button', { class: 'btn btn-secondary', onclick: function() { rejectApproval(approval); } }, '拒绝'));
-  actions.appendChild(el('button', { class: 'btn btn-primary', onclick: function() { approveApproval(approval); } }, '允许'));
+  actions.appendChild(el('button', { class: 'btn btn-secondary', onclick: function() { resolveRuntimeApproval(approval, 'DENY'); } }, '拒绝'));
+  actions.appendChild(el('button', { class: 'btn btn-secondary', onclick: function() { resolveRuntimeApproval(approval, 'ALLOW_ONCE'); } }, '允许一次'));
+  actions.appendChild(el('button', { class: 'btn btn-primary', onclick: function() { resolveRuntimeApproval(approval, 'ALLOW_SESSION'); } }, '本会话允许'));
   banner.appendChild(actions);
   return banner;
 }
 
-async function approveApproval(approval) {
+async function resolveRuntimeApproval(approval, verdict) {
   try {
-    await apiRequest(APPROVAL_API + '/' + approval.sessionId + '/approve', {
+    await apiRequest(APPROVAL_API + '/runtime/' + approval.approvalId + '/resolve', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ approved: true })
+      body: JSON.stringify({ verdict })
     });
-  } catch (e) { /* ignore */ }
+    showToast(verdict === 'DENY' ? '已拒绝本次执行' : '已允许执行');
+  } catch (e) {
+    showToast('审批失败：' + e.message);
+  }
   state.pendingApprovals = state.pendingApprovals.filter(a => a !== approval);
   render();
 }
 
-async function rejectApproval(approval) {
-  try {
-    await apiRequest(APPROVAL_API + '/' + approval.sessionId + '/approve', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ approved: false })
-    });
-  } catch (e) { /* ignore */ }
-  state.pendingApprovals = state.pendingApprovals.filter(a => a !== approval);
-  render();
+function startApprovalPolling(sess) {
+  stopApprovalPolling(sess);
+  sess.approvalPollTimer = setInterval(async function() {
+    if (!sess.sending) {
+      stopApprovalPolling(sess);
+      return;
+    }
+    const before = state.pendingApprovals.length;
+    await loadPendingApprovals();
+    if (before !== state.pendingApprovals.length && state.currentSessionId === sess.agentId) {
+      render();
+    }
+  }, 700);
+}
+
+function stopApprovalPolling(sess) {
+  if (sess && sess.approvalPollTimer) {
+    clearInterval(sess.approvalPollTimer);
+    sess.approvalPollTimer = null;
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -2234,6 +2256,25 @@ function renderComposer(sess) {
   }, title: '添加图片' }, '+');
   left.appendChild(attachBtn);
 
+  const approvalModes = [
+    { value: 'REQUEST_APPROVAL', label: '请求审批' },
+    { value: 'AUTO_APPROVE', label: '帮我审批' },
+    { value: 'FULL_OPEN', label: '完全开放' },
+  ];
+  const approvalSelector = el('div', { class: 'composer-approval-selector', title: '运行审批模式' });
+  approvalSelector.appendChild(el('span', null, '🛡️'));
+  const approvalSelect = el('select', {
+    onchange: function(e) { if (sess) sess.approvalMode = e.target.value; }
+  });
+  approvalModes.forEach(function(mode) {
+    approvalSelect.appendChild(el('option', {
+      value: mode.value,
+      selected: mode.value === ((sess && sess.approvalMode) || 'REQUEST_APPROVAL')
+    }, mode.label));
+  });
+  approvalSelector.appendChild(approvalSelect);
+  left.appendChild(approvalSelector);
+
   toolbar.appendChild(left);
 
   // Right: model selector + send/cancel
@@ -2930,6 +2971,7 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
     const requestBody = { agentId: sess.agentId, message: text };
     if (state.currentWorkspace) requestBody.cwd = state.currentWorkspace;
     if (state.currentModel) requestBody.model = state.currentModel;
+    if (sess.approvalMode) requestBody.approvalMode = sess.approvalMode;
     // 图片附件：随请求发送 data URL 列表，后端转 ImageBlock 供多模态模型识别
     const imgAttachments = (sess.lastRequestAttachments || []).filter(function(a) { return a.type === 'image' && a.url; });
     if (imgAttachments.length > 0) requestBody.images = imgAttachments.map(function(a) { return a.url; });
@@ -2945,6 +2987,7 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
     });
 
     clearTimeout(timeoutId);
+    startApprovalPolling(sess);
 
     if (!response.ok) {
       const errText = await response.text().catch(function() { return ''; });
@@ -3207,12 +3250,14 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
             } else if (eventType === 'approval') {
               // v11: 审批请求
               state.pendingApprovals.push({
+                approvalId: data.approvalId,
                 sessionId: data.sessionId || sess.agentId,
                 toolName: data.toolName || 'unknown',
                 args: data.args,
               });
               // P1: 局部更新审批角标，不全量 render
-              updateSidebarStatus();
+              if (state.currentSessionId === sess.agentId) render();
+              else updateSidebarStatus();
             } else if (eventType === 'plan') {
               // v11: 计划更新
               sess.plan = data.plan || sess.plan;
@@ -3333,6 +3378,7 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
       sess.streaming = false;
       sess.abortController = null;
       stopWaitTimer(sess);
+      stopApprovalPolling(sess);
       if (state.currentSessionId === sess.agentId) {
         render();
         if ($('#composer-input')) $('#composer-input').focus();
@@ -3592,7 +3638,7 @@ async function loadPlugins() {
 // v11: 加载审批列表
 async function loadPendingApprovals() {
   try {
-    const data = await apiRequest(APPROVAL_API + '/pending');
+    const data = await apiRequest(APPROVAL_API + '/runtime/pending');
       state.pendingApprovals = Array.isArray(data) ? data : [];
   } catch (e) { /* ignore */ }
 }

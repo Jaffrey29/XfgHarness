@@ -1,6 +1,7 @@
 package cn.xiaofuge.deepseek.harness.domain.agentrun;
 
 import cn.xiaofuge.deepseek.harness.domain.agent.model.entity.AgentOptions;
+import cn.xiaofuge.deepseek.harness.domain.agentrun.model.valobj.ApprovalModeVO;
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionLog;
 import java.util.concurrent.CompletableFuture;
 
@@ -16,6 +17,8 @@ public interface AgentRunFactoryPort {
     AgentRun resume(String agentId, AgentOptions options, String cwd, SessionLog session);
 
     AgentRun get(String agentId);
+
+    void configureApprovalMode(String agentId, ApprovalModeVO mode);
 
     CompletableFuture<Void> disposeAll();
 }
