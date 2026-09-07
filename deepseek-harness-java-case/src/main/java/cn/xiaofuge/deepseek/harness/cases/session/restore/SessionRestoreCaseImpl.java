@@ -30,6 +30,9 @@ public class SessionRestoreCaseImpl implements ISessionRestoreCase {
         this.sessionPipelineFactory = sessionPipelineFactory;
     }
 
+    /**
+     * 用例执行入口，组装 Pipeline 并返回处理结果。
+     */
     @Override
     public SessionRestoreResponseDTO execute(SessionRestoreRequestDTO request) {
         return sessionPipelineFactory.restorePipeline().execute(request);

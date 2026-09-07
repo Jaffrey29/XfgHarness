@@ -3,29 +3,18 @@ package cn.xiaofuge.deepseek.harness.domain.agent.model.entity;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Phase state machine for the agent driver. Mirrors TS {@code Phase}.
- * <p>
- * Three states:
- * <ul>
- *   <li>{@code Idle} — no active work; {@code lastTurn} tracks the last completed turn</li>
- *   <li>{@code Maintenance} — a non-turn maintenance task owns the agent</li>
- *   <li>{@code Running} — a driver is actively draining turns and steps</li>
- * </ul>
- *
- * <p>Every non-idle phase carries an {@link AtomicBoolean} abort flag and a
- * {@code wakeRequested} latch so a wake delivered during an abort or
- * maintenance is replayed when the phase converges back to idle.
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * 智能体驱动的阶段状态机。
+ * <p>职责：表达空闲、维护、运行三种阶段，并承载中断与唤醒补偿语义。</p>
+ * <p>流程：空闲 → 维护或运行 → 中断/唤醒事件合并 → 回到空闲。</p>
+ * <p>示例：运行阶段收到中断后，等待中的唤醒事件会在阶段回到空闲时补发。</p>
  */
 public sealed interface Phase
         permits Phase.Idle, Phase.Maintenance, Phase.Running {
 
-    /** No active work. */
+    /** 空闲阶段：没有正在执行的工作，记录最近完成轮次。 */
     record Idle(long lastTurn) implements Phase {}
 
-    /** Maintenance task owns the agent. */
+    /** 维护阶段：非对话轮次的维护任务占用智能体。 */
     record Maintenance(
             AtomicBoolean abort,
             long lastTurn,
@@ -42,7 +31,7 @@ public sealed interface Phase
         }
     }
 
-    /** Driver is actively running turns. */
+    /** 运行阶段：驱动器正在推进轮次和步骤。 */
     record Running(
             AtomicBoolean abort,
             long turn,

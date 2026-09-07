@@ -12,6 +12,12 @@ import cn.xiaofuge.deepseek.harness.cases.plugin.lifecycle.node.ResolvePluginNod
 import cn.xiaofuge.deepseek.harness.cases.plugin.lifecycle.node.RunPluginNode;
 import org.springframework.stereotype.Service;
 
+/**
+ * 插件运行期 Pipeline 工厂。
+ * <p>流程：创建上下文 → ResolvePluginNode → InspectBridgeNode → BindBridgeNode → 按 kind 路由到 ActivatePluginNode 或 RunPluginNode。</p>
+ * <p>数据示例：传入 {@code pluginId=weather-forecast, kind=ACTIVATE}；
+ * 返回 {@code Activation(result.bridgeReady=true, packageType=PYTHON)}。</p>
+ */
 @Service
 public class PluginRuntimePipelineFactory
         implements CasePipelineFactory<PluginRuntimeCommand, PluginRuntimeContext, PluginRuntimeOutcome> {
@@ -36,6 +42,9 @@ public class PluginRuntimePipelineFactory
         this.runPluginNode = runPluginNode;
     }
 
+    /**
+     * 构建默认执行 Pipeline，绑定首节点和上下文。
+     */
     public CasePipeline<PluginRuntimeCommand, PluginRuntimeContext, PluginRuntimeOutcome> pipeline() {
         return CasePipeline.of(
                 "Plugin runtime lifecycle",
@@ -44,6 +53,9 @@ public class PluginRuntimePipelineFactory
         );
     }
 
+    /**
+     * 构建当前用例的执行 Pipeline，绑定首节点和上下文。
+     */
     public CasePipeline<PluginRuntimeCommand, PluginRuntimeContext, PluginRuntimeOutcome> pluginPipeline() {
         return pipeline();
     }

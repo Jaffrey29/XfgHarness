@@ -38,6 +38,9 @@ public class AgentMessageFactory
         return CasePipeline.of("Agent message", rootNode, AgentMessageDynamicContext::new);
     }
 
+    /**
+     * 构建当前用例的执行 Pipeline，绑定首节点和上下文。
+     */
     public CasePipeline<AgentMessageRequestDTO, AgentMessageDynamicContext, AgentMessageResponseDTO> streamingPipeline(
             Consumer<String> deltaSink,
             Consumer<AgentToolCallEventResponseDTO> toolCallEventSink

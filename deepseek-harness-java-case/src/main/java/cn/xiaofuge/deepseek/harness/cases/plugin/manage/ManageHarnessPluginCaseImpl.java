@@ -65,11 +65,17 @@ public class ManageHarnessPluginCaseImpl implements IManageHarnessPluginCase {
         return execute(ManagePluginNode.Action.UNINSTALL, pluginId);
     }
 
+    /**
+     * 处理当前用例步骤，完成必要校验并返回执行结果。
+     */
     @Override
     public PluginLifecycleResponseDTO stop(String pluginId) {
         return execute(ManagePluginNode.Action.STOP, pluginId);
     }
 
+    /**
+     * 用例执行入口，组装 Pipeline 并返回处理结果。
+     */
     private PluginLifecycleResponseDTO execute(ManagePluginNode.Action action, String pluginId) {
         return pluginManagePipelineFactory.pipeline().execute(new ManagePluginNode.Input(action, pluginId));
     }

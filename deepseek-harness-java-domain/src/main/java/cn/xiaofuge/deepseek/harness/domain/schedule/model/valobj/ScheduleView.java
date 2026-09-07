@@ -4,14 +4,8 @@ import cn.xiaofuge.deepseek.harness.domain.schedule.model.entity.ScheduleRecord;
 import java.time.Instant;
 
 /**
- * Complete model-facing view of one active reminder.
- *
- * @param record       the underlying schedule record
- * @param state        whether the target remains in the future
- * @param deliveryMode fixed v1 delivery boundary: the original session must be live
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * ScheduleView 领域值对象。
+ * <p>职责：承载领域规则、状态或边界，供上层编排与基础设施适配。</p>
  */
 public record ScheduleView(ScheduleRecord record, ScheduleState state, String deliveryMode) {
 

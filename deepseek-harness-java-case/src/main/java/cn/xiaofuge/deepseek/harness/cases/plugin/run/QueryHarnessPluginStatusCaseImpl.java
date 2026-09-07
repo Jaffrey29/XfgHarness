@@ -25,6 +25,9 @@ public class QueryHarnessPluginStatusCaseImpl implements IQueryHarnessPluginStat
         this.pluginQueryPipelineFactory = pluginQueryPipelineFactory;
     }
 
+    /**
+     * 用例执行入口，组装 Pipeline 并返回处理结果。
+     */
     @Override
     public QueryPluginStatusResponseDTO execute(String pluginId) {
         return pluginQueryPipelineFactory.statusPipeline().execute(pluginId);

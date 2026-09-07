@@ -4,20 +4,8 @@ import cn.xiaofuge.deepseek.harness.domain.schedule.model.valobj.ScheduleKind;
 import java.time.Instant;
 
 /**
- * Durable reminder record. One-shot kinds ({@link ScheduleKind#AFTER},
- * {@link ScheduleKind#AT}) terminate on dispatch; {@link ScheduleKind#EVERY}
- * is a fixed-rate recurring reminder.
- *
- * @param id             session-local stable identity
- * @param kind           rule discriminator
- * @param prompt         trimmed reminder content
- * @param afterSeconds   positive delay (AFTER only)
- * @param everySeconds   fixed interval >= 300 (EVERY only)
- * @param scheduledAt    next target instant (RFC 3339 UTC)
- * @param sessionId      owning session
- *
- * @author 小傅哥
- * @website bugstack.cn
+ * ScheduleRecord 领域实体。
+ * <p>职责：承载领域规则、状态或边界，供上层编排与基础设施适配。</p>
  */
 public record ScheduleRecord(
         String id,

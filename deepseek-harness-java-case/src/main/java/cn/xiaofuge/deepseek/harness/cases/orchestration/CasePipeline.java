@@ -25,6 +25,9 @@ public final class CasePipeline<I, C, O> {
         this.contextFactory = contextFactory;
     }
 
+    /**
+     * 创建 Pipeline，校验操作名、首节点和上下文工厂必填。
+     */
     public static <I, C, O> CasePipeline<I, C, O> of(
             String operationName,
             StrategyHandler<I, C, O> rootHandler,
@@ -42,6 +45,9 @@ public final class CasePipeline<I, C, O> {
         return new CasePipeline<>(operationName, rootHandler, contextFactory);
     }
 
+    /**
+     * 创建上下文、执行首节点链路，并在完成后清理可关闭上下文。
+     */
     public O execute(I request) {
         C context = contextFactory.get();
         try {

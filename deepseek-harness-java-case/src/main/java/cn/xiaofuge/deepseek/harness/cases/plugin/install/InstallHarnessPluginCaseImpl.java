@@ -26,6 +26,9 @@ public class InstallHarnessPluginCaseImpl implements IInstallHarnessPluginCase {
         this.pluginInstallPipelineFactory = pluginInstallPipelineFactory;
     }
 
+    /**
+     * 用例执行入口，组装 Pipeline 并返回处理结果。
+     */
     @Override
     public InstallPluginResponseDTO execute(InstallPluginRequestDTO request) {
         return pluginInstallPipelineFactory.pipeline().execute(request);

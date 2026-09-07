@@ -21,6 +21,9 @@ public class SubmitHarnessTaskCaseImpl implements ISubmitHarnessTaskCase {
     @Autowired
     private SubmitHarnessTaskFactory factory;
 
+    /**
+     * 用例执行入口，组装 Pipeline 并返回处理结果。
+     */
     @Override
     public SubmitTaskResponseDTO execute(SubmitTaskRequestDTO request) {
         return factory.pipeline().execute(request);

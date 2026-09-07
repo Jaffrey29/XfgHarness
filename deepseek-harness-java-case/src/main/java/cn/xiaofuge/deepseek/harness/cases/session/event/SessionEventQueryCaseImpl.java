@@ -31,6 +31,9 @@ public class SessionEventQueryCaseImpl implements ISessionEventQueryCase {
         this.sessionPipelineFactory = sessionPipelineFactory;
     }
 
+    /**
+     * 编排会话事件查询，将过滤条件交给事件 Pipeline。
+     */
     @Override
     public List<SessionEventQueryResponseDTO> queryEvents(SessionEventQueryRequestDTO query) {
         return sessionPipelineFactory.eventsPipeline().execute(query);

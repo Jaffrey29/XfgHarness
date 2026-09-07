@@ -12,13 +12,10 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 /**
- * Durable reminder service. Creates after/at/every records, lists active views,
- * deletes by id, and drives due reminders.
- *
- * <p>调用流程：创建计划 → 到期扫描 → 执行任务 → 更新状态。</p>
- * <p>示例：设置固定间隔后，调度器到期触发任务并记录结果。</p>
- * @author 小傅哥
- * @website bugstack.cn
+ * 会话级持久化提醒服务。
+ * <p>职责：创建延时、定时和周期提醒；查询活跃提醒；按 ID 删除；驱动到期任务。</p>
+ * <p>流程：创建计划 → 到期扫描 → 执行任务 → 更新状态。</p>
+ * <p>示例：设置 300 秒周期提醒后，调度器到期触发任务并记录结果。</p>
  */
 @Service
 public class ScheduleService implements IScheduleService {
@@ -28,10 +25,9 @@ public class ScheduleService implements IScheduleService {
     private final IScheduleRepository repository;
 
     /**
-     * 处理调度 Service。
-     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
-     * @param repository repository参数。
-     * @return 方法执行结果。
+     * 构造调度服务。
+     *
+     * @param repository 调度记录仓储。
      */
     public ScheduleService(IScheduleRepository repository) {
         this.repository = repository;
@@ -49,12 +45,12 @@ public class ScheduleService implements IScheduleService {
         return record;
     }
     /**
-     * 创建At。
-     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * 创建一次性定时提醒。
+     *
      * @param sessionId 会话 ID。
-     * @param prompt prompt参数。
-     * @param target 目标对象。
-     * @return 方法执行结果。
+     * @param prompt 提醒内容。
+     * @param target 目标触发时间。
+     * @return 调度记录。
      */
 
 
@@ -69,12 +65,12 @@ public class ScheduleService implements IScheduleService {
         return record;
     }
     /**
-     * 创建Every。
-     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * 创建固定周期提醒。
+     *
      * @param sessionId 会话 ID。
-     * @param prompt prompt参数。
-     * @param interval interval参数。
-     * @return 方法执行结果。
+     * @param prompt 提醒内容。
+     * @param interval 触发间隔。
+     * @return 调度记录。
      */
 
 
@@ -87,9 +83,6 @@ public class ScheduleService implements IScheduleService {
         Instant target = Instant.now().plus(interval);
         ScheduleRecord record = new ScheduleRecord(
                 allocateId(), ScheduleKind.EVERY, prompt.trim(), null, interval.getSeconds(), target, sessionId);
-    /**
-     * 列出。
-     */
         repository.save(record);
         return record;
     }
@@ -118,11 +111,11 @@ public class ScheduleService implements IScheduleService {
                 .orElse(false);
     }
     /**
-     * drive。
-     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
+     * 驱动到期提醒并更新一次性任务状态。
+     *
      * @param sessionId 会话 ID。
-     * @param now now参数。
-     * @return 方法执行结果。
+     * @param now 当前时间。
+     * @return 到期提醒记录。
      */
 
 
@@ -150,9 +143,9 @@ public class ScheduleService implements IScheduleService {
     }
 
     /**
-     * 列出全部 ocate ID。
-     * 流程：应用领域规则 → 更新领域对象 → 返回结果。
-     * @return 查询到的数据。
+     * 生成会话内唯一的调度记录 ID。
+     *
+     * @return 调度记录 ID。
      */
     private static String allocateId() {
         return "sch_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);

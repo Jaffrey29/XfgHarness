@@ -59,16 +59,31 @@ public class AgentMessageDynamicContext implements AutoCloseable {
      */
     public void setIntent(MessageIntent intent) { this.intent = intent; }
 
+    /**
+     * 读取流式增量输出接收器。
+     */
     public Consumer<String> getDeltaSink() { return deltaSink; }
 
+    /**
+     * 写入流式增量输出接收器，供 Agent 循环回调。
+     */
     public void setDeltaSink(Consumer<String> deltaSink) { this.deltaSink = deltaSink; }
 
+    /**
+     * 读取工具调用事件接收器。
+     */
     public Consumer<AgentToolCallEventResponseDTO> getToolCallEventSink() { return toolCallEventSink; }
 
+    /**
+     * 写入工具调用事件接收器，供 Agent 循环回调。
+     */
     public void setToolCallEventSink(Consumer<AgentToolCallEventResponseDTO> toolCallEventSink) {
         this.toolCallEventSink = toolCallEventSink;
     }
 
+    /**
+     * 将上下文中的流式接收器绑定到 Agent 执行循环。
+     */
     public void attachSinks(ReactLoopAgent agent) {
         if (deltaSink == null && toolCallEventSink == null) {
             return;
@@ -84,6 +99,9 @@ public class AgentMessageDynamicContext implements AutoCloseable {
     }
 
     @Override
+    /**
+     * 解绑流式接收器并清理上下文引用。
+     */
     public void close() {
         if (agent != null) {
             agent.setStreamDeltaSink(null);

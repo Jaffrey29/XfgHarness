@@ -7,11 +7,20 @@ import cn.xiaofuge.deepseek.harness.api.dto.ModelSettingResponseDTO;
 import cn.xiaofuge.deepseek.harness.domain.runtime.setting.IModelSettingQueryService;
 import cn.xiaofuge.deepseek.harness.domain.runtime.setting.model.valobj.ModelSettingVO;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+/**
+ * 模型配置列表节点。
+ * <p>流程：接收空请求 → 调用领域查询服务读取全部配置 → 转换为配置 DTO 列表。</p>
+ * <p>数据示例：无入参；返回 {@code [{profileCode: "default", baseUrl: "http://127.0.0.1:8777/v1", enabled: true}]}。</p>
+ */
 @Service
 public class ModelSettingListSettingsNode
         extends AbstractStrategyRouter<Void, NoContext, List<ModelSettingResponseDTO>> {
+
+    private static final Logger log = LoggerFactory.getLogger(ModelSettingListSettingsNode.class);
 
     private final IModelSettingQueryService modelSettingQueryService;
 
@@ -19,16 +28,27 @@ public class ModelSettingListSettingsNode
         this.modelSettingQueryService = modelSettingQueryService;
     }
 
+    /**
+     * 执行当前节点核心逻辑：校验输入、调用领域服务并返回输出。
+     */
     @Override
     protected List<ModelSettingResponseDTO> doApply(Void request, NoContext context) {
-        return modelSettingQueryService.queryAll().stream().map(this::toResponse).toList();
+        var result = modelSettingQueryService.queryAll().stream().map(this::toResponse).toList();
+        log.debug("[Runtime] 模型配置查询完成，count={}", result.size());
+        return result;
     }
 
+    /**
+     * 返回下一执行节点；单节点链路返回默认终止处理。
+     */
     @Override
     public StrategyHandler<Void, NoContext, List<ModelSettingResponseDTO>> getNext(Void request, NoContext context) {
         return defaultStrategyHandler;
     }
 
+    /**
+     * 将领域层结果对象转换为用例层 DTO。
+     */
     private ModelSettingResponseDTO toResponse(ModelSettingVO setting) {
         return new ModelSettingResponseDTO(
                 setting.profileCode(), setting.providerCode(), setting.modelCode(),

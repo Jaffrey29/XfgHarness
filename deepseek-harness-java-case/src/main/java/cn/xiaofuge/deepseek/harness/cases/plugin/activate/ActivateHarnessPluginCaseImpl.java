@@ -31,6 +31,9 @@ public class ActivateHarnessPluginCaseImpl implements IActivateHarnessPluginCase
         this.pipelineFactory = pipelineFactory;
     }
 
+    /**
+     * 用例执行入口，组装 Pipeline 并返回处理结果。
+     */
     @Override
     public ActivatePluginResponseDTO execute(ActivatePluginRequestDTO request) {
         if (pipelineFactory.pluginPipeline().execute(new PluginExecutionInput(request.pluginId(), PluginRuntimeKind.ACTIVATE))

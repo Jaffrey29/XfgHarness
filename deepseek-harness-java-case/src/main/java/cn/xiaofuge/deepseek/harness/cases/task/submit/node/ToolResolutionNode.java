@@ -5,6 +5,8 @@ import cn.xiaofuge.deepseek.harness.api.dto.SubmitTaskResponseDTO;
 import cn.xiaofuge.deepseek.harness.cases.task.submit.factory.SubmitTaskDynamicContext;
 import cn.xiaofuge.deepseek.harness.cases.orchestration.StrategyHandler;
 import cn.xiaofuge.deepseek.harness.domain.runtime.IToolResolutionService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -20,6 +22,8 @@ import org.springframework.beans.factory.annotation.Qualifier;
 @Service("submitTaskToolResolutionNode")
 public class ToolResolutionNode extends AbstractSubmitTaskNode {
 
+    private static final Logger log = LoggerFactory.getLogger(ToolResolutionNode.class);
+
     @Autowired
     private IToolResolutionService toolResolutionService;
 
@@ -27,11 +31,16 @@ public class ToolResolutionNode extends AbstractSubmitTaskNode {
     @Qualifier("submitTaskPermissionCheckNode")
     private PermissionCheckNode permissionCheckNode;
 
+    /**
+     * 执行当前节点核心逻辑：校验输入、调用领域服务并返回输出。
+     */
     @Override
     protected SubmitTaskResponseDTO doApply(SubmitTaskRequestDTO request,
                                          SubmitTaskDynamicContext ctx) throws Exception {
         var submission = ctx.getSubmission();
-        ctx.setEnabledTools(toolResolutionService.resolveEnabledTools(submission.toolSelection().toolCodes()));
+        var enabledTools = toolResolutionService.resolveEnabledTools(submission.toolSelection().toolCodes());
+        ctx.setEnabledTools(enabledTools);
+        log.debug("[Submit] 工具解析完成，enabledTools={}", enabledTools);
         return null;
     }
 
