@@ -16,16 +16,25 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @RestController
 @RequestMapping("/api/workflow")
+/**
+ * WorkflowCommandController 负责 HTTP 协议接入、参数转换和应用用例调用。
+ */
 public class WorkflowCommandController {
 
     private final IWorkflowService workflowService;
     private final ObjectMapper objectMapper;
 
+    /**
+     * 处理Workflow Command Controller相关逻辑。
+     */
     public WorkflowCommandController(IWorkflowService workflowService, ObjectMapper objectMapper) {
         this.workflowService = workflowService;
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * StartWorkflowRequest 负责 HTTP 协议接入、参数转换和应用用例调用。
+     */
     public record StartWorkflowRequest(
             String script,
             String name,
@@ -33,6 +42,9 @@ public class WorkflowCommandController {
             Map<String, Object> args
     ) {}
 
+    /**
+     * 处理Post Mapping相关逻辑。
+     */
     @PostMapping("/start")
     public ResponseEntity<Map<String, Object>> start(@RequestBody StartWorkflowRequest request) {
         var meta = new WorkflowMeta(
@@ -55,6 +67,9 @@ public class WorkflowCommandController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * 处理Post Mapping相关逻辑。
+     */
     @PostMapping("/{runId}/cancel")
     public ResponseEntity<Map<String, Object>> cancel(
             @PathVariable("runId") String runId,
@@ -64,6 +79,9 @@ public class WorkflowCommandController {
         return ResponseEntity.ok(Map.of("runId", runId, "status", "cancelled"));
     }
 
+    /**
+     * 处理Post Mapping相关逻辑。
+     */
     @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream(@RequestBody StartWorkflowRequest request) {
         SseEmitter emitter = new SseEmitter(300_000L);

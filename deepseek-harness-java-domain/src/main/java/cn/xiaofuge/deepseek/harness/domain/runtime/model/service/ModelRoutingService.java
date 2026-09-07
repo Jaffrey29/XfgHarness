@@ -3,6 +3,7 @@ package cn.xiaofuge.deepseek.harness.domain.runtime.model.service;
 import cn.xiaofuge.deepseek.harness.domain.runtime.IModelRoutingService;
 import cn.xiaofuge.deepseek.harness.domain.runtime.model.adapter.port.IModelProviderPort;
 import cn.xiaofuge.deepseek.harness.domain.runtime.model.model.valobj.ModelProviderProfileVO;
+import org.springframework.stereotype.Service;
 
 /**
  * 模型路由服务。
@@ -15,10 +16,14 @@ import cn.xiaofuge.deepseek.harness.domain.runtime.model.model.valobj.ModelProvi
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class ModelRoutingService implements IModelRoutingService {
 
     private final IModelProviderPort modelProviderPort;
 
+    /**
+     * 处理Model Routing Service相关逻辑。
+     */
     public ModelRoutingService(IModelProviderPort modelProviderPort) {
         this.modelProviderPort = modelProviderPort;
     }

@@ -19,6 +19,9 @@ public class SessionEventRepository implements ISessionEventRepository {
 
     private final ISessionEventDao sessionEventDao;
 
+    /**
+     * 处理Session Event Repository相关逻辑。
+     */
     public SessionEventRepository(ISessionEventDao sessionEventDao) {
         this.sessionEventDao = sessionEventDao;
     }

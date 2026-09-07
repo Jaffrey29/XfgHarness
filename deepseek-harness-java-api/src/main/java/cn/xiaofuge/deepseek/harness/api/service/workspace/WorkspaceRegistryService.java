@@ -40,6 +40,9 @@ public class WorkspaceRegistryService {
     private final Map<String, String> configuredWorkspaces = new LinkedHashMap<>();
     private final String workspaceRoot;
 
+    /**
+     * 处理Workspace Registry Service相关逻辑。
+     */
     public WorkspaceRegistryService(
             @Value("${harness.workspaces:}") String configuredWorkspaces,
             @Value("${harness.workspace.root:./workspaces}") String workspaceRoot
@@ -205,27 +208,45 @@ public class WorkspaceRegistryService {
         return entries;
     }
 
+    /**
+     * 处理root Path相关逻辑。
+     */
     private Path rootPath() {
         return Paths.get(workspaceRoot).toAbsolutePath().normalize();
     }
 
+    /**
+     * 解析e。
+     */
     private Path resolve(String name) {
         return rootPath().resolve(safeName(name)).normalize();
     }
 
+    /**
+     * 处理safe Name相关逻辑。
+     */
     private static String safeName(String name) {
         return name.replaceAll("[^\\p{L}\\p{N}._-]", "_");
     }
 
+    /**
+     * 判断Order File是否成立。
+     */
     private static boolean isOrderFile(Path child) {
         return child != null && child.getFileName() != null
                 && ORDER_FILE.equals(child.getFileName().toString());
     }
 
+    /**
+     * 处理order Path相关逻辑。
+     */
     private Path orderPath() {
         return rootPath().resolve(ORDER_FILE);
     }
 
+    /**
+     * 处理read Order相关逻辑。
+     */
     private List<String> readOrder() {
         try {
             Path p = orderPath();
@@ -246,17 +267,26 @@ public class WorkspaceRegistryService {
         return List.of();
     }
 
+    /**
+     * 处理save Order相关逻辑。
+     */
     private void saveOrder(Set<String> order) throws IOException {
         Files.createDirectories(rootPath());
         Files.writeString(orderPath(), String.join("\n", order), StandardCharsets.UTF_8);
     }
 
+    /**
+     * 处理remove From Order相关逻辑。
+     */
     private void removeFromOrder(String name) throws IOException {
         List<String> order = new ArrayList<>(readOrder());
         order.remove(name);
         saveOrder(new LinkedHashSet<>(order));
     }
 
+    /**
+     * 处理rename In Order相关逻辑。
+     */
     private void renameInOrder(String oldName, String newName) throws IOException {
         List<String> order = new ArrayList<>(readOrder());
         List<String> updated = new ArrayList<>();
@@ -269,6 +299,9 @@ public class WorkspaceRegistryService {
         saveOrder(new LinkedHashSet<>(updated));
     }
 
+    /**
+     * 处理ordered相关逻辑。
+     */
     private Map<String, String> ordered(Map<String, String> merged) {
         List<String> order = readOrder();
         Map<String, String> result = new LinkedHashMap<>();
@@ -282,6 +315,9 @@ public class WorkspaceRegistryService {
         return result;
     }
 
+    /**
+     * 处理delete Recursively相关逻辑。
+     */
     private static void deleteRecursively(Path dir) throws IOException {
         if (!Files.exists(dir)) {
             return;
@@ -297,6 +333,9 @@ public class WorkspaceRegistryService {
                 });
     }
 
+    /**
+     * 处理to Entries相关逻辑。
+     */
     private static List<WorkspaceEntryResponse> toEntries(Map<String, String> nameToPath) {
         List<WorkspaceEntryResponse> entries = new ArrayList<>();
         for (Map.Entry<String, String> entry : nameToPath.entrySet()) {

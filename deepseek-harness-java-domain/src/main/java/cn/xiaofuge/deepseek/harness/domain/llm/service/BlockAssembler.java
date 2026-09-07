@@ -31,6 +31,9 @@ import java.util.Map;
  */
 public class BlockAssembler {
 
+    /**
+     * PartialBlock 定义当前模块中的class契约与职责。
+     */
     private static final class PartialBlock {
         String blockType;
         StringBuilder text = new StringBuilder();
@@ -81,6 +84,9 @@ public class BlockAssembler {
         }
     }
 
+    /**
+     * 处理ensure相关逻辑。
+     */
     private PartialBlock ensure(int index, String blockType) {
         PartialBlock partial = partials.get(index);
         if (partial == null) {
@@ -91,6 +97,9 @@ public class BlockAssembler {
         return partial;
     }
 
+    /**
+     * 处理assemble相关逻辑。
+     */
     private ContentBlock assemble(PartialBlock partial, int index) {
         if (partial.block != null) return partial.block;
         switch (partial.blockType) {

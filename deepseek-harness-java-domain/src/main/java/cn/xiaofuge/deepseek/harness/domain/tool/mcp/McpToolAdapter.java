@@ -26,6 +26,9 @@ public class McpToolAdapter implements ToolDefinition {
     private final IMcpClient mcpClient;
     private final long timeoutMs;
 
+    /**
+     * 处理Mcp Tool Adapter相关逻辑。
+     */
     public McpToolAdapter(String serverName, IMcpClient.McpToolDescriptor descriptor, IMcpClient mcpClient, long timeoutMs) {
         this.serverName = serverName;
         this.descriptor = descriptor;

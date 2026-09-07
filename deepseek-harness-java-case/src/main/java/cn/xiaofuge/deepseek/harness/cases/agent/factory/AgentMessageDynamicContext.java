@@ -11,6 +11,9 @@ import cn.xiaofuge.deepseek.harness.domain.model.entity.Message;
  */
 public class AgentMessageDynamicContext {
 
+    /**
+     * MessageIntent 定义当前模块中的enum契约与职责。
+     */
     public enum MessageIntent {
         CHAT,
         CODE_QUESTION,
@@ -22,12 +25,30 @@ public class AgentMessageDynamicContext {
     private Message userMessage;
     private MessageIntent intent;
 
+    /**
+     * 获取Agent。
+     */
     public ReactLoopAgent getAgent() { return agent; }
+    /**
+     * 设置Agent。
+     */
     public void setAgent(ReactLoopAgent agent) { this.agent = agent; }
 
+    /**
+     * 获取User Message。
+     */
     public Message getUserMessage() { return userMessage; }
+    /**
+     * 设置User Message。
+     */
     public void setUserMessage(Message userMessage) { this.userMessage = userMessage; }
 
+    /**
+     * 获取Intent。
+     */
     public MessageIntent getIntent() { return intent; }
+    /**
+     * 设置Intent。
+     */
     public void setIntent(MessageIntent intent) { this.intent = intent; }
 }

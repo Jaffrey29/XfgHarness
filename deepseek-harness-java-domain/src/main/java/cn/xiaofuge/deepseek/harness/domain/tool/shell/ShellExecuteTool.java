@@ -37,10 +37,16 @@ public class ShellExecuteTool implements ToolDefinition {
     private final String defaultCwd;
     private final DangerousCommandGuard guard;
 
+    /**
+     * 处理Shell Execute Tool相关逻辑。
+     */
     public ShellExecuteTool(IShellExecutor executor, String defaultCwd) {
         this(executor, defaultCwd, new DangerousCommandGuard());
     }
 
+    /**
+     * 处理Shell Execute Tool相关逻辑。
+     */
     public ShellExecuteTool(IShellExecutor executor, String defaultCwd, DangerousCommandGuard guard) {
         this.executor = executor;
         this.defaultCwd = defaultCwd;
@@ -143,6 +149,9 @@ public class ShellExecuteTool implements ToolDefinition {
     @Override
     public long timeoutMs() { return DEFAULT_TIMEOUT_MS + 10_000; }
 
+    /**
+     * 处理format Result相关逻辑。
+     */
     private String formatResult(ShellResult r) {
         StringBuilder sb = new StringBuilder();
         sb.append("Exit code: ").append(r.exitCode());

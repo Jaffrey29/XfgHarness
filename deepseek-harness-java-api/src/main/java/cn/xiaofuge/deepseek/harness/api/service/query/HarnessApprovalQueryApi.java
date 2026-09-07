@@ -21,6 +21,9 @@ public class HarnessApprovalQueryApi {
 
     private final IApprovalQueryService approvalQueryService;
 
+    /**
+     * 处理Harness Approval Query Api相关逻辑。
+     */
     public HarnessApprovalQueryApi(IApprovalQueryService approvalQueryService) {
         this.approvalQueryService = approvalQueryService;
     }

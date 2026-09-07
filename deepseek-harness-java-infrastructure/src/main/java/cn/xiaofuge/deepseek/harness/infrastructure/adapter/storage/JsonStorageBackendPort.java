@@ -33,6 +33,9 @@ public class JsonStorageBackendPort implements IStorageBackendPort {
     private final ObjectMapper objectMapper;
     private final ConcurrentHashMap<String, Object> unitLocks = new ConcurrentHashMap<>();
 
+    /**
+     * 处理Json Storage Backend Port相关逻辑。
+     */
     public JsonStorageBackendPort(Path root, ObjectMapper objectMapper) {
         this.root = root;
         this.objectMapper = objectMapper;
@@ -45,6 +48,9 @@ public class JsonStorageBackendPort implements IStorageBackendPort {
             }
         }
     }
+    /**
+     * 加载。
+     */
 
     @Override
     public KvSnapshot load(KvUnitDescriptor descriptor) {
@@ -95,6 +101,9 @@ public class JsonStorageBackendPort implements IStorageBackendPort {
         }
     }
 
+    /**
+     * 处理read Raw相关逻辑。
+     */
     private Map<String, Map<String, String>> readRaw(KvUnitDescriptor descriptor) {
         Path file = unitFile(descriptor);
         if (!Files.exists(file)) return new LinkedHashMap<>();
@@ -107,6 +116,9 @@ public class JsonStorageBackendPort implements IStorageBackendPort {
         }
     }
 
+    /**
+     * 处理write Raw相关逻辑。
+     */
     private void writeRaw(KvUnitDescriptor descriptor, Map<String, Map<String, String>> data) {
         Path file = unitFile(descriptor);
         try {
@@ -117,10 +129,16 @@ public class JsonStorageBackendPort implements IStorageBackendPort {
         }
     }
 
+    /**
+     * 处理unit File相关逻辑。
+     */
     private Path unitFile(KvUnitDescriptor descriptor) {
         return root.resolve(descriptor.name() + ".json");
     }
 
+    /**
+     * 处理lock For相关逻辑。
+     */
     private Object lockFor(KvUnitDescriptor descriptor) {
         return unitLocks.computeIfAbsent(descriptor.name(), n -> new Object());
     }

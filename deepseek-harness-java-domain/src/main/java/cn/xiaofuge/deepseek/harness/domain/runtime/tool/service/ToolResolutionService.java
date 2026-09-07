@@ -3,6 +3,7 @@ package cn.xiaofuge.deepseek.harness.domain.runtime.tool.service;
 import cn.xiaofuge.deepseek.harness.domain.runtime.IToolResolutionService;
 import cn.xiaofuge.deepseek.harness.domain.runtime.tool.adapter.port.IToolCatalogPort;
 import java.util.List;
+import org.springframework.stereotype.Service;
 
 /**
  * 工具解析服务。
@@ -15,10 +16,14 @@ import java.util.List;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class ToolResolutionService implements IToolResolutionService {
 
     private final IToolCatalogPort toolCatalogPort;
 
+    /**
+     * 处理Tool Resolution Service相关逻辑。
+     */
     public ToolResolutionService(IToolCatalogPort toolCatalogPort) {
         this.toolCatalogPort = toolCatalogPort;
     }

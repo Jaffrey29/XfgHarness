@@ -53,6 +53,9 @@ public class DeepSeekAdapter implements LlmAdapter {
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
 
+    /**
+     * 处理Deep Seek Adapter相关逻辑。
+     */
     public DeepSeekAdapter(DeepSeekAdapterOptions options, ObjectMapper objectMapper) {
         this.options = options;
         this.objectMapper = objectMapper;
@@ -126,6 +129,9 @@ public class DeepSeekAdapter implements LlmAdapter {
         return publisher;
     }
 
+    /**
+     * 处理do Stream相关逻辑。
+     */
     private void doStream(GenerateOptions genOptions, SubmissionPublisher<StreamChunk> publisher) throws Exception {
         String apiKey = genOptions.apiKey() != null && !genOptions.apiKey().isBlank()
                 ? genOptions.apiKey() : options.resolveApiKey();
@@ -185,6 +191,9 @@ public class DeepSeekAdapter implements LlmAdapter {
         }
     }
 
+    /**
+     * 处理do Non Stream Fallback相关逻辑。
+     */
     private void doNonStreamFallback(GenerateOptions genOptions, String effectiveModel, SubmissionPublisher<StreamChunk> publisher) throws Exception {
         String apiKey = genOptions.apiKey() != null && !genOptions.apiKey().isBlank()
                 ? genOptions.apiKey() : options.resolveApiKey();
@@ -278,6 +287,9 @@ public class DeepSeekAdapter implements LlmAdapter {
         publisher.submit(new StreamChunk.Finish(mapFinishReason(finishReason)));
     }
 
+    /**
+     * 处理serialize Request相关逻辑。
+     */
     private ObjectNode serializeRequest(GenerateOptions options) {
         ObjectNode root = objectMapper.createObjectNode();
         root.put("model", options.model());
@@ -403,6 +415,9 @@ public class DeepSeekAdapter implements LlmAdapter {
         return root;
     }
 
+    /**
+     * 处理with Model相关逻辑。
+     */
     private GenerateOptions withModel(GenerateOptions options, String model) {
         return new GenerateOptions(
                 options.provider(),
@@ -421,6 +436,9 @@ public class DeepSeekAdapter implements LlmAdapter {
         );
     }
 
+    /**
+     * 解析e Effective Model。
+     */
     private String resolveEffectiveModel(String requestedModel) {
         List<DirectSeekCatalogModel> discovered = discoverUpstreamModels();
         if (discovered.isEmpty()) {
@@ -441,6 +459,9 @@ public class DeepSeekAdapter implements LlmAdapter {
         return preferredDiscoveredModel(discovered);
     }
 
+    /**
+     * 列出Available Catalog Models。
+     */
     private List<DirectSeekCatalogModel> listAvailableCatalogModels() {
         List<DirectSeekCatalogModel> discovered = discoverUpstreamModels();
         if (discovered.isEmpty()) {
@@ -457,6 +478,9 @@ public class DeepSeekAdapter implements LlmAdapter {
         return merged;
     }
 
+    /**
+     * 处理discover Upstream Models相关逻辑。
+     */
     private List<DirectSeekCatalogModel> discoverUpstreamModels() {
         String apiKey = options.resolveApiKey();
         HttpRequest.Builder builder = HttpRequest.newBuilder()
@@ -494,10 +518,16 @@ public class DeepSeekAdapter implements LlmAdapter {
         }
     }
 
+    /**
+     * 处理preferred Discovered Model相关逻辑。
+     */
     private String preferredDiscoveredModel(List<DirectSeekCatalogModel> discovered) {
         return discovered.get(0).id();
     }
 
+    /**
+     * 处理translate Sse相关逻辑。
+     */
     private boolean translateSse(BufferedReader reader, SubmissionPublisher<StreamChunk> publisher) throws IOException {
         int nextIndex = 0;
         Integer textBlockIndex = null;
@@ -647,6 +677,9 @@ public class DeepSeekAdapter implements LlmAdapter {
         throw new LlmAdapterException("SSE payload stream ended without [DONE]", LlmErrorCodes.STREAM_CLOSED);
     }
 
+    /**
+     * 处理map Finish Reason相关逻辑。
+     */
     private static FinishReason mapFinishReason(String reason) {
         return switch (reason) {
             case "stop" -> new FinishReason.Stop();
@@ -658,6 +691,9 @@ public class DeepSeekAdapter implements LlmAdapter {
         };
     }
 
+    /**
+     * 处理map Usage相关逻辑。
+     */
     private static TokenUsage mapUsage(JsonNode usage) {
         int promptTokens = usage.path("prompt_tokens").asInt(0);
         int completionTokens = usage.path("completion_tokens").asInt(0);
@@ -681,6 +717,9 @@ public class DeepSeekAdapter implements LlmAdapter {
         return new TokenUsage(inputTokens, completionTokens, cacheRead, null, reasoning);
     }
 
+    /**
+     * 解析e Chat Completions Uri。
+     */
     private URI resolveChatCompletionsUri(String baseUrl) {
         if (baseUrl == null || baseUrl.isBlank()) {
             return URI.create("https://api.deepseek.com/v1/chat/completions");
@@ -692,6 +731,9 @@ public class DeepSeekAdapter implements LlmAdapter {
         return URI.create(normalized + "/v1/chat/completions");
     }
 
+    /**
+     * 解析e Models Uri。
+     */
     private URI resolveModelsUri(String baseUrl) {
         if (baseUrl == null || baseUrl.isBlank()) {
             return URI.create("https://api.deepseek.com/v1/models");
@@ -706,6 +748,9 @@ public class DeepSeekAdapter implements LlmAdapter {
         return URI.create(normalized + "/v1/models");
     }
 
+    /**
+     * 处理http Error Code相关逻辑。
+     */
     private String httpErrorCode(int status, String errorBody) {
         if (status == 401 || status == 403) return LlmErrorCodes.AUTH;
         if (status == 429) return LlmErrorCodes.RATE_LIMIT;
@@ -714,6 +759,9 @@ public class DeepSeekAdapter implements LlmAdapter {
         return "HTTP_" + status;
     }
 
+    /**
+     * 处理extract Error Message相关逻辑。
+     */
     private String extractErrorMessage(String body) {
         try {
             JsonNode root = objectMapper.readTree(body);
@@ -725,6 +773,9 @@ public class DeepSeekAdapter implements LlmAdapter {
         return body;
     }
 
+    /**
+     * 处理publish Error相关逻辑。
+     */
     private void publishError(SubmissionPublisher<StreamChunk> publisher, Exception e) {
         LlmFailure failure;
         if (e instanceof LlmAdapterException lae) {
@@ -738,6 +789,9 @@ public class DeepSeekAdapter implements LlmAdapter {
 
     // ── Internal types ────────────────────────────────────────
 
+    /**
+     * OpenBlock 是基础设施适配器，负责外部资源与领域端口对接。
+     */
     private static final class OpenBlock {
         final int index;
         final String kind;
@@ -769,17 +823,29 @@ public class DeepSeekAdapter implements LlmAdapter {
         private final String code;
         private final Integer status;
 
+        /**
+         * 处理Llm Adapter Exception相关逻辑。
+         */
         public LlmAdapterException(String message, String code) {
             this(message, code, null);
         }
 
+        /**
+         * 处理Llm Adapter Exception相关逻辑。
+         */
         public LlmAdapterException(String message, String code, Integer status) {
             super(message);
             this.code = code;
             this.status = status;
         }
 
+        /**
+         * 处理code相关逻辑。
+         */
         public String code() { return code; }
+        /**
+         * 处理status相关逻辑。
+         */
         public Integer status() { return status; }
     }
 }

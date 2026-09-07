@@ -32,6 +32,9 @@ public class WebFetchTool implements ToolDefinition {
 
     private final IWebPort webService;
 
+    /**
+     * 处理Web Fetch Tool相关逻辑。
+     */
     public WebFetchTool(IWebPort webService) {
         this.webService = webService;
     }

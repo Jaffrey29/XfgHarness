@@ -25,6 +25,9 @@ public class WorkspaceCommandApi {
 
     private final WorkspaceRegistryService workspaceRegistryService;
 
+    /**
+     * 处理Workspace Command Api相关逻辑。
+     */
     public WorkspaceCommandApi(WorkspaceRegistryService workspaceRegistryService) {
         this.workspaceRegistryService = workspaceRegistryService;
     }

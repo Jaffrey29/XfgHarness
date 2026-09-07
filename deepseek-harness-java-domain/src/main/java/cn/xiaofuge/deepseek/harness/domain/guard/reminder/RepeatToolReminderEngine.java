@@ -2,6 +2,8 @@ package cn.xiaofuge.deepseek.harness.domain.guard.reminder;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 /**
  * Advisory per-agent repeat-call detector. It counts consecutive identical
@@ -10,6 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class RepeatToolReminderEngine {
 
     private final List<Integer> thresholds;
@@ -32,6 +35,7 @@ public class RepeatToolReminderEngine {
         this.argumentsPreviewChars = Math.max(1, argumentsPreviewChars);
     }
 
+    @Autowired
     public RepeatToolReminderEngine() {
         this(Arrays.asList(3, 5, 8), 500);
     }
@@ -70,15 +74,24 @@ public class RepeatToolReminderEngine {
         }
     }
 
+    /**
+     * 处理reset相关逻辑。
+     */
     public void reset(String agentId) {
         chains.remove(agentId);
     }
 
+    /**
+     * 处理preview Arguments相关逻辑。
+     */
     private String previewArguments(String arguments) {
         if (arguments == null || arguments.isEmpty()) return "";
         int max = Math.min(arguments.length(), argumentsPreviewChars);
         return arguments.substring(0, max) + (arguments.length() > max ? "…" : "");
     }
 
+    /**
+     * Chain 定义当前模块中的record契约与职责。
+     */
     private record Chain(String key, int count) {}
 }

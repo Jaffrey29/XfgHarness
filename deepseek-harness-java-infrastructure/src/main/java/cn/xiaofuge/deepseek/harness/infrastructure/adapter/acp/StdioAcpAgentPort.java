@@ -30,6 +30,9 @@ public class StdioAcpAgentPort implements IAcpAgentPort {
     private final String command;
     private final List<String> args;
 
+    /**
+     * 处理Stdio Acp Agent Port相关逻辑。
+     */
     public StdioAcpAgentPort(String command, List<String> args) {
         this.command = command;
         this.args = args;
@@ -146,6 +149,9 @@ public class StdioAcpAgentPort implements IAcpAgentPort {
         if (conn != null) conn.close();
     }
 
+    /**
+     * AcpConnection 是基础设施适配器，负责外部资源与领域端口对接。
+     */
     private class AcpConnection {
         private final Process process;
         private final BufferedWriter writer;

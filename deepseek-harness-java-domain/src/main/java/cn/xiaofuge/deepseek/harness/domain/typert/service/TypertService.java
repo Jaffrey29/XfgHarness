@@ -6,6 +6,7 @@ import cn.xiaofuge.deepseek.harness.domain.typert.model.entity.InvocationDescrip
 import cn.xiaofuge.deepseek.harness.domain.typert.model.entity.TypertContribution;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.stereotype.Service;
 
 /**
  * Typert service: owns the registry contract and manages contributions.
@@ -13,10 +14,14 @@ import java.util.Optional;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class TypertService implements ITypertService {
 
     private final ITypertRegistryContract registryContract;
 
+    /**
+     * 处理Typert Service相关逻辑。
+     */
     public TypertService(ITypertRegistryContract registryContract) {
         this.registryContract = registryContract;
     }

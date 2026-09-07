@@ -64,10 +64,16 @@ public class ToolTimeoutPolicy {
     /** Thrown when this policy's own timer wins. */
     public static class ToolTimeoutException extends RuntimeException {
         private final long timeoutMs;
+        /**
+         * 处理Tool Timeout Exception相关逻辑。
+         */
         public ToolTimeoutException(long timeoutMs) {
             super("tool call timed out after " + timeoutMs + "ms");
             this.timeoutMs = timeoutMs;
         }
+        /**
+         * 处理timeout Ms相关逻辑。
+         */
         public long timeoutMs() { return timeoutMs; }
     }
 }

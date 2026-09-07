@@ -28,20 +28,32 @@ public class TerminalCommandController {
 
     private final TerminalCommandApi terminalCommandApi;
 
+    /**
+     * 处理Terminal Command Controller相关逻辑。
+     */
     public TerminalCommandController(TerminalCommandApi terminalCommandApi) {
         this.terminalCommandApi = terminalCommandApi;
     }
 
+    /**
+     * 处理Post Mapping相关逻辑。
+     */
     @PostMapping("/sessions")
     public TerminalSessionResponse open(@RequestBody TerminalOpenRequest request) {
         return terminalCommandApi.open(request);
     }
 
+    /**
+     * 处理Post Mapping相关逻辑。
+     */
     @PostMapping("/sessions/{sessionId}/send")
     public TerminalSendResponse send(@PathVariable("sessionId") String sessionId, @RequestBody TerminalSendRequest request) {
         return terminalCommandApi.send(sessionId, request);
     }
 
+    /**
+     * 处理Post Mapping相关逻辑。
+     */
     @PostMapping("/sessions/{sessionId}/close")
     public TerminalSessionResponse close(@PathVariable("sessionId") String sessionId) {
         return terminalCommandApi.close(sessionId);

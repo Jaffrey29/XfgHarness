@@ -25,6 +25,9 @@ public class HarnessTaskController {
 
     private final IHarnessTaskApi harnessTaskApi;
 
+    /**
+     * 处理Harness Task Controller相关逻辑。
+     */
     public HarnessTaskController(IHarnessTaskApi harnessTaskApi) {
         this.harnessTaskApi = harnessTaskApi;
     }

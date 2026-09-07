@@ -27,6 +27,9 @@ public class PluginProcessPort implements IPluginProcessPort {
     private final JavaPluginRuntimeManager javaPluginRuntimeManager;
     private final PluginToolBridgeService pluginToolBridgeService;
 
+    /**
+     * 处理Plugin Process Port相关逻辑。
+     */
     public PluginProcessPort(
             PluginSidecarGatewayService pluginSidecarGatewayService,
             JavaPluginRuntimeManager javaPluginRuntimeManager,
@@ -77,6 +80,9 @@ public class PluginProcessPort implements IPluginProcessPort {
         return pluginSidecarGatewayService.stop(pluginId);
     }
 
+    /**
+     * 处理start Java Plugin相关逻辑。
+     */
     private PluginRunResultVO startJavaPlugin(HarnessPluginEntity plugin, PluginBridgePlanVO plan) {
         Path jarPath = Path.of(plan.entrypointPath());
         JavaPluginRuntimeManager.JavaPluginStartResult result =

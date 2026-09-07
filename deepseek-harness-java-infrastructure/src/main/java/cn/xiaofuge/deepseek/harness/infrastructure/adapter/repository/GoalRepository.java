@@ -26,6 +26,9 @@ public class GoalRepository implements IGoalRepository {
 
     private final IGoalStateDao goalStateDao;
 
+    /**
+     * 处理Goal Repository相关逻辑。
+     */
     public GoalRepository(IGoalStateDao goalStateDao) {
         this.goalStateDao = goalStateDao;
     }
@@ -59,6 +62,9 @@ public class GoalRepository implements IGoalRepository {
         return goalStateDao.queryAll().stream().map(this::toAggregate).toList();
     }
 
+    /**
+     * 处理to Aggregate相关逻辑。
+     */
     private GoalAggregate toAggregate(GoalStatePO po) {
         return new GoalAggregate(
                 po.sessionId(),

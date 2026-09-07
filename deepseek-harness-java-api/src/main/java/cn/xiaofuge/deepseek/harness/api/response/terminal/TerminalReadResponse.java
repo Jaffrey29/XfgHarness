@@ -21,6 +21,9 @@ public record TerminalReadResponse(
         Integer exitCode
 ) {
 
+    /**
+     * 处理from相关逻辑。
+     */
     public static TerminalReadResponse from(TerminalReadResultVO result) {
         return new TerminalReadResponse(
                 result.sessionId(),

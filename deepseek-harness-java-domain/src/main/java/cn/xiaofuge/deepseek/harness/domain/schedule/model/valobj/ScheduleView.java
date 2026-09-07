@@ -15,6 +15,9 @@ import java.time.Instant;
  */
 public record ScheduleView(ScheduleRecord record, ScheduleState state, String deliveryMode) {
 
+    /**
+     * 处理of相关逻辑。
+     */
     public static ScheduleView of(ScheduleRecord record, Instant now) {
         ScheduleState state = record.scheduledAt().isAfter(now)
                 ? ScheduleState.SCHEDULED

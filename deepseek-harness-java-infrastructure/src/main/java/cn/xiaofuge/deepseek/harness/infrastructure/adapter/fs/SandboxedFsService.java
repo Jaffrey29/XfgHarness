@@ -34,12 +34,18 @@ public class SandboxedFsService implements IFsPort {
     private final ISandboxPolicyService sandboxPolicyService;
     private final Path baseDir;
 
+    /**
+     * 处理Sandboxed Fs Service相关逻辑。
+     */
     public SandboxedFsService(String baseDir, ISandboxPolicyService sandboxPolicyService) {
         this.baseDir = Paths.get(baseDir != null ? baseDir : ".").toAbsolutePath().normalize();
         this.delegate = new LocalFsService(baseDir);
         this.sandboxPolicyService = sandboxPolicyService;
     }
 
+    /**
+     * 处理policy相关逻辑。
+     */
     private SandboxExecutionPolicy policy() {
         return sandboxPolicyService.resolve(new SandboxPolicyRequest(
                 Optional.of(baseDir),

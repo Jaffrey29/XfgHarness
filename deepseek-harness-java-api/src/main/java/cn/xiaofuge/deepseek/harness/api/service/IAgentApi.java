@@ -26,9 +26,6 @@ public interface IAgentApi {
             java.util.function.Consumer<String> deltaSink,
             java.util.function.Consumer<ToolCallBlock> toolCallSink);
 
-    /**
-     * 查询 Agent 状态。
-     */
     String getAgentStatus(String agentId);
 
     /**

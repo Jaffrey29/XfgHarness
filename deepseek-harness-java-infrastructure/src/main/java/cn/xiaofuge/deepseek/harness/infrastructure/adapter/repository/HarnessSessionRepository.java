@@ -21,6 +21,9 @@ public class HarnessSessionRepository implements IHarnessSessionRepository {
 
     private final IHarnessSessionDao harnessSessionDao;
 
+    /**
+     * 处理Harness Session Repository相关逻辑。
+     */
     public HarnessSessionRepository(IHarnessSessionDao harnessSessionDao) {
         this.harnessSessionDao = harnessSessionDao;
     }
@@ -50,6 +53,9 @@ public class HarnessSessionRepository implements IHarnessSessionRepository {
         return harnessSessionDao.listRecent(limit).stream().map(this::toAggregate).toList();
     }
 
+    /**
+     * 处理to Aggregate相关逻辑。
+     */
     private HarnessSessionAggregate toAggregate(HarnessSessionPO sessionPO) {
         HarnessSessionAggregate session = new HarnessSessionAggregate(
                 sessionPO.sessionId(),

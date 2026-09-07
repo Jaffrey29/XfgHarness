@@ -32,6 +32,13 @@ public class AgentCollectNode extends AbstractAgentMessageNode {
 
     private static final Logger log = LoggerFactory.getLogger(AgentCollectNode.class);
 
+    /**
+     * 等待 Agent 执行完成，并把会话事件收集为响应消息。
+     * <p>执行流程：whenIdle().join() 等待收尾 -> 遍历 SessionLog 事件 -> 用户/助手直接展平文本，
+     * ToolCall 先建 running 消息，ToolResult 通过 callId 回填最终 status/result。
+     * <p>数据示例：callId=call_1 的 fs_read 调用会先出现 status=running，
+     * 成功结果到达后同一卡片变为 status=success 并携带文件内容。
+     */
     @Override
     protected SendMessageResult doApply(SendMessageCommand request,
                                            AgentMessageDynamicContext ctx) throws Exception {
@@ -107,6 +114,10 @@ public class AgentCollectNode extends AbstractAgentMessageNode {
         return defaultStrategyHandler;
     }
 
+    /**
+     * 将助手消息中的推理块和正文块转为可读文本。
+     * <p>两者同时存在时使用 HTML details 折叠推理内容，前端可直接展示 Markdown。
+     */
     private String extractText(Message message) {
         StringBuilder reasoning = new StringBuilder();
         StringBuilder text = new StringBuilder();

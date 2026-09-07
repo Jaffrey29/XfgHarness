@@ -22,6 +22,9 @@ public class WorkspaceQueryApi {
 
     private final WorkspaceRegistryService workspaceRegistryService;
 
+    /**
+     * 处理Workspace Query Api相关逻辑。
+     */
     public WorkspaceQueryApi(WorkspaceRegistryService workspaceRegistryService) {
         this.workspaceRegistryService = workspaceRegistryService;
     }

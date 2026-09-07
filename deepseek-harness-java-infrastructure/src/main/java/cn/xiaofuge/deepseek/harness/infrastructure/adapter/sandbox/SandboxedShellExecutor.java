@@ -41,6 +41,9 @@ public class SandboxedShellExecutor implements IShellExecutor {
     private final ISandboxPolicyService sandboxPolicyService;
     private final String fallbackWorkspaceRoot;
 
+    /**
+     * 处理Sandboxed Shell Executor相关逻辑。
+     */
     public SandboxedShellExecutor(
             IShellExecutor delegate,
             ISandboxPolicyService sandboxPolicyService,
@@ -71,6 +74,9 @@ public class SandboxedShellExecutor implements IShellExecutor {
         };
     }
 
+    /**
+     * 执行目标动作，并返回执行结果。
+     */
     private ShellResult executeInWorkspace(String command, String cwd, long timeoutMs,
                                            SandboxExecutionPolicy policy) {
         // 1. cwd 边界：必须落在 workspaceRoot 内

@@ -39,6 +39,11 @@ public class AgentDispatchNode extends AbstractAgentMessageNode {
     @Qualifier("agentMessageCollectNode")
     private AgentCollectNode collectNode;
 
+    /**
+     * 构造用户消息并投递到 Agent Inbox。
+     * <p>执行流程：读取意图 -> prepareMessageText 注入任务指令 -> 组装文本和图片块 -> send 到 NEXT_TURN 并唤醒 Agent。
+     * <p>数据示例：request.message="/tmp 目录里有什么" 会被改写为“先执行 ls -la /tmp，再列出一级项目”。
+     */
     @Override
     protected SendMessageResult doApply(SendMessageCommand request,
                                            AgentMessageDynamicContext ctx) throws Exception {
@@ -107,6 +112,15 @@ public class AgentDispatchNode extends AbstractAgentMessageNode {
         return collectNode;
     }
 
+    /**
+     * 根据意图增强用户消息。
+     * <p>任务执行消息会加入“先使用工具”的约束；目录问题会进一步生成明确的 shell 命令提示；
+     * 闲聊和代码问答保持原文，避免影响模型表达。
+     *
+     * @param messageText 用户原始文本
+     * @param intent      Intent 节点识别出的意图
+     * @return 实际发送给模型的消息文本
+     */
     static String prepareMessageText(String messageText, AgentMessageDynamicContext.MessageIntent intent) {
         if (intent == AgentMessageDynamicContext.MessageIntent.TASK_EXECUTION) {
             String directoryInstruction = buildDirectoryInstruction(messageText);
@@ -120,6 +134,12 @@ public class AgentDispatchNode extends AbstractAgentMessageNode {
         return messageText;
     }
 
+    /**
+     * 为目录类任务生成精确的工具指令。
+     * <p>只有文本同时命中目录关键词和绝对路径时才返回提示；否则返回 null，
+     * 交由通用的任务执行指令处理。
+     * <p>数据示例：输入“/tmp 目录里有什么”生成建议执行 `ls -la "/tmp"` 的提示。
+     */
     private static String buildDirectoryInstruction(String messageText) {
         if (messageText == null || !DIRECTORY_QUESTION.matcher(messageText).find()) {
             return null;

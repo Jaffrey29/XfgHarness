@@ -32,10 +32,16 @@ public class McpServersProperties {
     /** MCP server 列表。 */
     private List<McpServer> servers = new ArrayList<>();
 
+    /**
+     * 获取Servers。
+     */
     public List<McpServer> getServers() {
         return servers;
     }
 
+    /**
+     * 设置Servers。
+     */
     public void setServers(List<McpServer> servers) {
         this.servers = servers != null ? servers : new ArrayList<>();
     }
@@ -53,15 +59,45 @@ public class McpServersProperties {
         /** 子进程工作目录。 */
         private String cwd;
 
+        /**
+         * 获取Name。
+         */
         public String getName() { return name; }
+        /**
+         * 设置Name。
+         */
         public void setName(String name) { this.name = name; }
+        /**
+         * 获取Command。
+         */
         public String getCommand() { return command; }
+        /**
+         * 设置Command。
+         */
         public void setCommand(String command) { this.command = command; }
+        /**
+         * 获取Args。
+         */
         public List<String> getArgs() { return args; }
+        /**
+         * 设置Args。
+         */
         public void setArgs(List<String> args) { this.args = args != null ? args : new ArrayList<>(); }
+        /**
+         * 获取Env。
+         */
         public Map<String, String> getEnv() { return env; }
+        /**
+         * 设置Env。
+         */
         public void setEnv(Map<String, String> env) { this.env = env != null ? env : new HashMap<>(); }
+        /**
+         * 获取Cwd。
+         */
         public String getCwd() { return cwd; }
+        /**
+         * 设置Cwd。
+         */
         public void setCwd(String cwd) { this.cwd = cwd; }
     }
 }

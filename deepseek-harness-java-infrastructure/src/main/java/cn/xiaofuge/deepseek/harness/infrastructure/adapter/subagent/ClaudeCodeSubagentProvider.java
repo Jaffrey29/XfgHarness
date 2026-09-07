@@ -13,6 +13,9 @@ import java.util.Map;
  */
 public class ClaudeCodeSubagentProvider extends OutOfProcessSubagentProvider {
 
+    /**
+     * 处理Claude Code Subagent Provider相关逻辑。
+     */
     public ClaudeCodeSubagentProvider(String command, List<String> args, String cwd,
                                       Map<String, String> env, long timeoutMs) {
         super(command, args, cwd, env, timeoutMs);

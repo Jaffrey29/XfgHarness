@@ -24,6 +24,9 @@ public class PluginArtifactInstallerPort implements IPluginArtifactInstallerPort
 
     private final Path installRoot;
 
+    /**
+     * 处理Plugin Artifact Installer Port相关逻辑。
+     */
     public PluginArtifactInstallerPort(@Value("${harness.plugin.install-root:./plugins}") String installRoot) {
         this.installRoot = Path.of(installRoot).toAbsolutePath().normalize();
     }
@@ -60,6 +63,9 @@ public class PluginArtifactInstallerPort implements IPluginArtifactInstallerPort
         }
     }
 
+    /**
+     * 安装组件，写入登记信息并返回安装结果。
+     */
     private PluginArtifactInstallPlanVO installJar(String pluginId, Path jarSource) {
         try {
             Files.createDirectories(installRoot);
@@ -74,6 +80,9 @@ public class PluginArtifactInstallerPort implements IPluginArtifactInstallerPort
         }
     }
 
+    /**
+     * 安装组件，写入登记信息并返回安装结果。
+     */
     private PluginArtifactInstallPlanVO installDirectory(String pluginId, Path sourceRoot, String entrypoint) {
         Path normalizedEntrypoint = normalizeEntrypoint(sourceRoot, entrypoint);
         Path targetRoot = installRoot.resolve(pluginId).normalize();
@@ -92,6 +101,9 @@ public class PluginArtifactInstallerPort implements IPluginArtifactInstallerPort
         return new PluginArtifactInstallPlanVO(targetRoot.toString(), relativeEntrypoint);
     }
 
+    /**
+     * 处理normalize Entrypoint相关逻辑。
+     */
     private Path normalizeEntrypoint(Path sourceRoot, String entrypoint) {
         Path entrypointPath = Path.of(entrypoint);
         Path normalized = entrypointPath.isAbsolute()
@@ -106,6 +118,9 @@ public class PluginArtifactInstallerPort implements IPluginArtifactInstallerPort
         return normalized;
     }
 
+    /**
+     * 处理replace Directory相关逻辑。
+     */
     private void replaceDirectory(Path sourceRoot, Path targetRoot) throws IOException {
         deleteDirectoryIfExists(targetRoot);
         Files.walkFileTree(sourceRoot, new SimpleFileVisitor<>() {
@@ -125,6 +140,9 @@ public class PluginArtifactInstallerPort implements IPluginArtifactInstallerPort
         });
     }
 
+    /**
+     * 处理delete Directory If Exists相关逻辑。
+     */
     private void deleteDirectoryIfExists(Path targetRoot) throws IOException {
         if (!Files.exists(targetRoot)) {
             return;

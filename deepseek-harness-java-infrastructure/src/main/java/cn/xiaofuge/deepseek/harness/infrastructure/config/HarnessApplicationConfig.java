@@ -3,81 +3,17 @@ package cn.xiaofuge.deepseek.harness.infrastructure.config;
 import cn.xiaofuge.deepseek.harness.domain.agent.ask.UserQuestionsPort;
 import cn.xiaofuge.deepseek.harness.domain.agent.model.entity.AgentOptions;
 import cn.xiaofuge.deepseek.harness.domain.agent.subagent.SpawnInProcessProvider;
-import cn.xiaofuge.deepseek.harness.domain.goal.adapter.repository.IGoalRepository;
 import cn.xiaofuge.deepseek.harness.domain.llm.model.valobj.LlmErrorCodes;
-import cn.xiaofuge.deepseek.harness.domain.sdk.adapter.port.ISdkServerHandler;
-import cn.xiaofuge.deepseek.harness.domain.task.approval.adapter.port.IApprovalPolicyPort;
-import cn.xiaofuge.deepseek.harness.domain.task.approval.service.ApprovalCommandService;
-import cn.xiaofuge.deepseek.harness.domain.task.approval.service.ApprovalQueryService;
-import cn.xiaofuge.deepseek.harness.domain.task.IApprovalCommandService;
-import cn.xiaofuge.deepseek.harness.domain.task.IApprovalQueryService;
-import cn.xiaofuge.deepseek.harness.domain.task.approval.service.ApprovalPolicyService;
-import cn.xiaofuge.deepseek.harness.domain.task.IApprovalPolicyService;
-import cn.xiaofuge.deepseek.harness.domain.session.conversation.service.ConversationQueryService;
-import cn.xiaofuge.deepseek.harness.domain.session.IConversationQueryService;
-import cn.xiaofuge.deepseek.harness.domain.task.execution.adapter.port.IModelExecutionPort;
-import cn.xiaofuge.deepseek.harness.domain.task.execution.service.HarnessExecutionService;
-import cn.xiaofuge.deepseek.harness.domain.task.IHarnessExecutionService;
-import cn.xiaofuge.deepseek.harness.domain.runtime.model.adapter.port.IModelProviderPort;
-import cn.xiaofuge.deepseek.harness.domain.runtime.IModelRoutingService;
-import cn.xiaofuge.deepseek.harness.domain.runtime.model.service.ModelRoutingService;
-import cn.xiaofuge.deepseek.harness.domain.runtime.setting.adapter.repository.IModelSettingRepository;
-import cn.xiaofuge.deepseek.harness.domain.runtime.setting.service.ModelSettingService;
-import cn.xiaofuge.deepseek.harness.domain.plugin.bridge.adapter.port.IPluginRuntimeBridgePort;
-import cn.xiaofuge.deepseek.harness.domain.plugin.bridge.adapter.repository.IHarnessPluginRuntimeBindingRepository;
-import cn.xiaofuge.deepseek.harness.domain.plugin.IPluginBridgeService;
-import cn.xiaofuge.deepseek.harness.domain.plugin.bridge.service.PluginBridgeService;
-import cn.xiaofuge.deepseek.harness.domain.plugin.registry.adapter.port.IPluginArtifactInstallerPort;
-import cn.xiaofuge.deepseek.harness.domain.plugin.registry.adapter.repository.IHarnessPluginRepository;
-import cn.xiaofuge.deepseek.harness.domain.plugin.IPluginRegistryService;
-import cn.xiaofuge.deepseek.harness.domain.plugin.registry.service.PluginRegistryService;
-import cn.xiaofuge.deepseek.harness.domain.plugin.runtime.adapter.port.IPluginProcessPort;
-import cn.xiaofuge.deepseek.harness.domain.plugin.IPluginRuntimeService;
-import cn.xiaofuge.deepseek.harness.domain.plugin.runtime.service.PluginRuntimeService;
-import cn.xiaofuge.deepseek.harness.domain.task.permission.adapter.port.IPermissionMatrixPort;
-import cn.xiaofuge.deepseek.harness.domain.task.IPermissionPolicyService;
-import cn.xiaofuge.deepseek.harness.domain.task.permission.service.PermissionPolicyService;
-import cn.xiaofuge.deepseek.harness.domain.runtime.profile.service.ExecutionProfileService;
-import cn.xiaofuge.deepseek.harness.domain.runtime.IExecutionProfileService;
-import cn.xiaofuge.deepseek.harness.domain.runtime.profile.service.router.ExecutionProfileStrategy;
-import cn.xiaofuge.deepseek.harness.domain.runtime.profile.service.router.HeadlessExecutionProfileStrategy;
-import cn.xiaofuge.deepseek.harness.domain.runtime.profile.service.router.WebExecutionProfileStrategy;
 import cn.xiaofuge.deepseek.harness.domain.session.event.adapter.repository.ISessionEventStore;
-import cn.xiaofuge.deepseek.harness.domain.session.ISessionEventLogService;
-import cn.xiaofuge.deepseek.harness.domain.session.event.service.LegacyEventAdapter;
-import cn.xiaofuge.deepseek.harness.domain.session.event.service.SessionEventLogService;
-import cn.xiaofuge.deepseek.harness.domain.session.event.service.SessionRebuilderService;
-import cn.xiaofuge.deepseek.harness.domain.session.log.adapter.repository.ISessionEventRepository;
-import cn.xiaofuge.deepseek.harness.domain.session.ISessionLogService;
-import cn.xiaofuge.deepseek.harness.domain.session.log.service.SessionLogService;
-import cn.xiaofuge.deepseek.harness.domain.session.registry.adapter.repository.IHarnessSessionRepository;
-import cn.xiaofuge.deepseek.harness.domain.session.registry.service.HarnessSessionRegistryService;
-import cn.xiaofuge.deepseek.harness.domain.session.IHarnessSessionRegistryService;
-import cn.xiaofuge.deepseek.harness.domain.task.ITaskSubmissionPolicyService;
-import cn.xiaofuge.deepseek.harness.domain.task.submission.service.TaskSubmissionPolicyService;
-import cn.xiaofuge.deepseek.harness.domain.task.submission.service.filter.ProfileCodeFilter;
-import cn.xiaofuge.deepseek.harness.domain.task.submission.service.filter.PromptNotBlankFilter;
-import cn.xiaofuge.deepseek.harness.domain.task.submission.service.filter.TaskSubmissionFilter;
-import cn.xiaofuge.deepseek.harness.domain.task.submission.service.filter.ToolSelectionFilter;
-import cn.xiaofuge.deepseek.harness.domain.goal.service.GoalService;
 import cn.xiaofuge.deepseek.harness.domain.plan.service.PlanModeService;
 import cn.xiaofuge.deepseek.harness.domain.todo.service.TodoWriteService;
 import cn.xiaofuge.deepseek.harness.domain.terminal.adapter.port.ITerminalPort;
-import cn.xiaofuge.deepseek.harness.domain.terminal.service.TerminalService;
-import cn.xiaofuge.deepseek.harness.domain.task.queue.adapter.repository.IHarnessTaskQueueRepository;
-import cn.xiaofuge.deepseek.harness.domain.task.queue.service.HarnessTaskQueueService;
-import cn.xiaofuge.deepseek.harness.domain.task.IHarnessTaskQueueService;
-import cn.xiaofuge.deepseek.harness.domain.runtime.tool.adapter.port.IToolCatalogPort;
-import cn.xiaofuge.deepseek.harness.domain.runtime.IToolResolutionService;
-import cn.xiaofuge.deepseek.harness.domain.runtime.tool.service.ToolResolutionService;
+import cn.xiaofuge.deepseek.harness.domain.sandbox.ISandboxPolicyService;
 import cn.xiaofuge.deepseek.harness.domain.llm.adapter.LlmAdapter;
 import cn.xiaofuge.deepseek.harness.domain.llm.adapter.ResolvedRetryPolicy;
 import cn.xiaofuge.deepseek.harness.domain.llm.adapter.port.ILlmRuntimePort;
-import cn.xiaofuge.deepseek.harness.domain.llm.service.LlmGenerationService;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.SystemPromptAssembler;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.ScopedSystemPromptAssembler;
-import cn.xiaofuge.deepseek.harness.domain.agent.compaction.BasicCompactionEngine;
-import cn.xiaofuge.deepseek.harness.domain.agent.compaction.CompactionEngine;
 import cn.xiaofuge.deepseek.harness.domain.agent.subagent.SubagentRegistry;
 import cn.xiaofuge.deepseek.harness.domain.tool.adapter.ToolRegistry;
 import cn.xiaofuge.deepseek.harness.domain.tool.fs.adapter.port.IFsPort;
@@ -98,37 +34,17 @@ import cn.xiaofuge.deepseek.harness.infrastructure.adapter.shell.LocalShellExecu
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.tool.InMemoryToolRegistry;
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.web.LocalWebService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import cn.xiaofuge.deepseek.harness.domain.sdk.ISdkClientService;
 import cn.xiaofuge.deepseek.harness.domain.typert.adapter.port.ITypertRegistryContract;
-import cn.xiaofuge.deepseek.harness.domain.sdk.service.SdkClientService;
-import cn.xiaofuge.deepseek.harness.domain.sdk.service.SdkServerService;
-import cn.xiaofuge.deepseek.harness.domain.typert.ITypertService;
-import cn.xiaofuge.deepseek.harness.domain.typert.service.TypertService;
-import cn.xiaofuge.deepseek.harness.infrastructure.adapter.sdk.StdioSdkTransportPort;
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.typert.InMemoryTypertRegistry;
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.typert.TypertProtocolLoader;
 
-import cn.xiaofuge.deepseek.harness.infrastructure.adapter.e2b.StubE2BFsPort;
-import cn.xiaofuge.deepseek.harness.infrastructure.adapter.e2b.StubE2BSubprocessPort;
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.acp.StubAcpAgentPort;
 
-import cn.xiaofuge.deepseek.harness.domain.workflow.IWorkflowService;
 import cn.xiaofuge.deepseek.harness.domain.workflow.adapter.port.IWorkflowEnginePort;
-import cn.xiaofuge.deepseek.harness.domain.workflow.service.WorkflowService;
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.workflow.LocalWorkflowEnginePort;
 
-import cn.xiaofuge.deepseek.harness.domain.acp.IAcpServerService;
 import cn.xiaofuge.deepseek.harness.domain.acp.adapter.port.IAcpAgentPort;
-import cn.xiaofuge.deepseek.harness.domain.acp.service.AcpServerService;
-import cn.xiaofuge.deepseek.harness.domain.coderuntime.ICodeRuntimeService;
 import cn.xiaofuge.deepseek.harness.domain.coderuntime.adapter.port.ICodeRuntimePort;
-import cn.xiaofuge.deepseek.harness.domain.coderuntime.service.CodeRuntimeService;
-import cn.xiaofuge.deepseek.harness.domain.e2b.IE2BSandboxService;
-import cn.xiaofuge.deepseek.harness.domain.e2b.adapter.port.IE2BFsPort;
-import cn.xiaofuge.deepseek.harness.domain.e2b.adapter.port.IE2BSubprocessPort;
-import cn.xiaofuge.deepseek.harness.domain.e2b.service.E2BSandboxService;
-import cn.xiaofuge.deepseek.harness.domain.lsp.ILspService;
-import cn.xiaofuge.deepseek.harness.domain.lsp.service.LspService;
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.acp.StdioAcpAgentPort;
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.coderuntime.LocalCodeRuntimePort;
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.subagent.AcpSubagentProvider;
@@ -136,47 +52,29 @@ import cn.xiaofuge.deepseek.harness.infrastructure.adapter.subagent.ClaudeCodeSu
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.subagent.CodexSubagentProvider;
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.terminal.LocalTerminalPort;
 
-import cn.xiaofuge.deepseek.harness.domain.skill.ISkillService;
 import cn.xiaofuge.deepseek.harness.domain.skill.adapter.port.ISkillProviderPort;
-import cn.xiaofuge.deepseek.harness.domain.skill.service.SkillService;
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.skill.FilesystemSkillProviderPort;
 
 import cn.xiaofuge.deepseek.harness.domain.hooks.IHookService;
 import cn.xiaofuge.deepseek.harness.domain.hooks.adapter.port.IHookRunnerPort;
-import cn.xiaofuge.deepseek.harness.domain.hooks.service.HookService;
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.hooks.LocalShellHookRunner;
 
-import cn.xiaofuge.deepseek.harness.domain.jobs.IJobRegistryService;
 import cn.xiaofuge.deepseek.harness.domain.jobs.adapter.repository.IJobRegistryRepository;
-import cn.xiaofuge.deepseek.harness.domain.jobs.service.JobRegistryService;
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.jobs.InMemoryJobRegistryRepository;
 
-import cn.xiaofuge.deepseek.harness.domain.schedule.IScheduleService;
 import cn.xiaofuge.deepseek.harness.domain.schedule.adapter.repository.IScheduleRepository;
-import cn.xiaofuge.deepseek.harness.domain.schedule.service.ScheduleService;
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.schedule.InMemoryScheduleRepository;
 
-import cn.xiaofuge.deepseek.harness.domain.sandbox.ISandboxPolicyService;
-import cn.xiaofuge.deepseek.harness.domain.sandbox.model.valobj.SandboxMode;
-import cn.xiaofuge.deepseek.harness.domain.sandbox.service.SandboxPolicyService;
 
-import cn.xiaofuge.deepseek.harness.domain.guard.IGuardService;
-import cn.xiaofuge.deepseek.harness.domain.guard.service.GuardService;
-
-import cn.xiaofuge.deepseek.harness.domain.storage.IStorageService;
 import cn.xiaofuge.deepseek.harness.domain.storage.adapter.port.IStorageBackendPort;
-import cn.xiaofuge.deepseek.harness.domain.storage.service.StorageService;
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.storage.JsonStorageBackendPort;
 import cn.xiaofuge.deepseek.harness.domain.tool.plugin.IPluginToolBridge;
-import cn.xiaofuge.deepseek.harness.domain.tool.plugin.PluginToolBridgeService;
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.plugin.JsonRpcPluginToolBridge;
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.tool.JacksonToolArgumentsParser;
 import cn.xiaofuge.deepseek.harness.domain.tool.service.ToolArgumentsParser;
 import java.nio.file.Path;
 
-import cn.xiaofuge.deepseek.harness.domain.credentials.ICredentialService;
 import cn.xiaofuge.deepseek.harness.domain.credentials.adapter.port.ICredentialProviderPort;
-import cn.xiaofuge.deepseek.harness.domain.credentials.service.CredentialService;
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.credentials.LocalCredentialProviderPort;
 
 import java.util.List;
@@ -200,179 +98,13 @@ import org.springframework.context.annotation.Configuration;
 public class HarnessApplicationConfig {
 
     @Bean
-    public IPluginRegistryService pluginRegistryService(
-            IHarnessPluginRepository harnessPluginRepository,
-            IPluginArtifactInstallerPort pluginArtifactInstallerPort
-    ) {
-        return new PluginRegistryService(harnessPluginRepository, pluginArtifactInstallerPort);
-    }
-
-    @Bean
-    public IPluginBridgeService pluginBridgeService(
-            IPluginRuntimeBridgePort pluginRuntimeBridgePort,
-            IHarnessPluginRuntimeBindingRepository harnessPluginRuntimeBindingRepository
-    ) {
-        return new PluginBridgeService(pluginRuntimeBridgePort, harnessPluginRuntimeBindingRepository);
-    }
-
-    @Bean
-    public IPluginRuntimeService pluginRuntimeService(IPluginProcessPort pluginProcessPort) {
-        return new PluginRuntimeService(pluginProcessPort);
-    }
-
-    @Bean
     public IPluginToolBridge jsonRpcPluginToolBridge() {
         return new JsonRpcPluginToolBridge();
     }
 
     @Bean
-    public PluginToolBridgeService pluginToolBridgeService(
-            ToolRegistry toolRegistry,
-            IPluginToolBridge pluginToolBridge,
-            SystemPromptAssembler systemPromptAssembler
-    ) {
-        return new PluginToolBridgeService(toolRegistry, pluginToolBridge, systemPromptAssembler);
-    }
-
-    @Bean
     public ToolArgumentsParser toolArgumentsParser(ObjectMapper objectMapper) {
         return new JacksonToolArgumentsParser(objectMapper);
-    }
-
-    @Bean
-    public ITaskSubmissionPolicyService taskSubmissionPolicyService() {
-        List<TaskSubmissionFilter> filters = List.of(
-                new PromptNotBlankFilter(),
-                new ProfileCodeFilter(),
-                new ToolSelectionFilter()
-        );
-        return new TaskSubmissionPolicyService(filters);
-    }
-
-    /**
-     * 创建执行画像服务。
-     * <p>
-     * 执行流程：
-     * 1. 组装画像策略列表；
-     * 2. 创建领域服务；
-     * 3. 返回 Spring Bean。
-     */
-    @Bean
-    public IExecutionProfileService executionProfileService() {
-        List<ExecutionProfileStrategy> strategies = List.of(
-                new HeadlessExecutionProfileStrategy(),
-                new WebExecutionProfileStrategy()
-        );
-        return new ExecutionProfileService(strategies);
-    }
-
-    /**
-     * 创建模型路由服务。
-     * <p>
-     * 执行流程：
-     * 1. 注入模型提供方端口；
-     * 2. 创建领域服务；
-     * 3. 返回 Spring Bean。
-     */
-    @Bean
-    public IModelRoutingService modelRoutingService(IModelProviderPort modelProviderPort) {
-        return new ModelRoutingService(modelProviderPort);
-    }
-
-    /**
-     * 创建工具解析服务。
-     * <p>
-     * 执行流程：
-     * 1. 注入工具目录端口；
-     * 2. 创建领域服务；
-     * 3. 返回 Spring Bean。
-     */
-    @Bean
-    public IToolResolutionService toolResolutionService(IToolCatalogPort toolCatalogPort) {
-        return new ToolResolutionService(toolCatalogPort);
-    }
-
-    @Bean
-    public ModelSettingService modelSettingService(IModelSettingRepository modelSettingRepository) {
-        return new ModelSettingService(modelSettingRepository);
-    }
-
-    @Bean
-    public IConversationQueryService conversationQueryService(
-            IHarnessSessionRepository harnessSessionRepository,
-            ISessionEventRepository sessionEventRepository,
-            ISessionEventStore sessionEventStore
-    ) {
-        return new ConversationQueryService(harnessSessionRepository, sessionEventRepository, sessionEventStore);
-    }
-
-    @Bean
-    public IHarnessExecutionService harnessExecutionService(
-            IModelExecutionPort modelExecutionPort,
-            IHarnessSessionRepository harnessSessionRepository,
-            ISessionEventRepository sessionEventRepository,
-            ISessionLogService sessionLogService
-    ) {
-        return new HarnessExecutionService(modelExecutionPort, harnessSessionRepository, sessionEventRepository, sessionLogService);
-    }
-
-    @Bean
-    public IPermissionPolicyService permissionPolicyService(IPermissionMatrixPort permissionMatrixPort) {
-        return new PermissionPolicyService(permissionMatrixPort);
-    }
-
-    @Bean
-    public IApprovalPolicyService approvalPolicyService(IApprovalPolicyPort approvalPolicyPort) {
-        return new ApprovalPolicyService(approvalPolicyPort);
-    }
-
-    @Bean
-    public IApprovalQueryService approvalQueryService(
-            IConversationQueryService conversationQueryService
-    ) {
-        return new ApprovalQueryService(conversationQueryService);
-    }
-
-    @Bean
-    public IApprovalCommandService approvalCommandService(
-            IHarnessSessionRepository harnessSessionRepository,
-            ISessionLogService sessionLogService,
-            IHarnessExecutionService harnessExecutionService
-    ) {
-        return new ApprovalCommandService(harnessSessionRepository, sessionLogService, harnessExecutionService);
-    }
-
-    @Bean
-    public IHarnessSessionRegistryService harnessSessionRegistryService(IHarnessSessionRepository harnessSessionRepository) {
-        return new HarnessSessionRegistryService(harnessSessionRepository);
-    }
-
-    @Bean
-    public ISessionLogService sessionLogService(ISessionEventRepository sessionEventRepository) {
-        return new SessionLogService(sessionEventRepository);
-    }
-
-    /**
-     * 会话事件系统 Bean。
-     */
-    @Bean
-    public ISessionEventLogService sessionEventLogService(ISessionEventStore sessionEventStore) {
-        return new SessionEventLogService(sessionEventStore);
-    }
-
-    @Bean
-    public LegacyEventAdapter legacyEventAdapter(ISessionEventLogService sessionEventLogService) {
-        return new LegacyEventAdapter(sessionEventLogService);
-    }
-
-    @Bean
-    public SessionRebuilderService sessionRebuilderService(ISessionEventLogService sessionEventLogService) {
-        return new SessionRebuilderService(sessionEventLogService);
-    }
-
-    @Bean
-    public IHarnessTaskQueueService harnessTaskQueueService(IHarnessTaskQueueRepository harnessTaskQueueRepository) {
-        return new HarnessTaskQueueService(harnessTaskQueueRepository);
     }
 
     // ── 大模型层 Bean ───────────────────────────────────────
@@ -486,13 +218,6 @@ public class HarnessApplicationConfig {
     }
 
     @Bean
-    public SubagentRegistry subagentRegistry() {
-        SubagentRegistry registry = new SubagentRegistry();
-        // Provider 会在构造完成后通过 agentFactorySubagentInit() 注册
-        return registry;
-    }
-
-    @Bean
     public Object agentFactorySubagentInit(
             SubagentRegistry subagentRegistry,
             AgentFactory agentFactory
@@ -510,22 +235,6 @@ public class HarnessApplicationConfig {
     }
 
     @Bean
-    public CompactionEngine compactionEngine(
-            LlmGenerationService llmGenerationService
-    ) {
-        return new BasicCompactionEngine(
-                llmGenerationService,
-                100_000,  // pressure threshold ~100k tokens
-                6         // min messages before compaction
-        );
-    }
-
-    @Bean
-    public LlmGenerationService llmGenerationService(ILlmRuntimePort llmRuntimePort) {
-        return new LlmGenerationService(llmRuntimePort);
-    }
-
-    @Bean
     public InMemoryUserQuestionsPort userQuestionsPort() {
         return new InMemoryUserQuestionsPort();
     }
@@ -539,32 +248,6 @@ public class HarnessApplicationConfig {
             @Value("${harness.approval.runtime-timeout-ms:600000}") long timeoutMs
     ) {
         return new RuntimeApprovalBroker(timeoutMs);
-    }
-
-    /**
-     * 创建计划模式领域服务。
-     * <p>
-     * 执行流程：
-     * 1. 直接实例化纯领域服务；
-     * 2. 由工具层在执行时调用；
-     * 3. 保持基础设施层只负责装配，不承载业务逻辑。
-     */
-    @Bean
-    public PlanModeService planModeService() {
-        return new PlanModeService();
-    }
-
-    /**
-     * 创建待办写入领域服务。
-     * <p>
-     * 执行流程：
-     * 1. 直接实例化纯领域服务；
-     * 2. 由 `todo_write` 工具在执行时调用；
-     * 3. 将校验与事件写入收敛到领域层。
-     */
-    @Bean
-    public TodoWriteService todoWriteService() {
-        return new TodoWriteService();
     }
 
     // ── 第二阶段：Shell + 文件系统基础设施 Bean ────────────────────
@@ -650,11 +333,6 @@ public class HarnessApplicationConfig {
         return port;
     }
 
-    @Bean
-    public ICredentialService credentialService(ICredentialProviderPort credentialProviderPort) {
-        return new CredentialService(credentialProviderPort);
-    }
-
     // ── 存储层 ────────────────────────────────────────────
 
     @Bean
@@ -665,47 +343,13 @@ public class HarnessApplicationConfig {
         return new JsonStorageBackendPort(Path.of(storageRoot), objectMapper);
     }
 
-    @Bean
-    public IStorageService storageService(IStorageBackendPort storageBackendPort) {
-        return new StorageService(storageBackendPort);
-    }
-
     // ── 守卫层 ───────────────────────────────────────────────
-
-    @Bean
-    public IGuardService guardService() {
-        return new GuardService();
-    }
-
-    @Bean
-    public GoalService goalService(
-            IGoalRepository goalRepository,
-            @Value("${harness.goal.default-max-rounds:256}") int defaultMaxRounds
-    ) {
-        return new GoalService(goalRepository, defaultMaxRounds);
-    }
 
     @Bean
     public ITerminalPort terminalPort(
             @Value("${harness.terminal.default-cwd:#{systemProperties['user.dir']}}") String defaultCwd
     ) {
         return new LocalTerminalPort(defaultCwd);
-    }
-
-    @Bean
-    public TerminalService terminalService(ITerminalPort terminalPort) {
-        return new TerminalService(terminalPort);
-    }
-
-    // ── 沙箱层 ────────────────────────────────────────────
-
-    @Bean
-    public ISandboxPolicyService sandboxPolicyService(
-            @Value("${harness.sandbox.default-mode:READ_ONLY}") String defaultMode,
-            @Value("${harness.agent.default-cwd:#{systemProperties['user.dir']}}") String fallbackRoot
-    ) {
-        SandboxMode mode = SandboxMode.valueOf(defaultMode.trim().toUpperCase().replace('-', '_'));
-        return new SandboxPolicyService(mode, Path.of(fallbackRoot));
     }
 
     // ── 调度层 ───────────────────────────────────────────
@@ -715,11 +359,6 @@ public class HarnessApplicationConfig {
         return new InMemoryScheduleRepository();
     }
 
-    @Bean
-    public IScheduleService scheduleService(IScheduleRepository scheduleRepository) {
-        return new ScheduleService(scheduleRepository);
-    }
-
     // ── 任务层 ───────────────────────────────────────────────
 
     @Bean
@@ -727,21 +366,11 @@ public class HarnessApplicationConfig {
         return new InMemoryJobRegistryRepository();
     }
 
-    @Bean
-    public IJobRegistryService jobRegistryService(IJobRegistryRepository jobRegistryRepository) {
-        return new JobRegistryService(jobRegistryRepository);
-    }
-
     // ── 钩子层 ──────────────────────────────────────────────
 
     @Bean
     public IHookRunnerPort hookRunnerPort() {
         return new LocalShellHookRunner();
-    }
-
-    @Bean
-    public IHookService hookService(IHookRunnerPort hookRunnerPort) {
-        return new HookService(hookRunnerPort);
     }
 
     // ── 技能层 ──────────────────────────────────────────────
@@ -753,43 +382,13 @@ public class HarnessApplicationConfig {
         return new FilesystemSkillProviderPort(Path.of(dshHome), null);
     }
 
-    @Bean
-    public ISkillService skillService(List<ISkillProviderPort> skillProviders) {
-        return new SkillService(skillProviders);
-    }
-
     // ── LSP 层 ────────────────────────────────────────────────
-
-    @Bean
-    public ILspService lspService() {
-        return new LspService();
-    }
 
     // ── 代码运行时层 ───────────────────────────────────────
 
     @Bean
     public ICodeRuntimePort codeRuntimePort() {
         return new LocalCodeRuntimePort();
-    }
-
-    @Bean
-    public ICodeRuntimeService codeRuntimeService(ICodeRuntimePort codeRuntimePort) {
-        return new CodeRuntimeService(codeRuntimePort);
-    }
-
-    // ── E2B 层 ────────────────────────────────────────────────
-
-    @Bean
-    public IE2BSandboxService e2bSandboxService(
-            @Value("${harness.e2b.api-key:}") String apiKey,
-            @Value("${harness.e2b.template:base}") String template
-    ) {
-        // 本地模式下 E2B 文件系统和子进程端口仅提供占位实现；
-        // 真正接入时会调用 E2B SDK。
-        IE2BFsPort fsPortImpl = new StubE2BFsPort();
-        
-        IE2BSubprocessPort subprocessPort = new StubE2BSubprocessPort(); //
-        return new E2BSandboxService(fsPortImpl, subprocessPort);
     }
 
     // ── ACP 层 ────────────────────────────────────────────────
@@ -802,11 +401,6 @@ public class HarnessApplicationConfig {
             return new StubAcpAgentPort();
         }
         return new StdioAcpAgentPort(command, List.of());
-    }
-
-    @Bean
-    public IAcpServerService acpServerService(IAcpAgentPort acpAgentPort) {
-        return new AcpServerService(acpAgentPort);
     }
 
     // ── 子智能体进程外提供方 ────────────────────────
@@ -843,11 +437,6 @@ public class HarnessApplicationConfig {
         return new LocalWorkflowEnginePort();
     }
 
-    @Bean
-    public IWorkflowService workflowService(IWorkflowEnginePort workflowEnginePort) {
-        return new WorkflowService(workflowEnginePort);
-    }
-
     // ── Typert 层 ─────────────────────────────────────────────
 
     @Bean
@@ -856,48 +445,8 @@ public class HarnessApplicationConfig {
     }
 
     @Bean
-    public ITypertService typertService(ITypertRegistryContract typertRegistryContract) {
-        return new TypertService(typertRegistryContract);
-    }
-
-    @Bean
     public TypertProtocolLoader typertProtocolLoader(ObjectMapper objectMapper) {
         return new TypertProtocolLoader(objectMapper);
     }
 
-    // ── SDK 层 ────────────────────────────────────────────────
-
-    @Bean
-    @org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "harness.sdk.standalone", havingValue = "true")
-    public SdkServerService sdkServerService(
-            StdioSdkTransportPort stdioSdkTransportPort,
-            ISdkServerHandler sdkServerHandler
-    ) {
-        return new SdkServerService(stdioSdkTransportPort, sdkServerHandler);
-    }
-
-    @Bean
-    @org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "harness.sdk.standalone", havingValue = "true")
-    public StdioSdkTransportPort stdioSdkTransportPort(ObjectMapper objectMapper) {
-        return new StdioSdkTransportPort(System.in, System.out, objectMapper);
-    }
-
-    @Bean
-    @org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "harness.sdk.standalone", havingValue = "true")
-    public ISdkClientService sdkClientService(StdioSdkTransportPort stdioSdkTransportPort) {
-        return new SdkClientService(stdioSdkTransportPort);
-    }
-
-    @Bean
-    @org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "harness.sdk.standalone", havingValue = "true")
-    public ISdkServerHandler sdkServerHandler() {
-        return (method, params) -> switch (method) {
-            case "initialize" -> java.util.Map.of(
-                    "serverName", "deepseek-harness-sdk-runtime",
-                    "serverVersion", "1.0.0"
-            );
-            case "shutdown" -> java.util.Map.of();
-            default -> throw new IllegalArgumentException("unknown method: " + method);
-        };
-    }
 }

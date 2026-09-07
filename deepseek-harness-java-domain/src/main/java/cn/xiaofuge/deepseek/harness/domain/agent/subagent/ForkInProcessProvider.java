@@ -33,6 +33,9 @@ public class ForkInProcessProvider implements SubagentProvider {
     private final AgentFactoryPort agentFactory;
     private final AgentOptions defaultOptions;
 
+    /**
+     * 处理Fork In Process Provider相关逻辑。
+     */
     public ForkInProcessProvider(
             String providerName,
             SubagentRegistry registry,
@@ -111,6 +114,9 @@ public class ForkInProcessProvider implements SubagentProvider {
         return List.copyOf(events.subList(0, lastEndIdx + 1));
     }
 
+    /**
+     * 处理collect Last Assistant Output相关逻辑。
+     */
     private List<ContentBlock> collectLastAssistantOutput(ReactLoopAgent agent) {
         var events = agent.session().events();
         TextBlock lastText = null;
@@ -129,6 +135,9 @@ public class ForkInProcessProvider implements SubagentProvider {
         return lastText != null ? List.of(lastText) : List.of();
     }
 
+    /**
+     * 处理determine Stop Reason相关逻辑。
+     */
     private String determineStopReason(ReactLoopAgent agent) {
         var events = agent.session().events();
         TurnEndReason lastReason = null;

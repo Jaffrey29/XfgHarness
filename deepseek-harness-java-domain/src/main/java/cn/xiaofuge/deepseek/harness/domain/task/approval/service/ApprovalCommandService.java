@@ -9,14 +9,19 @@ import cn.xiaofuge.deepseek.harness.domain.task.IHarnessExecutionService;
 import cn.xiaofuge.deepseek.harness.domain.task.approval.model.valobj.ApprovalActionVO;
 import cn.xiaofuge.deepseek.harness.domain.task.execution.model.valobj.HarnessExecutionResultVO;
 import java.time.Instant;
+import org.springframework.stereotype.Service;
 
 /** Executes approval actions and resumes the task flow. */
+@Service
 public class ApprovalCommandService implements IApprovalCommandService {
 
     private final IHarnessSessionRepository harnessSessionRepository;
     private final ISessionLogService sessionLogService;
     private final IHarnessExecutionService harnessExecutionService;
 
+    /**
+     * 处理Approval Command Service相关逻辑。
+     */
     public ApprovalCommandService(
             IHarnessSessionRepository harnessSessionRepository,
             ISessionLogService sessionLogService,

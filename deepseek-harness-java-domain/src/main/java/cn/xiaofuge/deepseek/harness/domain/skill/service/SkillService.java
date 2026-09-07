@@ -9,6 +9,7 @@ import cn.xiaofuge.deepseek.harness.domain.skill.model.entity.SkillSummary;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
+import org.springframework.stereotype.Service;
 
 /**
  * Skill registry: merges provider catalogs, resolves the winning skill for a
@@ -17,15 +18,22 @@ import java.util.regex.Pattern;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class SkillService implements ISkillService {
 
     private static final Pattern SKILL_NAME = Pattern.compile("^[a-z0-9]+(?:-[a-z0-9]+)*$");
     private final List<ISkillProviderPort> providers;
     private final Map<String, List<SkillCandidate>> cache = new ConcurrentHashMap<>();
 
+    /**
+     * 处理Skill Service相关逻辑。
+     */
     public SkillService(List<ISkillProviderPort> providers) {
         this.providers = providers;
     }
+    /**
+     * 列出。
+     */
 
     @Override
     public List<SkillSummary> list(String cwd) {
@@ -42,6 +50,9 @@ public class SkillService implements ISkillService {
                 .map(c -> new SkillSummary(c.name(), c.description(), c.whenToUse(),
                         c.invocation(), c.source(), c.provider(), c.path()))
                 .toList();
+    /**
+     * 获取。
+     */
     }
 
     @Override
@@ -64,6 +75,9 @@ public class SkillService implements ISkillService {
         return Optional.empty();
     }
 
+    /**
+     * 处理discover All相关逻辑。
+     */
     private List<SkillCandidate> discoverAll(String cwd) {
         List<SkillCandidate> all = new ArrayList<>();
         for (ISkillProviderPort provider : providers) {

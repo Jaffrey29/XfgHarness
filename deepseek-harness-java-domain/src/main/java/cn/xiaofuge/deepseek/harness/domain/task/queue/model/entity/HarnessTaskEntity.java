@@ -25,6 +25,9 @@ public class HarnessTaskEntity {
     private final HarnessStatusEnumVO status;
     private final Instant submittedAt;
 
+    /**
+     * 处理Harness Task Entity相关逻辑。
+     */
     public HarnessTaskEntity(String taskId, String sessionId, String prompt, List<String> enabledTools, HarnessStatusEnumVO status, Instant submittedAt) {
         this.taskId = Objects.requireNonNull(taskId, "taskId");
         this.sessionId = Objects.requireNonNull(sessionId, "sessionId");
@@ -34,10 +37,28 @@ public class HarnessTaskEntity {
         this.submittedAt = Objects.requireNonNull(submittedAt, "submittedAt");
     }
 
+    /**
+     * 获取Task Id。
+     */
     public String getTaskId() { return taskId; }
+    /**
+     * 获取Session Id。
+     */
     public String getSessionId() { return sessionId; }
+    /**
+     * 获取Prompt。
+     */
     public String getPrompt() { return prompt; }
+    /**
+     * 获取Enabled Tools。
+     */
     public List<String> getEnabledTools() { return enabledTools; }
+    /**
+     * 获取Status。
+     */
     public HarnessStatusEnumVO getStatus() { return status; }
+    /**
+     * 获取Submitted At。
+     */
     public Instant getSubmittedAt() { return submittedAt; }
 }

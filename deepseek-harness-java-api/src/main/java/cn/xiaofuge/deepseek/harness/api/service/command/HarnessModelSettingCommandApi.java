@@ -21,6 +21,9 @@ public class HarnessModelSettingCommandApi {
 
     private final IModelSettingCommandService modelSettingCommandService;
 
+    /**
+     * 处理Harness Model Setting Command Api相关逻辑。
+     */
     public HarnessModelSettingCommandApi(IModelSettingCommandService modelSettingCommandService) {
         this.modelSettingCommandService = modelSettingCommandService;
     }

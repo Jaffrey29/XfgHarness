@@ -33,6 +33,9 @@ public class FsEditTool implements ToolDefinition {
 
     private final IFsPort fsService;
 
+    /**
+     * 处理Fs Edit Tool相关逻辑。
+     */
     public FsEditTool(IFsPort fsService) {
         this.fsService = fsService;
     }
@@ -140,6 +143,9 @@ public class FsEditTool implements ToolDefinition {
     @Override
     public boolean isConcurrencySafe(Object args) { return false; }
 
+    /**
+     * 处理count Occurrences相关逻辑。
+     */
     private static int countOccurrences(String haystack, String needle) {
         int count = 0, idx = 0;
         while ((idx = haystack.indexOf(needle, idx)) >= 0) {
@@ -149,6 +155,9 @@ public class FsEditTool implements ToolDefinition {
         return count;
     }
 
+    /**
+     * 处理replace First相关逻辑。
+     */
     private static String replaceFirst(String content, String oldString, String newString) {
         int idx = content.indexOf(oldString);
         return content.substring(0, idx) + newString + content.substring(idx + oldString.length());

@@ -102,6 +102,9 @@ public class AgentUseCase implements IAgentUseCase {
         }
     }
 
+    /**
+     * 构建Agent Options。
+     */
     private AgentOptions buildAgentOptions(SendMessageCommand request) {
         String provider = request.provider() != null ? request.provider() : "deepseek";
         // 与 AgentResolveNode 保持一致：默认模型用 yml 的 harness.llm.deepseek.default-model（gpt-5.5），

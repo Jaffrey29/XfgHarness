@@ -26,6 +26,9 @@ public class WorkspaceQueryController {
 
     private final WorkspaceQueryApi workspaceQueryApi;
 
+    /**
+     * 处理Workspace Query Controller相关逻辑。
+     */
     public WorkspaceQueryController(WorkspaceQueryApi workspaceQueryApi) {
         this.workspaceQueryApi = workspaceQueryApi;
     }

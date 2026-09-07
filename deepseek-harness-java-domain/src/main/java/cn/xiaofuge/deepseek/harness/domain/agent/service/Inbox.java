@@ -54,6 +54,9 @@ public final class Inbox {
         replay();
     }
 
+    /**
+     * 处理replay相关逻辑。
+     */
     private void replay() {
         int seedLength = session.header() != null
                 ? session.header().seedLength() : 0;
@@ -181,10 +184,16 @@ public final class Inbox {
 
     // ── Internal ──────────────────────────────────────────────────
 
+    /**
+     * 列出For。
+     */
     private List<Message> listFor(InboxTarget target) {
         return target == InboxTarget.NEXT_TURN ? nextTurn : nextStep;
     }
 
+    /**
+     * 处理locate相关逻辑。
+     */
     private Optional<Location> locate(String messageId) {
         for (InboxTarget target : InboxTarget.values()) {
             List<Message> list = listFor(target);
@@ -197,6 +206,9 @@ public final class Inbox {
         return Optional.empty();
     }
 
+    /**
+     * 处理mutate相关逻辑。
+     */
     private List<Message> mutate(
             InboxTarget target,
             int start,
@@ -319,5 +331,8 @@ public final class Inbox {
         }
     }
 
+    /**
+     * Location 定义当前模块中的record契约与职责。
+     */
     private record Location(InboxTarget target, int index) {}
 }

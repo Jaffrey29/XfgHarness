@@ -20,6 +20,9 @@ public record ToolFailure(String message, ToolErrorInfo info) {
         }
     }
 
+    /**
+     * 处理Tool Failure相关逻辑。
+     */
     public ToolFailure(String message, String code) {
         this(message, new ToolErrorInfo(code, code));
     }

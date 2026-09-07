@@ -31,6 +31,9 @@ public class AskUserTool implements ToolDefinition {
     private final UserQuestionsPort userQuestions;
     private final String agentId;
 
+    /**
+     * 处理Ask User Tool相关逻辑。
+     */
     public AskUserTool(UserQuestionsPort userQuestions, String agentId) {
         this.userQuestions = userQuestions;
         this.agentId = agentId;
@@ -152,10 +155,16 @@ public class AskUserTool implements ToolDefinition {
     @Override
     public boolean isConcurrencySafe(Object args) { return false; }
 
+    /**
+     * 处理to Schema相关逻辑。
+     */
     public ToolSchema toSchema() {
         return new ToolSchema(NAME, DESCRIPTION, parameters());
     }
 
+    /**
+     * 处理escape Json相关逻辑。
+     */
     private static String escapeJson(String s) {
         if (s == null) return "";
         return s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t");

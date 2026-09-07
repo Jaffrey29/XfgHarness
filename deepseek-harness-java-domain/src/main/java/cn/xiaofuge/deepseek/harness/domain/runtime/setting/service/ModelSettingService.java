@@ -7,6 +7,7 @@ import cn.xiaofuge.deepseek.harness.domain.runtime.setting.model.entity.ModelSet
 import cn.xiaofuge.deepseek.harness.domain.runtime.setting.model.valobj.ModelSettingVO;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.stereotype.Service;
 
 /**
  * 模型设置领域服务。
@@ -19,10 +20,14 @@ import java.util.Optional;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class ModelSettingService implements IModelSettingQueryService, IModelSettingCommandService {
 
     private final IModelSettingRepository modelSettingRepository;
 
+    /**
+     * 处理Model Setting Service相关逻辑。
+     */
     public ModelSettingService(IModelSettingRepository modelSettingRepository) {
         this.modelSettingRepository = modelSettingRepository;
     }

@@ -43,10 +43,16 @@ public class McpBootstrapConfig implements ApplicationRunner, ApplicationListene
     private final ToolRegistry toolRegistry;
     private volatile McpBootstrap bootstrap;
 
+    /**
+     * 处理Mcp Bootstrap Config相关逻辑。
+     */
     public McpBootstrapConfig(McpServersProperties properties, ToolRegistry toolRegistry) {
         this.properties = properties;
         this.toolRegistry = toolRegistry;
     }
+    /**
+     * 运行。
+     */
 
     @Override
     @Order(30) // 在 PresetPluginLoader(20) 之后运行，确保基础工具链就绪

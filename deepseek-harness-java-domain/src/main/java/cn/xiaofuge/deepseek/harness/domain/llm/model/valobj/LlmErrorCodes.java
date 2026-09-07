@@ -10,6 +10,9 @@ package cn.xiaofuge.deepseek.harness.domain.llm.model.valobj;
  * @website bugstack.cn
  */
 public final class LlmErrorCodes {
+    /**
+     * 处理Llm Error Codes相关逻辑。
+     */
     private LlmErrorCodes() {}
 
     public static final String EMPTY_RESPONSE = "EMPTY_RESPONSE";

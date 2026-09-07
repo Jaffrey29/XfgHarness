@@ -24,6 +24,9 @@ public class HarnessApprovalCommandController {
 
     private final HarnessApprovalCommandApi harnessApprovalCommandApi;
 
+    /**
+     * 处理Harness Approval Command Controller相关逻辑。
+     */
     public HarnessApprovalCommandController(HarnessApprovalCommandApi harnessApprovalCommandApi) {
         this.harnessApprovalCommandApi = harnessApprovalCommandApi;
     }

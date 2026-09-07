@@ -24,6 +24,9 @@ public class HarnessModelSettingQueryController {
 
     private final HarnessModelSettingQueryApi harnessModelSettingQueryApi;
 
+    /**
+     * 处理Harness Model Setting Query Controller相关逻辑。
+     */
     public HarnessModelSettingQueryController(HarnessModelSettingQueryApi harnessModelSettingQueryApi) {
         this.harnessModelSettingQueryApi = harnessModelSettingQueryApi;
     }

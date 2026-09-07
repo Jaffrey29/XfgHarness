@@ -16,8 +16,14 @@ import java.util.regex.Pattern;
  */
 public final class HookMatcher {
 
+    /**
+     * 处理Hook Matcher相关逻辑。
+     */
     private HookMatcher() {}
 
+    /**
+     * 处理matches相关逻辑。
+     */
     public static boolean matches(HookDialect dialect, String matcher, String toolName) {
         if (matcher == null || matcher.isEmpty() || "*".equals(matcher)) return true;
         if (toolName == null) return false;
@@ -37,6 +43,9 @@ public final class HookMatcher {
         }
     }
 
+    /**
+     * 处理filter Matching相关逻辑。
+     */
     public static List<MatcherGroup> filterMatching(HookDialect dialect, List<MatcherGroup> groups, String toolName) {
         return groups.stream()
                 .filter(g -> matches(dialect, g.matcher(), toolName))

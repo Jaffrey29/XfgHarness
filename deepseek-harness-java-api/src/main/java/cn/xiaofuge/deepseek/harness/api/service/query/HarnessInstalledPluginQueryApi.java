@@ -21,6 +21,9 @@ public class HarnessInstalledPluginQueryApi {
 
     private final IHarnessPluginRepository harnessPluginRepository;
 
+    /**
+     * 处理Harness Installed Plugin Query Api相关逻辑。
+     */
     public HarnessInstalledPluginQueryApi(IHarnessPluginRepository harnessPluginRepository) {
         this.harnessPluginRepository = harnessPluginRepository;
     }

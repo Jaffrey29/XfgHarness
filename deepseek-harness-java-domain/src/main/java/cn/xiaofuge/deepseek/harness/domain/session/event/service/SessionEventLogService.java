@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.stereotype.Service;
 
 /**
  * Default implementation of {@link ISessionEventLogService}.
@@ -21,11 +22,15 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class SessionEventLogService implements ISessionEventLogService {
 
     private final ISessionEventStore store;
     private final Map<String, SessionLog> logs = new ConcurrentHashMap<>();
 
+    /**
+     * 处理Session Event Log Service相关逻辑。
+     */
     public SessionEventLogService(ISessionEventStore store) {
         this.store = Objects.requireNonNull(store, "store");
     }
@@ -98,6 +103,9 @@ public class SessionEventLogService implements ISessionEventLogService {
 
     // ── Helpers ──────────────────────────────────────────────────
 
+    /**
+     * 获取Or Create Log。
+     */
     private SessionLog getOrCreateLog(String sessionId) {
         return logs.computeIfAbsent(sessionId, sid -> {
             SessionHeader header = store.getHeader(sid)

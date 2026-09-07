@@ -26,6 +26,9 @@ public class HarnessTaskApi implements IHarnessTaskApi {
 
     private final ISubmitHarnessTaskCase submitHarnessTaskCase;
 
+    /**
+     * 处理Harness Task Api相关逻辑。
+     */
     public HarnessTaskApi(ISubmitHarnessTaskCase submitHarnessTaskCase) {
         this.submitHarnessTaskCase = submitHarnessTaskCase;
     }
@@ -39,6 +42,9 @@ public class HarnessTaskApi implements IHarnessTaskApi {
 
     // ── DTO ↔ Command 映射 ───────────────────────────────────────
 
+    /**
+     * 处理to Command相关逻辑。
+     */
     private SubmitTaskCommand toCommand(SubmitTaskRequest request) {
         return new SubmitTaskCommand(
                 request.workspaceId(),
@@ -48,6 +54,9 @@ public class HarnessTaskApi implements IHarnessTaskApi {
         );
     }
 
+    /**
+     * 处理to Response相关逻辑。
+     */
     private SubmitTaskResponse toResponse(SubmitTaskResult result) {
         return new SubmitTaskResponse(
                 result.taskId(),

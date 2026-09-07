@@ -117,6 +117,9 @@ public abstract class AbstractTool implements ToolDefinition {
         return completed(ToolExecutionResult.fail(message, code));
     }
 
+    /**
+     * 处理completed相关逻辑。
+     */
     private static CompletableFuture<ToolExecutionResult> completed(ToolExecutionResult r) {
         return CompletableFuture.completedFuture(r);
     }

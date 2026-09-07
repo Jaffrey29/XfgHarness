@@ -23,10 +23,16 @@ public class TerminalCommandApi {
 
     private final ITerminalCommandService terminalCommandService;
 
+    /**
+     * 处理Terminal Command Api相关逻辑。
+     */
     public TerminalCommandApi(ITerminalCommandService terminalCommandService) {
         this.terminalCommandService = terminalCommandService;
     }
 
+    /**
+     * 处理open相关逻辑。
+     */
     public TerminalSessionResponse open(TerminalOpenRequest request) {
         if (request == null) {
             throw new IllegalArgumentException("terminal open request must not be null");
@@ -34,6 +40,9 @@ public class TerminalCommandApi {
         return TerminalSessionResponse.from(terminalCommandService.open(request.name(), request.cwd()));
     }
 
+    /**
+     * 发送数据或请求到目标端。
+     */
     public TerminalSendResponse send(String sessionId, TerminalSendRequest request) {
         validateSessionId(sessionId);
         if (request == null) {
@@ -43,11 +52,17 @@ public class TerminalCommandApi {
         return TerminalSendResponse.from(terminalCommandService.send(sessionId, request.command(), timeoutMs));
     }
 
+    /**
+     * 释放资源并关闭关联连接。
+     */
     public TerminalSessionResponse close(String sessionId) {
         validateSessionId(sessionId);
         return TerminalSessionResponse.from(terminalCommandService.close(sessionId));
     }
 
+    /**
+     * 校验输入与业务规则；不通过时返回失败结果或抛出异常。
+     */
     private static void validateSessionId(String sessionId) {
         if (sessionId == null || sessionId.isBlank()) {
             throw new IllegalArgumentException("sessionId must not be blank");

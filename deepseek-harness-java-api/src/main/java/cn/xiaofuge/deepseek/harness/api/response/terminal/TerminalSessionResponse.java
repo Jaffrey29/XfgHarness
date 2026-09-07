@@ -26,6 +26,9 @@ public record TerminalSessionResponse(
         int outputChars
 ) {
 
+    /**
+     * 处理from相关逻辑。
+     */
     public static TerminalSessionResponse from(TerminalSessionSnapshotVO snapshot) {
         return new TerminalSessionResponse(
                 snapshot.sessionId(),

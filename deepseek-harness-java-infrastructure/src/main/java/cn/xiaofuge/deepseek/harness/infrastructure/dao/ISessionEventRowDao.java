@@ -83,9 +83,6 @@ public interface ISessionEventRowDao {
                                         @Param("fromSeq") long fromSeq,
                                         @Param("toSeq") long toSeq);
 
-    /**
-     * 获取某会话的最大序列号。
-     */
     @Select("""
             SELECT COALESCE(MAX(seq), -1) FROM harness_session_event_log WHERE session_id = #{sessionId}
             """)
@@ -119,9 +116,6 @@ public interface ISessionEventRowDao {
                       @Param("delegationDepth") int delegationDepth,
                       @Param("agentPreset") String agentPreset);
 
-    /**
-     * 查询会话头。
-     */
     @Select("""
             SELECT session_id, version, created_at, cwd, parent_session, seed_length, origin, delegation_depth, agent_preset
             FROM harness_session_header
@@ -129,9 +123,6 @@ public interface ISessionEventRowDao {
             """)
     SessionHeaderRowPO getHeader(@Param("sessionId") String sessionId);
 
-    /**
-     * 查询最近创建的会话头。
-     */
     @Select("""
             SELECT session_id, version, created_at, cwd, parent_session, seed_length, origin, delegation_depth, agent_preset
             FROM harness_session_header

@@ -13,9 +13,15 @@ import java.util.Optional;
  * @website bugstack.cn
  */
 public record LspQueryResult(List<LspLocation> locations, Optional<String> hoverText) {
+    /**
+     * 处理of Locations相关逻辑。
+     */
     public static LspQueryResult ofLocations(List<LspLocation> locations) {
         return new LspQueryResult(locations, Optional.empty());
     }
+    /**
+     * 处理of Hover相关逻辑。
+     */
     public static LspQueryResult ofHover(String text) {
         return new LspQueryResult(List.of(), Optional.of(text));
     }

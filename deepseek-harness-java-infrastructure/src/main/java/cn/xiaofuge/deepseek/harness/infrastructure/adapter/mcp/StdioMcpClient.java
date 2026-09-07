@@ -35,6 +35,9 @@ public class StdioMcpClient implements IMcpClient {
     private Thread readerThread;
     private volatile boolean connected = false;
 
+    /**
+     * 处理Stdio Mcp Client相关逻辑。
+     */
     public StdioMcpClient(String command, List<String> args, Map<String, String> env, String cwd, long callTimeoutMs) {
         this.command = command;
         this.args = args != null ? args : List.of();
@@ -151,6 +154,9 @@ public class StdioMcpClient implements IMcpClient {
 
     // ── JSON-RPC transport ───────────────────────────────────────
 
+    /**
+     * 发送数据或请求到目标端。
+     */
     private CompletableFuture<JsonNode> send(String method, Map<String, Object> params) {
         long id = nextId.getAndIncrement();
         ObjectNode request = objectMapper.createObjectNode();
@@ -178,6 +184,9 @@ public class StdioMcpClient implements IMcpClient {
         return future.orTimeout(callTimeoutMs, TimeUnit.MILLISECONDS);
     }
 
+    /**
+     * 发送数据或请求到目标端。
+     */
     private void sendNotification(String method, Map<String, Object> params) {
         try {
             ObjectNode notification = objectMapper.createObjectNode();
@@ -196,11 +205,17 @@ public class StdioMcpClient implements IMcpClient {
         }
     }
 
+    /**
+     * 发送数据或请求到目标端。
+     */
     private CompletableFuture<JsonNode> sendAndWait(String method, Map<String, Object> params)
             throws Exception {
         return send(method, params);
     }
 
+    /**
+     * 处理read Loop相关逻辑。
+     */
     private void readLoop() {
         try {
             String line;

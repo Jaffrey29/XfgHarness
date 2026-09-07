@@ -24,6 +24,9 @@ public class ActivateHarnessPluginCaseImpl implements IActivateHarnessPluginCase
     private final IPluginRegistryService pluginRegistryService;
     private final IPluginBridgeService pluginBridgeService;
 
+    /**
+     * 激活组件，准备其运行时能力。
+     */
     public ActivateHarnessPluginCaseImpl(
             IPluginRegistryService pluginRegistryService,
             IPluginBridgeService pluginBridgeService

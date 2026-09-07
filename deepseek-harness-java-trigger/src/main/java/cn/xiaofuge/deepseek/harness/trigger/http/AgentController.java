@@ -46,6 +46,9 @@ public class AgentController {
     private final ObjectMapper objectMapper;
     private final ExecutorService sseExecutor;
 
+    /**
+     * 处理Agent Controller相关逻辑。
+     */
     public AgentController(IAgentApi agentApi, ObjectMapper objectMapper) {
         this.agentApi = agentApi;
         this.objectMapper = objectMapper;
@@ -59,12 +62,18 @@ public class AgentController {
         );
     }
 
+    /**
+     * 处理Post Mapping相关逻辑。
+     */
     @PostMapping("/message")
     public AgentMessageResponse sendMessage(@RequestBody AgentMessageRequest request) {
         log.info("[HTTP] /api/agent/message 收到请求 agentId={}", request.agentId());
         return agentApi.sendMessage(request);
     }
 
+    /**
+     * 处理Post Mapping相关逻辑。
+     */
     @PostMapping(value = "/stream")
     public org.springframework.http.ResponseEntity<SseEmitter> streamMessage(@RequestBody AgentMessageRequest request) {
         log.info("[HTTP] /api/agent/stream 收到流式请求 agentId={} provider={} model={}",
@@ -166,17 +175,26 @@ public class AgentController {
                 .body(emitter);
     }
 
+    /**
+     * 获取Mapping。
+     */
     @GetMapping("/{agentId}/status")
     public String getAgentStatus(@PathVariable("agentId") String agentId) {
         return agentApi.getAgentStatus(agentId);
     }
 
+    /**
+     * 处理Post Mapping相关逻辑。
+     */
     @PostMapping("/{agentId}/cancel")
     public void cancelAgent(@PathVariable("agentId") String agentId) {
         log.info("[HTTP] 收到取消请求 agentId={}", agentId);
         agentApi.cancelAgent(agentId);
     }
 
+    /**
+     * 处理extract Assistant Text相关逻辑。
+     */
     private String extractAssistantText(AgentMessageResponse response) {
         if (response.messages() == null || response.messages().isEmpty()) {
             return "";

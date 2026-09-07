@@ -57,6 +57,12 @@ public final class ToolCallExecutor {
         this(registry, session, maxParallel, ToolArgumentsParser.identity());
     }
 
+    /**
+     * 创建带参数解析器的完整工具执行器。
+     * <p>执行流程：校验注册表、会话、参数解析器 -> 校验最大并行数 -> 绑定运行期组件。
+     * 该执行器本身不实现工具，只负责解析、审批、Hook、并发调度和结果落库。
+     * <p>数据示例：maxParallel=2 时，模型同轮请求 read_file 与 grep 工具，两个只读工具可并发执行。
+     */
     public ToolCallExecutor(
             ToolRegistry registry,
             SessionLog session,
@@ -70,6 +76,10 @@ public final class ToolCallExecutor {
         this.maxParallel = maxParallel;
     }
 
+    /**
+     * 注入 PRE/POST 工具 Hook 服务。
+     * <p>PRE Hook 可阻断工具调用；POST Hook 只观察执行结果，不改变已产生的工具输出。
+     */
     public void setHookService(IHookService hookService) {
         this.hookService = hookService;
     }
@@ -87,11 +97,20 @@ public final class ToolCallExecutor {
      */
     private record ApprovalOutcome(boolean denied, boolean cancelled) {}
 
+    /**
+     * 检查当前工具调用是否被运行期审批门禁拒绝。
+     * <p>数据示例：shell_execute 未获得审批时返回 denied=true；fs_read 通常直接放行。
+     */
     private ApprovalOutcome checkApproval(String toolName, Object args) {
         RuntimeApprovalGate.Decision decision = approvalGate.check(toolName, args);
         return new ApprovalOutcome(decision == RuntimeApprovalGate.Decision.DENY, false);
     }
 
+    /**
+     * 执行 PRE_TOOL_USE Hook，判断是否阻断本次工具调用。
+     * <p>Hook 服务未注入时直接放行；Hook 返回 BLOCK 或 DENY 都视为阻断。
+     * <p>数据示例：PRE Hook 对 `rm -rf /` 返回 DENY，则本次调用不会进入真实工具实现。
+     */
     private boolean shouldBlock(String toolName) {
         if (hookService == null) return false;
         var outcome = hookService.runHooks(
@@ -103,6 +122,10 @@ public final class ToolCallExecutor {
                 .orElse(false);
     }
 
+    /**
+     * 在工具提交结果后触发 POST_TOOL_USE Hook。
+     * <p>该阶段用于审计、告警和后续处理；不改变已写入会话日志的工具结果。
+     */
     private void afterTool(String toolName) {
         if (hookService == null) return;
         hookService.runHooks(
@@ -162,6 +185,13 @@ public final class ToolCallExecutor {
 
     // ── 分组执行器 ────────────────────────────────────────────────
 
+    /**
+     * 按并行/串行模式执行一组工具调用，并保持结果按调用顺序提交。
+     * <p>执行流程：解析参数 -> 记录 tool_call 事件 -> 审批检查 -> PRE Hook -> 启动执行 ->
+     * 等待完成 -> POST Hook -> 记录 tool_result 事件。取消时未派发的调用标记为 ABORTED。
+     * <p>数据示例：模型调用 read_file(a.txt) 和 read_file(b.txt)，PARALLEL 模式下两者并发执行；
+     * 结果仍按 a、b 的调用顺序回填，保证会话回放稳定。
+     */
     private GroupOutcome runGroup(
             long turn,
             long step,
@@ -363,6 +393,10 @@ public final class ToolCallExecutor {
 
     // ── 提交辅助方法 ──────────────────────────────────────────────
 
+    /**
+     * 按槽位顺序提交所有已完成且相邻的工具结果。
+     * <p>结果必须按派发顺序进入会话日志，避免并行执行导致 tool_call/tool_result 交叉乱序。
+     */
     private int commitReady(
             long turn, long step, List<PlannedCall> group,
             Slot[] slots, long[] callSeqs,
@@ -376,6 +410,12 @@ public final class ToolCallExecutor {
         return committed;
     }
 
+    /**
+     * 完成一个工具调用的最终结果处理。
+     * <p>执行流程：必要时执行 finalizeContent -> 合并工具执行期间产生的延迟上下文 ->
+     * 写入 tool_result 事件 -> 交给 acceptContext 接收额外上下文。
+     * <p>数据示例：文件读取工具返回大文件摘要，finalizeContent 可把原始内容替换为摘要，同时保留成功状态。
+     */
     private int commitOne(
             long turn, long step, PlannedCall call, Slot slot,
             long callSeq, int index,
@@ -438,12 +478,20 @@ public final class ToolCallExecutor {
 
     // ── 持久化事件追加 ────────────────────────────────────────────
 
+    /**
+     * 将一次工具调用写入会话事件日志，并返回该调用的序列号。
+     * <p>序列号用于稍后将 tool_result 精确关联到 tool_call。
+     */
     private long appendToolCall(long turn, long step, ToolCallBlock block) {
         var event = SessionEventFactory.toolCall(turn, step, block.id(), block.name(), block.arguments());
         session.append(event);
         return event.seq();
     }
 
+    /**
+     * 将工具结果写入会话事件日志。
+     * <p>失败结果会保留错误码；成功结果可携带内容、元数据和额外上下文，供下一轮 LLM 观察。
+     */
     private void appendToolResult(
             long turn, long step, ToolCallBlock block,
             ToolExecutionResult result, long callSeq
@@ -476,6 +524,10 @@ public final class ToolCallExecutor {
         session.append(event);
     }
 
+    /**
+     * 为被取消或未派发的工具调用写入合成失败结果。
+     * <p>这保证 tool_call 和 tool_result 在事件日志中成对出现，会话重建时不会出现悬挂调用。
+     */
     private void appendSkippedToolCall(long turn, long step, ToolCallBlock block) {
         long callSeq = appendToolCall(turn, step, block);
         var result = ToolExecutionResult.fail(
@@ -489,9 +541,18 @@ public final class ToolCallExecutor {
 
     // ── 内部类型 ──────────────────────────────────────────────────
 
+    /**
+     * 一次已解析参数、准备派发的工具调用。
+     */
     private record PlannedCall(ToolCallBlock block, Object execArgs) {}
 
+    /**
+     * 并行调度器中的一个结果槽位。
+     */
     private record Slot(ToolRunContext ctx, ToolExecutionResult result, boolean needsPost) {}
 
+    /**
+     * 一组工具调用的收尾状态。
+     */
     private record GroupOutcome(int consumed, boolean aborted, boolean concluded) {}
 }

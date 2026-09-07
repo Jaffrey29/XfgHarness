@@ -13,6 +13,9 @@ import java.util.Map;
  */
 public class AcpSubagentProvider extends OutOfProcessSubagentProvider {
 
+    /**
+     * 处理Acp Subagent Provider相关逻辑。
+     */
     public AcpSubagentProvider(String command, List<String> args, String cwd,
                                Map<String, String> env, long timeoutMs) {
         super(command, args, cwd, env, timeoutMs);

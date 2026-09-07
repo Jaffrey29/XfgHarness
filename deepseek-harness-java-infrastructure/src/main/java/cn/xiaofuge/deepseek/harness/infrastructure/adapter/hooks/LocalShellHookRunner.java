@@ -21,6 +21,9 @@ public class LocalShellHookRunner implements IHookRunnerPort {
     private static final int DEFAULT_TIMEOUT_MS = 60_000;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    /**
+     * 运行。
+     */
     @Override
     public HookOutput run(CommandHook hook, String payloadJson, Map<String, String> environment) {
         int timeoutMs = hook.timeoutSec() != null ? hook.timeoutSec() * 1000 : DEFAULT_TIMEOUT_MS;
@@ -62,6 +65,9 @@ public class LocalShellHookRunner implements IHookRunnerPort {
         }
     }
 
+    /**
+     * 处理parse Output相关逻辑。
+     */
     private HookOutput parseOutput(int exitCode, String stdout, String stderr) {
         Optional<Boolean> continueFlag = Optional.empty();
         Optional<String> stopReason = Optional.empty();
@@ -114,6 +120,9 @@ public class LocalShellHookRunner implements IHookRunnerPort {
                 decision, reason, additionalContext, systemMessage);
     }
 
+    /**
+     * 处理parse Decision相关逻辑。
+     */
     private static Optional<HookOutput.HookDecision> parseDecision(String d) {
         if (d == null) return Optional.empty();
         return switch (d.toLowerCase()) {

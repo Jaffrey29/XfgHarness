@@ -18,9 +18,15 @@ public class PermissionMatrixPort implements IPermissionMatrixPort {
 
     private final List<String> approvalRequiredTools;
 
+    /**
+     * 处理Permission Matrix Port相关逻辑。
+     */
     public PermissionMatrixPort(@Value("${harness.approval.required-tools:shell_execute,fs_write,plugin.run,subprocess.spawn}") List<String> approvalRequiredTools) {
         this.approvalRequiredTools = List.copyOf(approvalRequiredTools);
     }
+    /**
+     * 加载。
+     */
 
     @Override
     public PermissionMatrixVO load() {

@@ -19,6 +19,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.stereotype.Service;
+
 /**
  * 会话查询服务。
  * <p>
@@ -33,12 +35,16 @@ import java.util.Map;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class ConversationQueryService implements IConversationQueryService {
 
     private final IHarnessSessionRepository harnessSessionRepository;
     private final ISessionEventRepository sessionEventRepository;
     private final ISessionEventStore sessionEventStore;
 
+    /**
+     * 处理Conversation Query Service相关逻辑。
+     */
     public ConversationQueryService(
             IHarnessSessionRepository harnessSessionRepository,
             ISessionEventRepository sessionEventRepository,
@@ -194,10 +200,16 @@ public class ConversationQueryService implements IConversationQueryService {
         );
     }
 
+    /**
+     * 判断Visible Message是否成立。
+     */
     private boolean isVisibleMessage(SessionEventEntity event) {
         return "user.message".equals(event.eventType()) || "assistant.message".equals(event.eventType());
     }
 
+    /**
+     * 处理to Message相关逻辑。
+     */
     private ConversationMessageVO toMessage(SessionEventEntity event) {
         String role = event.eventType().startsWith("user") ? "user" : "assistant";
         return new ConversationMessageVO(role, event.payload(), event.occurredAt());
@@ -257,6 +269,9 @@ public class ConversationQueryService implements IConversationQueryService {
         return null;
     }
 
+    /**
+     * 处理extract Text相关逻辑。
+     */
     private String extractText(Message message) {
         if (message == null || message.content() == null) return "";
         StringBuilder sb = new StringBuilder();
@@ -268,6 +283,9 @@ public class ConversationQueryService implements IConversationQueryService {
         return sb.toString();
     }
 
+    /**
+     * 处理abbreviate相关逻辑。
+     */
     private String abbreviate(String text, int maxLength) {
         if (text == null || text.length() <= maxLength) {
             return text;

@@ -34,6 +34,9 @@ public class JobRecord {
     private volatile Instant finishedAt;
     private volatile JobOutcome outcome;
 
+    /**
+     * 处理Job Record相关逻辑。
+     */
     public JobRecord(String id, JobKind kind, String label, String ownerSessionId) {
         this.id = id;
         this.kind = kind;
@@ -42,6 +45,9 @@ public class JobRecord {
         this.status = JobStatus.RUNNING;
     }
 
+    /**
+     * 处理complete相关逻辑。
+     */
     public void complete(JobOutcome outcome) {
         this.outcome = outcome;
         this.status = outcome.status();
@@ -50,14 +56,44 @@ public class JobRecord {
         this.finishedAt = Instant.now();
     }
 
+    /**
+     * 处理outcome相关逻辑。
+     */
     public JobOutcome outcome() { return outcome; }
+    /**
+     * 处理status相关逻辑。
+     */
     public JobStatus status() { return status; }
+    /**
+     * 处理id相关逻辑。
+     */
     public String id() { return id; }
+    /**
+     * 处理kind相关逻辑。
+     */
     public JobKind kind() { return kind; }
+    /**
+     * 处理label相关逻辑。
+     */
     public String label() { return label; }
+    /**
+     * 处理owner Session Id相关逻辑。
+     */
     public String ownerSessionId() { return ownerSessionId; }
+    /**
+     * 处理detail相关逻辑。
+     */
     public String detail() { return detail; }
+    /**
+     * 处理output相关逻辑。
+     */
     public String output() { return output; }
+    /**
+     * 处理started At相关逻辑。
+     */
     public Instant startedAt() { return startedAt; }
+    /**
+     * 处理finished At相关逻辑。
+     */
     public Instant finishedAt() { return finishedAt; }
 }

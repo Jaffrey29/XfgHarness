@@ -21,6 +21,9 @@ public class ManageHarnessPluginCaseImpl implements IManageHarnessPluginCase {
     private final IPluginRegistryService pluginRegistryService;
     private final IPluginRuntimeService pluginRuntimeService;
 
+    /**
+     * 处理Manage Harness Plugin Case Impl相关逻辑。
+     */
     public ManageHarnessPluginCaseImpl(
             IPluginRegistryService pluginRegistryService,
             IPluginRuntimeService pluginRuntimeService

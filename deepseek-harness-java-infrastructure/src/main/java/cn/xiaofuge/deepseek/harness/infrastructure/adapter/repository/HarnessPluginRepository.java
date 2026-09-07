@@ -23,6 +23,9 @@ public class HarnessPluginRepository implements IHarnessPluginRepository {
 
     private final IHarnessPluginDao harnessPluginDao;
 
+    /**
+     * 处理Harness Plugin Repository相关逻辑。
+     */
     public HarnessPluginRepository(IHarnessPluginDao harnessPluginDao) {
         this.harnessPluginDao = harnessPluginDao;
     }
@@ -59,6 +62,9 @@ public class HarnessPluginRepository implements IHarnessPluginRepository {
         harnessPluginDao.deleteByPluginId(pluginId);
     }
 
+    /**
+     * 处理to Entity相关逻辑。
+     */
     private HarnessPluginEntity toEntity(HarnessPluginPO pluginPO) {
         return new HarnessPluginEntity(
                 pluginPO.pluginId(),

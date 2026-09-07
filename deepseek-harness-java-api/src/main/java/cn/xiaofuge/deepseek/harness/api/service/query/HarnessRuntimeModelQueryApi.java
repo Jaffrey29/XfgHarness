@@ -23,6 +23,9 @@ public class HarnessRuntimeModelQueryApi {
 
     private final IModelSettingQueryService modelSettingQueryService;
 
+    /**
+     * 处理Harness Runtime Model Query Api相关逻辑。
+     */
     public HarnessRuntimeModelQueryApi(IModelSettingQueryService modelSettingQueryService) {
         this.modelSettingQueryService = modelSettingQueryService;
     }

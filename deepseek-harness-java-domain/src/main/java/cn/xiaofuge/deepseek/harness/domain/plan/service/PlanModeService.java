@@ -5,6 +5,7 @@ import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionEve
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionLog;
 import cn.xiaofuge.deepseek.harness.domain.session.event.service.SessionEventFactory;
 import java.util.concurrent.atomic.AtomicReference;
+import org.springframework.stereotype.Service;
 
 /**
  * 计划模式领域服务。
@@ -17,6 +18,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class PlanModeService {
 
     /**

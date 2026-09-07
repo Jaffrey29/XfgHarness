@@ -22,6 +22,9 @@ public record InvocationDescriptor(
         Map<String, Object> resultSchema,
         String description
 ) {
+    /**
+     * 处理endpoint相关逻辑。
+     */
     public String endpoint() {
         return namespace + "/" + method;
     }

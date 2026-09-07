@@ -18,6 +18,9 @@ public class InstallHarnessPluginCaseImpl implements IInstallHarnessPluginCase {
 
     private final IPluginRegistryService pluginRegistryService;
 
+    /**
+     * 安装组件，写入登记信息并返回安装结果。
+     */
     public InstallHarnessPluginCaseImpl(IPluginRegistryService pluginRegistryService) {
         this.pluginRegistryService = pluginRegistryService;
     }

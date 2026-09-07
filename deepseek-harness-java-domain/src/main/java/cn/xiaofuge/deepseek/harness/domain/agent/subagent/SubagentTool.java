@@ -32,6 +32,9 @@ public class SubagentTool implements ToolDefinition {
     private final SubagentRegistry registry;
     private final String providerName;
 
+    /**
+     * 处理Subagent Tool相关逻辑。
+     */
     public SubagentTool(
             SubagentRegistry registry,
             String providerName
@@ -39,6 +42,9 @@ public class SubagentTool implements ToolDefinition {
         this(registry, providerName, DEFAULT_TOOL_NAME);
     }
 
+    /**
+     * 处理Subagent Tool相关逻辑。
+     */
     public SubagentTool(
             SubagentRegistry registry,
             String providerName,

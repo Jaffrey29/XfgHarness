@@ -26,6 +26,9 @@ public class PluginSidecarGatewayService {
     private final boolean nodeBridgeEnabled;
     private final Path installRoot;
 
+    /**
+     * 处理Plugin Sidecar Gateway Service相关逻辑。
+     */
     public PluginSidecarGatewayService(
             @Value("${harness.plugin.node-bridge-enabled:true}") boolean nodeBridgeEnabled,
             @Value("${harness.plugin.install-root:./plugins}") String installRoot
@@ -79,6 +82,9 @@ public class PluginSidecarGatewayService {
         }
     }
 
+    /**
+     * 运行ning Process。
+     */
     public java.util.Optional<Process> runningProcess(String pluginId) {
         RunningPluginProcess process = runningProcesses.get(pluginId);
         return process != null && process.process().isAlive()
@@ -120,6 +126,9 @@ public class PluginSidecarGatewayService {
         return new PluginProcessStatusVO(pluginId, process.pid(), alive, runningPluginProcess.runtimeCommand(), runningPluginProcess.workingDirectory(), runningPluginProcess.startedAt(), alive ? "plugin process still alive after stop" : "plugin process stopped");
     }
 
+    /**
+     * RunningPluginProcess 是基础设施适配器，负责外部资源与领域端口对接。
+     */
     private record RunningPluginProcess(Process process, String runtimeCommand, String workingDirectory, Instant startedAt) {
     }
 }

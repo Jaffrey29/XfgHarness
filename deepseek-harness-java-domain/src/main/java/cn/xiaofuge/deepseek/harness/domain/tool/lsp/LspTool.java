@@ -28,6 +28,9 @@ public class LspTool implements ToolDefinition {
     private final ILspService lspService;
     private final IFsPort fsService;
 
+    /**
+     * 处理Lsp Tool相关逻辑。
+     */
     public LspTool(ILspService lspService, IFsPort fsService) {
         this.lspService = lspService;
         this.fsService = fsService;

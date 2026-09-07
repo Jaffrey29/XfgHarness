@@ -18,9 +18,15 @@ public class ApprovalPolicyPort implements IApprovalPolicyPort {
 
     private final List<String> approvalRequiredProfiles;
 
+    /**
+     * 处理Approval Policy Port相关逻辑。
+     */
     public ApprovalPolicyPort(@Value("${harness.approval.required-profiles:web}") List<String> approvalRequiredProfiles) {
         this.approvalRequiredProfiles = List.copyOf(approvalRequiredProfiles);
     }
+    /**
+     * 加载。
+     */
 
     @Override
     public ApprovalPolicyVO load() {

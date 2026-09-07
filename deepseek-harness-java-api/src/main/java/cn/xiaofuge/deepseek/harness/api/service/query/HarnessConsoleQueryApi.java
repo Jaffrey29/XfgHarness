@@ -22,6 +22,9 @@ public class HarnessConsoleQueryApi {
 
     private final IConversationQueryService conversationQueryService;
 
+    /**
+     * 处理Harness Console Query Api相关逻辑。
+     */
     public HarnessConsoleQueryApi(IConversationQueryService conversationQueryService) {
         this.conversationQueryService = conversationQueryService;
     }

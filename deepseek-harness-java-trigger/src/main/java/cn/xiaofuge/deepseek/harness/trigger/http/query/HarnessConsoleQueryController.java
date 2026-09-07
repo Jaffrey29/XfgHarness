@@ -22,15 +22,24 @@ public class HarnessConsoleQueryController {
 
     private final HarnessConsoleQueryApi harnessConsoleQueryApi;
 
+    /**
+     * 处理Harness Console Query Controller相关逻辑。
+     */
     public HarnessConsoleQueryController(HarnessConsoleQueryApi harnessConsoleQueryApi) {
         this.harnessConsoleQueryApi = harnessConsoleQueryApi;
     }
 
+    /**
+     * 获取Mapping。
+     */
     @GetMapping("/sessions")
     public List<ConversationSessionSummaryResponse> listRecentSessions(@RequestParam(name = "limit", defaultValue = "50") int limit) {
         return harnessConsoleQueryApi.listRecentSessions(limit);
     }
 
+    /**
+     * 获取Mapping。
+     */
     @GetMapping("/sessions/{sessionId}/messages")
     public List<ConversationMessageResponse> listMessages(@PathVariable("sessionId") String sessionId) {
         return harnessConsoleQueryApi.listMessages(sessionId);

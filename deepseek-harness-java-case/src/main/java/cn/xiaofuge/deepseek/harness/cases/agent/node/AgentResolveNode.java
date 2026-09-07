@@ -39,6 +39,12 @@ public class AgentResolveNode extends AbstractAgentMessageNode {
     @Value("${harness.llm.deepseek.default-model:deepseek}")
     private String defaultModel;
 
+    /**
+     * 解析或创建本次消息要使用的 Agent。
+     * <p>执行流程：按 agentId 查缓存；命中则复用，未命中则用默认 provider/model 和工作目录创建。
+     * 解析结果只写入上下文，本节点不产生最终响应。
+     * <p>数据示例：agentId="a-1"，request.model="deepseek-chat"，cwd=null，则使用当前进程目录创建 Agent。
+     */
     @Override
     protected SendMessageResult doApply(SendMessageCommand request,
                                            AgentMessageDynamicContext ctx) throws Exception {
@@ -62,6 +68,10 @@ public class AgentResolveNode extends AbstractAgentMessageNode {
         return intentNode;
     }
 
+    /**
+     * 将 HTTP 请求字段转换为 Agent 运行参数。
+     * <p>provider 为空时默认 deepseek；model 为空时读取配置项；baseUrl/apiKey 只在请求显式传入时生效。
+     */
     private AgentOptions buildAgentOptions(SendMessageCommand request) {
         String provider = request.provider() != null ? request.provider() : "deepseek";
         String model = request.model() != null ? request.model() : defaultModel;

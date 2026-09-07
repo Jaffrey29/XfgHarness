@@ -16,6 +16,9 @@ public enum SurfaceEventType {
     ASSISTANT_MESSAGE,
     TOOL_RESULT;
 
+    /**
+     * 判断Surface Event Type是否成立。
+     */
     public static boolean isSurfaceEventType(SessionEventType type) {
         return switch (type) {
             case USER_MESSAGE, ASSISTANT_MESSAGE, TOOL_RESULT -> true;
@@ -23,6 +26,9 @@ public enum SurfaceEventType {
         };
     }
 
+    /**
+     * 处理to Session Event Type相关逻辑。
+     */
     public SessionEventType toSessionEventType() {
         return switch (this) {
             case USER_MESSAGE -> SessionEventType.USER_MESSAGE;

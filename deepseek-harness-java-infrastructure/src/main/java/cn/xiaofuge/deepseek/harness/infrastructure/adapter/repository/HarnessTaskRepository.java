@@ -25,6 +25,9 @@ public class HarnessTaskRepository implements IHarnessTaskQueueRepository {
     private final IHarnessTaskDao harnessTaskDao;
     private final ObjectMapper objectMapper;
 
+    /**
+     * 处理Harness Task Repository相关逻辑。
+     */
     public HarnessTaskRepository(IHarnessTaskDao harnessTaskDao, ObjectMapper objectMapper) {
         this.harnessTaskDao = harnessTaskDao;
         this.objectMapper = objectMapper;
@@ -56,6 +59,9 @@ public class HarnessTaskRepository implements IHarnessTaskQueueRepository {
         ));
     }
 
+    /**
+     * 处理to Json相关逻辑。
+     */
     private String toJson(List<String> enabledTools) {
         try {
             return objectMapper.writeValueAsString(enabledTools);
@@ -64,6 +70,9 @@ public class HarnessTaskRepository implements IHarnessTaskQueueRepository {
         }
     }
 
+    /**
+     * 处理from Json相关逻辑。
+     */
     private List<String> fromJson(String enabledToolsJson) {
         try {
             return objectMapper.readValue(enabledToolsJson, new TypeReference<>() { });

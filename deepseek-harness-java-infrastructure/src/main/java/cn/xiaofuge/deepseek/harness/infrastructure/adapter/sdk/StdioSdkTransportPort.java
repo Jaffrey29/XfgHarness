@@ -1,6 +1,7 @@
 package cn.xiaofuge.deepseek.harness.infrastructure.adapter.sdk;
 
 import cn.xiaofuge.deepseek.harness.domain.sdk.adapter.port.ISdkTransportPort;
+import cn.xiaofuge.deepseek.harness.domain.sdk.service.SdkStandaloneCondition;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -8,6 +9,8 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import org.springframework.context.annotation.Conditional;
+import org.springframework.stereotype.Service;
 
 /**
  * Newline-delimited JSON-RPC 2.0 transport over stdin/stdout.
@@ -18,6 +21,8 @@ import java.util.function.Consumer;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
+@Conditional(SdkStandaloneCondition.class)
 public class StdioSdkTransportPort implements ISdkTransportPort {
 
     private final ObjectMapper mapper;
@@ -29,6 +34,9 @@ public class StdioSdkTransportPort implements ISdkTransportPort {
     private final ExecutorService readLoop = Executors.newSingleThreadExecutor();
     private volatile boolean closed = false;
 
+    /**
+     * 处理Stdio Sdk Transport Port相关逻辑。
+     */
     public StdioSdkTransportPort(InputStream in, OutputStream out, ObjectMapper mapper) {
         this.mapper = mapper;
         this.reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
@@ -90,6 +98,9 @@ public class StdioSdkTransportPort implements ISdkTransportPort {
         failPending(new IOException("transport closed"));
     }
 
+    /**
+     * 处理read Loop相关逻辑。
+     */
     private void readLoop() {
         while (!closed) {
             try {
@@ -108,6 +119,9 @@ public class StdioSdkTransportPort implements ISdkTransportPort {
         }
     }
 
+    /**
+     * 处理Suppress Warnings相关逻辑。
+     */
     @SuppressWarnings("unchecked")
     private void handleLine(String line) {
         Map<String, Object> frame;
@@ -145,6 +159,9 @@ public class StdioSdkTransportPort implements ISdkTransportPort {
         }
     }
 
+    /**
+     * 处理write Frame相关逻辑。
+     */
     private void writeFrame(Map<String, Object> frame) throws IOException {
         synchronized (writer) {
             writer.write(mapper.writeValueAsString(frame));
@@ -153,6 +170,9 @@ public class StdioSdkTransportPort implements ISdkTransportPort {
         }
     }
 
+    /**
+     * 处理fail Pending相关逻辑。
+     */
     private void failPending(Exception e) {
         for (CompletableFuture<Object> f : pending.values()) {
             f.completeExceptionally(e);

@@ -5,6 +5,7 @@ import cn.xiaofuge.deepseek.harness.domain.workflow.adapter.port.IWorkflowEngine
 import cn.xiaofuge.deepseek.harness.domain.workflow.model.entity.WorkflowRun;
 import cn.xiaofuge.deepseek.harness.domain.workflow.model.entity.WorkflowStartRequest;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.stereotype.Service;
 
 /**
  * 工作流服务实现。
@@ -17,11 +18,15 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class WorkflowService implements IWorkflowService {
 
     private final IWorkflowEnginePort enginePort;
     private final ConcurrentHashMap<String, WorkflowRun> liveRuns = new ConcurrentHashMap<>();
 
+    /**
+     * 处理Workflow Service相关逻辑。
+     */
     public WorkflowService(IWorkflowEnginePort enginePort) {
         this.enginePort = enginePort;
     }

@@ -29,6 +29,9 @@ public class HarnessModelDiscoveryApi {
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
 
+    /**
+     * 处理Harness Model Discovery Api相关逻辑。
+     */
     public HarnessModelDiscoveryApi(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newBuilder()
@@ -80,6 +83,9 @@ public class HarnessModelDiscoveryApi {
         }
     }
 
+    /**
+     * 处理normalize Base Url相关逻辑。
+     */
     private String normalizeBaseUrl(String baseUrl) {
         if (baseUrl == null || baseUrl.isBlank()) {
             throw new IllegalArgumentException("Base URL 不能为空");
@@ -87,6 +93,9 @@ public class HarnessModelDiscoveryApi {
         return baseUrl.trim();
     }
 
+    /**
+     * 解析e Models Uri。
+     */
     private URI resolveModelsUri(String baseUrl) {
         String normalized = baseUrl.endsWith("/")
                 ? baseUrl.substring(0, baseUrl.length() - 1)
@@ -100,6 +109,9 @@ public class HarnessModelDiscoveryApi {
         return URI.create(normalized + "/v1/models");
     }
 
+    /**
+     * 处理extract Error相关逻辑。
+     */
     private String extractError(String body) {
         try {
             JsonNode root = objectMapper.readTree(body);

@@ -34,6 +34,9 @@ public interface SubagentProvider {
 
     // ── Types ───────────────────────────────────────────────────
 
+    /**
+     * SubagentStartRequest 定义当前模块中的record契约与职责。
+     */
     record SubagentStartRequest(
             String prompt,
             AgentOptions options,
@@ -44,12 +47,18 @@ public interface SubagentProvider {
             List<String> allowedToolNames
     ) {}
 
+    /**
+     * SubagentCapabilities 定义当前模块中的record契约与职责。
+     */
     record SubagentCapabilities(
             boolean continuable,
             boolean structuredOutput,
             boolean localAgent
     ) {}
 
+    /**
+     * SubagentResult 定义当前模块中的record契约与职责。
+     */
     record SubagentResult(
             String stopReason,      // "completed" | "aborted" | "error" | "max-tokens"
             List<ContentBlock> output,

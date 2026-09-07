@@ -25,6 +25,9 @@ public class PluginToolDefinition implements ToolDefinition {
     private final IPluginToolBridge bridge;
     private final IPluginToolBridge.PluginToolDescriptor descriptor;
 
+    /**
+     * 处理Plugin Tool Definition相关逻辑。
+     */
     public PluginToolDefinition(
             String pluginId,
             IPluginToolBridge bridge,

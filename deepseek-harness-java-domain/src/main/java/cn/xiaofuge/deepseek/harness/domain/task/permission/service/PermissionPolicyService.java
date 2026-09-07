@@ -5,6 +5,7 @@ import cn.xiaofuge.deepseek.harness.domain.task.permission.adapter.port.IPermiss
 import cn.xiaofuge.deepseek.harness.domain.task.permission.model.valobj.PermissionAssessmentVO;
 import cn.xiaofuge.deepseek.harness.domain.task.permission.model.valobj.PermissionMatrixVO;
 import java.util.List;
+import org.springframework.stereotype.Service;
 
 /**
  * 权限评估服务。
@@ -17,10 +18,14 @@ import java.util.List;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class PermissionPolicyService implements IPermissionPolicyService {
 
     private final IPermissionMatrixPort permissionMatrixPort;
 
+    /**
+     * 处理Permission Policy Service相关逻辑。
+     */
     public PermissionPolicyService(IPermissionMatrixPort permissionMatrixPort) {
         this.permissionMatrixPort = permissionMatrixPort;
     }

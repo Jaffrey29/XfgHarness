@@ -16,6 +16,9 @@ public class ToolCatalogEntryEntity {
     private final String category;
     private final boolean requiresApproval;
 
+    /**
+     * 处理Tool Catalog Entry Entity相关逻辑。
+     */
     public ToolCatalogEntryEntity(
             String toolCode,
             String displayName,
@@ -30,9 +33,24 @@ public class ToolCatalogEntryEntity {
         this.requiresApproval = requiresApproval;
     }
 
+    /**
+     * 获取Tool Code。
+     */
     public String getToolCode() { return toolCode; }
+    /**
+     * 获取Display Name。
+     */
     public String getDisplayName() { return displayName; }
+    /**
+     * 获取Description。
+     */
     public String getDescription() { return description; }
+    /**
+     * 获取Category。
+     */
     public String getCategory() { return category; }
+    /**
+     * 判断Requires Approval是否成立。
+     */
     public boolean isRequiresApproval() { return requiresApproval; }
 }

@@ -37,6 +37,9 @@ public class ExitPlanModeTool implements ToolDefinition {
     private final AtomicReference<PlanModeState> state;
     private final PlanModeService planModeService;
 
+    /**
+     * 处理Exit Plan Mode Tool相关逻辑。
+     */
     public ExitPlanModeTool(SessionLog session, AtomicReference<PlanModeState> state, PlanModeService planModeService) {
         this.session = session;
         this.state = state;
@@ -83,6 +86,9 @@ public class ExitPlanModeTool implements ToolDefinition {
     @Override
     public boolean isConcurrencySafe(Object args) { return false; }
 
+    /**
+     * 处理to Schema相关逻辑。
+     */
     public ToolSchema toSchema() {
         return new ToolSchema(NAME, DESCRIPTION, parameters());
     }

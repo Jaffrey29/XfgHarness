@@ -25,6 +25,9 @@ public class PluginRuntimeBridgePort implements IPluginRuntimeBridgePort {
     private final PluginManifestGatewayService pluginManifestGatewayService;
     private final JavaPluginRuntimeManager javaPluginRuntimeManager;
 
+    /**
+     * 处理Plugin Runtime Bridge Port相关逻辑。
+     */
     public PluginRuntimeBridgePort(
             PluginManifestGatewayService pluginManifestGatewayService,
             JavaPluginRuntimeManager javaPluginRuntimeManager
@@ -54,6 +57,9 @@ public class PluginRuntimeBridgePort implements IPluginRuntimeBridgePort {
         return inspectNodeBridge(plugin, sourcePath);
     }
 
+    /**
+     * 处理inspect Java Native相关逻辑。
+     */
     private PluginBridgePlanVO inspectJavaNative(HarnessPluginEntity plugin, Path sourcePath) {
         Optional<Path> jarPath = javaPluginRuntimeManager.resolveJarPath(
                 sourcePath.toString(), plugin.getEntrypoint());
@@ -85,6 +91,9 @@ public class PluginRuntimeBridgePort implements IPluginRuntimeBridgePort {
         );
     }
 
+    /**
+     * 处理inspect Node Bridge相关逻辑。
+     */
     private PluginBridgePlanVO inspectNodeBridge(HarnessPluginEntity plugin, Path sourcePath) {
         Path codexManifestPath = sourcePath.resolve(".codex-plugin/plugin.json");
         Path packageJsonPath = sourcePath.resolve("package.json");
@@ -119,6 +128,9 @@ public class PluginRuntimeBridgePort implements IPluginRuntimeBridgePort {
         );
     }
 
+    /**
+     * 处理inspect Codex Plugin相关逻辑。
+     */
     private PluginBridgePlanVO inspectCodexPlugin(HarnessPluginEntity plugin, Path sourcePath, Path codexManifestPath) {
         Optional<Map<String, Object>> manifest = pluginManifestGatewayService.readJson(codexManifestPath);
         String message = manifest
@@ -135,6 +147,9 @@ public class PluginRuntimeBridgePort implements IPluginRuntimeBridgePort {
         );
     }
 
+    /**
+     * 处理inspect Dsh Package相关逻辑。
+     */
     private PluginBridgePlanVO inspectDshPackage(HarnessPluginEntity plugin, Path sourcePath, Path packageJsonPath, Path cordisPath) {
         Map<String, Object> manifest = pluginManifestGatewayService.readJson(packageJsonPath)
                 .orElseThrow(() -> new IllegalStateException("package.json exists but could not be parsed"));
@@ -160,6 +175,9 @@ public class PluginRuntimeBridgePort implements IPluginRuntimeBridgePort {
         );
     }
 
+    /**
+     * 解析e Entrypoint。
+     */
     private String resolveEntrypoint(HarnessPluginEntity plugin, Path sourcePath, Map<String, Object> manifest) {
         String requestedEntrypoint = plugin.getEntrypoint();
         if (requestedEntrypoint != null && !requestedEntrypoint.isBlank()) {

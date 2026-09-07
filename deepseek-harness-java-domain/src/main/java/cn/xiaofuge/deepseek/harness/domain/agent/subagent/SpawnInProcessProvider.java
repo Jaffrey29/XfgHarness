@@ -31,6 +31,9 @@ public class SpawnInProcessProvider implements SubagentProvider {
     private final AgentFactoryPort agentFactory;
     private final AgentOptions defaultOptions;
 
+    /**
+     * 处理Spawn In Process Provider相关逻辑。
+     */
     public SpawnInProcessProvider(
             String providerName,
             SubagentRegistry registry,
@@ -92,6 +95,9 @@ public class SpawnInProcessProvider implements SubagentProvider {
         });
     }
 
+    /**
+     * 处理collect Last Assistant Output相关逻辑。
+     */
     private List<ContentBlock> collectLastAssistantOutput(ReactLoopAgent agent) {
         var events = agent.session().events();
         TextBlock lastText = null;
@@ -110,6 +116,9 @@ public class SpawnInProcessProvider implements SubagentProvider {
         return lastText != null ? List.of(lastText) : List.of();
     }
 
+    /**
+     * 处理determine Stop Reason相关逻辑。
+     */
     private String determineStopReason(ReactLoopAgent agent) {
         var events = agent.session().events();
         TurnEndReason lastReason = null;

@@ -41,6 +41,9 @@ public class JdbcSessionEventStore implements ISessionEventStore {
     private final ISessionEventRowDao dao;
     private final ObjectMapper objectMapper;
 
+    /**
+     * 处理Jdbc Session Event Store相关逻辑。
+     */
     public JdbcSessionEventStore(ISessionEventRowDao dao) {
         this.dao = dao;
         this.objectMapper = new ObjectMapper();
@@ -147,6 +150,9 @@ public class JdbcSessionEventStore implements ISessionEventStore {
 
     // ── Serialization ────────────────────────────────────────────
 
+    /**
+     * 处理to Row相关逻辑。
+     */
     private SessionEventRowPO toRow(String sessionId, SessionEvent event) {
         String payloadJson = serializePayload(event);
         String surfaceOp = serializeSurfaceOp(event);
@@ -162,6 +168,9 @@ public class JdbcSessionEventStore implements ISessionEventStore {
         );
     }
 
+    /**
+     * 处理to Event相关逻辑。
+     */
     private SessionEvent toEvent(SessionEventRowPO row) {
         SessionEventType type = SessionEventType.fromWireName(row.eventType());
         Object payload = deserializePayload(type, row.payloadJson());
@@ -200,6 +209,9 @@ public class JdbcSessionEventStore implements ISessionEventStore {
         };
     }
 
+    /**
+     * 处理serialize Payload相关逻辑。
+     */
     private String serializePayload(SessionEvent event) {
         try {
             if (event instanceof SessionEvent.TurnStart) {
@@ -242,6 +254,9 @@ public class JdbcSessionEventStore implements ISessionEventStore {
         }
     }
 
+    /**
+     * 处理serialize Surface Op相关逻辑。
+     */
     private String serializeSurfaceOp(SessionEvent event) {
         SurfaceIntent intent = event.surfaceIntent();
         if (intent == null || intent.surfaceOp() == null) {
@@ -256,6 +271,9 @@ public class JdbcSessionEventStore implements ISessionEventStore {
         }
     }
 
+    /**
+     * 处理serialize Source Seqs相关逻辑。
+     */
     private String serializeSourceSeqs(SessionEvent event) {
         SurfaceIntent intent = event.surfaceIntent();
         if (intent == null || intent.sourceEventSeqs() == null || intent.sourceEventSeqs().isEmpty()) {
@@ -266,6 +284,9 @@ public class JdbcSessionEventStore implements ISessionEventStore {
                 .collect(Collectors.joining(","));
     }
 
+    /**
+     * 处理deserialize Surface Intent相关逻辑。
+     */
     private SurfaceIntent deserializeSurfaceIntent(String surfaceOpStr, String sourceSeqsStr) {
         if (surfaceOpStr == null || surfaceOpStr.isBlank()) {
             return null;
@@ -288,6 +309,9 @@ public class JdbcSessionEventStore implements ISessionEventStore {
         return new SurfaceIntent(op, seqs);
     }
 
+    /**
+     * 处理deserialize Payload相关逻辑。
+     */
     private Object deserializePayload(SessionEventType type, String json) {
         if (json == null || json.isBlank()) {
             return null;
@@ -312,6 +336,9 @@ public class JdbcSessionEventStore implements ISessionEventStore {
         }
     }
 
+    /**
+     * 处理deserialize User Message Payload相关逻辑。
+     */
     private UserMessagePayload deserializeUserMessagePayload(String json) {
         try {
             JsonNode node = objectMapper.readTree(json);
@@ -325,6 +352,9 @@ public class JdbcSessionEventStore implements ISessionEventStore {
         }
     }
 
+    /**
+     * 处理deserialize Assistant Message Payload相关逻辑。
+     */
     private AssistantMessagePayload deserializeAssistantMessagePayload(String json) {
         try {
             JsonNode node = objectMapper.readTree(json);
@@ -342,6 +372,9 @@ public class JdbcSessionEventStore implements ISessionEventStore {
         }
     }
 
+    /**
+     * 处理deserialize Tool Result Payload相关逻辑。
+     */
     private ToolResultPayload deserializeToolResultPayload(String json) {
         try {
             JsonNode node = objectMapper.readTree(json);
@@ -363,6 +396,9 @@ public class JdbcSessionEventStore implements ISessionEventStore {
         }
     }
 
+    /**
+     * 处理deserialize Inbox Spliced Payload相关逻辑。
+     */
     private InboxSplicedPayload deserializeInboxSplicedPayload(String json) {
         try {
             JsonNode node = objectMapper.readTree(json);
@@ -388,6 +424,9 @@ public class JdbcSessionEventStore implements ISessionEventStore {
         }
     }
 
+    /**
+     * 处理deserialize Message相关逻辑。
+     */
     private Message deserializeMessage(JsonNode node) {
         if (node == null || node.isMissingNode() || node.isNull()) {
             return null;
@@ -408,6 +447,9 @@ public class JdbcSessionEventStore implements ISessionEventStore {
         return new Message(id, role, content, source);
     }
 
+    /**
+     * 处理deserialize Message Source相关逻辑。
+     */
     private MessageSource deserializeMessageSource(JsonNode node, String role) {
         if (node == null || node.isMissingNode() || node.isNull()) {
             return switch (role == null ? "" : role) {
@@ -433,6 +475,9 @@ public class JdbcSessionEventStore implements ISessionEventStore {
         return new MessageSource.UserSource();
     }
 
+    /**
+     * 处理deserialize Content Block相关逻辑。
+     */
     private ContentBlock deserializeContentBlock(JsonNode node) {
         if (node == null || node.isMissingNode() || node.isNull()) {
             return null;
@@ -467,6 +512,9 @@ public class JdbcSessionEventStore implements ISessionEventStore {
         return null;
     }
 
+    /**
+     * 处理deserialize Turn End Reason相关逻辑。
+     */
     private TurnEndReason deserializeTurnEndReason(String json) {
         try {
             var node = objectMapper.readTree(json);
@@ -492,6 +540,9 @@ public class JdbcSessionEventStore implements ISessionEventStore {
         }
     }
 
+    /**
+     * 处理turn End Reason To Json相关逻辑。
+     */
     private java.util.Map<String, Object> turnEndReasonToJson(TurnEndReason reason) {
         if (reason instanceof TurnEndReason.Completed) {
             return java.util.Map.of("type", "Completed");

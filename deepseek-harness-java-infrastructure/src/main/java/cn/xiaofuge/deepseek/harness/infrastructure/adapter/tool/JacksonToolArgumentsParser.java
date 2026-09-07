@@ -11,6 +11,9 @@ public class JacksonToolArgumentsParser implements ToolArgumentsParser {
 
     private final ObjectMapper objectMapper;
 
+    /**
+     * 处理Jackson Tool Arguments Parser相关逻辑。
+     */
     public JacksonToolArgumentsParser(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }

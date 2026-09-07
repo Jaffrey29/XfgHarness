@@ -13,9 +13,18 @@ import java.util.List;
  */
 public record AcpMessage(String role, List<AcpContentBlock> content) {
 
+    /**
+     * AcpContentBlock 定义当前模块中的interface契约与职责。
+     */
     public sealed interface AcpContentBlock permits AcpTextBlock, AcpImageBlock {}
 
+    /**
+     * AcpTextBlock 定义当前模块中的record契约与职责。
+     */
     public record AcpTextBlock(String text) implements AcpContentBlock {}
 
+    /**
+     * AcpImageBlock 定义当前模块中的record契约与职责。
+     */
     public record AcpImageBlock(String mediaType, String base64Data) implements AcpContentBlock {}
 }

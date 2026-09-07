@@ -30,6 +30,9 @@ public class FsWriteTool implements ToolDefinition {
 
     private final IFsPort fsService;
 
+    /**
+     * 处理Fs Write Tool相关逻辑。
+     */
     public FsWriteTool(IFsPort fsService) {
         this.fsService = fsService;
     }

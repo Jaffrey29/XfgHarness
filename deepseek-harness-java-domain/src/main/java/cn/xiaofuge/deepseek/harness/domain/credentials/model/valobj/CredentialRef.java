@@ -19,6 +19,9 @@ public record CredentialRef(String value) {
         }
     }
 
+    /**
+     * 处理of相关逻辑。
+     */
     public static CredentialRef of(String value) {
         return new CredentialRef(value);
     }

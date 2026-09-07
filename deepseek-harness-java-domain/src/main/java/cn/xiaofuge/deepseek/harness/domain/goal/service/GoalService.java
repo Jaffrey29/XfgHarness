@@ -9,6 +9,8 @@ import cn.xiaofuge.deepseek.harness.domain.goal.model.valobj.GoalCommandVO;
 import cn.xiaofuge.deepseek.harness.domain.goal.model.valobj.GoalSnapshotVO;
 import java.time.Instant;
 import java.util.Optional;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
 /**
  * 目标领域服务。
@@ -21,14 +23,18 @@ import java.util.Optional;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class GoalService implements IGoalQueryService, IGoalCommandService {
 
     private final IGoalRepository goalRepository;
     private final int defaultMaxRounds;
 
+    /**
+     * 处理Goal Service相关逻辑。
+     */
     public GoalService(
             IGoalRepository goalRepository,
-            int defaultMaxRounds
+            @Value("${harness.goal.default-max-rounds:256}") int defaultMaxRounds
     ) {
         this.goalRepository = goalRepository;
         this.defaultMaxRounds = defaultMaxRounds;
@@ -63,6 +69,9 @@ public class GoalService implements IGoalQueryService, IGoalCommandService {
         return updatedGoal.toSnapshot();
     }
 
+    /**
+     * 处理normalize相关逻辑。
+     */
     private GoalCommandVO normalize(GoalCommandVO command) {
         if (command == null) {
             throw new IllegalArgumentException("goal command must not be null");
@@ -84,12 +93,18 @@ public class GoalService implements IGoalQueryService, IGoalCommandService {
         );
     }
 
+    /**
+     * 校验输入与业务规则；不通过时返回失败结果或抛出异常。
+     */
     private static void validateSession(String sessionId) {
         if (sessionId == null || sessionId.isBlank()) {
             throw new IllegalArgumentException("sessionId must not be blank");
         }
     }
 
+    /**
+     * 处理trim To Null相关逻辑。
+     */
     private static String trimToNull(String value) {
         if (value == null) {
             return null;

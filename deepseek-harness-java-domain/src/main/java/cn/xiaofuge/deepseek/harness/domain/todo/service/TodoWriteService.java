@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.springframework.stereotype.Service;
 
 /**
  * 待办写入领域服务。
@@ -22,6 +23,7 @@ import java.util.Set;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class TodoWriteService {
 
     /**

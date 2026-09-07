@@ -22,6 +22,9 @@ public class JobListTool implements ToolDefinition {
     private final IJobRegistryService jobs;
     private final String sessionId;
 
+    /**
+     * 处理Job List Tool相关逻辑。
+     */
     public JobListTool(IJobRegistryService jobs, String sessionId) {
         this.jobs = jobs;
         this.sessionId = sessionId;

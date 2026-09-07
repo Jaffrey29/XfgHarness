@@ -14,6 +14,7 @@ import cn.xiaofuge.deepseek.harness.domain.session.event.model.valobj.TurnEndRea
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.stereotype.Service;
 
 /**
  * Reconstructs in-memory session state from a persisted event log.
@@ -34,10 +35,14 @@ import java.util.Optional;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class SessionRebuilderService {
 
     private final ISessionEventLogService eventLogService;
 
+    /**
+     * 处理Session Rebuilder Service相关逻辑。
+     */
     public SessionRebuilderService(ISessionEventLogService eventLogService) {
         this.eventLogService = eventLogService;
     }
@@ -100,6 +105,9 @@ public class SessionRebuilderService {
 
     // ── Projection helpers ───────────────────────────────────────
 
+    /**
+     * 处理project Messages相关逻辑。
+     */
     private List<Message> projectMessages(List<SessionEvent> events) {
         List<Message> messages = new ArrayList<>();
         for (SessionEvent event : events) {
@@ -114,6 +122,9 @@ public class SessionRebuilderService {
         return List.copyOf(messages);
     }
 
+    /**
+     * 处理derive Phase相关逻辑。
+     */
     private Phase derivePhase(List<SessionEvent> events) {
         boolean inTurn = false;
         boolean inStep = false;
@@ -135,6 +146,9 @@ public class SessionRebuilderService {
         return new Phase.Idle(0);
     }
 
+    /**
+     * 处理extract Latest Todo相关逻辑。
+     */
     private Optional<TodoWritePayload> extractLatestTodo(List<SessionEvent> events) {
         TodoWritePayload latest = null;
         for (SessionEvent event : events) {
@@ -145,6 +159,9 @@ public class SessionRebuilderService {
         return Optional.ofNullable(latest);
     }
 
+    /**
+     * 处理extract Latest Request Header相关逻辑。
+     */
     private Optional<RequestHeaderPayload> extractLatestRequestHeader(List<SessionEvent> events) {
         RequestHeaderPayload latest = null;
         for (SessionEvent event : events) {
@@ -155,6 +172,9 @@ public class SessionRebuilderService {
         return Optional.ofNullable(latest);
     }
 
+    /**
+     * 处理extract Latest Request Context相关逻辑。
+     */
     private Optional<RequestContextPayload> extractLatestRequestContext(List<SessionEvent> events) {
         RequestContextPayload latest = null;
         for (SessionEvent event : events) {
@@ -165,6 +185,9 @@ public class SessionRebuilderService {
         return Optional.ofNullable(latest);
     }
 
+    /**
+     * 处理count Turns相关逻辑。
+     */
     private int countTurns(List<SessionEvent> events) {
         int count = 0;
         for (SessionEvent event : events) {
@@ -175,6 +198,9 @@ public class SessionRebuilderService {
         return count;
     }
 
+    /**
+     * 处理count Steps相关逻辑。
+     */
     private int countSteps(List<SessionEvent> events) {
         int count = 0;
         for (SessionEvent event : events) {
@@ -185,6 +211,9 @@ public class SessionRebuilderService {
         return count;
     }
 
+    /**
+     * 处理extract Last Turn End Reason相关逻辑。
+     */
     private Optional<TurnEndReason> extractLastTurnEndReason(List<SessionEvent> events) {
         TurnEndReason reason = null;
         for (SessionEvent event : events) {
@@ -195,6 +224,9 @@ public class SessionRebuilderService {
         return Optional.ofNullable(reason);
     }
 
+    /**
+     * 处理extract Last Assistant Message相关逻辑。
+     */
     private Optional<Message> extractLastAssistantMessage(List<SessionEvent> events) {
         Message last = null;
         for (SessionEvent event : events) {

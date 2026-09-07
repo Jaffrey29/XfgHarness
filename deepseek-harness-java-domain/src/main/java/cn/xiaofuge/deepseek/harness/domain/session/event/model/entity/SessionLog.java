@@ -30,15 +30,24 @@ public class SessionLog {
     private final List<SessionEvent> events = new ArrayList<>();
     private long nextSeq = 0;
 
+    /**
+     * 处理Session Log相关逻辑。
+     */
     public SessionLog(String sessionId, SessionHeader header) {
         this.sessionId = Objects.requireNonNull(sessionId, "sessionId");
         this.header = Objects.requireNonNull(header, "header");
     }
 
+    /**
+     * 处理session Id相关逻辑。
+     */
     public String sessionId() {
         return sessionId;
     }
 
+    /**
+     * 处理header相关逻辑。
+     */
     public SessionHeader header() {
         return header;
     }
@@ -85,14 +94,14 @@ public class SessionLog {
     }
 
     /**
-     * 获取全部事件，返回不可变视图。
+     * 处理events相关逻辑。
      */
     public synchronized List<SessionEvent> events() {
         return Collections.unmodifiableList(new ArrayList<>(events));
     }
 
     /**
-     * 获取指定序列号之后的事件，不包含边界。
+     * 处理events After相关逻辑。
      */
     public synchronized List<SessionEvent> eventsAfter(long afterSeq) {
         List<SessionEvent> result = new ArrayList<>();
@@ -105,7 +114,7 @@ public class SessionLog {
     }
 
     /**
-     * 获取 [fromSeq, toSeq] 闭区间内的事件。
+     * 处理events Range相关逻辑。
      */
     public synchronized List<SessionEvent> eventsRange(long fromSeq, long toSeq) {
         List<SessionEvent> result = new ArrayList<>();
@@ -118,14 +127,14 @@ public class SessionLog {
     }
 
     /**
-     * 获取最后一条事件；日志为空时返回 null。
+     * 处理last Event相关逻辑。
      */
     public synchronized SessionEvent lastEvent() {
         return events.isEmpty() ? null : events.get(events.size() - 1);
     }
 
     /**
-     * 获取最后一个序列号；日志为空时返回 -1。
+     * 处理last Seq相关逻辑。
      */
     public synchronized long lastSeq() {
         return events.isEmpty() ? -1 : events.get(events.size() - 1).seq();
@@ -306,6 +315,9 @@ public class SessionLog {
 
     // ── Helpers ──────────────────────────────────────────────────
 
+    /**
+     * 处理reassign Seq相关逻辑。
+     */
     private SessionEvent reassignSeq(SessionEvent event, long seq) {
         if (event instanceof SessionEvent.TurnStart e) {
             return new SessionEvent.TurnStart(seq, e.time());

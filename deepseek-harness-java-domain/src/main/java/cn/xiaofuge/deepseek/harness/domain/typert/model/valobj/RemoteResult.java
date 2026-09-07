@@ -8,8 +8,14 @@ package cn.xiaofuge.deepseek.harness.domain.typert.model.valobj;
  */
 public sealed interface RemoteResult permits RemoteResult.Ok, RemoteResult.Error {
 
+    /**
+     * Ok 定义当前模块中的record契约与职责。
+     */
     record Ok(Object value) implements RemoteResult {}
 
+    /**
+     * Error 定义当前模块中的record契约与职责。
+     */
     record Error(RemoteFailure failure) implements RemoteResult {}
 
     static RemoteResult ok(Object value) { return new Ok(value); }

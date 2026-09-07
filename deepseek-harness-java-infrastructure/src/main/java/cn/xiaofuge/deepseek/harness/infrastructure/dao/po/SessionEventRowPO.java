@@ -18,6 +18,9 @@ public record SessionEventRowPO(
         String surfaceOp,
         String sourceEventSeqs
 ) {
+    /**
+     * 处理Session Event Row P O相关逻辑。
+     */
     public SessionEventRowPO(
             String sessionId, long seq, String eventType, Instant eventTime,
             String payloadJson, String surfaceOp, String sourceEventSeqs

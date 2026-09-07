@@ -25,6 +25,9 @@ public class ModelSettingRepository implements IModelSettingRepository {
 
     private final IHarnessModelSettingDao harnessModelSettingDao;
 
+    /**
+     * 处理Model Setting Repository相关逻辑。
+     */
     public ModelSettingRepository(IHarnessModelSettingDao harnessModelSettingDao) {
         this.harnessModelSettingDao = harnessModelSettingDao;
     }
@@ -59,6 +62,9 @@ public class ModelSettingRepository implements IModelSettingRepository {
         harnessModelSettingDao.deleteByProfileCode(profileCode);
     }
 
+    /**
+     * 处理to Entity相关逻辑。
+     */
     private ModelSettingEntity toEntity(HarnessModelSettingPO po) {
         return new ModelSettingEntity(
                 po.profileCode(),

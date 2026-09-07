@@ -29,6 +29,9 @@ public class PresetPluginLoader implements ApplicationRunner {
     private final IInstallHarnessPluginCase installCase;
     private final IPluginRegistryService pluginRegistryService;
 
+    /**
+     * 处理Preset Plugin Loader相关逻辑。
+     */
     public PresetPluginLoader(
             PresetPluginProperties properties,
             IInstallHarnessPluginCase installCase,
@@ -39,6 +42,9 @@ public class PresetPluginLoader implements ApplicationRunner {
         this.pluginRegistryService = pluginRegistryService;
     }
 
+    /**
+     * 运行。
+     */
     @Override
     public void run(org.springframework.boot.ApplicationArguments args) {
         if (properties.getPlugins() == null || properties.getPlugins().isEmpty()) {
@@ -53,6 +59,9 @@ public class PresetPluginLoader implements ApplicationRunner {
         }
     }
 
+    /**
+     * 安装组件，写入登记信息并返回安装结果。
+     */
     private void installPreset(PresetPluginProperties.PresetPlugin preset) {
         Optional<HarnessPluginEntity> existing = pluginRegistryService.loadPluginOptional(preset.getPluginId());
         if (existing.isPresent()) {

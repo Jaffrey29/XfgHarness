@@ -120,6 +120,9 @@ public class InMemoryLlmRuntimePort implements ILlmRuntimePort {
         return wrapper;
     }
 
+    /**
+     * 处理retrying Stream相关逻辑。
+     */
     private Flow.Publisher<StreamChunk> retryingStream(
             LlmAdapter adapter,
             GenerateOptions options,
@@ -133,6 +136,9 @@ public class InMemoryLlmRuntimePort implements ILlmRuntimePort {
         return wrapper;
     }
 
+    /**
+     * 运行With Retry。
+     */
     private void runWithRetry(
             LlmAdapter adapter,
             GenerateOptions options,
@@ -181,6 +187,9 @@ public class InMemoryLlmRuntimePort implements ILlmRuntimePort {
         }
     }
 
+    /**
+     * 处理await Attempt相关逻辑。
+     */
     private AttemptResult awaitAttempt(Flow.Publisher<StreamChunk> publisher) {
         java.util.concurrent.CountDownLatch done = new java.util.concurrent.CountDownLatch(1);
         java.util.List<StreamChunk> chunks = java.util.Collections.synchronizedList(new ArrayList<>());
@@ -222,6 +231,9 @@ public class InMemoryLlmRuntimePort implements ILlmRuntimePort {
         return new AttemptResult(chunks, error.get(), failure, terminalFinish != null);
     }
 
+    /**
+     * 判断Retryable是否成立。
+     */
     private boolean isRetryable(LlmFailure failure, ResolvedRetryPolicy policy) {
         if (failure == null) return false;
         if (policy instanceof ResolvedRetryPolicy.Always) return true;
@@ -231,6 +243,9 @@ public class InMemoryLlmRuntimePort implements ILlmRuntimePort {
         return false;
     }
 
+    /**
+     * 处理sleep相关逻辑。
+     */
     private boolean sleep(long delayMs) {
         try {
             Thread.sleep(delayMs);
@@ -241,6 +256,9 @@ public class InMemoryLlmRuntimePort implements ILlmRuntimePort {
         }
     }
 
+    /**
+     * 处理retry Delay Ms相关逻辑。
+     */
     private long retryDelayMs(
             ResolvedRetryPolicy policy,
             int failedAttempt,
@@ -258,6 +276,9 @@ public class InMemoryLlmRuntimePort implements ILlmRuntimePort {
         return Math.max(0, Math.round(localDelay * jitter));
     }
 
+    /**
+     * 处理with Retry Count相关逻辑。
+     */
     private LlmFailure withRetryCount(LlmFailure failure, int retryCount) {
         String suffix = "（已重试 " + retryCount + " 次）";
         return new LlmFailure(
@@ -269,6 +290,9 @@ public class InMemoryLlmRuntimePort implements ILlmRuntimePort {
         );
     }
 
+    /**
+     * AttemptResult 是基础设施适配器，负责外部资源与领域端口对接。
+     */
     private record AttemptResult(
             List<StreamChunk> chunks,
             Throwable error,

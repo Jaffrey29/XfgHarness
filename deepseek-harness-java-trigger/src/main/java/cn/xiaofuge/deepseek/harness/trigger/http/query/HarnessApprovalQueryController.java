@@ -25,6 +25,9 @@ public class HarnessApprovalQueryController {
 
     private final HarnessApprovalQueryApi harnessApprovalQueryApi;
 
+    /**
+     * 处理Harness Approval Query Controller相关逻辑。
+     */
     public HarnessApprovalQueryController(HarnessApprovalQueryApi harnessApprovalQueryApi) {
         this.harnessApprovalQueryApi = harnessApprovalQueryApi;
     }

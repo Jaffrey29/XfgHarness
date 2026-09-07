@@ -26,6 +26,9 @@ public class GoalCommandController {
 
     private final GoalCommandApi goalCommandApi;
 
+    /**
+     * 处理Goal Command Controller相关逻辑。
+     */
     public GoalCommandController(GoalCommandApi goalCommandApi) {
         this.goalCommandApi = goalCommandApi;
     }

@@ -25,6 +25,9 @@ public class RunHarnessPluginCaseImpl implements IRunHarnessPluginCase {
     private final IPluginBridgeService pluginBridgeService;
     private final IPluginRuntimeService pluginRuntimeService;
 
+    /**
+     * 运行Harness Plugin Case Impl。
+     */
     public RunHarnessPluginCaseImpl(
             IPluginRegistryService pluginRegistryService,
             IPluginBridgeService pluginBridgeService,

@@ -16,6 +16,9 @@ public class ModelExecutionPort implements IModelExecutionPort {
 
     private final DeepSeekGatewayService deepSeekGatewayService;
 
+    /**
+     * 处理Model Execution Port相关逻辑。
+     */
     public ModelExecutionPort(DeepSeekGatewayService deepSeekGatewayService) {
         this.deepSeekGatewayService = deepSeekGatewayService;
     }

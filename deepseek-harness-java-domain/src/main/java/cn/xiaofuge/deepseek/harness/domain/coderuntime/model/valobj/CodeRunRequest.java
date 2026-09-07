@@ -16,5 +16,8 @@ public record CodeRunRequest(String code, String language, Map<String, CodeBindi
     public static final String JS = "js";
     public static final String PYTHON = "python";
 
+    /**
+     * CodeBinding 定义当前模块中的record契约与职责。
+     */
     public record CodeBinding(String name, boolean isFunction, String returnType) {}
 }

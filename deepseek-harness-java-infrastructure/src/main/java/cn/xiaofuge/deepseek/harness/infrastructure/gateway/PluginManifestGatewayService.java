@@ -20,6 +20,9 @@ public class PluginManifestGatewayService {
 
     private final ObjectMapper objectMapper;
 
+    /**
+     * 处理Plugin Manifest Gateway Service相关逻辑。
+     */
     public PluginManifestGatewayService(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }

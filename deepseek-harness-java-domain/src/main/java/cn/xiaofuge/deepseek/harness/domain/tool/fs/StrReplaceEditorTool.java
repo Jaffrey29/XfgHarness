@@ -42,6 +42,9 @@ public class StrReplaceEditorTool implements ToolDefinition {
 
     private final IFsPort fsService;
 
+    /**
+     * 处理Str Replace Editor Tool相关逻辑。
+     */
     public StrReplaceEditorTool(IFsPort fsService) {
         this.fsService = fsService;
     }
@@ -135,6 +138,9 @@ public class StrReplaceEditorTool implements ToolDefinition {
     @Override
     public boolean isConcurrencySafe(Object args) { return false; }
 
+    /**
+     * 处理do View相关逻辑。
+     */
     private String doView(String path) {
         if (!fsService.exists(path)) {
             return "File not found: " + path;
@@ -172,6 +178,9 @@ public class StrReplaceEditorTool implements ToolDefinition {
         return sb.toString();
     }
 
+    /**
+     * 处理do Create相关逻辑。
+     */
     private String doCreate(String path, String content) {
         if (fsService.exists(path)) {
             return "Error: File already exists: " + path + ". Use str_replace to edit it.";
@@ -180,6 +189,9 @@ public class StrReplaceEditorTool implements ToolDefinition {
         return "File created successfully: " + path;
     }
 
+    /**
+     * 处理do Str Replace相关逻辑。
+     */
     private String doStrReplace(String path, String oldStr, String newStr) {
         if (oldStr == null || oldStr.isEmpty()) {
             return "Error: old_str is required for str_replace command.";
@@ -205,6 +217,9 @@ public class StrReplaceEditorTool implements ToolDefinition {
         return "File updated successfully: " + path;
     }
 
+    /**
+     * 处理do Insert相关逻辑。
+     */
     private String doInsert(String path, String content, int insertLine) {
         String existing = fsService.read(path, 1, 0);
         String[] lines = existing.split("\n", -1);
@@ -230,6 +245,9 @@ public class StrReplaceEditorTool implements ToolDefinition {
         return "Text inserted at line " + (insertLine + 1) + " in: " + path;
     }
 
+    /**
+     * 处理count Occurrences相关逻辑。
+     */
     private static int countOccurrences(String text, String substr) {
         int count = 0;
         int idx = 0;

@@ -79,6 +79,12 @@ public class ReactLoopAgent implements Agent {
     // ── 释放标记 ────────────────────────────────────────────
     private final AtomicBoolean disposed = new AtomicBoolean(false);
 
+    /**
+     * 创建一个独立可驱动的 ReAct Agent。
+     * <p>输入包含运行参数、工作目录、会话日志、消息 Inbox、LLM 端口、工具注册表和执行器；
+     * 初始状态为 Idle。所有依赖都不允许为空，事件监听器为空时使用空实现。
+     * <p>数据示例：agentId="a-1"，model="deepseek-chat"，cwd="/repo"，即可在该目录下驱动工具循环。
+     */
     public ReactLoopAgent(
             String id,
             AgentOptions options,
@@ -109,17 +115,31 @@ public class ReactLoopAgent implements Agent {
     @Override public String id() { return id; }
     @Override public AgentOptions options() { return options; }
 
+    /**
+     * 热更新模型、token 上限、provider 等运行参数。
+     * <p>已存在的会话日志和工具注册表不变，新参数从下一个 LLM step 开始生效。
+     */
     public void updateOptions(AgentOptions options) {
         this.options = Objects.requireNonNull(options, "options");
     }
     @Override public SessionLog session() { return session; }
     @Override public Inbox inbox() { return inbox; }
 
+    /**
+     * 返回 Agent 当前是否正在执行 ReAct 循环。
+     * <p>数据示例：正在执行 turn 时返回 RUNNING；inbox 为空且无后台维护时返回 IDLE。
+     */
     @Override
     public synchronized AgentStatus status() {
         return (phase instanceof Phase.Running) ? AgentStatus.RUNNING : AgentStatus.IDLE;
     }
 
+    /**
+     * 取消当前活动并按需清空待处理消息。
+     * <p>执行流程：keepInbox=false 清空 Inbox -> 给 Running/Maintenance 阶段设置 abort 标记 ->
+     * 发出 agent/cancelled 事件。正在执行的 LLM 请求或工具会在安全点停止。
+     * <p>数据示例：用户点击“停止”，cause=UserCancel，keepInbox=false，当前回合结束后状态回到 IDLE。
+     */
     @Override
     public synchronized void cancel(AgentCancelCause cause, boolean keepInbox) {
         log.info("[cancel] Agent={} 收到取消请求，cause={} keepInbox={}", id, cause, keepInbox);
@@ -137,6 +157,10 @@ public class ReactLoopAgent implements Agent {
         events.emit("agent/cancelled", Map.of("cause", cause, "keepInbox", keepInbox));
     }
 
+    /**
+     * 返回当前活动完成后的 Future。
+     * <p>调用方可以用它等待 Agent 空闲；空闲状态下返回已完成 Future。
+     */
     @Override
     public CompletableFuture<Void> whenIdle() {
         return activityDone.get().thenApply(v -> (Void) null);
@@ -164,6 +188,12 @@ public class ReactLoopAgent implements Agent {
         this.streamToolCallSink = sink;
     }
 
+    /**
+     * 在 Agent 空闲时执行压缩、重建等维护任务。
+     * <p>执行流程：要求 Idle -> 切换到 Maintenance -> 执行任务 -> 无论成败恢复 Idle；
+     * 维护期间收到唤醒请求时，完成后会重新驱动消息循环。
+     * <p>数据示例：任务耗时 2 秒，期间新消息进入 Inbox，则维护结束后该消息会开启新 turn。
+     */
     @Override
     public <T> CompletableFuture<T> runMaintenance(
             java.util.function.Function<AtomicBoolean, CompletableFuture<T>> task
@@ -192,6 +222,11 @@ public class ReactLoopAgent implements Agent {
         return result;
     }
 
+    /**
+     * 把一条消息写入 Inbox，并按需唤醒驱动器。
+     * <p>若 Agent 正在取消中，wakeup 消息会改排到 NEXT_TURN，避免与当前回合收尾竞争。
+     * <p>数据示例：message=“继续”，target=CURRENT_TURN，wakeup=true，则当前回合结束后立即消费。
+     */
     @Override
     public synchronized void send(Message message, InboxTarget target, boolean wakeup) {
         boolean wasAborting = false;
@@ -642,6 +677,11 @@ public class ReactLoopAgent implements Agent {
                     System.getenv("HARNESS_AGENT_TEMPERATURE"))
     );
 
+    /**
+     * 解析可配置的采样温度。
+     * <p>优先读取系统属性，其次读取环境变量；空值或非法数字返回 null，表示请求中不发送 temperature。
+     * <p>数据示例：属性 harness.agent.temperature=0.2 返回 0.2；值为 "abc" 返回 null。
+     */
     private static Double parseTemperature(String raw) {
         if (raw == null || raw.isBlank()) {
             return null; // omit temperature from the request
@@ -653,6 +693,12 @@ public class ReactLoopAgent implements Agent {
         }
     }
 
+    /**
+     * 构建单次 LLM 请求参数。
+     * <p>执行流程：折叠会话历史 -> 输出被截断时追加续写提示 -> 按 128K 上下文估算 token 并裁剪 ->
+     * 合并系统提示词、工具 schema、模型参数和调用方凭据。
+     * <p>数据示例：系统提示词约 2K token，maxTokens=4096，则历史消息预算约为 122K token。
+     */
     private GenerateOptions buildRequest(SystemPromptAssembler.PromptAssembly assembly, long turn, long step) {
         List<Message> history = session.deriveMessages();
         if (continuationRequested) {
@@ -689,11 +735,19 @@ public class ReactLoopAgent implements Agent {
                     + "Continue from the exact next character without repeating completed text, "
                     + "adding preamble, or restarting the answer. Preserve Markdown and code formatting.";
 
+    /**
+     * 按约 4 个字符等于 1 token 的粗略规则估算文本长度。
+     * <p>该结果只用于上下文预算控制，不是上游模型的精确 tokenizer 结果。
+     */
     private static int estimateTokens(String text) {
         if (text == null || text.isEmpty()) return 0;
         return (int) Math.ceil(text.length() / 4.0);
     }
 
+    /**
+     * 汇总一条消息中正文、工具调用参数和工具结果的 token 估算值。
+     * <p>消息本身额外加 4 token，用于近似对话结构开销。
+     */
     private static int estimateTokens(Message msg) {
         int sum = 0;
         for (ContentBlock block : msg.content()) {
@@ -709,6 +763,12 @@ public class ReactLoopAgent implements Agent {
         return sum + 4;
     }
 
+    /**
+     * 按 token 预算从后往前保留会话历史。
+     * <p>执行流程：先估算全量历史；超预算时从最新消息向前累加；
+     * 若一条也放不下，则至少保留最后 6 条，保证模型仍有最近上下文。
+     * <p>数据示例：预算 100 token，最后三条为 80/10/10 token，则保留最后三条，最早的旧消息被丢弃。
+     */
     private static List<Message> truncateToBudget(List<Message> history, int tokenBudget) {
         if (history.isEmpty()) return history;
         int total = 0;
@@ -802,6 +862,9 @@ public class ReactLoopAgent implements Agent {
 
     // ── 空实现监听器 ────────────────────────────────────────────
 
+    /**
+     * NoopAgentEventListener 定义当前模块中的class契约与职责。
+     */
     private static final class NoopAgentEventListener implements AgentEventListener {
         @Override public void emit(String type, Object payload) {}
         @Override public CompletableFuture<Void> serial(String type, Object payload) {

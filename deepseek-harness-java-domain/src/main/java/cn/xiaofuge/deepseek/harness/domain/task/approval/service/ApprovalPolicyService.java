@@ -6,6 +6,7 @@ import cn.xiaofuge.deepseek.harness.domain.task.approval.model.valobj.ApprovalDe
 import cn.xiaofuge.deepseek.harness.domain.task.approval.model.valobj.ApprovalPolicyVO;
 import cn.xiaofuge.deepseek.harness.domain.task.permission.model.valobj.PermissionAssessmentVO;
 import cn.xiaofuge.deepseek.harness.domain.shared.model.valobj.HarnessStatusEnumVO;
+import org.springframework.stereotype.Service;
 
 /**
  * 审批决策服务。
@@ -18,10 +19,14 @@ import cn.xiaofuge.deepseek.harness.domain.shared.model.valobj.HarnessStatusEnum
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class ApprovalPolicyService implements IApprovalPolicyService {
 
     private final IApprovalPolicyPort approvalPolicyPort;
 
+    /**
+     * 处理Approval Policy Service相关逻辑。
+     */
     public ApprovalPolicyService(IApprovalPolicyPort approvalPolicyPort) {
         this.approvalPolicyPort = approvalPolicyPort;
     }

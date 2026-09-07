@@ -25,10 +25,16 @@ public class LocalFsService implements IFsPort {
     private final Path baseDir;
     private final boolean restrictWritesToBase;
 
+    /**
+     * 处理Local Fs Service相关逻辑。
+     */
     public LocalFsService(String baseDir) {
         this(baseDir, Boolean.parseBoolean(System.getProperty("harness.fs.restrict-writes", "true")));
     }
 
+    /**
+     * 处理Local Fs Service相关逻辑。
+     */
     public LocalFsService(String baseDir, boolean restrictWritesToBase) {
         this.baseDir = baseDir != null
                 ? Paths.get(baseDir).toAbsolutePath().normalize()
@@ -137,6 +143,9 @@ public class LocalFsService implements IFsPort {
         return entries;
     }
 
+    /**
+     * 解析e。
+     */
     private Path resolve(String path) {
         Path p = Paths.get(path);
         if (p.isAbsolute()) {

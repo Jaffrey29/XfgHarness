@@ -38,6 +38,9 @@ public final class McpBootstrap {
     private final Map<String, IMcpClient> clients = new ConcurrentHashMap<>();
     private final List<String> errors = new CopyOnWriteArrayList<>();
 
+    /**
+     * 处理Mcp Bootstrap相关逻辑。
+     */
     public McpBootstrap(ToolRegistry registry, McpClientFactory clientFactory) {
         this.registry = registry;
         this.clientFactory = clientFactory;

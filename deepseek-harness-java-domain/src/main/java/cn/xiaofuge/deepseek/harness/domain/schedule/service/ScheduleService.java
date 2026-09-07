@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.stereotype.Service;
 
 /**
  * Durable reminder service. Creates after/at/every records, lists active views,
@@ -17,12 +18,16 @@ import java.util.UUID;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class ScheduleService implements IScheduleService {
 
     private static final long MIN_EVERY_INTERVAL_SECONDS = 300;
 
     private final IScheduleRepository repository;
 
+    /**
+     * 处理Schedule Service相关逻辑。
+     */
     public ScheduleService(IScheduleRepository repository) {
         this.repository = repository;
     }
@@ -59,6 +64,9 @@ public class ScheduleService implements IScheduleService {
         Instant target = Instant.now().plus(interval);
         ScheduleRecord record = new ScheduleRecord(
                 allocateId(), ScheduleKind.EVERY, prompt.trim(), null, interval.getSeconds(), target, sessionId);
+    /**
+     * 列出。
+     */
         repository.save(record);
         return record;
     }
@@ -102,6 +110,9 @@ public class ScheduleService implements IScheduleService {
         return due;
     }
 
+    /**
+     * 处理allocate Id相关逻辑。
+     */
     private static String allocateId() {
         return "sch_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
     }

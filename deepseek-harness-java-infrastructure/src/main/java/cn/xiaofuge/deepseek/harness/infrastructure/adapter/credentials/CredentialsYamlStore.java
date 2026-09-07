@@ -15,6 +15,9 @@ import java.util.Map;
  */
 final class CredentialsYamlStore {
 
+    /**
+     * 处理Credentials Yaml Store相关逻辑。
+     */
     private CredentialsYamlStore() {}
 
     static Map<String, String> parse(Path path) throws IOException {

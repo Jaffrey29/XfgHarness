@@ -5,12 +5,17 @@ import cn.xiaofuge.deepseek.harness.domain.shared.model.valobj.HarnessStatusEnum
 import cn.xiaofuge.deepseek.harness.domain.task.IApprovalQueryService;
 import cn.xiaofuge.deepseek.harness.domain.task.approval.model.valobj.PendingApprovalVO;
 import java.util.List;
+import org.springframework.stereotype.Service;
 
 /** Implements approval-center projections. */
+@Service
 public class ApprovalQueryService implements IApprovalQueryService {
 
     private final IConversationQueryService conversationQueryService;
 
+    /**
+     * 处理Approval Query Service相关逻辑。
+     */
     public ApprovalQueryService(IConversationQueryService conversationQueryService) {
         this.conversationQueryService = conversationQueryService;
     }

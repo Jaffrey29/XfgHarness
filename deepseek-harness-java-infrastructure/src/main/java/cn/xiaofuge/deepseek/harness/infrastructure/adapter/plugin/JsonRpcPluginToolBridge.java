@@ -128,6 +128,9 @@ public class JsonRpcPluginToolBridge implements IPluginToolBridge {
 
     // ── JSON-RPC transport ───────────────────────────────────────
 
+    /**
+     * 发送数据或请求到目标端。
+     */
     private CompletableFuture<JsonNode> sendRequest(String pluginId, String method, Map<String, Object> params) {
         PluginConnection conn = connections.get(pluginId);
         if (conn == null || !conn.isConnected()) {
@@ -159,6 +162,9 @@ public class JsonRpcPluginToolBridge implements IPluginToolBridge {
         return future.orTimeout(DEFAULT_TIMEOUT_MS, TimeUnit.MILLISECONDS);
     }
 
+    /**
+     * 发送数据或请求到目标端。
+     */
     private void sendNotification(String pluginId, String method, Map<String, Object> params) {
         PluginConnection conn = connections.get(pluginId);
         if (conn == null) return;
@@ -182,6 +188,9 @@ public class JsonRpcPluginToolBridge implements IPluginToolBridge {
 
     // ── Connection state ─────────────────────────────────────────
 
+    /**
+     * PluginConnection 是基础设施适配器，负责外部资源与领域端口对接。
+     */
     private class PluginConnection {
         private final Process process;
         private final BufferedWriter writer;
@@ -207,11 +216,17 @@ public class JsonRpcPluginToolBridge implements IPluginToolBridge {
             readerThread.start();
         }
 
+        /**
+         * 处理plugin Id相关逻辑。
+         */
         private String pluginId() {
             // Best-effort identification for thread name
             return String.valueOf(process.pid());
         }
 
+        /**
+         * 处理read Loop相关逻辑。
+         */
         private void readLoop() {
             try {
                 String line;

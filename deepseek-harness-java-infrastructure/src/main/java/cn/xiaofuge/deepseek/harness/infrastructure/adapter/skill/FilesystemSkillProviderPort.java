@@ -29,10 +29,16 @@ public class FilesystemSkillProviderPort implements ISkillProviderPort {
     private final Path bundledDir;
     private final String providerName;
 
+    /**
+     * 处理Filesystem Skill Provider Port相关逻辑。
+     */
     public FilesystemSkillProviderPort(Path dshHome, Path bundledDir) {
         this(dshHome, bundledDir, "filesystem");
     }
 
+    /**
+     * 处理Filesystem Skill Provider Port相关逻辑。
+     */
     public FilesystemSkillProviderPort(Path dshHome, Path bundledDir, String providerName) {
         this.dshHome = dshHome;
         this.bundledDir = bundledDir;
@@ -53,6 +59,9 @@ public class FilesystemSkillProviderPort implements ISkillProviderPort {
         if (bundledDir != null && Files.isDirectory(bundledDir)) {
             candidates.addAll(discoverRoot(bundledDir, SkillSource.BUNDLED, BUNDLED_RANK));
         }
+    /**
+     * 加载。
+     */
         return candidates;
     }
 
@@ -78,6 +87,9 @@ public class FilesystemSkillProviderPort implements ISkillProviderPort {
         }
     }
 
+    /**
+     * 处理discover Root相关逻辑。
+     */
     private List<SkillCandidate> discoverRoot(Path root, SkillSource source, int rank) {
         if (!Files.isDirectory(root)) return List.of();
         List<SkillCandidate> result = new ArrayList<>();
@@ -102,6 +114,9 @@ public class FilesystemSkillProviderPort implements ISkillProviderPort {
         return result;
     }
 
+    /**
+     * 追加数据到当前集合或目标对象。
+     */
     private void addCandidate(List<SkillCandidate> result, String name, Path file,
                               SkillSource source, int rank) {
         try {
@@ -118,6 +133,9 @@ public class FilesystemSkillProviderPort implements ISkillProviderPort {
         }
     }
 
+    /**
+     * 处理parse Skill相关逻辑。
+     */
     private ParsedSkill parseSkill(String raw) {
         String description = "";
         String whenToUse = null;
@@ -149,5 +167,8 @@ public class FilesystemSkillProviderPort implements ISkillProviderPort {
         return new ParsedSkill(description, whenToUse, content);
     }
 
+    /**
+     * ParsedSkill 是基础设施适配器，负责外部资源与领域端口对接。
+     */
     private record ParsedSkill(String description, String whenToUse, String content) {}
 }

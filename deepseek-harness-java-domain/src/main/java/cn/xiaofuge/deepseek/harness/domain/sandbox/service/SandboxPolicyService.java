@@ -5,6 +5,8 @@ import cn.xiaofuge.deepseek.harness.domain.sandbox.model.valobj.SandboxExecution
 import cn.xiaofuge.deepseek.harness.domain.sandbox.model.valobj.SandboxMode;
 import cn.xiaofuge.deepseek.harness.domain.sandbox.model.valobj.SandboxPolicyRequest;
 import java.nio.file.Path;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
 /**
  * Owns the deployment default mode, fallback workspace root, and request-time
@@ -14,14 +16,21 @@ import java.nio.file.Path;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class SandboxPolicyService implements ISandboxPolicyService {
 
     private final SandboxMode defaultMode;
     private final Path fallbackWorkspaceRoot;
 
-    public SandboxPolicyService(SandboxMode defaultMode, Path fallbackWorkspaceRoot) {
-        this.defaultMode = defaultMode;
-        this.fallbackWorkspaceRoot = fallbackWorkspaceRoot.toAbsolutePath().normalize();
+    /**
+     * 处理Sandbox Policy Service相关逻辑。
+     */
+    public SandboxPolicyService(
+            @Value("${harness.sandbox.default-mode:READ_ONLY}") String defaultMode,
+            @Value("${harness.agent.default-cwd:#{systemProperties['user.dir']}}") String fallbackWorkspaceRoot
+    ) {
+        this.defaultMode = SandboxMode.valueOf(defaultMode.trim().toUpperCase().replace('-', '_'));
+        this.fallbackWorkspaceRoot = Path.of(fallbackWorkspaceRoot).toAbsolutePath().normalize();
     }
 
     @Override
@@ -35,6 +44,9 @@ public class SandboxPolicyService implements ISandboxPolicyService {
         };
     }
 
+    /**
+     * 处理render Policy Context相关逻辑。
+     */
     public String renderPolicyContext(SandboxExecutionPolicy policy) {
         return switch (policy.mode()) {
             case READ_ONLY -> "Current DSH file policy: read-only. Any available operation enforced by the DSH file sandbox cannot modify files in the standing mode.";

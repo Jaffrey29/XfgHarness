@@ -24,6 +24,9 @@ public class ModelSettingEntity {
     private final boolean enabled;
     private final Instant updatedAt;
 
+    /**
+     * 处理Model Setting Entity相关逻辑。
+     */
     public ModelSettingEntity(
             String profileCode,
             String providerCode,
@@ -96,14 +99,38 @@ public class ModelSettingEntity {
         );
     }
 
+    /**
+     * 获取Profile Code。
+     */
     public String getProfileCode() { return profileCode; }
+    /**
+     * 获取Provider Code。
+     */
     public String getProviderCode() { return providerCode; }
+    /**
+     * 获取Model Code。
+     */
     public String getModelCode() { return modelCode; }
+    /**
+     * 获取Base Url。
+     */
     public String getBaseUrl() { return baseUrl; }
+    /**
+     * 获取Api Key Ref。
+     */
     public String getApiKeyRef() { return apiKeyRef; }
+    /**
+     * 判断Enabled是否成立。
+     */
     public boolean isEnabled() { return enabled; }
+    /**
+     * 获取Updated At。
+     */
     public Instant getUpdatedAt() { return updatedAt; }
 
+    /**
+     * 校验必需条件；不满足时抛出异常。
+     */
     private static String requireText(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(fieldName + " 不能为空");
@@ -111,6 +138,9 @@ public class ModelSettingEntity {
         return value;
     }
 
+    /**
+     * 处理blank To Null相关逻辑。
+     */
     private static String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value;
     }

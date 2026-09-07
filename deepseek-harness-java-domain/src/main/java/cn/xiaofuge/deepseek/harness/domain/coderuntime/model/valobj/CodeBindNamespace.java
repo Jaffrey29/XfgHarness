@@ -11,10 +11,16 @@ import java.util.List;
  * @website bugstack.cn
  */
 public record CodeBindNamespace(List<CodeRuntimeBinding> globals) {
+    /**
+     * CodeRuntimeBinding 定义当前模块中的class契约与职责。
+     */
     public static class CodeRuntimeBinding {
         public final String name;
         public final String value;
         public final boolean isFunction;
+        /**
+         * 处理Code Runtime Binding相关逻辑。
+         */
         public CodeRuntimeBinding(String name, String value, boolean isFunction) {
             this.name = name;
             this.value = value;

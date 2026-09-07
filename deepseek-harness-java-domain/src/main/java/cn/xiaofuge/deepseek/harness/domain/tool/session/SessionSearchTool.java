@@ -31,6 +31,9 @@ public class SessionSearchTool implements ToolDefinition {
 
     private final IConversationQueryService conversations;
 
+    /**
+     * 处理Session Search Tool相关逻辑。
+     */
     public SessionSearchTool(IConversationQueryService conversations) {
         this.conversations = conversations;
     }

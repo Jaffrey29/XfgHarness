@@ -19,6 +19,9 @@ public class SessionQueryCaseImpl implements ISessionQueryCase {
 
     private final IConversationQueryService conversationQueryService;
 
+    /**
+     * 处理Session Query Case Impl相关逻辑。
+     */
     public SessionQueryCaseImpl(IConversationQueryService conversationQueryService) {
         this.conversationQueryService = conversationQueryService;
     }

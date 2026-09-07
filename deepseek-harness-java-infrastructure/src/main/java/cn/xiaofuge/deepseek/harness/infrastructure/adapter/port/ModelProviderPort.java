@@ -23,6 +23,9 @@ public class ModelProviderPort implements IModelProviderPort {
 
     private final DeepSeekGatewayService deepSeekGatewayService;
 
+    /**
+     * 处理Model Provider Port相关逻辑。
+     */
     public ModelProviderPort(DeepSeekGatewayService deepSeekGatewayService) {
         this.deepSeekGatewayService = deepSeekGatewayService;
     }

@@ -17,9 +17,15 @@ package cn.xiaofuge.deepseek.harness.domain.coderuntime.model.valobj;
  * @website bugstack.cn
  */
 public record CodeRunResult(boolean success, String output, String error, Integer exitCode) {
+    /**
+     * 处理ok相关逻辑。
+     */
     public static CodeRunResult ok(String output) {
         return new CodeRunResult(true, output, null, 0);
     }
+    /**
+     * 处理fail相关逻辑。
+     */
     public static CodeRunResult fail(String error, Integer exitCode) {
         return new CodeRunResult(false, null, error, exitCode);
     }

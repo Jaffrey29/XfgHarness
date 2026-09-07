@@ -25,10 +25,16 @@ public class InMemoryUserQuestionsPort implements UserQuestionsPort {
     private final ConcurrentMap<String, CompletableFuture<UserAnswer>> pending = new ConcurrentHashMap<>();
     private final long defaultTimeoutMs;
 
+    /**
+     * 处理In Memory User Questions Port相关逻辑。
+     */
     public InMemoryUserQuestionsPort() {
         this(300_000); // 5 min default timeout
     }
 
+    /**
+     * 处理In Memory User Questions Port相关逻辑。
+     */
     public InMemoryUserQuestionsPort(long defaultTimeoutMs) {
         this.defaultTimeoutMs = defaultTimeoutMs;
     }

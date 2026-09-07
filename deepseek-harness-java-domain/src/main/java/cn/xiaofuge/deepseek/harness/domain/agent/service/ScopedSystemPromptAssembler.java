@@ -41,6 +41,9 @@ public class ScopedSystemPromptAssembler implements SystemPromptAssembler {
     private final String persona;
     private final List<String> toolOrder;
 
+    /**
+     * 处理Scoped System Prompt Assembler相关逻辑。
+     */
     public ScopedSystemPromptAssembler(String harnessIdentity, String persona, List<String> toolOrder) {
         this.harnessIdentity = harnessIdentity != null ? harnessIdentity
                 : "You are an AI agent powered by DeepSeek Harness.";
@@ -59,26 +62,44 @@ public class ScopedSystemPromptAssembler implements SystemPromptAssembler {
 
     // ── Registration API ─────────────────────────────────────────
 
+    /**
+     * 处理register Section相关逻辑。
+     */
     public synchronized void registerSection(PromptSection section) {
         sections.put(section.name(), section);
     }
 
+    /**
+     * 处理remove Section相关逻辑。
+     */
     public synchronized void removeSection(String name) {
         sections.remove(name);
     }
 
+    /**
+     * 处理register Context相关逻辑。
+     */
     public synchronized void registerContext(PromptContext context) {
         contexts.put(context.name(), context);
     }
 
+    /**
+     * 处理remove Context相关逻辑。
+     */
     public synchronized void removeContext(String name) {
         contexts.remove(name);
     }
 
+    /**
+     * 处理register Tool Provider相关逻辑。
+     */
     public synchronized void registerToolProvider(Function<AssembleContext, ToolProviderResult> provider) {
         toolProviders.add(provider);
     }
 
+    /**
+     * 处理register Variable相关逻辑。
+     */
     public synchronized void registerVariable(String name, Function<AssembleContext, String> provider) {
         if (!isValidVariableName(name)) {
             throw new IllegalArgumentException("invalid variable name: " + name);
@@ -86,6 +107,9 @@ public class ScopedSystemPromptAssembler implements SystemPromptAssembler {
         variables.put(name, provider);
     }
 
+    /**
+     * 处理suppress Runtime Context相关逻辑。
+     */
     public synchronized void suppressRuntimeContext() {
         runtimeContextSuppressors.add(() -> {});
     }
@@ -201,10 +225,16 @@ public class ScopedSystemPromptAssembler implements SystemPromptAssembler {
         return doInterpolate(input.text(), variables, "section", input.name());
     }
 
+    /**
+     * 处理interpolate相关逻辑。
+     */
     private static String interpolate(AssembledContext input, Map<String, String> variables) {
         return doInterpolate(input.text(), variables, "context", input.name());
     }
 
+    /**
+     * 处理do Interpolate相关逻辑。
+     */
     private static String doInterpolate(String text, Map<String, String> variables, String kind, String name) {
         if (text == null || text.isEmpty()) return "";
         StringBuilder result = new StringBuilder();
@@ -242,6 +272,9 @@ public class ScopedSystemPromptAssembler implements SystemPromptAssembler {
 
     private static final String TOOL_ORDER_REST = "<unlisted-tools>";
 
+    /**
+     * 处理order Tools相关逻辑。
+     */
     private List<ToolSchema> orderTools(List<ToolSchema> tools) {
         if (toolOrder == null || toolOrder.isEmpty()) {
             return tools.stream().sorted((a, b) -> a.name().compareTo(b.name())).toList();
@@ -264,6 +297,9 @@ public class ScopedSystemPromptAssembler implements SystemPromptAssembler {
         return result;
     }
 
+    /**
+     * 判断Valid Variable Name是否成立。
+     */
     private static boolean isValidVariableName(String name) {
         return name != null && name.matches("^[a-z][a-z0-9_]*$");
     }
@@ -277,9 +313,15 @@ public class ScopedSystemPromptAssembler implements SystemPromptAssembler {
             Object text, // String or Function<AssembleContext, String>
             boolean complete
     ) {
+        /**
+         * 处理Prompt Section相关逻辑。
+         */
         public PromptSection(String name, int order, String text) {
             this(name, order, text, false);
         }
+        /**
+         * 处理Prompt Section相关逻辑。
+         */
         public PromptSection(String name, int order, Object text) {
             this(name, order, text, false);
         }
@@ -303,6 +345,9 @@ public class ScopedSystemPromptAssembler implements SystemPromptAssembler {
             List<ToolSchema> schemas,
             List<String> knownNames
     ) {
+        /**
+         * 处理Tool Provider Result相关逻辑。
+         */
         public ToolProviderResult(List<ToolSchema> schemas) {
             this(schemas, schemas.stream().map(ToolSchema::name).toList());
         }

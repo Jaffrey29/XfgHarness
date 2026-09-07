@@ -69,14 +69,23 @@ public enum SessionEventType {
         this.ignorable = ignorable;
     }
 
+    /**
+     * 处理wire Name相关逻辑。
+     */
     public String wireName() {
         return wireName;
     }
 
+    /**
+     * 处理ignorable相关逻辑。
+     */
     public boolean ignorable() {
         return ignorable;
     }
 
+    /**
+     * 处理from Wire Name相关逻辑。
+     */
     public static SessionEventType fromWireName(String name) {
         for (SessionEventType t : values()) {
             if (t.wireName.equals(name)) {

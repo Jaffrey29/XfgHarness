@@ -26,31 +26,49 @@ public class WorkspaceCommandController {
 
     private final WorkspaceCommandApi workspaceCommandApi;
 
+    /**
+     * 处理Workspace Command Controller相关逻辑。
+     */
     public WorkspaceCommandController(WorkspaceCommandApi workspaceCommandApi) {
         this.workspaceCommandApi = workspaceCommandApi;
     }
 
+    /**
+     * 处理Post Mapping相关逻辑。
+     */
     @PostMapping("/workspaces")
     public List<WorkspaceEntryResponse> createWorkspace(@RequestBody CreateWorkspaceRequest request) throws IOException {
         return workspaceCommandApi.createWorkspace(request);
     }
 
+    /**
+     * 处理Delete Mapping相关逻辑。
+     */
     @DeleteMapping("/workspaces/{name}")
     public List<WorkspaceEntryResponse> deleteWorkspace(@PathVariable("name") String name) throws IOException {
         return workspaceCommandApi.deleteWorkspace(name);
     }
 
+    /**
+     * 处理Patch Mapping相关逻辑。
+     */
     @PatchMapping("/workspaces/{name}")
     public List<WorkspaceEntryResponse> renameWorkspace(@PathVariable("name") String name,
                                                         @RequestBody RenameWorkspaceRequest request) throws IOException {
         return workspaceCommandApi.renameWorkspace(name, request);
     }
 
+    /**
+     * 处理Put Mapping相关逻辑。
+     */
     @PutMapping("/workspaces/order")
     public List<WorkspaceEntryResponse> reorderWorkspaces(@RequestBody ReorderWorkspaceRequest request) throws IOException {
         return workspaceCommandApi.reorderWorkspaces(request);
     }
 
+    /**
+     * 处理Exception Handler相关逻辑。
+     */
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public void handleIllegalArgument() {

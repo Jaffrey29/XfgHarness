@@ -25,16 +25,25 @@ public class HarnessPluginQueryApi {
     private final HarnessInstalledPluginQueryApi harnessInstalledPluginQueryApi;
     private final IQueryHarnessPluginStatusCase queryHarnessPluginStatusCase;
 
+    /**
+     * 处理Harness Plugin Query Api相关逻辑。
+     */
     public HarnessPluginQueryApi(HarnessInstalledPluginQueryApi harnessInstalledPluginQueryApi,
                                  IQueryHarnessPluginStatusCase queryHarnessPluginStatusCase) {
         this.harnessInstalledPluginQueryApi = harnessInstalledPluginQueryApi;
         this.queryHarnessPluginStatusCase = queryHarnessPluginStatusCase;
     }
 
+    /**
+     * 列出Installed Plugins。
+     */
     public List<InstalledPluginResponse> listInstalledPlugins() {
         return harnessInstalledPluginQueryApi.listInstalledPlugins();
     }
 
+    /**
+     * 查询Plugin Status。
+     */
     public QueryPluginStatusResponse queryPluginStatus(String pluginId) {
         QueryPluginStatusResult r = queryHarnessPluginStatusCase.execute(pluginId);
         return new QueryPluginStatusResponse(

@@ -19,6 +19,9 @@ public class HarnessPluginRuntimeBindingRepository implements IHarnessPluginRunt
 
     private final IHarnessPluginRuntimeBindingDao harnessPluginRuntimeBindingDao;
 
+    /**
+     * 处理Harness Plugin Runtime Binding Repository相关逻辑。
+     */
     public HarnessPluginRuntimeBindingRepository(IHarnessPluginRuntimeBindingDao harnessPluginRuntimeBindingDao) {
         this.harnessPluginRuntimeBindingDao = harnessPluginRuntimeBindingDao;
     }

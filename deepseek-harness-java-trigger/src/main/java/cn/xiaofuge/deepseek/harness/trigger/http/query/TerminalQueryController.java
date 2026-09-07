@@ -27,15 +27,24 @@ public class TerminalQueryController {
 
     private final TerminalQueryApi terminalQueryApi;
 
+    /**
+     * 处理Terminal Query Controller相关逻辑。
+     */
     public TerminalQueryController(TerminalQueryApi terminalQueryApi) {
         this.terminalQueryApi = terminalQueryApi;
     }
 
+    /**
+     * 获取Mapping。
+     */
     @GetMapping("/sessions")
     public List<TerminalSessionResponse> listSessions() {
         return terminalQueryApi.listSessions();
     }
 
+    /**
+     * 获取Mapping。
+     */
     @GetMapping("/sessions/{sessionId}/read")
     public TerminalReadResponse read(@PathVariable("sessionId") String sessionId,
                                      @RequestParam(name = "maxChars", defaultValue = "8000") int maxChars) {

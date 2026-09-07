@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.springframework.stereotype.Service;
 
 /**
  * In-process job registry. Tracks running jobs, cancels on disposal, and
@@ -19,6 +20,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class JobRegistryService implements IJobRegistryService {
 
     private final IJobRegistryRepository repository;
@@ -27,6 +29,9 @@ public class JobRegistryService implements IJobRegistryService {
     private final AtomicInteger idCounter = new AtomicInteger(0);
     private volatile boolean closed = false;
 
+    /**
+     * 处理Job Registry Service相关逻辑。
+     */
     public JobRegistryService(IJobRegistryRepository repository) {
         this.repository = repository;
     }
@@ -59,6 +64,9 @@ public class JobRegistryService implements IJobRegistryService {
     public Optional<JobSnapshot> read(String id, String requestingSessionId) {
         return repository.findById(id)
                 .filter(r -> r.ownerSessionId() == null || r.ownerSessionId().equals(requestingSessionId))
+    /**
+     * 列出。
+     */
                 .map(JobSnapshot::from);
     }
 
@@ -80,6 +88,9 @@ public class JobRegistryService implements IJobRegistryService {
         return true;
     }
 
+    /**
+     * 释放资源并关闭关联连接。
+     */
     public void close() {
         closed = true;
         executor.shutdownNow();

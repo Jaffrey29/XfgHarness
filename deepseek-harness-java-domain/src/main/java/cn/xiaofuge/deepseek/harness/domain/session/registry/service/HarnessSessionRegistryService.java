@@ -6,6 +6,7 @@ import cn.xiaofuge.deepseek.harness.domain.session.registry.adapter.repository.I
 import cn.xiaofuge.deepseek.harness.domain.session.registry.model.aggregate.HarnessSessionAggregate;
 import cn.xiaofuge.deepseek.harness.domain.session.registry.model.valobj.SessionOpenedResultVO;
 import java.util.UUID;
+import org.springframework.stereotype.Service;
 
 /**
  * Owns session creation and status persistence.
@@ -13,10 +14,14 @@ import java.util.UUID;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class HarnessSessionRegistryService implements IHarnessSessionRegistryService {
 
     private final IHarnessSessionRepository harnessSessionRepository;
 
+    /**
+     * 处理Harness Session Registry Service相关逻辑。
+     */
     public HarnessSessionRegistryService(IHarnessSessionRepository harnessSessionRepository) {
         this.harnessSessionRepository = harnessSessionRepository;
     }

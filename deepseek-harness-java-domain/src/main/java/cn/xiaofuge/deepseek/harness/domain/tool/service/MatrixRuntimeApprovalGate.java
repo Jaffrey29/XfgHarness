@@ -30,6 +30,9 @@ public final class MatrixRuntimeApprovalGate implements RuntimeApprovalGate {
     private final String sessionId;
     private final BiFunction<ApprovalRequest, MatrixRuntimeApprovalGate, ApprovalVerdict> askHandler;
 
+    /**
+     * 处理Matrix Runtime Approval Gate相关逻辑。
+     */
     public MatrixRuntimeApprovalGate(IPermissionMatrixPort permissionMatrixPort) {
         this(permissionMatrixPort, null, null);
     }
@@ -89,6 +92,9 @@ public final class MatrixRuntimeApprovalGate implements RuntimeApprovalGate {
         return toolName;
     }
 
+    /**
+     * 处理ask相关逻辑。
+     */
     private ApprovalVerdict ask(String toolName, Object arguments) {
         @SuppressWarnings("unchecked")
         Map<String, Object> argMap = arguments instanceof Map ? (Map<String, Object>) arguments : Map.of();

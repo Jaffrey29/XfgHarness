@@ -9,6 +9,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicReference;
+import org.springframework.stereotype.Service;
 
 /**
  * Synchronous helper for assembling a complete LLM response from a stream.
@@ -16,14 +17,21 @@ import java.util.concurrent.atomic.AtomicReference;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class LlmGenerationService {
 
     private final ILlmRuntimePort llmRuntimePort;
 
+    /**
+     * 处理Llm Generation Service相关逻辑。
+     */
     public LlmGenerationService(ILlmRuntimePort llmRuntimePort) {
         this.llmRuntimePort = llmRuntimePort;
     }
 
+    /**
+     * 处理generate相关逻辑。
+     */
     public CompletableFuture<Message> generate(GenerateOptions options) {
         var assembler = new BlockAssembler();
         var done = new CountDownLatch(1);

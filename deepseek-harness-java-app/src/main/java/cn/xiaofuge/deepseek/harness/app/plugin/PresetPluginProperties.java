@@ -18,14 +18,23 @@ public class PresetPluginProperties {
 
     private List<PresetPlugin> plugins = new ArrayList<>();
 
+    /**
+     * 获取Plugins。
+     */
     public List<PresetPlugin> getPlugins() {
         return plugins;
     }
 
+    /**
+     * 设置Plugins。
+     */
     public void setPlugins(List<PresetPlugin> plugins) {
         this.plugins = plugins;
     }
 
+    /**
+     * PresetPlugin 定义当前模块中的class契约与职责。
+     */
     public static class PresetPlugin {
         private String pluginId;
         private String displayName;
@@ -35,19 +44,61 @@ public class PresetPluginProperties {
         private String entrypoint;
         private boolean autoEnable = true;
 
+        /**
+         * 获取Plugin Id。
+         */
         public String getPluginId() { return pluginId; }
+        /**
+         * 设置Plugin Id。
+         */
         public void setPluginId(String pluginId) { this.pluginId = pluginId; }
+        /**
+         * 获取Display Name。
+         */
         public String getDisplayName() { return displayName; }
+        /**
+         * 设置Display Name。
+         */
         public void setDisplayName(String displayName) { this.displayName = displayName; }
+        /**
+         * 获取Plugin Version。
+         */
         public String getPluginVersion() { return pluginVersion; }
+        /**
+         * 设置Plugin Version。
+         */
         public void setPluginVersion(String pluginVersion) { this.pluginVersion = pluginVersion; }
+        /**
+         * 获取Runtime Type。
+         */
         public String getRuntimeType() { return runtimeType; }
+        /**
+         * 设置Runtime Type。
+         */
         public void setRuntimeType(String runtimeType) { this.runtimeType = runtimeType; }
+        /**
+         * 获取Source Path。
+         */
         public String getSourcePath() { return sourcePath; }
+        /**
+         * 设置Source Path。
+         */
         public void setSourcePath(String sourcePath) { this.sourcePath = sourcePath; }
+        /**
+         * 获取Entrypoint。
+         */
         public String getEntrypoint() { return entrypoint; }
+        /**
+         * 设置Entrypoint。
+         */
         public void setEntrypoint(String entrypoint) { this.entrypoint = entrypoint; }
+        /**
+         * 判断Auto Enable是否成立。
+         */
         public boolean isAutoEnable() { return autoEnable; }
+        /**
+         * 设置Auto Enable。
+         */
         public void setAutoEnable(boolean autoEnable) { this.autoEnable = autoEnable; }
     }
 }

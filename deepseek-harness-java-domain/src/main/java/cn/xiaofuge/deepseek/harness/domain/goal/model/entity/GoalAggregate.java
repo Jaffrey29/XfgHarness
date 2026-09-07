@@ -173,6 +173,9 @@ public record GoalAggregate(
         );
     }
 
+    /**
+     * 校验必需条件；不满足时抛出异常。
+     */
     private GoalAggregate requireStatus(GoalStatus... allowed) {
         for (GoalStatus candidate : allowed) {
             if (status == candidate) {
@@ -182,6 +185,9 @@ public record GoalAggregate(
         throw new IllegalStateException("goal state does not allow action in status: " + status);
     }
 
+    /**
+     * 处理with Status相关逻辑。
+     */
     private GoalAggregate withStatus(GoalStatus nextStatus, String nextBlockedReason, Instant now) {
         return new GoalAggregate(
                 sessionId,
@@ -199,12 +205,18 @@ public record GoalAggregate(
         );
     }
 
+    /**
+     * 校验输入与业务规则；不通过时返回失败结果或抛出异常。
+     */
     private static void validateSession(String sessionId) {
         if (sessionId == null || sessionId.isBlank()) {
             throw new IllegalArgumentException("sessionId must not be blank");
         }
     }
 
+    /**
+     * 校验必需条件；不满足时抛出异常。
+     */
     private static GoalCommandVO requireCommand(GoalCommandVO command, GoalAction requiredAction) {
         Objects.requireNonNull(command, "command");
         if (command.action() == null) {
@@ -216,6 +228,9 @@ public record GoalAggregate(
         return command;
     }
 
+    /**
+     * 处理normalize Goal Id相关逻辑。
+     */
     private static String normalizeGoalId(String sessionId, String goalId) {
         String value = trimToNull(goalId);
         if (value != null) {
@@ -224,6 +239,9 @@ public record GoalAggregate(
         return "goal-" + sessionId.toLowerCase(Locale.ROOT);
     }
 
+    /**
+     * 解析e Max Rounds。
+     */
     private static int resolveMaxRounds(Integer maxRounds) {
         if (maxRounds == null) {
             return DEFAULT_MAX_ROUNDS;
@@ -234,6 +252,9 @@ public record GoalAggregate(
         return maxRounds;
     }
 
+    /**
+     * 校验必需条件；不满足时抛出异常。
+     */
     private static String requireText(String value, String fieldName) {
         String normalized = trimToNull(value);
         if (normalized == null) {
@@ -242,6 +263,9 @@ public record GoalAggregate(
         return normalized;
     }
 
+    /**
+     * 处理trim To Null相关逻辑。
+     */
     private static String trimToNull(String value) {
         if (value == null) {
             return null;

@@ -14,5 +14,8 @@ public final class ToolErrorCodes {
     public static final String INVALID_ARGS = "INVALID_ARGS";
     public static final String INVALID_TOOL_OUTPUT = "INVALID_TOOL_OUTPUT";
 
+    /**
+     * 处理Tool Error Codes相关逻辑。
+     */
     private ToolErrorCodes() {}
 }

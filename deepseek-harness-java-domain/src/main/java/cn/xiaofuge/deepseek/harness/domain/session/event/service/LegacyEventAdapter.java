@@ -9,6 +9,7 @@ import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionEve
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.valobj.SessionEventType;
 
 import java.util.List;
+import org.springframework.stereotype.Service;
 
 /**
  * Bridges the new typed {@link SessionEvent} system with the legacy
@@ -23,11 +24,15 @@ import java.util.List;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class LegacyEventAdapter {
 
     private final ISessionEventLogService eventLogService;
     private final SurfaceProjector surfaceProjector;
 
+    /**
+     * 处理Legacy Event Adapter相关逻辑。
+     */
     public LegacyEventAdapter(ISessionEventLogService eventLogService) {
         this.eventLogService = eventLogService;
         this.surfaceProjector = new SurfaceProjector();
@@ -117,6 +122,9 @@ public class LegacyEventAdapter {
 
     // ── Helpers ──────────────────────────────────────────────────
 
+    /**
+     * 处理to Visible Message相关逻辑。
+     */
     private VisibleMessage toVisibleMessage(SessionEvent event) {
         if (event instanceof SessionEvent.UserMessage e) {
             Message msg = e.data().message();
@@ -130,6 +138,9 @@ public class LegacyEventAdapter {
         return null;
     }
 
+    /**
+     * 处理extract Text相关逻辑。
+     */
     private String extractText(Message msg) {
         if (msg == null || msg.content() == null) return "";
         StringBuilder sb = new StringBuilder();

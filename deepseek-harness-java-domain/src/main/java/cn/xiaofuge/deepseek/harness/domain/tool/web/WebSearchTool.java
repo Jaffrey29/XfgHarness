@@ -32,6 +32,9 @@ public class WebSearchTool implements ToolDefinition {
 
     private final IWebPort webService;
 
+    /**
+     * 处理Web Search Tool相关逻辑。
+     */
     public WebSearchTool(IWebPort webService) {
         this.webService = webService;
     }
@@ -137,6 +140,9 @@ public class WebSearchTool implements ToolDefinition {
     @Override
     public long timeoutMs() { return TIMEOUT_MS; }
 
+    /**
+     * 处理hostname相关逻辑。
+     */
     private static String hostname(String url) {
         try {
             return new java.net.URI(url).getHost();

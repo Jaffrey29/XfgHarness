@@ -18,6 +18,9 @@ import java.util.Map;
 @FunctionalInterface
 public interface RuntimeApprovalGate {
 
+    /**
+     * Decision 定义当前模块中的enum契约与职责。
+     */
     enum Decision { ALLOW, DENY }
 
     /**

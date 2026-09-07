@@ -20,6 +20,9 @@ public class HarnessApprovalCommandApi {
 
     private final IApprovalCommandService approvalCommandService;
 
+    /**
+     * 处理Harness Approval Command Api相关逻辑。
+     */
     public HarnessApprovalCommandApi(IApprovalCommandService approvalCommandService) {
         this.approvalCommandService = approvalCommandService;
     }

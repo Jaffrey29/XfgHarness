@@ -22,6 +22,9 @@ public class SessionRestoreCaseImpl implements ISessionRestoreCase {
 
     private final SessionRebuilderService sessionRebuilderService;
 
+    /**
+     * 处理Session Restore Case Impl相关逻辑。
+     */
     public SessionRestoreCaseImpl(SessionRebuilderService sessionRebuilderService) {
         this.sessionRebuilderService = sessionRebuilderService;
     }

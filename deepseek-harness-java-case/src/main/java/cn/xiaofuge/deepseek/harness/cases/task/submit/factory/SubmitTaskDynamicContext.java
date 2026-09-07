@@ -28,30 +28,84 @@ public class SubmitTaskDynamicContext {
     private QueuedTaskResultVO taskResult;
     private String currentStatus;
 
+    /**
+     * 获取Submission。
+     */
     public TaskSubmissionVO getSubmission() { return submission; }
+    /**
+     * 设置Submission。
+     */
     public void setSubmission(TaskSubmissionVO submission) { this.submission = submission; }
 
+    /**
+     * 获取Execution Profile。
+     */
     public ExecutionProfileVO getExecutionProfile() { return executionProfile; }
+    /**
+     * 设置Execution Profile。
+     */
     public void setExecutionProfile(ExecutionProfileVO executionProfile) { this.executionProfile = executionProfile; }
 
+    /**
+     * 获取Model Profile。
+     */
     public ModelProviderProfileVO getModelProfile() { return modelProfile; }
+    /**
+     * 设置Model Profile。
+     */
     public void setModelProfile(ModelProviderProfileVO modelProfile) { this.modelProfile = modelProfile; }
 
+    /**
+     * 获取Enabled Tools。
+     */
     public List<String> getEnabledTools() { return enabledTools; }
+    /**
+     * 设置Enabled Tools。
+     */
     public void setEnabledTools(List<String> enabledTools) { this.enabledTools = enabledTools; }
 
+    /**
+     * 获取Permission Assessment。
+     */
     public PermissionAssessmentVO getPermissionAssessment() { return permissionAssessment; }
+    /**
+     * 设置Permission Assessment。
+     */
     public void setPermissionAssessment(PermissionAssessmentVO permissionAssessment) { this.permissionAssessment = permissionAssessment; }
 
+    /**
+     * 获取Approval Decision。
+     */
     public ApprovalDecisionVO getApprovalDecision() { return approvalDecision; }
+    /**
+     * 设置Approval Decision。
+     */
     public void setApprovalDecision(ApprovalDecisionVO approvalDecision) { this.approvalDecision = approvalDecision; }
 
+    /**
+     * 获取Session Result。
+     */
     public SessionOpenedResultVO getSessionResult() { return sessionResult; }
+    /**
+     * 设置Session Result。
+     */
     public void setSessionResult(SessionOpenedResultVO sessionResult) { this.sessionResult = sessionResult; }
 
+    /**
+     * 获取Task Result。
+     */
     public QueuedTaskResultVO getTaskResult() { return taskResult; }
+    /**
+     * 设置Task Result。
+     */
     public void setTaskResult(QueuedTaskResultVO taskResult) { this.taskResult = taskResult; }
 
+    /**
+     * 获取Current Status。
+     */
     public String getCurrentStatus() { return currentStatus; }
+    /**
+     * 设置Current Status。
+     */
     public void setCurrentStatus(String currentStatus) { this.currentStatus = currentStatus; }
 }

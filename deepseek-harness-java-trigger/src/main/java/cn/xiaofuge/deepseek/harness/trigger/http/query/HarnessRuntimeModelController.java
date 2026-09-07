@@ -24,6 +24,9 @@ public class HarnessRuntimeModelController {
 
     private final HarnessRuntimeModelQueryApi harnessRuntimeModelQueryApi;
 
+    /**
+     * 处理Harness Runtime Model Controller相关逻辑。
+     */
     public HarnessRuntimeModelController(HarnessRuntimeModelQueryApi harnessRuntimeModelQueryApi) {
         this.harnessRuntimeModelQueryApi = harnessRuntimeModelQueryApi;
     }

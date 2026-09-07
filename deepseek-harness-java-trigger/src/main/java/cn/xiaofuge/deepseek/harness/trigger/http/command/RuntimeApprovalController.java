@@ -22,6 +22,9 @@ public class RuntimeApprovalController {
 
     private final IRuntimeApprovalBroker broker;
 
+    /**
+     * 运行time Approval Controller。
+     */
     public RuntimeApprovalController(IRuntimeApprovalBroker broker) {
         this.broker = broker;
     }

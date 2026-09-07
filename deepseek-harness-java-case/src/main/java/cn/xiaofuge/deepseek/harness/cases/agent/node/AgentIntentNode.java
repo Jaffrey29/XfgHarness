@@ -57,6 +57,11 @@ public class AgentIntentNode extends AbstractAgentMessageNode {
             "(?i)(函数|方法|类|接口|变量|bug|报错|异常|编译|语法|api|json|sql|正则|算法|线程|并发|内存|性能|优化|重构)"
     );
 
+    /**
+     * 识别用户输入的轻量意图，并写入策略上下文。
+     * <p>执行流程：读取用户消息 -> classify 归类 -> 将意图保存到 ctx -> 继续进入 Dispatch 节点。
+     * <p>数据示例：“你好”识别为 CHAT；“帮我修复 /src/App.java 的报错”识别为 TASK_EXECUTION。
+     */
     @Override
     protected SendMessageResult doApply(SendMessageCommand request,
                                            AgentMessageDynamicContext ctx) throws Exception {
@@ -75,6 +80,14 @@ public class AgentIntentNode extends AbstractAgentMessageNode {
         return dispatchNode;
     }
 
+    /**
+     * 按规则将文本归类为四种消息意图。
+     * <p>优先级为：空文本 -> 问候闲聊 -> 代码问题 -> 文件系统任务 -> 一般任务 -> 解释请求 -> CLARIFICATION。
+     * <p>数据示例：“/tmp 目录里有什么”命中目录路径和文件系统关键词，返回 TASK_EXECUTION。
+     *
+     * @param msg 已去除首尾空白的用户输入
+     * @return 本次消息意图
+     */
     AgentMessageDynamicContext.MessageIntent classify(String msg) {
         if (msg.isEmpty()) return AgentMessageDynamicContext.MessageIntent.CLARIFICATION;
 

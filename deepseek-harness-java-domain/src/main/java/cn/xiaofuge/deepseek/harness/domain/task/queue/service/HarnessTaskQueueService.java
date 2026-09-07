@@ -7,6 +7,7 @@ import cn.xiaofuge.deepseek.harness.domain.task.queue.model.entity.HarnessTaskEn
 import cn.xiaofuge.deepseek.harness.domain.task.queue.model.valobj.QueuedTaskResultVO;
 
 import java.util.UUID;
+import org.springframework.stereotype.Service;
 
 /**
  * 排队任务服务。
@@ -19,10 +20,14 @@ import java.util.UUID;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class HarnessTaskQueueService implements IHarnessTaskQueueService {
 
     private final IHarnessTaskQueueRepository harnessTaskQueueRepository;
 
+    /**
+     * 处理Harness Task Queue Service相关逻辑。
+     */
     public HarnessTaskQueueService(IHarnessTaskQueueRepository harnessTaskQueueRepository) {
         this.harnessTaskQueueRepository = harnessTaskQueueRepository;
     }

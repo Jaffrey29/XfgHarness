@@ -17,6 +17,9 @@ public class QueryHarnessPluginStatusCaseImpl implements IQueryHarnessPluginStat
 
     private final IPluginRuntimeService pluginRuntimeService;
 
+    /**
+     * 查询Harness Plugin Status Case Impl。
+     */
     public QueryHarnessPluginStatusCaseImpl(IPluginRuntimeService pluginRuntimeService) {
         this.pluginRuntimeService = pluginRuntimeService;
     }

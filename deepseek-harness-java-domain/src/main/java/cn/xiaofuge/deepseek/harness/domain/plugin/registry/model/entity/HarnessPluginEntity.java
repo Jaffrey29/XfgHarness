@@ -24,6 +24,9 @@ public class HarnessPluginEntity {
     private PluginInstallStatusEnumVO status;
     private final Instant installedAt;
 
+    /**
+     * 处理Harness Plugin Entity相关逻辑。
+     */
     public HarnessPluginEntity(
             String pluginId,
             String displayName,
@@ -46,14 +49,41 @@ public class HarnessPluginEntity {
         this.installedAt = Objects.requireNonNull(installedAt, "installedAt");
     }
 
+    /**
+     * 获取Plugin Id。
+     */
     public String getPluginId() { return pluginId; }
+    /**
+     * 获取Display Name。
+     */
     public String getDisplayName() { return displayName; }
+    /**
+     * 获取Plugin Version。
+     */
     public String getPluginVersion() { return pluginVersion; }
+    /**
+     * 获取Runtime Type。
+     */
     public PluginRuntimeTypeEnumVO getRuntimeType() { return runtimeType; }
+    /**
+     * 获取Install Mode。
+     */
     public PluginInstallModeEnumVO getInstallMode() { return installMode; }
+    /**
+     * 获取Source Path。
+     */
     public String getSourcePath() { return sourcePath; }
+    /**
+     * 获取Entrypoint。
+     */
     public String getEntrypoint() { return entrypoint; }
+    /**
+     * 获取Status。
+     */
     public PluginInstallStatusEnumVO getStatus() { return status; }
+    /**
+     * 获取Installed At。
+     */
     public Instant getInstalledAt() { return installedAt; }
 
     /**

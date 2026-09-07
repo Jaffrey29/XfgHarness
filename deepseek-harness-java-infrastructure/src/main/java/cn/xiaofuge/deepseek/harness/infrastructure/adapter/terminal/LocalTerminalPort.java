@@ -41,6 +41,9 @@ public class LocalTerminalPort implements ITerminalPort {
     private final String defaultCwd;
     private final Map<String, TerminalSessionRuntime> sessions = new ConcurrentHashMap<>();
 
+    /**
+     * 处理Local Terminal Port相关逻辑。
+     */
     public LocalTerminalPort(String defaultCwd) {
         this.defaultCwd = defaultCwd;
     }
@@ -73,6 +76,9 @@ public class LocalTerminalPort implements ITerminalPort {
         try {
             runtime.close();
         } finally {
+    /**
+     * 列出。
+     */
             sessions.remove(sessionId);
         }
         return runtime.snapshot();
@@ -86,6 +92,9 @@ public class LocalTerminalPort implements ITerminalPort {
                 .toList();
     }
 
+    /**
+     * 校验必需条件；不满足时抛出异常。
+     */
     private TerminalSessionRuntime requireSession(String sessionId) {
         TerminalSessionRuntime runtime = sessions.get(sessionId);
         if (runtime == null) {
@@ -94,16 +103,25 @@ public class LocalTerminalPort implements ITerminalPort {
         return runtime;
     }
 
+    /**
+     * 处理normalize Name相关逻辑。
+     */
     private String normalizeName(String name) {
         String value = name == null ? "" : name.trim();
         return value.isEmpty() ? "terminal" : value;
     }
 
+    /**
+     * 处理normalize Cwd相关逻辑。
+     */
     private String normalizeCwd(String cwd) {
         String value = cwd == null ? "" : cwd.trim();
         return value.isEmpty() ? defaultCwd : value;
     }
 
+    /**
+     * TerminalSessionRuntime 是基础设施适配器，负责外部资源与领域端口对接。
+     */
     private static final class TerminalSessionRuntime {
         private final String sessionId;
         private final String name;
@@ -118,12 +136,18 @@ public class LocalTerminalPort implements ITerminalPort {
         private volatile Integer exitCode;
         private volatile String lastMessage = "";
 
+        /**
+         * 处理Terminal Session Runtime相关逻辑。
+         */
         private TerminalSessionRuntime(String sessionId, String name, String cwd) {
             this.sessionId = sessionId;
             this.name = name;
             this.cwd = cwd;
         }
 
+        /**
+         * 处理start相关逻辑。
+         */
         private void start() {
             try {
                 List<String> command = isWindows()
@@ -154,6 +178,9 @@ public class LocalTerminalPort implements ITerminalPort {
             }
         }
 
+        /**
+         * 发送数据或请求到目标端。
+         */
         private TerminalSendResultVO send(String command, long timeoutMs) {
             if (status != TerminalSessionStatus.RUNNING || process == null || writer == null) {
                 throw new IllegalStateException("terminal session is not running: " + sessionId);
@@ -181,12 +208,18 @@ public class LocalTerminalPort implements ITerminalPort {
             return new TerminalSendResultVO(sessionId, command, delta, completed, truncated, status, exitCode, duration, Instant.now());
         }
 
+        /**
+         * 处理read相关逻辑。
+         */
         private TerminalReadResultVO read(int maxChars) {
             String content = readTail(maxChars);
             boolean truncated = content.length() >= maxChars && currentLength() > maxChars;
             return new TerminalReadResultVO(sessionId, content, truncated, status, exitCode);
         }
 
+        /**
+         * 处理snapshot相关逻辑。
+         */
         private TerminalSessionSnapshotVO snapshot() {
             return new TerminalSessionSnapshotVO(
                     sessionId,
@@ -201,6 +234,9 @@ public class LocalTerminalPort implements ITerminalPort {
             );
         }
 
+        /**
+         * 释放资源并关闭关联连接。
+         */
         private void close() {
             status = TerminalSessionStatus.CLOSED;
             updatedAt = Instant.now();
@@ -218,6 +254,9 @@ public class LocalTerminalPort implements ITerminalPort {
             }
         }
 
+        /**
+         * 处理read Loop相关逻辑。
+         */
         private void readLoop(InputStream inputStream) {
             try (InputStreamReader reader = new InputStreamReader(inputStream, StandardCharsets.UTF_8)) {
                 char[] chars = new char[1024];
@@ -235,6 +274,9 @@ public class LocalTerminalPort implements ITerminalPort {
             }
         }
 
+        /**
+         * 处理wait For Marker相关逻辑。
+         */
         private boolean waitForMarker(String marker, long timeoutMs) {
             long deadline = System.currentTimeMillis() + timeoutMs;
             while (System.currentTimeMillis() < deadline) {
@@ -254,6 +296,9 @@ public class LocalTerminalPort implements ITerminalPort {
             return false;
         }
 
+        /**
+         * 构建Command。
+         */
         private String buildCommand(String command, String marker) {
             if (isWindows()) {
                 return command + " & echo " + marker + "\r\n";
@@ -261,6 +306,9 @@ public class LocalTerminalPort implements ITerminalPort {
             return command + "; printf '\\n" + marker + "\\n'\n";
         }
 
+        /**
+         * 处理cut After Marker相关逻辑。
+         */
         private String cutAfterMarker(String before, String after, String marker) {
             String delta = after.startsWith(before) ? after.substring(before.length()) : after;
             int markerIndex = delta.indexOf(marker);
@@ -270,6 +318,9 @@ public class LocalTerminalPort implements ITerminalPort {
             return delta.trim();
         }
 
+        /**
+         * 追加数据到当前集合或目标对象。
+         */
         private void append(String text) {
             synchronized (lock) {
                 buffer.append(text);
@@ -281,18 +332,27 @@ public class LocalTerminalPort implements ITerminalPort {
             }
         }
 
+        /**
+         * 处理read Tail相关逻辑。
+         */
         private String readTail(int maxChars) {
             synchronized (lock) {
                 return tail(maxChars);
             }
         }
 
+        /**
+         * 处理current Length相关逻辑。
+         */
         private int currentLength() {
             synchronized (lock) {
                 return buffer.length();
             }
         }
 
+        /**
+         * 处理tail相关逻辑。
+         */
         private String tail(int maxChars) {
             if (buffer.length() <= maxChars) {
                 return buffer.toString();
@@ -300,6 +360,9 @@ public class LocalTerminalPort implements ITerminalPort {
             return buffer.substring(buffer.length() - maxChars);
         }
 
+        /**
+         * 处理safe Exit Code相关逻辑。
+         */
         private int safeExitCode(Process started) {
             try {
                 return started.exitValue();
@@ -308,6 +371,9 @@ public class LocalTerminalPort implements ITerminalPort {
             }
         }
 
+        /**
+         * 判断Windows是否成立。
+         */
         private static boolean isWindows() {
             return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win");
         }

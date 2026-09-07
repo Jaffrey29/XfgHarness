@@ -154,6 +154,9 @@ public class LocalWebService implements IWebPort {
     private static final Pattern SEARCH_SNIPPET_PATTERN = Pattern.compile(
             "(?is)class=\"[^\"]*result__snippet[^\"]*\"[^>]*>(.*?)</");
 
+    /**
+     * 处理extract Title相关逻辑。
+     */
     private String extractTitle(String html) {
         Matcher m = TITLE_PATTERN.matcher(html);
         if (m.find()) {
@@ -162,6 +165,9 @@ public class LocalWebService implements IWebPort {
         return null;
     }
 
+    /**
+     * 处理strip Html相关逻辑。
+     */
     private String stripHtml(String html) {
         // 移除脚本和样式块
         String s = SCRIPT_PATTERN.matcher(html).replaceAll("");
@@ -173,6 +179,9 @@ public class LocalWebService implements IWebPort {
         return s.trim();
     }
 
+    /**
+     * 处理search With Configured Endpoint相关逻辑。
+     */
     private SearchResult searchWithConfiguredEndpoint(String query, int maxResults) {
         try {
             URI uri = buildSearchUri(searchApiBase, query, maxResults);
@@ -197,6 +206,9 @@ public class LocalWebService implements IWebPort {
         }
     }
 
+    /**
+     * 处理search With Duck Duck Go相关逻辑。
+     */
     private SearchResult searchWithDuckDuckGo(String query, int maxResults) {
         try {
             URI uri = URI.create("https://html.duckduckgo.com/html/?q=" + URLEncoder.encode(query, StandardCharsets.UTF_8));
@@ -215,6 +227,9 @@ public class LocalWebService implements IWebPort {
         }
     }
 
+    /**
+     * 处理parse Search Page相关逻辑。
+     */
     private SearchResult parseSearchPage(String html, int maxResults) {
         List<IWebPort.WebSource> sources = new ArrayList<>();
         Matcher matcher = SEARCH_TITLE_PATTERN.matcher(html);
@@ -248,6 +263,9 @@ public class LocalWebService implements IWebPort {
         return new SearchResult(summary.toString().trim(), sources, false);
     }
 
+    /**
+     * 处理extract Snippet相关逻辑。
+     */
     private String extractSnippet(String html, int fromIndex) {
         int endIndex = Math.min(html.length(), fromIndex + 1200);
         String window = html.substring(fromIndex, endIndex);
@@ -258,6 +276,9 @@ public class LocalWebService implements IWebPort {
         return null;
     }
 
+    /**
+     * 构建Search Uri。
+     */
     private URI buildSearchUri(String base, String query, int maxResults) {
         String normalizedBase = base.trim();
         if (normalizedBase.contains("{query}")) {
@@ -268,6 +289,9 @@ public class LocalWebService implements IWebPort {
                 + "&max_results=" + Math.max(1, maxResults));
     }
 
+    /**
+     * 处理decode Search Url相关逻辑。
+     */
     private String decodeSearchUrl(String url) {
         try {
             if (url.startsWith("//")) {

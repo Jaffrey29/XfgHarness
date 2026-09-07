@@ -5,6 +5,7 @@ import cn.xiaofuge.deepseek.harness.domain.acp.adapter.port.IAcpAgentPort;
 import cn.xiaofuge.deepseek.harness.domain.acp.model.valobj.AcpPromptRequest;
 import cn.xiaofuge.deepseek.harness.domain.acp.model.valobj.AcpPromptResponse;
 import cn.xiaofuge.deepseek.harness.domain.acp.model.valobj.AcpSessionInfo;
+import org.springframework.stereotype.Service;
 
 /**
  * ACP server service: delegates session management and prompt driving to the
@@ -13,10 +14,14 @@ import cn.xiaofuge.deepseek.harness.domain.acp.model.valobj.AcpSessionInfo;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class AcpServerService implements IAcpServerService {
 
     private final IAcpAgentPort agentPort;
 
+    /**
+     * 处理Acp Server Service相关逻辑。
+     */
     public AcpServerService(IAcpAgentPort agentPort) {
         this.agentPort = agentPort;
     }

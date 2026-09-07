@@ -13,6 +13,9 @@ public record ToolTimeoutResult(long timeoutMs, String message) {
 
     public static final String CODE = "TOOL_TIMEOUT";
 
+    /**
+     * 处理Tool Timeout Result相关逻辑。
+     */
     public ToolTimeoutResult(long timeoutMs) {
         this(timeoutMs, "tool call timed out after " + timeoutMs + "ms");
     }

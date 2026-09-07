@@ -20,6 +20,9 @@ public class JobKillTool implements ToolDefinition {
     private final IJobRegistryService jobs;
     private final String sessionId;
 
+    /**
+     * 处理Job Kill Tool相关逻辑。
+     */
     public JobKillTool(IJobRegistryService jobs, String sessionId) {
         this.jobs = jobs;
         this.sessionId = sessionId;

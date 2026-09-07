@@ -25,6 +25,9 @@ public abstract class OutOfProcessSubagentProvider implements SubagentProvider {
     protected final Map<String, String> env;
     protected final long timeoutMs;
 
+    /**
+     * 处理Out Of Process Subagent Provider相关逻辑。
+     */
     protected OutOfProcessSubagentProvider(String command, List<String> args, String cwd,
                                            Map<String, String> env, long timeoutMs) {
         this.command = command;
@@ -44,6 +47,9 @@ public abstract class OutOfProcessSubagentProvider implements SubagentProvider {
         return new SubagentCapabilities(false, false, false);
     }
 
+    /**
+     * 运行Child。
+     */
     private SubagentResult runChild(SubagentStartRequest request) {
         List<String> cmd = new ArrayList<>();
         cmd.add(command);

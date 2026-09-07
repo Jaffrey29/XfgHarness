@@ -12,6 +12,7 @@ import cn.xiaofuge.deepseek.harness.domain.session.registry.model.aggregate.Harn
 import cn.xiaofuge.deepseek.harness.domain.shared.model.valobj.HarnessStatusEnumVO;
 
 import java.time.Instant;
+import org.springframework.stereotype.Service;
 
 /**
  * Executes stored session prompts against the configured model provider.
@@ -19,6 +20,7 @@ import java.time.Instant;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class HarnessExecutionService implements IHarnessExecutionService {
 
     private final IModelExecutionPort modelExecutionPort;
@@ -26,6 +28,9 @@ public class HarnessExecutionService implements IHarnessExecutionService {
     private final ISessionEventRepository sessionEventRepository;
     private final ISessionLogService sessionLogService;
 
+    /**
+     * 处理Harness Execution Service相关逻辑。
+     */
     public HarnessExecutionService(
             IModelExecutionPort modelExecutionPort,
             IHarnessSessionRepository harnessSessionRepository,
@@ -66,6 +71,9 @@ public class HarnessExecutionService implements IHarnessExecutionService {
         }
     }
 
+    /**
+     * 解析e Latest User Prompt。
+     */
     private String resolveLatestUserPrompt(String sessionId) {
         return sessionEventRepository.queryBySessionId(sessionId).stream()
                 .filter(event -> "user.message".equals(event.eventType()))
@@ -75,6 +83,9 @@ public class HarnessExecutionService implements IHarnessExecutionService {
                 .orElseThrow(() -> new IllegalStateException("no user prompt found for session: " + sessionId));
     }
 
+    /**
+     * 处理extract Failure Message相关逻辑。
+     */
     private String extractFailureMessage(RuntimeException exception) {
         Throwable current = exception;
         while (current.getCause() != null) {

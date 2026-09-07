@@ -36,6 +36,9 @@ public class FsGrepTool implements ToolDefinition {
 
     private final IFsPort fsService;
 
+    /**
+     * 处理Fs Grep Tool相关逻辑。
+     */
     public FsGrepTool(IFsPort fsService) {
         this.fsService = fsService;
     }

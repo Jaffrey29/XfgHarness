@@ -36,6 +36,9 @@ public class SkillTool implements ToolDefinition {
     private final ISkillService skillService;
     private final String cwd;
 
+    /**
+     * 处理Skill Tool相关逻辑。
+     */
     public SkillTool(ISkillService skillService, String cwd) {
         this.skillService = skillService;
         this.cwd = cwd;

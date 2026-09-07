@@ -24,8 +24,14 @@ import java.util.concurrent.CompletableFuture;
  */
 public final class TerminalTools {
 
+    /**
+     * 处理Terminal Tools相关逻辑。
+     */
     private TerminalTools() {}
 
+    /**
+     * Base 定义当前模块中的class契约与职责。
+     */
     private abstract static class Base implements ToolDefinition {
         final ITerminalPort port;
         Base(ITerminalPort port) { this.port = port; }
@@ -68,6 +74,9 @@ public final class TerminalTools {
 
     /** terminal_open：开启持久终端会话。 */
     public static final class Open extends Base {
+        /**
+         * 处理Open相关逻辑。
+         */
         public Open(ITerminalPort port) { super(port); }
         @Override public String name() { return "terminal_open"; }
         @Override public String description() {
@@ -95,6 +104,9 @@ public final class TerminalTools {
 
     /** terminal_send：向会话发送命令并等待输出。 */
     public static final class Send extends Base {
+        /**
+         * 发送数据或请求到目标端。
+         */
         public Send(ITerminalPort port) { super(port); }
         @Override public String name() { return "terminal_send"; }
         @Override public String description() {
@@ -132,6 +144,9 @@ public final class TerminalTools {
 
     /** terminal_read：读取会话尾部输出。 */
     public static final class Read extends Base {
+        /**
+         * 处理Read相关逻辑。
+         */
         public Read(ITerminalPort port) { super(port); }
         @Override public String name() { return "terminal_read"; }
         @Override public String description() {
@@ -162,6 +177,9 @@ public final class TerminalTools {
 
     /** terminal_close：关闭会话。 */
     public static final class Close extends Base {
+        /**
+         * 释放资源并关闭关联连接。
+         */
         public Close(ITerminalPort port) { super(port); }
         @Override public String name() { return "terminal_close"; }
         @Override public String description() {
@@ -188,6 +206,9 @@ public final class TerminalTools {
 
     /** terminal_list：列出会话。 */
     public static final class ListSessions extends Base {
+        /**
+         * 列出Sessions。
+         */
         public ListSessions(ITerminalPort port) { super(port); }
         @Override public String name() { return "terminal_list"; }
         @Override public String description() {

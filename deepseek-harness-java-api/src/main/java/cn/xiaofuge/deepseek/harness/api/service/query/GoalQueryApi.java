@@ -21,6 +21,9 @@ public class GoalQueryApi {
 
     private final IGoalQueryService goalQueryService;
 
+    /**
+     * 处理Goal Query Api相关逻辑。
+     */
     public GoalQueryApi(IGoalQueryService goalQueryService) {
         this.goalQueryService = goalQueryService;
     }
@@ -39,6 +42,9 @@ public class GoalQueryApi {
         return response.orElseGet(() -> GoalViewResponse.empty(sessionId));
     }
 
+    /**
+     * 校验输入与业务规则；不通过时返回失败结果或抛出异常。
+     */
     private static void validateSessionId(String sessionId) {
         if (sessionId == null || sessionId.isBlank()) {
             throw new IllegalArgumentException("sessionId must not be blank");

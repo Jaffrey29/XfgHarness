@@ -6,6 +6,7 @@ import cn.xiaofuge.deepseek.harness.domain.credentials.model.valobj.CredentialIn
 import cn.xiaofuge.deepseek.harness.domain.credentials.model.valobj.CredentialRef;
 import cn.xiaofuge.deepseek.harness.domain.credentials.model.valobj.ResolvedCredentialVO;
 import java.util.Optional;
+import org.springframework.stereotype.Service;
 
 /**
  * Delegates to a configured {@link ICredentialProviderPort}; the port owns all
@@ -14,10 +15,14 @@ import java.util.Optional;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class CredentialService implements ICredentialService {
 
     private final ICredentialProviderPort providerPort;
 
+    /**
+     * 处理Credential Service相关逻辑。
+     */
     public CredentialService(ICredentialProviderPort providerPort) {
         this.providerPort = providerPort;
     }
@@ -29,6 +34,9 @@ public class CredentialService implements ICredentialService {
 
     @Override
     public CredentialInfoVO describe(CredentialRef ref) {
+    /**
+     * 设置。
+     */
         return providerPort.describe(ref);
     }
 

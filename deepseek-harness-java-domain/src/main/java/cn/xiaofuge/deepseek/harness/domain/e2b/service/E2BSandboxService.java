@@ -7,6 +7,7 @@ import cn.xiaofuge.deepseek.harness.domain.e2b.model.valobj.E2BSandboxEnv;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.stereotype.Service;
 
 /**
  * E2B sandbox service: manages sandbox lifecycle and routes to per-sandbox ports.
@@ -14,16 +15,23 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class E2BSandboxService implements IE2BSandboxService {
 
     private final ConcurrentHashMap<String, E2BSandboxEnv> sandboxes = new ConcurrentHashMap<>();
     private final IE2BFsPort fsPort;
     private final IE2BSubprocessPort subprocessPort;
 
+    /**
+     * 处理E2 B Sandbox Service相关逻辑。
+     */
     public E2BSandboxService(IE2BFsPort fsPort, IE2BSubprocessPort subprocessPort) {
         this.fsPort = fsPort;
         this.subprocessPort = subprocessPort;
     }
+    /**
+     * 创建。
+     */
 
     @Override
     public String create(E2BSandboxEnv env) {

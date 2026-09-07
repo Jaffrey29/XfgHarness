@@ -23,6 +23,9 @@ public class InMemoryTypertRegistry implements ITypertRegistryContract {
     @Override public ITypertLookupRegistry lookups() { return lookups; }
     @Override public ITypertContextRegistry contexts() { return contexts; }
 
+    /**
+     * LocalRegistry 是基础设施适配器，负责外部资源与领域端口对接。
+     */
     private static class LocalRegistry implements ITypertLocalRegistry {
         private final Map<String, InvocationDescriptor> store = new ConcurrentHashMap<>();
         @Override public void register(InvocationDescriptor d) { store.put(d.endpoint(), d); }
@@ -30,6 +33,9 @@ public class InMemoryTypertRegistry implements ITypertRegistryContract {
         @Override public List<InvocationDescriptor> list() { return List.copyOf(store.values()); }
     }
 
+    /**
+     * RemoteRegistry 是基础设施适配器，负责外部资源与领域端口对接。
+     */
     private static class RemoteRegistry implements ITypertRemoteRegistry {
         private final Map<String, InvocationDescriptor> store = new ConcurrentHashMap<>();
         @Override public void register(InvocationDescriptor d) { store.put(d.endpoint(), d); }
@@ -37,6 +43,9 @@ public class InMemoryTypertRegistry implements ITypertRegistryContract {
         @Override public List<InvocationDescriptor> list() { return List.copyOf(store.values()); }
     }
 
+    /**
+     * LookupRegistry 是基础设施适配器，负责外部资源与领域端口对接。
+     */
     private static class LookupRegistry implements ITypertLookupRegistry {
         private final Map<String, Object> store = new ConcurrentHashMap<>();
         @Override public void register(String key, Object provider) { store.put(key, provider); }
@@ -44,6 +53,9 @@ public class InMemoryTypertRegistry implements ITypertRegistryContract {
         @Override public List<String> keys() { return List.copyOf(store.keySet()); }
     }
 
+    /**
+     * ContextRegistry 是基础设施适配器，负责外部资源与领域端口对接。
+     */
     private static class ContextRegistry implements ITypertContextRegistry {
         private final Map<String, Object> hosts = new ConcurrentHashMap<>();
         private final Map<String, Object> clients = new ConcurrentHashMap<>();

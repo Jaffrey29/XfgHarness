@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
 /**
  * 基础压缩引擎。
@@ -29,6 +31,7 @@ import org.slf4j.LoggerFactory;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class BasicCompactionEngine implements CompactionEngine {
 
     private static final Logger log = LoggerFactory.getLogger(BasicCompactionEngine.class);
@@ -37,10 +40,13 @@ public class BasicCompactionEngine implements CompactionEngine {
     private final long pressureThresholdTokens;
     private final int minMessagesToCompact;
 
+    /**
+     * 处理Basic Compaction Engine相关逻辑。
+     */
     public BasicCompactionEngine(
             LlmGenerationService llmGenerationService,
-            long pressureThresholdTokens,
-            int minMessagesToCompact
+            @Value("${harness.agent.compaction.pressure-threshold-tokens:100000}") long pressureThresholdTokens,
+            @Value("${harness.agent.compaction.min-messages-to-compact:6}") int minMessagesToCompact
     ) {
         this.llmGenerationService = llmGenerationService;
         this.pressureThresholdTokens = pressureThresholdTokens;

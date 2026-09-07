@@ -36,6 +36,9 @@ public class FsReadImageTool implements ToolDefinition {
 
     private final IFsPort fsService;
 
+    /**
+     * 处理Fs Read Image Tool相关逻辑。
+     */
     public FsReadImageTool(IFsPort fsService) {
         this.fsService = fsService;
     }
@@ -119,6 +122,9 @@ public class FsReadImageTool implements ToolDefinition {
     @Override
     public boolean isConcurrencySafe(Object args) { return true; }
 
+    /**
+     * 处理mime Type Of相关逻辑。
+     */
     private static String mimeTypeOf(String path) {
         String n = path.toLowerCase(Locale.ROOT);
         int dot = n.lastIndexOf('.');
@@ -170,8 +176,20 @@ public class FsReadImageTool implements ToolDefinition {
         return new int[]{0, 0};
     }
 
+    /**
+     * 处理be16相关逻辑。
+     */
     private static int be16(byte[] d, int o) { return ((d[o] & 0xFF) << 8) | (d[o + 1] & 0xFF); }
+    /**
+     * 处理be32相关逻辑。
+     */
     private static int be32(byte[] d, int o) { return (be16(d, o) << 16) | be16(d, o + 2); }
+    /**
+     * 处理le16相关逻辑。
+     */
     private static int le16(byte[] d, int o) { return (d[o] & 0xFF) | ((d[o + 1] & 0xFF) << 8); }
+    /**
+     * 处理le32相关逻辑。
+     */
     private static int le32(byte[] d, int o) { return le16(d, o) | (le16(d, o + 2) << 16); }
 }

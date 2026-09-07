@@ -21,8 +21,20 @@ public record DirectSeekCatalogModel(
         java.util.Objects.requireNonNull(id, "id");
     }
 
+    /**
+     * 处理name Opt相关逻辑。
+     */
     public Optional<String> nameOpt() { return Optional.ofNullable(name); }
+    /**
+     * 处理description Opt相关逻辑。
+     */
     public Optional<String> descriptionOpt() { return Optional.ofNullable(description); }
+    /**
+     * 处理context Window Opt相关逻辑。
+     */
     public Optional<Integer> contextWindowOpt() { return Optional.ofNullable(contextWindow); }
+    /**
+     * 处理max Tokens Opt相关逻辑。
+     */
     public Optional<Integer> maxTokensOpt() { return Optional.ofNullable(maxTokens); }
 }

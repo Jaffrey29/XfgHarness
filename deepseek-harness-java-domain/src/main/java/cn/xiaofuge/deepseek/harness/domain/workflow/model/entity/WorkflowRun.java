@@ -22,14 +22,26 @@ public class WorkflowRun {
     private final CompletableFuture<WorkflowResult> result;
     private volatile boolean cancelled = false;
 
+    /**
+     * 处理Workflow Run相关逻辑。
+     */
     public WorkflowRun(String id, WorkflowMeta meta, CompletableFuture<WorkflowResult> result) {
         this.id = id;
         this.meta = meta;
         this.result = result;
     }
 
+    /**
+     * 处理id相关逻辑。
+     */
     public String id() { return id; }
+    /**
+     * 处理meta相关逻辑。
+     */
     public WorkflowMeta meta() { return meta; }
+    /**
+     * 处理result相关逻辑。
+     */
     public CompletableFuture<WorkflowResult> result() { return result; }
 
     /**
@@ -60,5 +72,8 @@ public class WorkflowRun {
         return result.thenRun(() -> {});
     }
 
+    /**
+     * 判断Cancelled是否成立。
+     */
     public boolean isCancelled() { return cancelled; }
 }

@@ -5,6 +5,7 @@ import cn.xiaofuge.deepseek.harness.domain.lsp.adapter.port.ILspProviderPort;
 import cn.xiaofuge.deepseek.harness.domain.lsp.model.valobj.LspQueryResult;
 import cn.xiaofuge.deepseek.harness.domain.lsp.model.valobj.LspQueryType;
 import java.util.*;
+import org.springframework.stereotype.Service;
 
 /**
  * LSP service: routes queries to the appropriate provider by file extension.
@@ -12,10 +13,14 @@ import java.util.*;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class LspService implements ILspService {
 
     private final Map<String, ILspProviderPort> providersByExtension = new HashMap<>();
 
+    /**
+     * 处理register Provider相关逻辑。
+     */
     public void registerProvider(String fileExtension, ILspProviderPort provider) {
         providersByExtension.put(fileExtension, provider);
     }

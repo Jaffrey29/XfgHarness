@@ -7,6 +7,7 @@ import cn.xiaofuge.deepseek.harness.domain.hooks.adapter.port.IHookRunnerPort;
 import cn.xiaofuge.deepseek.harness.domain.hooks.model.valobj.*;
 
 import java.util.*;
+import org.springframework.stereotype.Service;
 
 /**
  * Hook service: matches configured hooks against a hook point and tool name,
@@ -17,15 +18,22 @@ import java.util.*;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class HookService implements IHookService {
 
     private final IHookRunnerPort runnerPort;
     private final Map<HookDialect, Map<HookPoint, List<MatcherGroup>>> config = new ConcurrentHashMap<>();
 
+    /**
+     * 处理Hook Service相关逻辑。
+     */
     public HookService(IHookRunnerPort runnerPort) {
         this.runnerPort = runnerPort;
     }
 
+    /**
+     * 处理register Matchers相关逻辑。
+     */
     public void registerMatchers(HookDialect dialect, HookPoint point, List<MatcherGroup> groups) {
         config.computeIfAbsent(dialect, d -> new EnumMap<>(HookPoint.class))
                 .put(point, List.copyOf(groups));
@@ -52,6 +60,9 @@ public class HookService implements IHookService {
         return HookOutputMerger.merge(outputs);
     }
 
+    /**
+     * 处理empty Outcome相关逻辑。
+     */
     private static MergedHookOutcome emptyOutcome() {
         return new MergedHookOutcome(Optional.empty(), "", "", false, Optional.empty());
     }

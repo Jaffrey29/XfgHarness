@@ -26,6 +26,9 @@ public record DeepSeekAdapterOptions(
         models = List.copyOf(models);
     }
 
+    /**
+     * 解析e Api Key。
+     */
     public String resolveApiKey() {
         return apiKey;
     }

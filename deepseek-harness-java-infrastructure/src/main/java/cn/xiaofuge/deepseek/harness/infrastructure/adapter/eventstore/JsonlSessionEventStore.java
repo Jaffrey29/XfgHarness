@@ -45,6 +45,9 @@ public class JsonlSessionEventStore implements ISessionEventStore {
     private final ObjectMapper objectMapper;
     private final ConcurrentMap<String, Object> fileLocks = new ConcurrentHashMap<>();
 
+    /**
+     * 处理Jsonl Session Event Store相关逻辑。
+     */
     public JsonlSessionEventStore(String baseDir) {
         this.baseDir = Paths.get(baseDir).toAbsolutePath().normalize();
         this.objectMapper = new ObjectMapper();
@@ -210,6 +213,9 @@ public class JsonlSessionEventStore implements ISessionEventStore {
 
     // ── Internal helpers ─────────────────────────────────────────
 
+    /**
+     * 处理read Events相关逻辑。
+     */
     private List<SessionEvent> readEvents(String sessionId, long fromSeq, long toSeq) {
         Path eventsFile = sessionDir(sessionId).resolve("events.jsonl");
         if (!Files.exists(eventsFile)) {
@@ -230,6 +236,9 @@ public class JsonlSessionEventStore implements ISessionEventStore {
         return events;
     }
 
+    /**
+     * 处理serialize Event相关逻辑。
+     */
     private String serializeEvent(String sessionId, SessionEvent event) {
         try {
             ObjectNode node = objectMapper.createObjectNode();
@@ -263,6 +272,9 @@ public class JsonlSessionEventStore implements ISessionEventStore {
         }
     }
 
+    /**
+     * 处理deserialize Event相关逻辑。
+     */
     private SessionEvent deserializeEvent(com.fasterxml.jackson.databind.JsonNode node) {
         long seq = node.get("seq").asLong();
         Instant time = Instant.parse(node.get("time").asText());
@@ -324,6 +336,9 @@ public class JsonlSessionEventStore implements ISessionEventStore {
         };
     }
 
+    /**
+     * 处理serialize Payload相关逻辑。
+     */
     private String serializePayload(SessionEvent event) {
         try {
             if (event instanceof SessionEvent.TurnStart) return "{}";
@@ -353,6 +368,9 @@ public class JsonlSessionEventStore implements ISessionEventStore {
         }
     }
 
+    /**
+     * 处理deserialize Payload相关逻辑。
+     */
     private Object deserializePayload(SessionEventType type, String json) {
         if (json == null || json.isBlank() || json.equals("{}")) return null;
         try {
@@ -376,6 +394,9 @@ public class JsonlSessionEventStore implements ISessionEventStore {
         }
     }
 
+    /**
+     * 处理deserialize User Message Payload相关逻辑。
+     */
     private UserMessagePayload deserializeUserMessagePayload(String json) {
         try {
             JsonNode node = objectMapper.readTree(json);
@@ -389,6 +410,9 @@ public class JsonlSessionEventStore implements ISessionEventStore {
         }
     }
 
+    /**
+     * 处理deserialize Assistant Message Payload相关逻辑。
+     */
     private AssistantMessagePayload deserializeAssistantMessagePayload(String json) {
         try {
             JsonNode node = objectMapper.readTree(json);
@@ -406,6 +430,9 @@ public class JsonlSessionEventStore implements ISessionEventStore {
         }
     }
 
+    /**
+     * 处理deserialize Tool Result Payload相关逻辑。
+     */
     private ToolResultPayload deserializeToolResultPayload(String json) {
         try {
             JsonNode node = objectMapper.readTree(json);
@@ -427,6 +454,9 @@ public class JsonlSessionEventStore implements ISessionEventStore {
         }
     }
 
+    /**
+     * 处理deserialize Inbox Spliced Payload相关逻辑。
+     */
     private InboxSplicedPayload deserializeInboxSplicedPayload(String json) {
         try {
             JsonNode node = objectMapper.readTree(json);
@@ -452,6 +482,9 @@ public class JsonlSessionEventStore implements ISessionEventStore {
         }
     }
 
+    /**
+     * 处理deserialize Message相关逻辑。
+     */
     private Message deserializeMessage(JsonNode node) {
         if (node == null || node.isMissingNode() || node.isNull()) {
             return null;
@@ -472,6 +505,9 @@ public class JsonlSessionEventStore implements ISessionEventStore {
         return new Message(id, role, content, source);
     }
 
+    /**
+     * 处理deserialize Message Source相关逻辑。
+     */
     private MessageSource deserializeMessageSource(JsonNode node, String role) {
         if (node == null || node.isMissingNode() || node.isNull()) {
             return switch (role == null ? "" : role) {
@@ -497,6 +533,9 @@ public class JsonlSessionEventStore implements ISessionEventStore {
         return new MessageSource.UserSource();
     }
 
+    /**
+     * 处理deserialize Content Block相关逻辑。
+     */
     private ContentBlock deserializeContentBlock(JsonNode node) {
         if (node == null || node.isMissingNode() || node.isNull()) {
             return null;
@@ -531,6 +570,9 @@ public class JsonlSessionEventStore implements ISessionEventStore {
         return null;
     }
 
+    /**
+     * 处理deserialize Turn End Reason相关逻辑。
+     */
     private TurnEndReason deserializeTurnEndReason(String json) {
         try {
             if (json == null || json.isBlank()) return new TurnEndReason.Error("missing", "UNKNOWN");
@@ -553,6 +595,9 @@ public class JsonlSessionEventStore implements ISessionEventStore {
         }
     }
 
+    /**
+     * 处理turn End Reason To Json相关逻辑。
+     */
     private java.util.Map<String, Object> turnEndReasonToJson(TurnEndReason reason) {
         if (reason instanceof TurnEndReason.Completed) return java.util.Map.of("type", "Completed");
         if (reason instanceof TurnEndReason.Aborted r) return java.util.Map.of("type", "Aborted", "reason", r.reason());
@@ -563,6 +608,9 @@ public class JsonlSessionEventStore implements ISessionEventStore {
         throw new IllegalStateException("Unknown TurnEndReason: " + reason.getClass());
     }
 
+    /**
+     * 处理session Dir相关逻辑。
+     */
     private Path sessionDir(String sessionId) {
         // Sanitize sessionId to prevent path traversal
         String safe = sessionId.replaceAll("[^a-zA-Z0-9._-]", "_");

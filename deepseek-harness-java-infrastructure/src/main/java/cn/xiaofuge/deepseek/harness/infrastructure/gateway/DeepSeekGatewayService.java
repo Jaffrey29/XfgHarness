@@ -36,6 +36,9 @@ public class DeepSeekGatewayService {
     private final HttpClient httpClient;
     private final String defaultModel;
 
+    /**
+     * 处理Deep Seek Gateway Service相关逻辑。
+     */
     public DeepSeekGatewayService(IModelSettingQueryService modelSettingService,
                                   ObjectMapper objectMapper,
                                   @Value("${harness.llm.deepseek.default-model:codex}") String defaultModel) {
@@ -116,6 +119,9 @@ public class DeepSeekGatewayService {
         }
     }
 
+    /**
+     * 解析e Chat Completions Uri。
+     */
     private URI resolveChatCompletionsUri(String baseUrl) {
         if (baseUrl == null || baseUrl.isBlank()) {
             return URI.create(DEFAULT_CHAT_COMPLETIONS_URL);
@@ -133,6 +139,9 @@ public class DeepSeekGatewayService {
         return URI.create(normalized + "/v1/chat/completions");
     }
 
+    /**
+     * 处理extract Assistant Content相关逻辑。
+     */
     private String extractAssistantContent(JsonNode root) {
         JsonNode contentNode = root.path("choices").path(0).path("message").path("content");
         String content = flattenContent(contentNode);
@@ -142,6 +151,9 @@ public class DeepSeekGatewayService {
         return content;
     }
 
+    /**
+     * 处理flatten Content相关逻辑。
+     */
     private String flattenContent(JsonNode contentNode) {
         if (contentNode == null || contentNode.isMissingNode() || contentNode.isNull()) {
             return null;
@@ -168,6 +180,9 @@ public class DeepSeekGatewayService {
         return contentNode.toString();
     }
 
+    /**
+     * 处理extract Error Message相关逻辑。
+     */
     private String extractErrorMessage(String responseBody) {
         try {
             JsonNode root = objectMapper.readTree(responseBody);

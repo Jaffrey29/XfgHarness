@@ -17,6 +17,9 @@ public class HarnessModelSettingCommandController {
 
     private final HarnessModelSettingCommandApi harnessModelSettingCommandApi;
 
+    /**
+     * 处理Harness Model Setting Command Controller相关逻辑。
+     */
     public HarnessModelSettingCommandController(HarnessModelSettingCommandApi harnessModelSettingCommandApi) {
         this.harnessModelSettingCommandApi = harnessModelSettingCommandApi;
     }
@@ -26,6 +29,9 @@ public class HarnessModelSettingCommandController {
         return harnessModelSettingCommandApi.save(request);
     }
 
+    /**
+     * 处理Delete Mapping相关逻辑。
+     */
     @DeleteMapping("/{profileCode}")
     public void delete(@PathVariable("profileCode") String profileCode) {
         harnessModelSettingCommandApi.delete(profileCode);

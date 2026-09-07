@@ -27,6 +27,9 @@ public class AgentApi implements IAgentApi {
 
     private final IAgentUseCase agentUseCase;
 
+    /**
+     * 处理Agent Api相关逻辑。
+     */
     public AgentApi(IAgentUseCase agentUseCase) {
         this.agentUseCase = agentUseCase;
     }
@@ -60,6 +63,9 @@ public class AgentApi implements IAgentApi {
 
     // ── DTO ↔ Command 映射 ───────────────────────────────────────
 
+    /**
+     * 处理to Command相关逻辑。
+     */
     private SendMessageCommand toCommand(AgentMessageRequest request) {
         return new SendMessageCommand(
                 request.agentId(),
@@ -72,6 +78,9 @@ public class AgentApi implements IAgentApi {
         );
     }
 
+    /**
+     * 处理to Response相关逻辑。
+     */
     private AgentMessageResponse toResponse(SendMessageResult result) {
         return new AgentMessageResponse(
                 result.agentId(),

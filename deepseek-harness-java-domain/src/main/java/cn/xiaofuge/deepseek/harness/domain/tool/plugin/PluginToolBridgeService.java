@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 /**
  * Domain service that bridges plugin sidecar tools into the {@link ToolRegistry}.
@@ -23,6 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class PluginToolBridgeService {
 
     private final ToolRegistry toolRegistry;
@@ -31,10 +34,14 @@ public class PluginToolBridgeService {
     private final Map<String, List<Runnable>> pluginDisposers = new ConcurrentHashMap<>();
     private final Map<String, List<String>> pluginToolNames = new ConcurrentHashMap<>();
 
+    /**
+     * 处理Plugin Tool Bridge Service相关逻辑。
+     */
     public PluginToolBridgeService(ToolRegistry toolRegistry, IPluginToolBridge pluginToolBridge) {
         this(toolRegistry, pluginToolBridge, null);
     }
 
+    @Autowired
     public PluginToolBridgeService(
             ToolRegistry toolRegistry,
             IPluginToolBridge pluginToolBridge,
@@ -120,6 +127,9 @@ public class PluginToolBridgeService {
         return List.copyOf(pluginToolNames.getOrDefault(pluginId, List.of()));
     }
 
+    /**
+     * 处理register Prompt Section相关逻辑。
+     */
     private void registerPromptSection(
             String pluginId,
             List<IPluginToolBridge.PluginToolDescriptor> descriptors
@@ -141,12 +151,18 @@ public class PluginToolBridgeService {
                 promptSectionName(pluginId), 150, text));
     }
 
+    /**
+     * 处理remove Prompt Section相关逻辑。
+     */
     private void removePromptSection(String pluginId) {
         if (promptAssembler instanceof ScopedSystemPromptAssembler scoped) {
             scoped.removeSection(promptSectionName(pluginId));
         }
     }
 
+    /**
+     * 处理prompt Section Name相关逻辑。
+     */
     private String promptSectionName(String pluginId) {
         return "plugin:" + pluginId + ":capabilities";
     }

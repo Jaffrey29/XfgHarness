@@ -34,6 +34,9 @@ public class FsReadTool implements ToolDefinition {
 
     private final IFsPort fsService;
 
+    /**
+     * 处理Fs Read Tool相关逻辑。
+     */
     public FsReadTool(IFsPort fsService) {
         this.fsService = fsService;
     }

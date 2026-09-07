@@ -42,6 +42,9 @@ public class LocalSandboxEnforcer {
         return true;
     }
 
+    /**
+     * 处理mode Of相关逻辑。
+     */
     public SandboxMode modeOf(SandboxExecutionPolicy policy) {
         return policy.mode();
     }

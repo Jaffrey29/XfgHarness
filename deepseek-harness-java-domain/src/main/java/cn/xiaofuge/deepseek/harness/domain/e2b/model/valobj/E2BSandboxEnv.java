@@ -12,6 +12,9 @@ package cn.xiaofuge.deepseek.harness.domain.e2b.model.valobj;
  * @website bugstack.cn
  */
 public record E2BSandboxEnv(String sandboxId, String apiKey, String template, long timeoutMs) {
+    /**
+     * 处理of相关逻辑。
+     */
     public static E2BSandboxEnv of(String template, long timeoutMs) {
         return new E2BSandboxEnv(null, null, template, timeoutMs);
     }

@@ -32,6 +32,9 @@ public class FsSearchTool implements ToolDefinition {
 
     private final IFsPort fsService;
 
+    /**
+     * 处理Fs Search Tool相关逻辑。
+     */
     public FsSearchTool(IFsPort fsService) {
         this.fsService = fsService;
     }

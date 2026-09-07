@@ -24,6 +24,9 @@ public final class ToolRunContext {
     private final List<Message> deferredContexts = new ArrayList<>();
     private final AtomicBoolean turnConcluded = new AtomicBoolean(false);
 
+    /**
+     * 处理Tool Run Context相关逻辑。
+     */
     public ToolRunContext(ToolExecution execution) {
         this.execution = execution;
     }

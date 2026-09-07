@@ -24,6 +24,9 @@ public class JobOutputTool implements ToolDefinition {
     private final IJobRegistryService jobs;
     private final String sessionId;
 
+    /**
+     * 处理Job Output Tool相关逻辑。
+     */
     public JobOutputTool(IJobRegistryService jobs, String sessionId) {
         this.jobs = jobs;
         this.sessionId = sessionId;

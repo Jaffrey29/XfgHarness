@@ -37,5 +37,8 @@ public interface IFsPort {
      */
     byte[] readBytes(String path);
 
+    /**
+     * DirEntry 定义当前模块中的record契约与职责。
+     */
     record DirEntry(String name, String type, long size) {}
 }

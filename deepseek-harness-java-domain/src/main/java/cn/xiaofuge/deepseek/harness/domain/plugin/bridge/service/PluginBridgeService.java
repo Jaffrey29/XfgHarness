@@ -6,6 +6,7 @@ import cn.xiaofuge.deepseek.harness.domain.plugin.bridge.adapter.repository.IHar
 import cn.xiaofuge.deepseek.harness.domain.plugin.bridge.model.valobj.PluginBridgePlanVO;
 import cn.xiaofuge.deepseek.harness.domain.plugin.registry.model.entity.HarnessPluginEntity;
 import java.time.Instant;
+import org.springframework.stereotype.Service;
 
 /**
  * Owns plugin bridge inspection and binding persistence.
@@ -13,11 +14,15 @@ import java.time.Instant;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class PluginBridgeService implements IPluginBridgeService {
 
     private final IPluginRuntimeBridgePort pluginRuntimeBridgePort;
     private final IHarnessPluginRuntimeBindingRepository harnessPluginRuntimeBindingRepository;
 
+    /**
+     * 处理Plugin Bridge Service相关逻辑。
+     */
     public PluginBridgeService(
             IPluginRuntimeBridgePort pluginRuntimeBridgePort,
             IHarnessPluginRuntimeBindingRepository harnessPluginRuntimeBindingRepository

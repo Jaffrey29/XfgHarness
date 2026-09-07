@@ -14,12 +14,18 @@ public interface IWebPort {
 
     FetchResult fetch(String url, int maxChars);
 
+    /**
+     * SearchResult 定义当前模块中的record契约与职责。
+     */
     record SearchResult(
             String content,
             List<WebSource> sources,
             boolean truncated
     ) {}
 
+    /**
+     * FetchResult 定义当前模块中的record契约与职责。
+     */
     record FetchResult(
             String url,
             String content,
@@ -27,6 +33,9 @@ public interface IWebPort {
             String mimeType
     ) {}
 
+    /**
+     * WebSource 定义当前模块中的record契约与职责。
+     */
     record WebSource(
             String url,
             String title,

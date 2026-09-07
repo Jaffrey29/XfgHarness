@@ -14,8 +14,14 @@ import java.util.Optional;
  */
 public final class HookOutputMerger {
 
+    /**
+     * 处理Hook Output Merger相关逻辑。
+     */
     private HookOutputMerger() {}
 
+    /**
+     * 处理merge相关逻辑。
+     */
     public static MergedHookOutcome merge(List<HookOutput> outputs) {
         Optional<HookOutput.HookDecision> decision = Optional.empty();
         StringBuilder additionalContext = new StringBuilder();

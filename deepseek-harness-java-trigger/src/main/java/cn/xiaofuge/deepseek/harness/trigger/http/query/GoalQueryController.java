@@ -24,6 +24,9 @@ public class GoalQueryController {
 
     private final GoalQueryApi goalQueryApi;
 
+    /**
+     * 处理Goal Query Controller相关逻辑。
+     */
     public GoalQueryController(GoalQueryApi goalQueryApi) {
         this.goalQueryApi = goalQueryApi;
     }

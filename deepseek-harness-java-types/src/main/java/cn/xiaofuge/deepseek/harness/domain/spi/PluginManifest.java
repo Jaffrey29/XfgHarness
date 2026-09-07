@@ -30,6 +30,9 @@ public final class PluginManifest {
     private final String description;
     private final String entrypoint;
 
+    /**
+     * 处理Plugin Manifest相关逻辑。
+     */
     public PluginManifest(String id, String name, String version, String author, String description, String entrypoint) {
         this.id = Objects.requireNonNull(id, "id");
         this.name = Objects.requireNonNull(name, "name");
@@ -39,10 +42,28 @@ public final class PluginManifest {
         this.entrypoint = entrypoint;
     }
 
+    /**
+     * 处理id相关逻辑。
+     */
     public String id() { return id; }
+    /**
+     * 处理name相关逻辑。
+     */
     public String name() { return name; }
+    /**
+     * 处理version相关逻辑。
+     */
     public String version() { return version; }
+    /**
+     * 处理author相关逻辑。
+     */
     public String author() { return author; }
+    /**
+     * 处理description相关逻辑。
+     */
     public String description() { return description; }
+    /**
+     * 处理entrypoint相关逻辑。
+     */
     public String entrypoint() { return entrypoint; }
 }

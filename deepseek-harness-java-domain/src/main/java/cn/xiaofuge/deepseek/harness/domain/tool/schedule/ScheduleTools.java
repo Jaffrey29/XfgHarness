@@ -23,8 +23,14 @@ import java.util.concurrent.CompletableFuture;
  */
 public final class ScheduleTools {
 
+    /**
+     * 处理Schedule Tools相关逻辑。
+     */
     private ScheduleTools() {}
 
+    /**
+     * Base 定义当前模块中的class契约与职责。
+     */
     private abstract static class Base implements ToolDefinition {
         final IScheduleService schedules;
         final String sessionId;
@@ -65,8 +71,14 @@ public final class ScheduleTools {
         }
     }
 
+        /**
+         * 创建。
+         */
     /** schedule_create：创建一次性或周期性提醒。 */
     public static final class Create extends Base {
+        /**
+         * 创建。
+         */
         public Create(IScheduleService schedules, String sessionId) { super(schedules, sessionId); }
         @Override public String name() { return "schedule_create"; }
         @Override public String description() {
@@ -108,6 +120,9 @@ public final class ScheduleTools {
 
     /** schedule_list：列出会话内提醒。 */
     public static final class ListAll extends Base {
+        /**
+         * 列出All。
+         */
         public ListAll(IScheduleService schedules, String sessionId) { super(schedules, sessionId); }
         @Override public String name() { return "schedule_list"; }
         @Override public String description() {
@@ -130,6 +145,9 @@ public final class ScheduleTools {
 
     /** schedule_delete：删除提醒。 */
     public static final class Delete extends Base {
+        /**
+         * 处理Delete相关逻辑。
+         */
         public Delete(IScheduleService schedules, String sessionId) { super(schedules, sessionId); }
         @Override public String name() { return "schedule_delete"; }
         @Override public String description() {

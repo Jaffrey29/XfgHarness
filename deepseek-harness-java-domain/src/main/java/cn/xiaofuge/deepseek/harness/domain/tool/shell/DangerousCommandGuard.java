@@ -41,10 +41,16 @@ public final class DangerousCommandGuard {
 
     private final List<Pattern> extraPatterns;
 
+    /**
+     * 处理Dangerous Command Guard相关逻辑。
+     */
     public DangerousCommandGuard() {
         this(List.of());
     }
 
+    /**
+     * 处理Dangerous Command Guard相关逻辑。
+     */
     public DangerousCommandGuard(List<String> extraRegexes) {
         this.extraPatterns = extraRegexes == null ? List.of()
                 : extraRegexes.stream().map(Pattern::compile).toList();

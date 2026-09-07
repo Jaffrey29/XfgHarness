@@ -30,5 +30,8 @@ public record HookOutput(
         Optional<String> additionalContext,
         Optional<String> systemMessage
 ) {
+    /**
+     * HookDecision 定义当前模块中的enum契约与职责。
+     */
     public enum HookDecision { APPROVE, ALLOW, BLOCK, DENY, ASK }
 }

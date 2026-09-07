@@ -10,5 +10,8 @@ package cn.xiaofuge.deepseek.harness.domain.skill.model.valobj;
  * @website bugstack.cn
  */
 public record SkillInvocationPolicy(boolean modelInvocable, boolean userInvocable) {
+    /**
+     * 处理both相关逻辑。
+     */
     public static SkillInvocationPolicy both() { return new SkillInvocationPolicy(true, true); }
 }

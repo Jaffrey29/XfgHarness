@@ -38,10 +38,16 @@ public class RuntimeApprovalBroker implements IRuntimeApprovalBroker {
     private final ConcurrentMap<String, PendingApproval> pending = new ConcurrentHashMap<>();
     private final long timeoutMs;
 
+    /**
+     * 运行time Approval Broker。
+     */
     public RuntimeApprovalBroker() {
         this(DEFAULT_TIMEOUT_MS);
     }
 
+    /**
+     * 运行time Approval Broker。
+     */
     public RuntimeApprovalBroker(long timeoutMs) {
         this.timeoutMs = timeoutMs;
     }
@@ -102,6 +108,9 @@ public class RuntimeApprovalBroker implements IRuntimeApprovalBroker {
         return pending.size();
     }
 
+    /**
+     * PendingApproval 是基础设施适配器，负责外部资源与领域端口对接。
+     */
     private record PendingApproval(String id, ApprovalRequest request,
                                    CompletableFuture<ApprovalVerdict> future, Instant createdAt) {}
 

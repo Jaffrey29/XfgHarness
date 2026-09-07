@@ -22,10 +22,16 @@ public enum InboxTarget {
         this.wireName = wireName;
     }
 
+    /**
+     * 处理wire Name相关逻辑。
+     */
     public String wireName() {
         return wireName;
     }
 
+    /**
+     * 处理from Wire Name相关逻辑。
+     */
     public static InboxTarget fromWireName(String name) {
         for (InboxTarget t : values()) {
             if (t.wireName.equals(name)) {

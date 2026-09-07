@@ -20,6 +20,9 @@ public record JobSnapshot(
         Instant startedAt,
         Instant finishedAt
 ) {
+    /**
+     * 处理from相关逻辑。
+     */
     public static JobSnapshot from(JobRecord record) {
         JobOutcome outcome = record.outcome();
         return new JobSnapshot(

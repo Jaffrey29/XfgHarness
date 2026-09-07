@@ -26,6 +26,9 @@ public record TerminalSendResponse(
         Instant completedAt
 ) {
 
+    /**
+     * 处理from相关逻辑。
+     */
     public static TerminalSendResponse from(TerminalSendResultVO result) {
         return new TerminalSendResponse(
                 result.sessionId(),

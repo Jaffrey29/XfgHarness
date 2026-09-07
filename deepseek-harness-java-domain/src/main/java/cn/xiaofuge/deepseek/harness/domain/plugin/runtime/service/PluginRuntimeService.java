@@ -6,6 +6,7 @@ import cn.xiaofuge.deepseek.harness.domain.plugin.registry.model.entity.HarnessP
 import cn.xiaofuge.deepseek.harness.domain.plugin.runtime.adapter.port.IPluginProcessPort;
 import cn.xiaofuge.deepseek.harness.domain.plugin.runtime.model.valobj.PluginProcessStatusVO;
 import cn.xiaofuge.deepseek.harness.domain.plugin.runtime.model.valobj.PluginRunResultVO;
+import org.springframework.stereotype.Service;
 
 /**
  * Owns plugin runtime execution.
@@ -13,10 +14,14 @@ import cn.xiaofuge.deepseek.harness.domain.plugin.runtime.model.valobj.PluginRun
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class PluginRuntimeService implements IPluginRuntimeService {
 
     private final IPluginProcessPort pluginProcessPort;
 
+    /**
+     * 处理Plugin Runtime Service相关逻辑。
+     */
     public PluginRuntimeService(IPluginProcessPort pluginProcessPort) {
         this.pluginProcessPort = pluginProcessPort;
     }

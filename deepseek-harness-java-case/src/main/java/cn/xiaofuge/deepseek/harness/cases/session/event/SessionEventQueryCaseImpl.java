@@ -21,6 +21,9 @@ public class SessionEventQueryCaseImpl implements ISessionEventQueryCase {
 
     private final ISessionEventLogService sessionEventLogService;
 
+    /**
+     * 处理Session Event Query Case Impl相关逻辑。
+     */
     public SessionEventQueryCaseImpl(ISessionEventLogService sessionEventLogService) {
         this.sessionEventLogService = sessionEventLogService;
     }
@@ -52,6 +55,9 @@ public class SessionEventQueryCaseImpl implements ISessionEventQueryCase {
         return result;
     }
 
+    /**
+     * 处理to Map相关逻辑。
+     */
     private java.util.Map<String, Object> toMap(SessionEvent e) {
         java.util.Map<String, Object> m = new LinkedHashMap<>();
         m.put("seq", e.seq());

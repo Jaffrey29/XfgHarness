@@ -16,6 +16,9 @@ public class OpenAiCompatibleAdapter extends DeepSeekAdapter {
 
     private final String providerId;
 
+    /**
+     * 处理Open Ai Compatible Adapter相关逻辑。
+     */
     public OpenAiCompatibleAdapter(String providerId, DeepSeekAdapterOptions options, ObjectMapper objectMapper) {
         super(options, objectMapper);
         this.providerId = providerId;
@@ -31,6 +34,9 @@ public class OpenAiCompatibleAdapter extends DeepSeekAdapter {
         return new LlmProviderInfo(provider, capitalize(provider));
     }
 
+    /**
+     * 处理capitalize相关逻辑。
+     */
     private static String capitalize(String s) {
         if (s == null || s.isEmpty()) return s;
         return Character.toUpperCase(s.charAt(0)) + s.substring(1);

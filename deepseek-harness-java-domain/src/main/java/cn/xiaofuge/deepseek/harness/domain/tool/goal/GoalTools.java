@@ -24,8 +24,14 @@ import java.util.concurrent.CompletableFuture;
  */
 public final class GoalTools {
 
+    /**
+     * 处理Goal Tools相关逻辑。
+     */
     private GoalTools() {}
 
+    /**
+     * Base 定义当前模块中的class契约与职责。
+     */
     private abstract static class Base implements ToolDefinition {
         @SuppressWarnings("unchecked")
         static Map<String, Object> argMap(Object args) {
@@ -54,8 +60,14 @@ public final class GoalTools {
     /** goal_get：读取当前目标。 */
     public static final class Get extends Base {
         private final IGoalQueryService query;
+        /**
+         * 获取。
+         */
         private final String sessionId;
 
+        /**
+         * 获取。
+         */
         public Get(IGoalQueryService query, String sessionId) {
             this.query = query;
             this.sessionId = sessionId;
@@ -81,9 +93,15 @@ public final class GoalTools {
 
     /** goal_create：创建目标。 */
     public static final class Create extends Base {
+        /**
+         * 创建。
+         */
         private final IGoalCommandService command;
         private final String sessionId;
 
+        /**
+         * 创建。
+         */
         public Create(IGoalCommandService command, String sessionId) {
             this.command = command;
             this.sessionId = sessionId;
@@ -122,6 +140,9 @@ public final class GoalTools {
         private final IGoalCommandService command;
         private final String sessionId;
 
+        /**
+         * 处理Update相关逻辑。
+         */
         public Update(IGoalCommandService command, String sessionId) {
             this.command = command;
             this.sessionId = sessionId;

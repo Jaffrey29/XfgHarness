@@ -24,6 +24,9 @@ public class GoalCommandApi {
 
     private final IGoalCommandService goalCommandService;
 
+    /**
+     * 处理Goal Command Api相关逻辑。
+     */
     public GoalCommandApi(IGoalCommandService goalCommandService) {
         this.goalCommandService = goalCommandService;
     }
@@ -62,6 +65,9 @@ public class GoalCommandApi {
         return GoalViewResponse.from(goalCommandService.apply(sessionId, command));
     }
 
+    /**
+     * 校验输入与业务规则；不通过时返回失败结果或抛出异常。
+     */
     private static void validateSessionId(String sessionId) {
         if (sessionId == null || sessionId.isBlank()) {
             throw new IllegalArgumentException("sessionId must not be blank");

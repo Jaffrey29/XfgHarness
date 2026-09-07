@@ -1,6 +1,7 @@
 package cn.xiaofuge.deepseek.harness.domain.task.submission.service.filter;
 
 import cn.xiaofuge.deepseek.harness.domain.task.submission.model.valobj.TaskSubmissionVO;
+import org.springframework.stereotype.Service;
 
 /**
  * Rejects requests that do not pick an execution profile.
@@ -8,6 +9,7 @@ import cn.xiaofuge.deepseek.harness.domain.task.submission.model.valobj.TaskSubm
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class ProfileCodeFilter implements TaskSubmissionFilter {
 
     @Override

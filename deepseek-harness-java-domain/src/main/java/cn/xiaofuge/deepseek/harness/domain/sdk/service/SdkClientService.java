@@ -6,6 +6,8 @@ import cn.xiaofuge.deepseek.harness.domain.sdk.model.valobj.*;
 
 import java.util.Map;
 import java.util.function.Consumer;
+import org.springframework.context.annotation.Conditional;
+import org.springframework.stereotype.Service;
 
 /**
  * SDK client service: sends requests over the transport port and routes
@@ -14,12 +16,17 @@ import java.util.function.Consumer;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
+@Conditional(SdkStandaloneCondition.class)
 public class SdkClientService implements ISdkClientService {
 
     private final ISdkTransportPort transport;
     private volatile Consumer<SessionStatus> statusHandler;
     private volatile Consumer<Object> eventHandler;
 
+    /**
+     * 处理Sdk Client Service相关逻辑。
+     */
     public SdkClientService(ISdkTransportPort transport) {
         this.transport = transport;
         this.transport.onNotification(frame -> {

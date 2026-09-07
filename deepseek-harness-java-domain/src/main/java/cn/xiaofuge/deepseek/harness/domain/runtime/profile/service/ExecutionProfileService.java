@@ -6,6 +6,7 @@ import cn.xiaofuge.deepseek.harness.domain.runtime.profile.service.router.Execut
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.stereotype.Service;
 
 /**
  * 执行画像解析服务。
@@ -18,10 +19,14 @@ import java.util.Map;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class ExecutionProfileService implements IExecutionProfileService {
 
     private final Map<String, ExecutionProfileStrategy> profileStrategies;
 
+    /**
+     * 处理Execution Profile Service相关逻辑。
+     */
     public ExecutionProfileService(List<ExecutionProfileStrategy> profileStrategies) {
         this.profileStrategies = indexStrategies(profileStrategies);
     }
@@ -43,6 +48,9 @@ public class ExecutionProfileService implements IExecutionProfileService {
         return new ExecutionProfileVO(strategy.profileCode(), strategy.executionMode());
     }
 
+    /**
+     * 处理index Strategies相关逻辑。
+     */
     private Map<String, ExecutionProfileStrategy> indexStrategies(List<ExecutionProfileStrategy> strategies) {
         Map<String, ExecutionProfileStrategy> indexedStrategies = new LinkedHashMap<>();
         for (ExecutionProfileStrategy strategy : strategies) {

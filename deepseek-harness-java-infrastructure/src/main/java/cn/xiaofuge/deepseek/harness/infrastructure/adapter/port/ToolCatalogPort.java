@@ -22,6 +22,9 @@ public class ToolCatalogPort implements IToolCatalogPort {
 
     private final ToolCatalogGatewayService toolCatalogGatewayService;
 
+    /**
+     * 处理Tool Catalog Port相关逻辑。
+     */
     public ToolCatalogPort(ToolCatalogGatewayService toolCatalogGatewayService) {
         this.toolCatalogGatewayService = toolCatalogGatewayService;
     }

@@ -32,6 +32,9 @@ public class LocalCredentialProviderPort implements ICredentialProviderPort {
     private final ConcurrentHashMap<String, String> managedStore = new ConcurrentHashMap<>();
     private final Map<String, String> envCache = new ConcurrentHashMap<>();
 
+    /**
+     * 处理Local Credential Provider Port相关逻辑。
+     */
     public LocalCredentialProviderPort(Path dshHome) {
         this.credentialsPath = dshHome.resolve(CREDENTIALS_FILE);
         this.envPath = dshHome.resolve(ENV_FILE);
@@ -45,6 +48,9 @@ public class LocalCredentialProviderPort implements ICredentialProviderPort {
     }
 
     
+    /**
+     * 处理init相关逻辑。
+     */
     public void init() {
         loadManagedStore();
         loadEnvFallback();
@@ -76,6 +82,9 @@ public class LocalCredentialProviderPort implements ICredentialProviderPort {
         Optional<ResolvedCredentialVO> resolved = resolve(ref);
         boolean configured = resolved.isPresent();
         String source = configured ? resolved.get().source() : null;
+    /**
+     * 设置。
+     */
         boolean writable = !isShadowedByEnv(ref) && managedStore.containsKey(ref.value()) || !Files.exists(credentialsPath);
         return new CredentialInfoVO(configured, Optional.ofNullable(source), writable);
     }
@@ -97,6 +106,9 @@ public class LocalCredentialProviderPort implements ICredentialProviderPort {
         writeCredentialsFile();
     }
 
+    /**
+     * 处理assert Unshadowed相关逻辑。
+     */
     private void assertUnshadowed(CredentialRef ref) {
         if (System.getenv(ref.value()) != null) {
             throw new IllegalStateException(
@@ -104,10 +116,16 @@ public class LocalCredentialProviderPort implements ICredentialProviderPort {
         }
     }
 
+    /**
+     * 判断Shadowed By Env是否成立。
+     */
     private boolean isShadowedByEnv(CredentialRef ref) {
         return System.getenv(ref.value()) != null;
     }
 
+    /**
+     * 加载Managed Store。
+     */
     private void loadManagedStore() {
         if (!Files.exists(credentialsPath)) return;
         try {
@@ -118,6 +136,9 @@ public class LocalCredentialProviderPort implements ICredentialProviderPort {
         }
     }
 
+    /**
+     * 加载Env Fallback。
+     */
     private void loadEnvFallback() {
         if (!Files.exists(envPath)) return;
         try {
@@ -128,6 +149,9 @@ public class LocalCredentialProviderPort implements ICredentialProviderPort {
         }
     }
 
+    /**
+     * 处理write Credentials File相关逻辑。
+     */
     private void writeCredentialsFile() {
         try {
             CredentialsYamlStore.write(credentialsPath, managedStore);

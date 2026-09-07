@@ -21,16 +21,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * Manages the lifecycle of in-process Java-native plugins.
- * <p>
- * Unlike the Node sidecar model, Java plugins run inside the harness JVM
- * itself — no subprocess is spawned. This manager:
- * <ul>
- *   <li>Loads plugin JARs with isolated ClassLoaders</li>
- *   <li>Registers each plugin's tools into the {@link ToolRegistry}</li>
- *   <li>Tracks running state per plugin</li>
- *   <li>Unregisters tools and unloads ClassLoaders on stop</li>
- * </ul>
+ * 进程内 Java 原生插件生命周期管理器。
+ * <p>与 Node sidecar 不同，Java 插件不会拉起子进程，而是在宿主 JVM 中通过隔离
+ * URLClassLoader 加载。核心流程为：加载 JAR -> onStart -> 工具注册 ->
+ * 提示词登记 -> 停止时注销工具并关闭 ClassLoader。
+ * <p>数据示例：插件 id="time"，工具 name="now"，注册后的 Agent 工具名为
+ * `plugin__time__now`。
  *
  * @author 小傅哥
  * @website bugstack.cn
@@ -47,6 +43,9 @@ public class JavaPluginRuntimeManager {
 
     private final Map<String, RunningJavaPlugin> runningPlugins = new ConcurrentHashMap<>();
 
+    /**
+     * 注入类加载器、工具注册表、提示词装配器和插件安装根目录。
+     */
     public JavaPluginRuntimeManager(
             JavaPluginLoader loader,
             ToolRegistry toolRegistry,
@@ -60,11 +59,15 @@ public class JavaPluginRuntimeManager {
     }
 
     /**
-     * Start one Java plugin: load the JAR, register tools.
+     * 启动一个 Java 原生插件。
+     * <p>执行流程：重复启动直接返回 -> loader.load 创建隔离 ClassLoader 并执行 onStart ->
+     * 逐个包装为 PluginToolDefinition -> 注册 ToolRegistry -> 保存运行状态 -> 写入提示词能力段。
+     * <p>数据示例：jarPath=/plugins/time/time.jar，包含 now 工具，注册后工具名为
+     * plugin__time__now。
      *
-     * @param pluginId       plugin identifier
-     * @param jarPath        absolute path to the installed plugin JAR
-     * @return running result
+     * @param pluginId 插件登记 ID
+     * @param jarPath  已安装插件 JAR 的路径
+     * @return 启动结果
      */
     public JavaPluginStartResult start(String pluginId, Path jarPath) {
         RunningJavaPlugin existing = runningPlugins.get(pluginId);
@@ -102,7 +105,9 @@ public class JavaPluginRuntimeManager {
     }
 
     /**
-     * Stop one running Java plugin: unregister tools, close ClassLoader.
+     * 停止一个运行中的 Java 插件。
+     * <p>执行顺序：从运行表移除 -> 逆登记工具 -> 移除提示词能力段 -> 执行插件 onStop -> 关闭 ClassLoader。
+     * 单个工具注销失败不阻塞其他清理动作，但会记录警告。
      */
     public JavaPluginStatusResult stop(String pluginId) {
         RunningJavaPlugin plugin = runningPlugins.remove(pluginId);
@@ -122,7 +127,7 @@ public class JavaPluginRuntimeManager {
     }
 
     /**
-     * Query running status.
+     * 查询 Java 插件的进程内运行状态。
      */
     public JavaPluginStatusResult status(String pluginId) {
         RunningJavaPlugin plugin = runningPlugins.get(pluginId);
@@ -133,7 +138,9 @@ public class JavaPluginRuntimeManager {
     }
 
     /**
-     * Resolve the JAR path for one installed plugin.
+     * 解析已安装插件对应的 JAR 文件。
+     * <p>优先使用 sourcePath 本身；其次尝试 entrypoint 指向的 JAR；
+     * 最后尝试 `<目录名>.jar` 约定路径，或在目录中找到 plugin.yaml 时返回该目录。
      */
     public Optional<Path> resolveJarPath(String sourcePath, String entrypoint) {
         Path source = Path.of(sourcePath).toAbsolutePath().normalize();
@@ -151,11 +158,18 @@ public class JavaPluginRuntimeManager {
         return Optional.empty();
     }
 
+    /**
+     * 把插件工具定义转换为工具桥接描述符。
+     */
     private IPluginToolBridge.PluginToolDescriptor toDescriptor(ToolDefinition tool) {
         return new IPluginToolBridge.PluginToolDescriptor(
                 tool.name(), tool.description(), tool.parameters());
     }
 
+    /**
+     * 在系统提示词中注册插件能力说明。
+     * <p>提示词列出插件描述和完整工具名，引导模型按需调用对应插件工具。
+     */
     private void registerPromptSection(
             String pluginId,
             List<String> toolNames,
@@ -173,16 +187,25 @@ public class JavaPluginRuntimeManager {
                 promptSectionName(pluginId), 150, text));
     }
 
+    /**
+     * 从系统提示词中移除插件能力说明。
+     */
     private void removePromptSection(String pluginId) {
         if (promptAssembler instanceof ScopedSystemPromptAssembler scoped) {
             scoped.removeSection(promptSectionName(pluginId));
         }
     }
 
+    /**
+     * 生成插件提示词段的稳定名称。
+     */
     private String promptSectionName(String pluginId) {
         return "plugin:" + pluginId + ":capabilities";
     }
 
+    /**
+     * 一个正在运行的 Java 插件的加载结果、工具注销器和状态快照。
+     */
     private record RunningJavaPlugin(
             JavaPluginLoader.LoadedPlugin loaded,
             PluginManifest manifest,
@@ -191,11 +214,17 @@ public class JavaPluginRuntimeManager {
             List<String> toolNames
     ) {}
 
+    /**
+     * Java 插件启动结果。
+     */
     public record JavaPluginStartResult(
             String pluginId, boolean running, String message,
             String displayName, String version, Instant startedAt
     ) {}
 
+    /**
+     * Java 插件运行状态结果。
+     */
     public record JavaPluginStatusResult(
             String pluginId, boolean running, String message
     ) {}

@@ -36,6 +36,9 @@ public class JobRunTool implements ToolDefinition {
     private final String sessionId;
     private final String defaultCwd;
 
+    /**
+     * 处理Job Run Tool相关逻辑。
+     */
     public JobRunTool(IJobRegistryService jobs, IShellExecutor shellExecutor, String sessionId, String defaultCwd) {
         this.jobs = jobs;
         this.shellExecutor = shellExecutor;

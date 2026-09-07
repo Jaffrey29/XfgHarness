@@ -35,6 +35,9 @@ public class PersistingAgentEventListener implements AgentEventListener {
     private final ISessionEventStore store;
     private final ObjectMapper objectMapper;
 
+    /**
+     * 处理Persisting Agent Event Listener相关逻辑。
+     */
     public PersistingAgentEventListener(String sessionId, ISessionEventStore store, ObjectMapper objectMapper) {
         this.sessionId = sessionId;
         this.store = store;
@@ -78,6 +81,9 @@ public class PersistingAgentEventListener implements AgentEventListener {
         return defaultAction;
     }
 
+    /**
+     * 处理serialize Payload相关逻辑。
+     */
     private String serializePayload(Object payload) {
         try {
             return objectMapper.writeValueAsString(payload);

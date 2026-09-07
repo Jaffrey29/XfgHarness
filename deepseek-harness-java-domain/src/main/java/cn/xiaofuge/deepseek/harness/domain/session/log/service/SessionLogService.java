@@ -4,6 +4,7 @@ import cn.xiaofuge.deepseek.harness.domain.session.ISessionLogService;
 import cn.xiaofuge.deepseek.harness.domain.session.log.adapter.repository.ISessionEventRepository;
 import cn.xiaofuge.deepseek.harness.domain.session.log.model.entity.SessionEventEntity;
 import java.time.Instant;
+import org.springframework.stereotype.Service;
 
 /**
  * Owns append-only session event recording.
@@ -11,10 +12,14 @@ import java.time.Instant;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class SessionLogService implements ISessionLogService {
 
     private final ISessionEventRepository sessionEventRepository;
 
+    /**
+     * 处理Session Log Service相关逻辑。
+     */
     public SessionLogService(ISessionEventRepository sessionEventRepository) {
         this.sessionEventRepository = sessionEventRepository;
     }

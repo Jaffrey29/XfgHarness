@@ -23,14 +23,8 @@ public interface LlmAdapter {
      */
     Flow.Publisher<StreamChunk> stream(GenerateOptions options);
 
-    /**
-     * 列出当前适配器可识别的模型。
-     */
     List<LlmModelInfo> listModels(String provider);
 
-    /**
-     * 解析精确的 provider/model 路由元数据。
-     */
     LlmResolvedModelInfo resolveModel(String provider, String model);
 
     /**

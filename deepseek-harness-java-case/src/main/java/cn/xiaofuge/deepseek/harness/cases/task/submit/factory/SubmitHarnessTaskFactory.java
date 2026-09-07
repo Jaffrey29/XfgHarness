@@ -21,10 +21,16 @@ public class SubmitHarnessTaskFactory {
     @Qualifier("submitTaskRootNode")
     private SubmissionRootNode rootNode;
 
+    /**
+     * 处理strategy Handler相关逻辑。
+     */
     public StrategyHandler<SubmitTaskCommand, SubmitTaskDynamicContext, SubmitTaskResult> strategyHandler() {
         return rootNode;
     }
 
+    /**
+     * 处理new Context相关逻辑。
+     */
     public SubmitTaskDynamicContext newContext() {
         return new SubmitTaskDynamicContext();
     }

@@ -33,9 +33,15 @@ public class TypertProtocolLoader {
 
     private final ObjectMapper mapper;
 
+    /**
+     * 处理Typert Protocol Loader相关逻辑。
+     */
     public TypertProtocolLoader(ObjectMapper mapper) {
         this.mapper = mapper;
     }
+    /**
+     * 加载。
+     */
 
     public TypertContribution load(Path protocolFile) throws IOException {
         JsonNode root = mapper.readTree(Files.readString(protocolFile));
@@ -64,6 +70,9 @@ public class TypertProtocolLoader {
         return new TypertContribution(packageName, face, schemas, invocations);
     }
 
+    /**
+     * 处理Suppress Warnings相关逻辑。
+     */
     @SuppressWarnings("unchecked")
     private Map<String, Object> toMap(JsonNode node) {
         if (node == null || node.isMissingNode() || node.isNull()) return null;

@@ -39,6 +39,9 @@ public class HarnessPluginCommandApi {
     private final IRunHarnessPluginCase runHarnessPluginCase;
     private final IManageHarnessPluginCase manageHarnessPluginCase;
 
+    /**
+     * 处理Harness Plugin Command Api相关逻辑。
+     */
     public HarnessPluginCommandApi(
             IInstallHarnessPluginCase installHarnessPluginCase,
             IActivateHarnessPluginCase activateHarnessPluginCase,
@@ -51,6 +54,9 @@ public class HarnessPluginCommandApi {
         this.manageHarnessPluginCase = manageHarnessPluginCase;
     }
 
+    /**
+     * 安装组件，写入登记信息并返回安装结果。
+     */
     public InstallPluginResponse installPlugin(InstallPluginRequest request) {
         InstallPluginCommand cmd = new InstallPluginCommand(
                 request.pluginId(), request.displayName(), request.pluginVersion(),
@@ -61,6 +67,9 @@ public class HarnessPluginCommandApi {
                 r.status(), r.directlyExecutable(), r.installedAt());
     }
 
+    /**
+     * 激活组件，准备其运行时能力。
+     */
     public ActivatePluginResponse activatePlugin(ActivatePluginRequest request) {
         ActivatePluginCommand cmd = new ActivatePluginCommand(request.pluginId());
         ActivatePluginResult r = activateHarnessPluginCase.execute(cmd);
@@ -69,6 +78,9 @@ public class HarnessPluginCommandApi {
                 r.runtimeCommand(), r.bridgeReady(), r.message(), r.checkedAt());
     }
 
+    /**
+     * 运行Plugin。
+     */
     public RunPluginResponse runPlugin(RunPluginRequest request) {
         RunPluginCommand cmd = new RunPluginCommand(request.pluginId());
         RunPluginResult r = runHarnessPluginCase.execute(cmd);
@@ -77,16 +89,25 @@ public class HarnessPluginCommandApi {
                 r.workingDirectory(), r.running(), r.startedAt(), r.message());
     }
 
+    /**
+     * 停用组件，但保留登记信息。
+     */
     public PluginLifecycleResponse disablePlugin(String pluginId) {
         PluginLifecycleResult r = manageHarnessPluginCase.disable(pluginId);
         return new PluginLifecycleResponse(r.pluginId(), r.status(), r.message(), r.updatedAt());
     }
 
+    /**
+     * 启用已登记的组件。
+     */
     public PluginLifecycleResponse enablePlugin(String pluginId) {
         PluginLifecycleResult r = manageHarnessPluginCase.enable(pluginId);
         return new PluginLifecycleResponse(r.pluginId(), r.status(), r.message(), r.updatedAt());
     }
 
+    /**
+     * 卸载组件并清理运行时资源。
+     */
     public PluginLifecycleResponse uninstallPlugin(String pluginId) {
         PluginLifecycleResult r = manageHarnessPluginCase.uninstall(pluginId);
         return new PluginLifecycleResponse(r.pluginId(), r.status(), r.message(), r.updatedAt());

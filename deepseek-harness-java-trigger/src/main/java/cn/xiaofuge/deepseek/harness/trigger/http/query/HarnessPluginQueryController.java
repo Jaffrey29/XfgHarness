@@ -26,6 +26,9 @@ public class HarnessPluginQueryController {
 
     private final HarnessPluginQueryApi harnessPluginQueryApi;
 
+    /**
+     * 处理Harness Plugin Query Controller相关逻辑。
+     */
     public HarnessPluginQueryController(HarnessPluginQueryApi harnessPluginQueryApi) {
         this.harnessPluginQueryApi = harnessPluginQueryApi;
     }

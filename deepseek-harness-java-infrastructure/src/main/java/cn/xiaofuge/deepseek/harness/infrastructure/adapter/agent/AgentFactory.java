@@ -71,6 +71,9 @@ public class AgentFactory implements AgentFactoryPort {
     private final ISessionEventStore sessionEventStore;
     private final ConcurrentMap<String, ReactLoopAgent> liveAgents = new ConcurrentHashMap<>();
 
+    /**
+     * 处理Agent Factory相关逻辑。
+     */
     public AgentFactory(
             ILlmRuntimePort llm,
             ToolRegistry toolRegistry,
@@ -90,6 +93,9 @@ public class AgentFactory implements AgentFactoryPort {
                 hookService, objectMapper, null, null, null);
     }
 
+    /**
+     * 处理Agent Factory相关逻辑。
+     */
     public AgentFactory(
             ILlmRuntimePort llm,
             ToolRegistry toolRegistry,
@@ -180,6 +186,9 @@ public class AgentFactory implements AgentFactoryPort {
         return wireAgent(agentId, options, cwd, session);
     }
 
+    /**
+     * 处理wire Agent相关逻辑。
+     */
     private ReactLoopAgent wireAgent(String agentId, AgentOptions options, String cwd, SessionLog session) {
         Inbox inbox = new Inbox(session, LoggingInboxNotifications.INSTANCE);
 

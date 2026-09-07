@@ -44,6 +44,9 @@ public class TodoWriteTool implements ToolDefinition {
     private final boolean allowParallelInProgress;
     private final TodoWriteService todoWriteService;
 
+    /**
+     * 处理Todo Write Tool相关逻辑。
+     */
     public TodoWriteTool(SessionLog session, boolean allowParallelInProgress, TodoWriteService todoWriteService) {
         this.session = session;
         this.allowParallelInProgress = allowParallelInProgress;
@@ -125,7 +128,7 @@ public class TodoWriteTool implements ToolDefinition {
     public boolean isConcurrencySafe(Object args) { return false; }
 
     /**
-     * 构建工具的结构化 Schema。
+     * 处理to Schema相关逻辑。
      */
     public ToolSchema toSchema() {
         return new ToolSchema(NAME, DESCRIPTION, parameters());

@@ -27,10 +27,16 @@ public record TodoItem(
             this.wire = wire;
         }
 
+        /**
+         * 处理wire相关逻辑。
+         */
         public String wire() {
             return wire;
         }
 
+        /**
+         * 处理from Wire相关逻辑。
+         */
         public static Status fromWire(String value) {
             return switch (value) {
                 case "pending" -> PENDING;

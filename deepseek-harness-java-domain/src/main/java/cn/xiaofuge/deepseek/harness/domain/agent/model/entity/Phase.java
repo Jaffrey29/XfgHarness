@@ -31,6 +31,9 @@ public sealed interface Phase
             long lastTurn,
             AtomicBoolean wakeRequested
     ) implements Phase {
+        /**
+         * 处理Maintenance相关逻辑。
+         */
         public Maintenance(long lastTurn) {
             this(new AtomicBoolean(false), lastTurn, new AtomicBoolean(false));
         }
@@ -43,6 +46,9 @@ public sealed interface Phase
             long step,
             AtomicBoolean wakeRequested
     ) implements Phase {
+        /**
+         * 运行ning。
+         */
         public Running(long lastTurn) {
             this(new AtomicBoolean(false), lastTurn, 0, new AtomicBoolean(false));
         }

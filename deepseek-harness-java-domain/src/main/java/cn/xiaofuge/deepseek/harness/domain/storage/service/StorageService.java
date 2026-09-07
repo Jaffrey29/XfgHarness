@@ -6,6 +6,7 @@ import cn.xiaofuge.deepseek.harness.domain.storage.model.valobj.KvSnapshot;
 import cn.xiaofuge.deepseek.harness.domain.storage.model.valobj.KvUnitDescriptor;
 import java.util.Map;
 import java.util.Optional;
+import org.springframework.stereotype.Service;
 
 /**
  * Delegates to a configured {@link IStorageBackendPort}; the port owns all
@@ -14,17 +15,27 @@ import java.util.Optional;
  * @author 小傅哥
  * @website bugstack.cn
  */
+@Service
 public class StorageService implements IStorageService {
 
     private final IStorageBackendPort backendPort;
 
+    /**
+     * 处理Storage Service相关逻辑。
+     */
     public StorageService(IStorageBackendPort backendPort) {
         this.backendPort = backendPort;
     }
+    /**
+     * 加载。
+     */
 
     @Override
     public KvSnapshot load(KvUnitDescriptor descriptor) {
         return backendPort.load(descriptor);
+    /**
+     * 获取。
+     */
     }
 
     @Override
