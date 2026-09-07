@@ -1,20 +1,18 @@
 package cn.xiaofuge.deepseek.harness.infrastructure.adapter.plugin.java;
 
+import cn.xiaofuge.deepseek.harness.domain.spi.PluginLifecycleState;
 import cn.xiaofuge.deepseek.harness.domain.spi.PluginManifest;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.ScopedSystemPromptAssembler;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.SystemPromptAssembler;
 import cn.xiaofuge.deepseek.harness.domain.tool.adapter.ToolRegistry;
-import cn.xiaofuge.deepseek.harness.domain.model.entity.ToolDefinition;
-import cn.xiaofuge.deepseek.harness.domain.tool.plugin.IPluginToolBridge;
-import cn.xiaofuge.deepseek.harness.domain.tool.plugin.PluginToolDefinition;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -69,35 +67,37 @@ public class JavaPluginRuntimeManager {
      * @param jarPath  已安装插件 JAR 的路径
      * @return 启动结果
      */
-    public JavaPluginStartResult start(String pluginId, Path jarPath) {
+    public synchronized JavaPluginStartResult start(String pluginId, Path jarPath) {
         RunningJavaPlugin existing = runningPlugins.get(pluginId);
         if (existing != null) {
             return new JavaPluginStartResult(pluginId, true, "java plugin already running",
                     existing.manifest.name(), existing.manifest.version(), existing.startedAt);
         }
 
+        SpringPluginContext context = new SpringPluginContext(pluginId, toolRegistry);
+        JavaPluginLoader.LoadedPlugin loaded = null;
         try {
-            JavaPluginLoader.LoadedPlugin loaded = loader.load(jarPath);
-            List<Runnable> disposers = new ArrayList<>();
-            List<String> toolNames = new ArrayList<>();
-
-            for (ToolDefinition tool : loaded.tools()) {
-                PluginToolDefinition adapted = new PluginToolDefinition(
-                        pluginId, new InProcessToolBridge(tool), toDescriptor(tool));
-                Runnable disposer = toolRegistry.register(adapted);
-                disposers.add(disposer);
-                String qualifiedName = "plugin__" + pluginId + "__" + tool.name();
-                toolNames.add(qualifiedName);
-            }
-
+            loaded = loader.load(jarPath);
+            loaded.instance().configure(context);
+            List<String> toolNames = context.registeredToolNames();
             Instant startedAt = Instant.now();
-            runningPlugins.put(pluginId, new RunningJavaPlugin(
-                    loaded, loaded.manifest(), disposers, startedAt, toolNames
-            ));
-            registerPromptSection(pluginId, toolNames, loaded.manifest().description());
+            AutoCloseable promptSection = registerPromptSection(
+                    pluginId, toolNames, loaded.manifest().description());
+            if (promptSection != null) {
+                context.registerDisposer(promptSection);
+            }
+            RunningJavaPlugin plugin = new RunningJavaPlugin(
+                    loaded, loaded.manifest(), context, startedAt, toolNames
+            );
+            runningPlugins.put(pluginId, plugin);
+            plugin.state().set(PluginLifecycleState.ACTIVE);
             return new JavaPluginStartResult(pluginId, true, "java plugin started",
                     loaded.manifest().name(), loaded.manifest().version(), startedAt);
         } catch (Exception e) {
+            rollbackQuietly(context);
+            if (loaded != null) {
+                loader.unload(loaded);
+            }
             log.error("Failed to start Java plugin {}: {}", pluginId, e.getMessage(), e);
             return new JavaPluginStartResult(pluginId, false,
                     "failed to start: " + e.getMessage(), null, null, null);
@@ -109,20 +109,15 @@ public class JavaPluginRuntimeManager {
      * <p>执行顺序：从运行表移除 -> 逆登记工具 -> 移除提示词能力段 -> 执行插件 onStop -> 关闭 ClassLoader。
      * 单个工具注销失败不阻塞其他清理动作，但会记录警告。
      */
-    public JavaPluginStatusResult stop(String pluginId) {
+    public synchronized JavaPluginStatusResult stop(String pluginId) {
         RunningJavaPlugin plugin = runningPlugins.remove(pluginId);
         if (plugin == null) {
             return new JavaPluginStatusResult(pluginId, false, "java plugin not running");
         }
-        for (Runnable disposer : plugin.disposers) {
-            try {
-                disposer.run();
-            } catch (Exception e) {
-                log.warn("Disposer failed for plugin {}: {}", pluginId, e.getMessage());
-            }
-        }
-        removePromptSection(pluginId);
+        plugin.state().set(PluginLifecycleState.UNLOADING);
+        rollbackQuietly(plugin.context());
         loader.unload(plugin.loaded);
+        plugin.state().set(PluginLifecycleState.DISPOSED);
         return new JavaPluginStatusResult(pluginId, false, "java plugin stopped");
     }
 
@@ -159,41 +154,26 @@ public class JavaPluginRuntimeManager {
     }
 
     /**
-     * 把插件工具定义转换为工具桥接描述符。
-     */
-    private IPluginToolBridge.PluginToolDescriptor toDescriptor(ToolDefinition tool) {
-        return new IPluginToolBridge.PluginToolDescriptor(
-                tool.name(), tool.description(), tool.parameters());
-    }
-
-    /**
      * 在系统提示词中注册插件能力说明。
      * <p>提示词列出插件描述和完整工具名，引导模型按需调用对应插件工具。
      */
-    private void registerPromptSection(
+    private AutoCloseable registerPromptSection(
             String pluginId,
             List<String> toolNames,
             String description
     ) {
         if (!(promptAssembler instanceof ScopedSystemPromptAssembler scoped) || toolNames.isEmpty()) {
-            return;
+            return null;
         }
         String capability = description == null || description.isBlank()
                 ? "No plugin description provided." : description;
         String text = "## Plugin capabilities: " + pluginId + "\n"
                 + capability + "\nAvailable tools: " + String.join(", ", toolNames) + "\n"
                 + "Use the matching tool when the request needs this capability.";
-        scoped.registerSection(new ScopedSystemPromptAssembler.PromptSection(
-                promptSectionName(pluginId), 150, text));
-    }
-
-    /**
-     * 从系统提示词中移除插件能力说明。
-     */
-    private void removePromptSection(String pluginId) {
-        if (promptAssembler instanceof ScopedSystemPromptAssembler scoped) {
-            scoped.removeSection(promptSectionName(pluginId));
-        }
+        ScopedSystemPromptAssembler.PromptSection section = new ScopedSystemPromptAssembler.PromptSection(
+                promptSectionName(pluginId), 150, text);
+        scoped.registerSection(section);
+        return () -> scoped.removeSection(promptSectionName(pluginId));
     }
 
     /**
@@ -203,16 +183,48 @@ public class JavaPluginRuntimeManager {
         return "plugin:" + pluginId + ":capabilities";
     }
 
+    private void rollbackQuietly(SpringPluginContext context) {
+        try {
+            context.close();
+        } catch (Exception e) {
+            log.warn("Plugin contribution rollback failed: {}", e.getMessage(), e);
+        }
+    }
+
     /**
      * 一个正在运行的 Java 插件的加载结果、工具注销器和状态快照。
      */
-    private record RunningJavaPlugin(
+    private static final class RunningJavaPlugin {
+        private final JavaPluginLoader.LoadedPlugin loaded;
+        private final PluginManifest manifest;
+        private final SpringPluginContext context;
+        private final Instant startedAt;
+        private final List<String> toolNames;
+        private final AtomicReference<PluginLifecycleState> state =
+                new AtomicReference<>(PluginLifecycleState.LOADING);
+
+        private RunningJavaPlugin(
             JavaPluginLoader.LoadedPlugin loaded,
             PluginManifest manifest,
-            List<Runnable> disposers,
+            SpringPluginContext context,
             Instant startedAt,
             List<String> toolNames
-    ) {}
+        ) {
+            this.loaded = loaded;
+            this.manifest = manifest;
+            this.context = context;
+            this.startedAt = startedAt;
+            this.toolNames = List.copyOf(toolNames);
+        }
+
+        private AtomicReference<PluginLifecycleState> state() {
+            return state;
+        }
+
+        private SpringPluginContext context() {
+            return context;
+        }
+    }
 
     /**
      * Java 插件启动结果。

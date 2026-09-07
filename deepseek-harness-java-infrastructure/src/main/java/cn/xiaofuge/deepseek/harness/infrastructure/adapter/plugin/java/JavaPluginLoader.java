@@ -69,10 +69,17 @@ public class JavaPluginLoader {
             return new IllegalStateException("META-INF/plugin.yaml not found in plugin JAR: " + jarPath);
         });
 
-        JavaHarnessPlugin plugin = instantiate(manifest, classLoader);
-        plugin.onStart();
-        List<ToolDefinition> tools = plugin.tools();
-        if (tools == null) tools = List.of();
+        JavaHarnessPlugin plugin;
+        List<ToolDefinition> tools;
+        try {
+            plugin = instantiate(manifest, classLoader);
+            plugin.onStart();
+            tools = plugin.tools();
+            if (tools == null) tools = List.of();
+        } catch (RuntimeException e) {
+            closeQuietly(classLoader);
+            throw e;
+        }
 
         log.info("Java plugin loaded: {} v{} ({} tools)", manifest.id(), manifest.version(), tools.size());
         return new LoadedPlugin(plugin, manifest, classLoader, tools);

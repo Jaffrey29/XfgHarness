@@ -64,9 +64,23 @@ public interface JavaHarnessPlugin {
      * 每个 {@link ToolDefinition} 会以 {@code plugin__<pluginId>__<toolName>}
      * 的完整名称暴露给 Agent 循环。
      *
-     * @return 工具定义列表，永不为 {@code null}
+     * @return 工具定义列表，永不为 {@code null}；仅使用 configure(PluginContext)
+     *         注册非工具能力时可保留默认空集合
      */
-    List<ToolDefinition> tools();
+    default List<ToolDefinition> tools() {
+        return List.of();
+    }
+
+    /**
+     * Contribute capabilities to the host. The default implementation keeps
+     * compatibility with the original tools() contract. Plugins that need
+     * deterministic registration order or non-tool resources may override it.
+     */
+    default void configure(PluginContext context) {
+        for (ToolDefinition tool : tools()) {
+            context.registerTool(tool);
+        }
+    }
 
     /**
      * 生命周期钩子：实例化后、首次工具调用前调用一次。

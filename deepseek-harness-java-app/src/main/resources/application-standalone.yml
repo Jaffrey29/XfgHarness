@@ -22,10 +22,17 @@ harness:
           source-path: ./plugins/demo-plugin
           entrypoint: index.js
           auto-enable: true
+        - plugin-id: sample-tools
+          display-name: Sample Tools Plugin
+          plugin-version: 1.0.0
+          runtime-type: JAVA_NATIVE
+          source-path: ./plugins/sample-tools-plugin-1.0.0.jar
+          entrypoint: sample-tools-plugin-1.0.0.jar
+          auto-enable: true
   llm:
     deepseek:
       base-url: http://127.0.0.1:8777/v1
-      api-key: ${DEEPSEEK_API_KEY:sk-waliapi-272d9aafb16145e2b25e8a7340a57ada}
+      api-key: ${DEEPSEEK_API_KEY:sk-waliapi-7ae2ec845ed04815b6374a058d025439}
       max-tokens: 8192
       context-window: 128000
-      default-model: gpt-5.5
+      default-model: glm-5.3-flash

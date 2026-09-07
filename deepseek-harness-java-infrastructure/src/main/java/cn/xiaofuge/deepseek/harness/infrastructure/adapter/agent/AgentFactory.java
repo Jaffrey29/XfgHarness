@@ -278,7 +278,7 @@ public class AgentFactory implements AgentFactoryPort {
 
         ReactLoopAgent agent = new ReactLoopAgent(
                 agentId, options, cwd, session, inbox,
-                llm, agentTools, executor,
+                llm, toolView, executor,
                 systemPromptAssembler, agentEvents
         );
         liveAgents.put(agentId, agent);

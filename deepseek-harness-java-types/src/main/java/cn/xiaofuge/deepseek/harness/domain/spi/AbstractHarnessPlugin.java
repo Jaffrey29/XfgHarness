@@ -81,7 +81,18 @@ public abstract class AbstractHarnessPlugin implements JavaHarnessPlugin {
      * 子类通常直接 {@code return List.of(...)}；只有动态工具集时才需要覆写。
      */
     @Override
-    public abstract List<ToolDefinition> tools();
+    public List<ToolDefinition> tools() {
+        return List.of();
+    }
+
+    /**
+     * Optional hook for plugins that need to register resources in addition to
+     * the tools returned by {@link #tools()}.
+     */
+    @Override
+    public void configure(PluginContext context) {
+        JavaHarnessPlugin.super.configure(context);
+    }
 
     /**
      * 辅助动态插件逐步构建工具列表。
