@@ -41,8 +41,9 @@ public class PresetPluginProperties {
         private String pluginVersion;
         private String runtimeType;
         private String sourcePath;
-        private String entrypoint;
-        private boolean autoEnable = true;
+    private String entrypoint;
+    private Boolean autoStart;
+    private boolean autoEnable = true;
 
         /**
          * 获取Plugin Id。
@@ -93,12 +94,17 @@ public class PresetPluginProperties {
          */
         public void setEntrypoint(String entrypoint) { this.entrypoint = entrypoint; }
         /**
-         * 判断Auto Enable是否成立。
+         * 判断Auto Start是否成立。优先读 autoStart，为 null 时回退到 autoEnable。
          */
+        public boolean isAutoStart() { return autoStart != null ? autoStart : autoEnable; }
+        public Boolean getAutoStart() { return autoStart; }
+        public void setAutoStart(Boolean autoStart) { this.autoStart = autoStart; }
+
+        /** @deprecated use {@link #isAutoStart()} instead */
+        @Deprecated
         public boolean isAutoEnable() { return autoEnable; }
-        /**
-         * 设置Auto Enable。
-         */
+        /** @deprecated use {@link #setAutoStart(Boolean)} instead */
+        @Deprecated
         public void setAutoEnable(boolean autoEnable) { this.autoEnable = autoEnable; }
     }
 }

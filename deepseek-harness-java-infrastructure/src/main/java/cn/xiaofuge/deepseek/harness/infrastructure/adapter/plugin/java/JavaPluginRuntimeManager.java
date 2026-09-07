@@ -2,6 +2,10 @@ package cn.xiaofuge.deepseek.harness.infrastructure.adapter.plugin.java;
 
 import cn.xiaofuge.deepseek.harness.domain.spi.PluginLifecycleState;
 import cn.xiaofuge.deepseek.harness.domain.spi.PluginManifest;
+import cn.xiaofuge.deepseek.harness.domain.spi.PluginEvent;
+import cn.xiaofuge.deepseek.harness.domain.spi.PluginEventBus;
+import cn.xiaofuge.deepseek.harness.domain.spi.PluginConfigStore;
+import cn.xiaofuge.deepseek.harness.domain.agent.service.ScopedSystemPromptAssembler;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.ScopedSystemPromptAssembler;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.SystemPromptAssembler;
 import cn.xiaofuge.deepseek.harness.domain.tool.adapter.ToolRegistry;
@@ -17,14 +21,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 
 /**
  * 进程内 Java 原生插件生命周期管理器。
- * <p>与 Node sidecar 不同，Java 插件不会拉起子进程，而是在宿主 JVM 中通过隔离
- * URLClassLoader 加载。核心流程为：加载 JAR -> onStart -> 工具注册 ->
- * 提示词登记 -> 停止时注销工具并关闭 ClassLoader。
+ * <p>与 Node sidecar 不同，Java 插件不拉起子进程，而是在宿主 JVM 中通过隔离
+ * URLClassLoader 加载。核心流程为：加载 JAR -> configure(PluginContext) ->
+ * 插件注册工具/事件/Hook/配置/提示词 -> 状态 ACTIVE -> JAR 变化时热重载 ->
+ * 停止时逆序回收贡献项并关闭 ClassLoader。
  * <p>数据示例：插件 id="time"，工具 name="now"，注册后的 Agent 工具名为
- * `plugin__time__now`。
+ * `plugin__time__now`；JAR 被替换后，stop + start 会重建同一工具名。
  *
  * @author 小傅哥
  * @website bugstack.cn
@@ -36,31 +43,50 @@ public class JavaPluginRuntimeManager {
 
     private final JavaPluginLoader loader;
     private final ToolRegistry toolRegistry;
+    private final PluginEventBus eventBus;
+    private final InProcessPluginHookRegistry hookRegistry;
+    private final PluginConfigStore configStore;
     private final SystemPromptAssembler promptAssembler;
+    private final ScopedSystemPromptAssembler scopedPromptAssembler;
     private final Path installRoot;
+    private final PluginHotReloader hotReloader;
 
     private final Map<String, RunningJavaPlugin> runningPlugins = new ConcurrentHashMap<>();
 
     /**
-     * 注入类加载器、工具注册表、提示词装配器和插件安装根目录。
+     * 注入插件运行所需的宿主服务。
+     * <p>包括类加载器、工具注册表、事件总线、Hook 注册表、配置存储、
+     * 提示词装配器、热重载器和安装根目录。
      */
     public JavaPluginRuntimeManager(
             JavaPluginLoader loader,
             ToolRegistry toolRegistry,
+            PluginEventBus eventBus,
+            InProcessPluginHookRegistry hookRegistry,
+            PluginConfigStore configStore,
             SystemPromptAssembler promptAssembler,
+            ScopedSystemPromptAssembler scopedPromptAssembler,
+            PluginHotReloader hotReloader,
             @Value("${harness.plugin.install-root:./plugins}") String installRoot
     ) {
         this.loader = loader;
         this.toolRegistry = toolRegistry;
+        this.eventBus = eventBus;
+        this.hookRegistry = hookRegistry;
+        this.configStore = configStore;
         this.promptAssembler = promptAssembler;
+        this.scopedPromptAssembler = scopedPromptAssembler;
+        this.hotReloader = hotReloader;
         this.installRoot = Path.of(installRoot).toAbsolutePath().normalize();
     }
 
     /**
      * 启动一个 Java 原生插件。
-     * <p>执行流程：重复启动直接返回 -> loader.load 创建隔离 ClassLoader 并执行 onStart ->
-     * 逐个包装为 PluginToolDefinition -> 注册 ToolRegistry -> 保存运行状态 -> 写入提示词能力段。
-     * <p>数据示例：jarPath=/plugins/time/time.jar，包含 now 工具，注册后工具名为
+     * <p>执行流程：重复启动直接返回 -> 创建 SpringPluginContext -> loader.load 加载并执行 onStart ->
+     * 插件 configure 注入贡献项 -> 宿主补充提示词段 -> 状态 ACTIVE -> 登记 JAR 热重载 ->
+     * 发布 plugin.started 事件。
+     * <p>失败回滚：先逆序关闭 context 中的注册项，再关闭插件 ClassLoader，保证没有悬挂工具/Hook。
+     * <p>数据示例：jarPath=/plugins/time/time.jar 包含 now 工具，注册后工具名为
      * plugin__time__now。
      *
      * @param pluginId 插件登记 ID
@@ -74,7 +100,8 @@ public class JavaPluginRuntimeManager {
                     existing.manifest.name(), existing.manifest.version(), existing.startedAt);
         }
 
-        SpringPluginContext context = new SpringPluginContext(pluginId, toolRegistry);
+        SpringPluginContext context = new SpringPluginContext(
+                pluginId, toolRegistry, eventBus, hookRegistry, configStore, scopedPromptAssembler);
         JavaPluginLoader.LoadedPlugin loaded = null;
         try {
             loaded = loader.load(jarPath);
@@ -91,6 +118,8 @@ public class JavaPluginRuntimeManager {
             );
             runningPlugins.put(pluginId, plugin);
             plugin.state().set(PluginLifecycleState.ACTIVE);
+            hotReloader.watch(pluginId, jarPath);
+            eventBus.publish(new PluginEvent("host", "plugin.started", pluginId, null));
             return new JavaPluginStartResult(pluginId, true, "java plugin started",
                     loaded.manifest().name(), loaded.manifest().version(), startedAt);
         } catch (Exception e) {
@@ -100,14 +129,37 @@ public class JavaPluginRuntimeManager {
             }
             log.error("Failed to start Java plugin {}: {}", pluginId, e.getMessage(), e);
             return new JavaPluginStartResult(pluginId, false,
-                    "failed to start: " + e.getMessage(), null, null, null);
+                "failed to start: " + e.getMessage(), null, null, null);
         }
     }
 
     /**
+     * 热重载一个 Java 插件。
+     * <p>执行流程：stop 彻底回收旧实例 -> 使用同一路径 start 重建新 ClassLoader 和注册项。
+     * 重载期间同步持锁，避免新旧插件工具/Hook 同时暴露。
+     * <p>数据示例：time 插件 JAR 更新后，旧 plugin__time__now 被注销，随后同名工具重新注册。
+     */
+    public synchronized JavaPluginStartResult hotReload(String pluginId, Path jarPath) {
+        log.info("Hot reloading plugin {} from {}", pluginId, jarPath);
+        stop(pluginId);
+        return start(pluginId, jarPath);
+    }
+
+    /**
+     * 在 Spring 应用完全就绪后启动插件热重载器。
+     * <p>使用 ApplicationReadyEvent 而不是构造函数，避免启动早期文件系统抖动触发重建。
+     */
+    @EventListener(ApplicationReadyEvent.class)
+    public void startHotReloader() {
+        hotReloader.start(this::hotReload);
+    }
+
+    /**
      * 停止一个运行中的 Java 插件。
-     * <p>执行顺序：从运行表移除 -> 逆登记工具 -> 移除提示词能力段 -> 执行插件 onStop -> 关闭 ClassLoader。
-     * 单个工具注销失败不阻塞其他清理动作，但会记录警告。
+     * <p>执行顺序：从运行表移除 -> 状态 UNLOADING -> 发布 plugin.stopping ->
+     * 逆序关闭 context 贡献项 -> 执行插件 onStop 并关闭 ClassLoader -> 状态 DISPOSED ->
+     * 清理插件残留 Hook -> 发布 plugin.stopped。
+     * <p>单个注册项关闭失败不会阻塞其他清理动作，但会记录警告。
      */
     public synchronized JavaPluginStatusResult stop(String pluginId) {
         RunningJavaPlugin plugin = runningPlugins.remove(pluginId);
@@ -115,9 +167,12 @@ public class JavaPluginRuntimeManager {
             return new JavaPluginStatusResult(pluginId, false, "java plugin not running");
         }
         plugin.state().set(PluginLifecycleState.UNLOADING);
+        eventBus.publish(new PluginEvent("host", "plugin.stopping", pluginId, null));
         rollbackQuietly(plugin.context());
         loader.unload(plugin.loaded);
         plugin.state().set(PluginLifecycleState.DISPOSED);
+        hookRegistry.unregisterAll(pluginId);
+        eventBus.publish(new PluginEvent("host", "plugin.stopped", pluginId, null));
         return new JavaPluginStatusResult(pluginId, false, "java plugin stopped");
     }
 
@@ -155,7 +210,8 @@ public class JavaPluginRuntimeManager {
 
     /**
      * 在系统提示词中注册插件能力说明。
-     * <p>提示词列出插件描述和完整工具名，引导模型按需调用对应插件工具。
+     * <p>只有 promptAssembler 是 ScopedSystemPromptAssembler 且插件声明了工具时才注册。
+     * 返回值加入 context 的 registrations，插件停止时随其他贡献项一起移除。
      */
     private AutoCloseable registerPromptSection(
             String pluginId,
@@ -183,6 +239,10 @@ public class JavaPluginRuntimeManager {
         return "plugin:" + pluginId + ":capabilities";
     }
 
+    /**
+     * 静默回滚插件上下文中的全部贡献项。
+     * <p>用于启动失败或插件停止；回滚失败只记录日志，不掩盖主流程错误。
+     */
     private void rollbackQuietly(SpringPluginContext context) {
         try {
             context.close();
@@ -192,7 +252,7 @@ public class JavaPluginRuntimeManager {
     }
 
     /**
-     * 一个正在运行的 Java 插件的加载结果、工具注销器和状态快照。
+     * 一个运行中的 Java 插件：保存加载结果、元数据、贡献项上下文、启动时间和状态。
      */
     private static final class RunningJavaPlugin {
         private final JavaPluginLoader.LoadedPlugin loaded;

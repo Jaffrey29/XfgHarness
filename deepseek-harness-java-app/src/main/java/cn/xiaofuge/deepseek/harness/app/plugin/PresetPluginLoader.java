@@ -72,7 +72,7 @@ public class PresetPluginLoader implements ApplicationRunner {
         Optional<HarnessPluginEntity> existing = pluginRegistryService.loadPluginOptional(preset.getPluginId());
         if (existing.isPresent()) {
             HarnessPluginEntity plugin = existing.get();
-            if (preset.isAutoEnable() && plugin.getStatus() == PluginInstallStatusEnumVO.DISABLED) {
+            if (preset.isAutoStart() && plugin.getStatus() == PluginInstallStatusEnumVO.DISABLED) {
                 pluginRegistryService.enablePlugin(preset.getPluginId());
                 log.info("Preset plugin '{}' re-enabled", preset.getPluginId());
             }
@@ -90,7 +90,7 @@ public class PresetPluginLoader implements ApplicationRunner {
             log.info("Preset plugin '{}' installed from {}", preset.getPluginId(), preset.getSourcePath());
         }
 
-        if (!preset.isAutoEnable()) {
+        if (!preset.isAutoStart()) {
             return;
         }
         RunPluginResult result = runCase.execute(new RunPluginCommand(preset.getPluginId()));

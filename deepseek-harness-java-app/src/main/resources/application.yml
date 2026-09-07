@@ -69,11 +69,11 @@ harness:
           runtime-type: DSH_NODE_BRIDGE
           source-path: ./plugins/demo-plugin
           entrypoint: index.js
-          auto-enable: true
+          auto-start: true
         - plugin-id: sample-tools
           display-name: Sample Tools Plugin
           plugin-version: 1.0.0
           runtime-type: JAVA_NATIVE
           source-path: ./plugins/sample-tools-plugin-1.0.0.jar
           entrypoint: sample-tools-plugin-1.0.0.jar
-          auto-enable: true
+          auto-start: true
