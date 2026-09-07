@@ -1,8 +1,13 @@
 package ${package};
 
-import cn.walioffice.deepseek.harness.domain.plugin.spi.AbstractHarnessPlugin;
-import cn.walioffice.deepseek.harness.domain.tool.model.entity.ToolDefinition;
+import cn.xiaofuge.deepseek.harness.domain.model.entity.ToolDefinition;
+import cn.xiaofuge.deepseek.harness.domain.spi.AbstractHarnessPlugin;
+import cn.xiaofuge.deepseek.harness.domain.spi.PluginContext;
+import cn.xiaofuge.deepseek.harness.domain.spi.PluginHookResult;
 import java.util.List;
+import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * ${pluginName} — ${pluginDescription}
@@ -11,6 +16,8 @@ import java.util.List;
  * pluginId 必须与 META-INF/plugin.yaml 的 id 字段一致。
  */
 public class ${pluginClass} extends AbstractHarnessPlugin {
+
+    private static final Logger log = LoggerFactory.getLogger(${pluginClass}.class);
 
     public ${pluginClass}() {
         super("${pluginId}");
@@ -21,5 +28,28 @@ public class ${pluginClass} extends AbstractHarnessPlugin {
         return List.of(new ExampleTool());
     }
 
-    // 如需初始化/释放资源，override onStart() / onStop()
+    @Override
+    public void configure(PluginContext context) {
+        super.configure(context);
+
+        // 注册系统提示词段落
+        context.registerSystemPrompt("about", 10,
+                "## ${pluginName}\n- 插件描述：${pluginDescription}");
+
+        // 订阅事件
+        context.subscribe("tool.called", event ->
+                log.info("[${pluginId}] received event: {}", event.name()));
+
+        // 注册 PRE_TOOL_USE hook
+        context.registerHook("PRE_TOOL_USE", (toolName, payload) -> {
+            boolean auditEnabled = context.getConfig("audit-enabled", "true")
+                    .equalsIgnoreCase("true");
+            if (!auditEnabled || !"shell_execute".equals(toolName)) return null;
+            log.info("[${pluginId}] PRE_TOOL_USE audit: {}", toolName);
+            return PluginHookResult.context("Audited by ${pluginId}.");
+        });
+
+        // 发布自定义事件
+        context.emit("plugin.ready", Map.of("pluginId", "${pluginId}"));
+    }
 }
