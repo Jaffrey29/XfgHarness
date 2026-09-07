@@ -18,6 +18,22 @@ const PLUGIN_API = '/api/harness/plugins';
 const CONSOLE_API = '/api/harness/console';
 const APPROVAL_API = '/api/harness/approvals';
 
+async function apiRequest(path, options = {}) {
+  const response = await fetch(path, options);
+  let payload = null;
+  try {
+    payload = await response.json();
+  } catch (error) {
+    payload = null;
+  }
+
+  const succeeded = response.ok && payload && payload.code === '00000';
+  if (!succeeded) {
+    throw new Error((payload && payload.info) || ('HTTP ' + response.status));
+  }
+  return payload.data;
+}
+
 const SSE_TIMEOUT_MS = 300_000;
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 1500;
@@ -668,15 +684,11 @@ function showRenameWorkspaceForm(currentName) {
     saveBtn.disabled = true;
     errorEl.style.display = 'none';
     try {
-      const res = await fetch(API + '/workspaces/' + encodeURIComponent(currentName), {
+      await apiRequest(API + '/workspaces/' + encodeURIComponent(currentName), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name })
       });
-      if (!res.ok) {
-        const errText = await res.text().catch(function() { return ''; });
-        throw new Error(errText || ('HTTP ' + res.status));
-      }
       await loadWorkspaces();
       var renamed = state.workspaces.find(function(w) { return wsEntryName(w) === name || wsEntryName(w) === name.replace(/[^\p{L}\p{N}._-]/gu, '_'); });
       if (renamed) {
@@ -725,11 +737,7 @@ function confirmDeleteWorkspace(name) {
     delBtn.textContent = '删除中…';
     delBtn.disabled = true;
     try {
-      const res = await fetch(API + '/workspaces/' + encodeURIComponent(name), { method: 'DELETE' });
-      if (!res.ok) {
-        const errText = await res.text().catch(function() { return ''; });
-        throw new Error(errText || ('HTTP ' + res.status));
-      }
+      await apiRequest(API + '/workspaces/' + encodeURIComponent(name), { method: 'DELETE' });
       await loadWorkspaces();
       state.sessions = state.sessions.filter(function(s) { return (s.workspace || '') !== name; });
       saveSessionsToStorage();
@@ -761,15 +769,13 @@ async function reorderWorkspaces(srcName, targetName) {
   state.workspaces = optimistic;
   render();
   try {
-    const res = await fetch(API + '/workspaces/order', {
+    await apiRequest(API + '/workspaces/order', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ order: names })
     });
-    if (res.ok) {
-      await loadWorkspaces();
-      render();
-    }
+    await loadWorkspaces();
+    render();
   } catch (e) { /* ignore — order kept locally */ }
 }
 
@@ -1203,31 +1209,12 @@ async function executeSlashCommand(text, sess) {
       const compactNotice = { role: 'system', content: '正在压缩上下文…', icon: '📦' };
       sess.messages.push(compactNotice);
       render();
-      // 尝试调用后端压缩接口；若不可用则前端精简
-      try {
-        const res = await fetch(CONSOLE_API + '/compact', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ agentId: sess.agentId })
-        });
-        if (res.ok) {
-          const data = await res.json();
-          compactNotice.content = '上下文已压缩' + (data.saved ? '，节省约 ' + data.saved + ' 条消息' : '');
-          compactNotice.icon = '✅';
-          sess.compactionInfo = { status: 'done', saved: data.saved || 0, timestamp: new Date().toISOString() };
-          if (data.messages) sess.messages = data.messages;
-        } else {
-          throw new Error('backend unavailable');
-        }
-      } catch (e) {
-        // 后端不可用时，前端精简：保留最近 20 条 + 系统消息
-        const recent = sess.messages.slice(-20);
-        const saved = sess.messages.length - recent.length;
-        sess.messages = recent;
-        compactNotice.content = '前端精简模式：保留最近 20 条，节省 ' + saved + ' 条消息';
-        compactNotice.icon = '✅';
-        sess.compactionInfo = { status: 'done', saved: saved, timestamp: new Date().toISOString() };
-      }
+      const recent = sess.messages.slice(-20);
+      const saved = Math.max(sess.messages.length - recent.length, 0);
+      sess.messages = recent;
+      compactNotice.content = '保留最近 20 条，节省 ' + saved + ' 条消息';
+      compactNotice.icon = '✅';
+      sess.compactionInfo = { status: 'done', saved: saved, timestamp: new Date().toISOString() };
       render();
       return true;
 
@@ -1367,7 +1354,7 @@ function renderApprovalBanner() {
 
 async function approveApproval(approval) {
   try {
-    await fetch(APPROVAL_API + '/' + approval.sessionId + '/approve', {
+    await apiRequest(APPROVAL_API + '/' + approval.sessionId + '/approve', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ approved: true })
@@ -1379,7 +1366,7 @@ async function approveApproval(approval) {
 
 async function rejectApproval(approval) {
   try {
-    await fetch(APPROVAL_API + '/' + approval.sessionId + '/approve', {
+    await apiRequest(APPROVAL_API + '/' + approval.sessionId + '/approve', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ approved: false })
@@ -1394,9 +1381,9 @@ async function rejectApproval(approval) {
 // ═══════════════════════════════════════════
 async function loadHistoryMessages(sess) {
   try {
-    const res = await fetch(CONSOLE_API + '/sessions/' + encodeURIComponent(sess.sessionId) + '/messages');
-    if (res.ok) {
-      const data = await res.json();
+    const data = await apiRequest(
+      CONSOLE_API + '/sessions/' + encodeURIComponent(sess.sessionId) + '/messages'
+    );
       if (Array.isArray(data) && data.length > 0) {
         sess.messages = data.map(function(m) {
           return {
@@ -1416,22 +1403,24 @@ async function loadHistoryMessages(sess) {
         if (state.currentSessionId === sess.agentId) render();
         setTimeout(scrollToBottom, 50);
       }
-    }
   } catch (e) { /* ignore */ }
 }
 
 async function loadEarlierMessages(sess) {
   try {
-    const res = await fetch(CONSOLE_API + '/sessions/' + encodeURIComponent(sess.agentId) + '/messages?limit=20&offset=' + sess.messages.length);
-    if (res.ok) {
-      const data = await res.json();
+    if (!sess.sessionId) {
+      showToast('没有更多历史消息');
+      return;
+    }
+    const data = await apiRequest(
+      CONSOLE_API + '/sessions/' + encodeURIComponent(sess.sessionId) + '/messages'
+    );
       if (Array.isArray(data) && data.length > 0) {
         sess.messages = [...data, ...sess.messages];
         render();
       } else {
         showToast('没有更多历史消息');
       }
-    }
   } catch (e) {
     showToast('加载历史失败');
   }
@@ -1617,9 +1606,7 @@ function showDirectoryPicker(callback) {
     listEl.innerHTML = '';
     listEl.appendChild(el('div', { class: 'dir-picker-loading' }, '加载中…'));
     try {
-      const res = await fetch(API + '/workspaces/list?path=' + encodeURIComponent(path));
-      if (res.ok) {
-        const dirs = await res.json();
+      const dirs = await apiRequest(API + '/workspaces/list?path=' + encodeURIComponent(path));
         listEl.innerHTML = '';
         if (dirs.length === 0) listEl.appendChild(el('div', { class: 'dir-picker-empty' }, '无子目录'));
         for (const d of dirs) {
@@ -1640,7 +1627,6 @@ function showDirectoryPicker(callback) {
           }, name);
           listEl.appendChild(item);
         }
-      } else { throw new Error('HTTP ' + res.status); }
     } catch (e) {
       // 后端不可用时用预设目录
       listEl.innerHTML = '';
@@ -2450,14 +2436,12 @@ function renderModelSettings(body, footer) {
     syncBtn.textContent = '同步中…';
     syncBtn.disabled = true;
     try {
-      const res = await fetch(MODEL_DISCOVER_API, {
+      const discovered = await apiRequest(MODEL_DISCOVER_API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ baseUrl, apiKeyRef: apiKey })
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'HTTP ' + res.status);
-      syncState.discovered = Array.isArray(data) ? data : [];
+      syncState.discovered = Array.isArray(discovered) ? discovered : [];
       modelSelect.innerHTML = '';
       if (syncState.discovered.length === 0) {
         modelSelect.appendChild(el('option', { value: '' }, '未发现可用模型'));
@@ -2495,12 +2479,11 @@ function renderModelSettings(body, footer) {
     addBtn.textContent = '添加中…';
     addBtn.disabled = true;
     try {
-      const res = await fetch(SETTINGS_API, {
+      await apiRequest(SETTINGS_API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       });
-      if (!res.ok) { const err = await res.text(); throw new Error(err || 'HTTP ' + res.status); }
       await refreshModelSettingsUI();
       showToast('模型添加成功');
     } catch (e) {
@@ -2532,7 +2515,7 @@ function renderEditableModelCard(ms, syncState) {
   const actions = el('div', { style: 'display:flex;gap:4px' });
   const toggleBtn = iconBtn(ms.enabled !== false ? '⏸' : '▶', ms.enabled !== false ? '禁用' : '启用', async function() {
     try {
-      const res = await fetch(SETTINGS_API, {
+      await apiRequest(SETTINGS_API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2544,7 +2527,6 @@ function renderEditableModelCard(ms, syncState) {
           enabled: ms.enabled === false
         })
       });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
       await refreshModelSettingsUI();
       showToast(ms.enabled !== false ? '已禁用' : '已启用');
     } catch (e) { showToast('操作失败: ' + e.message); }
@@ -2552,8 +2534,7 @@ function renderEditableModelCard(ms, syncState) {
   const editBtn = iconBtn('✎', '编辑', function() { toggleEdit(card); });
   const deleteBtn = iconBtn('🗑', '删除', async function() {
     try {
-      const res = await fetch(SETTINGS_API + '/' + encodeURIComponent(ms.profileCode || 'default'), { method: 'DELETE' });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
+      await apiRequest(SETTINGS_API + '/' + encodeURIComponent(ms.profileCode || 'default'), { method: 'DELETE' });
       await refreshModelSettingsUI();
       showToast('已删除');
     } catch (e) { showToast('删除失败: ' + e.message); }
@@ -2583,7 +2564,7 @@ function renderEditableModelCard(ms, syncState) {
     saveBtn.textContent = '保存中…';
     saveBtn.disabled = true;
     try {
-      const res = await fetch(SETTINGS_API, {
+      await apiRequest(SETTINGS_API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2595,7 +2576,6 @@ function renderEditableModelCard(ms, syncState) {
           enabled: ms.enabled !== false
         })
       });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
       await refreshModelSettingsUI();
       showToast('保存成功');
     } catch (e) {
@@ -2659,15 +2639,15 @@ function renderPluginCard(p) {
   const actions = el('div', { class: 'plugin-actions' });
   if (p.status === 'ACTIVE' || p.status === 'REGISTERED') {
     actions.appendChild(iconBtn('⏸', '禁用', async function() {
-      try { await fetch(PLUGIN_API + '/' + p.pluginId + '/disable', { method: 'POST' }); await loadPlugins(); openSettingsModal(); } catch (e) { showToast('操作失败'); }
+      try { await apiRequest(PLUGIN_API + '/' + p.pluginId + '/disable', { method: 'POST' }); await loadPlugins(); openSettingsModal(); } catch (e) { showToast('操作失败'); }
     }));
   } else if (p.status === 'DISABLED' || p.status === 'FAILED') {
     actions.appendChild(iconBtn('▶', '启用', async function() {
-      try { await fetch(PLUGIN_API + '/' + p.pluginId + '/enable', { method: 'POST' }); await loadPlugins(); openSettingsModal(); } catch (e) { showToast('操作失败'); }
+      try { await apiRequest(PLUGIN_API + '/' + p.pluginId + '/enable', { method: 'POST' }); await loadPlugins(); openSettingsModal(); } catch (e) { showToast('操作失败'); }
     }));
   }
   actions.appendChild(iconBtn('🗑', '卸载', async function() {
-    try { await fetch(PLUGIN_API + '/' + p.pluginId + '/uninstall', { method: 'POST' }); await loadPlugins(); openSettingsModal(); showToast('已卸载'); } catch (e) { showToast('卸载失败'); }
+    try { await apiRequest(PLUGIN_API + '/' + p.pluginId + '/uninstall', { method: 'POST' }); await loadPlugins(); openSettingsModal(); showToast('已卸载'); } catch (e) { showToast('卸载失败'); }
   }));
   right.appendChild(actions);
   card.appendChild(avatar);
@@ -3544,31 +3524,25 @@ async function cancelAgent() {
   }
   render();
   if (sess.abortController) { sess.abortController.abort(); return; }
-  try { await fetch(API + '/' + sess.agentId + '/cancel', { method: 'POST' }); }
+  try { await apiRequest(API + '/' + sess.agentId + '/cancel', { method: 'POST' }); }
   catch (e) { /* ignore */ }
 }
 
 // ── 加载数据 ───────────────────────────────
 async function loadWorkspaces() {
   try {
-    const res = await fetch(API + '/workspaces');
-    if (res.ok) {
-      const data = await res.json();
+    const data = await apiRequest(API + '/workspaces');
       state.workspaces = Array.isArray(data)
         ? data.map(function(w) { return (typeof w === 'string') ? { name: w.split('/').filter(Boolean).pop(), path: w } : w; })
         : [];
       localStorage.setItem('workspaces', JSON.stringify(state.workspaces));
-    }
   } catch (e) { /* ignore */ }
 }
 
 async function loadModelSettings() {
   try {
-    const res = await fetch(SETTINGS_API);
-    if (res.ok) {
-      const data = await res.json();
+    const data = await apiRequest(SETTINGS_API);
       state.modelSettings = Array.isArray(data) ? data : [];
-    }
   } catch (e) { /* ignore */ }
 }
 
@@ -3602,42 +3576,31 @@ function syncCurrentModel() {
 
 async function loadAvailableModels() {
   try {
-    const res = await fetch(MODEL_CATALOG_API);
-    if (res.ok) {
-      const data = await res.json();
+    const data = await apiRequest(MODEL_CATALOG_API);
       state.availableModels = Array.isArray(data) ? data : [];
       syncCurrentModel();
-    }
   } catch (e) { /* ignore */ }
 }
 
 async function loadPlugins() {
   try {
-    const res = await fetch(PLUGIN_API);
-    if (res.ok) {
-      const data = await res.json();
+    const data = await apiRequest(PLUGIN_API);
       state.plugins = Array.isArray(data) ? data : [];
-    }
   } catch (e) { /* ignore */ }
 }
 
 // v11: 加载审批列表
 async function loadPendingApprovals() {
   try {
-    const res = await fetch(APPROVAL_API + '/pending');
-    if (res.ok) {
-      const data = await res.json();
+    const data = await apiRequest(APPROVAL_API + '/pending');
       state.pendingApprovals = Array.isArray(data) ? data : [];
-    }
   } catch (e) { /* ignore */ }
 }
 
 // v11: 加载会话历史 — P1: 恢复会话列表
 async function loadSessionHistory() {
   try {
-    const res = await fetch(CONSOLE_API + '/sessions');
-    if (res.ok) {
-      const data = await res.json();
+    const data = await apiRequest(CONSOLE_API + '/sessions');
       state.sessionHistory = Array.isArray(data) ? data : [];
       // P1: 将历史会话恢复到 state.sessions 中
       for (const hist of state.sessionHistory) {
@@ -3657,7 +3620,6 @@ async function loadSessionHistory() {
       state.sessions.sort(function(a, b) {
         return new Date(b.createdAt) - new Date(a.createdAt);
       });
-    }
   } catch (e) { /* ignore */ }
 }
 
