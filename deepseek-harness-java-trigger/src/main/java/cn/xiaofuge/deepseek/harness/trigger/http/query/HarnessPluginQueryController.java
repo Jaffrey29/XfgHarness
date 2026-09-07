@@ -1,8 +1,9 @@
 package cn.xiaofuge.deepseek.harness.trigger.http.query;
 
-import cn.xiaofuge.deepseek.harness.api.dto.plugin.QueryPluginStatusResponse;
-import cn.xiaofuge.deepseek.harness.api.response.plugin.InstalledPluginResponse;
-import cn.xiaofuge.deepseek.harness.trigger.service.HarnessPluginQueryApi;
+import cn.xiaofuge.deepseek.harness.api.dto.QueryPluginStatusResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.InstalledPluginResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.IHarnessPluginQueryApi;
+import cn.xiaofuge.deepseek.harness.api.response.Response;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,7 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/harness/plugins")
 public class HarnessPluginQueryController {
 
-    private final HarnessPluginQueryApi harnessPluginQueryApi;
+    private final IHarnessPluginQueryApi harnessPluginQueryApi;
 
     /**
      * 处理Harness 插件 Query Controller。
@@ -34,7 +35,7 @@ public class HarnessPluginQueryController {
      * @param harnessPluginQueryApi harness 插件 Query API参数。
      * @return 方法执行结果。
      */
-    public HarnessPluginQueryController(HarnessPluginQueryApi harnessPluginQueryApi) {
+    public HarnessPluginQueryController(IHarnessPluginQueryApi harnessPluginQueryApi) {
         this.harnessPluginQueryApi = harnessPluginQueryApi;
     }
 
@@ -47,7 +48,7 @@ public class HarnessPluginQueryController {
      * 3. 供前端插件中心直接渲染。
      */
     @GetMapping
-    public List<InstalledPluginResponse> listInstalledPlugins() {
+    public Response<List<InstalledPluginResponseDTO>> listInstalledPlugins() {
         return harnessPluginQueryApi.listInstalledPlugins();
     }
 
@@ -60,7 +61,7 @@ public class HarnessPluginQueryController {
      * 3. 返回插件状态响应。
      */
     @GetMapping("/{pluginId}/status")
-    public QueryPluginStatusResponse queryPluginStatus(@PathVariable("pluginId") String pluginId) {
+    public Response<QueryPluginStatusResponseDTO> queryPluginStatus(@PathVariable("pluginId") String pluginId) {
         return harnessPluginQueryApi.queryPluginStatus(pluginId);
     }
 }

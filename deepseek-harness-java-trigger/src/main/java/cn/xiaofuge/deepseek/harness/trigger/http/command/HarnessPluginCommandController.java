@@ -1,13 +1,14 @@
 package cn.xiaofuge.deepseek.harness.trigger.http.command;
 
-import cn.xiaofuge.deepseek.harness.api.dto.plugin.ActivatePluginRequest;
-import cn.xiaofuge.deepseek.harness.api.dto.plugin.ActivatePluginResponse;
-import cn.xiaofuge.deepseek.harness.api.dto.plugin.InstallPluginRequest;
-import cn.xiaofuge.deepseek.harness.api.dto.plugin.InstallPluginResponse;
-import cn.xiaofuge.deepseek.harness.api.dto.plugin.PluginLifecycleResponse;
-import cn.xiaofuge.deepseek.harness.api.dto.plugin.RunPluginRequest;
-import cn.xiaofuge.deepseek.harness.api.dto.plugin.RunPluginResponse;
-import cn.xiaofuge.deepseek.harness.trigger.service.HarnessPluginCommandApi;
+import cn.xiaofuge.deepseek.harness.api.dto.ActivatePluginRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.ActivatePluginResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.InstallPluginRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.InstallPluginResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.PluginLifecycleResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.RunPluginRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.RunPluginResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.IHarnessPluginCommandApi;
+import cn.xiaofuge.deepseek.harness.api.response.Response;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -19,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/harness/plugins")
 public class HarnessPluginCommandController {
 
-    private final HarnessPluginCommandApi harnessPluginCommandApi;
+    private final IHarnessPluginCommandApi harnessPluginCommandApi;
 
     /**
      * 处理Harness 插件 命令 Controller。
@@ -27,7 +28,7 @@ public class HarnessPluginCommandController {
      * @param harnessPluginCommandApi harness 插件 命令 API参数。
      * @return 方法执行结果。
      */
-    public HarnessPluginCommandController(HarnessPluginCommandApi harnessPluginCommandApi) {
+    public HarnessPluginCommandController(IHarnessPluginCommandApi harnessPluginCommandApi) {
         this.harnessPluginCommandApi = harnessPluginCommandApi;
     }
 
@@ -38,7 +39,7 @@ public class HarnessPluginCommandController {
      * @return 方法执行结果。
      */
     @PostMapping("/install")
-    public InstallPluginResponse installPlugin(@RequestBody InstallPluginRequest request) {
+    public Response<InstallPluginResponseDTO> installPlugin(@RequestBody InstallPluginRequestDTO request) {
         return harnessPluginCommandApi.installPlugin(request);
     }
 
@@ -49,7 +50,7 @@ public class HarnessPluginCommandController {
      * @return 方法执行结果。
      */
     @PostMapping("/activate")
-    public ActivatePluginResponse activatePlugin(@RequestBody ActivatePluginRequest request) {
+    public Response<ActivatePluginResponseDTO> activatePlugin(@RequestBody ActivatePluginRequestDTO request) {
         return harnessPluginCommandApi.activatePlugin(request);
     }
 
@@ -60,7 +61,7 @@ public class HarnessPluginCommandController {
      * @return 方法执行结果。
      */
     @PostMapping("/run")
-    public RunPluginResponse runPlugin(@RequestBody RunPluginRequest request) {
+    public Response<RunPluginResponseDTO> runPlugin(@RequestBody RunPluginRequestDTO request) {
         return harnessPluginCommandApi.runPlugin(request);
     }
 
@@ -71,7 +72,7 @@ public class HarnessPluginCommandController {
      * @return 方法执行结果。
      */
     @PostMapping("/{pluginId}/disable")
-    public PluginLifecycleResponse disablePlugin(@PathVariable("pluginId") String pluginId) {
+    public Response<PluginLifecycleResponseDTO> disablePlugin(@PathVariable("pluginId") String pluginId) {
         return harnessPluginCommandApi.disablePlugin(pluginId);
     }
 
@@ -82,7 +83,7 @@ public class HarnessPluginCommandController {
      * @return 方法执行结果。
      */
     @PostMapping("/{pluginId}/enable")
-    public PluginLifecycleResponse enablePlugin(@PathVariable("pluginId") String pluginId) {
+    public Response<PluginLifecycleResponseDTO> enablePlugin(@PathVariable("pluginId") String pluginId) {
         return harnessPluginCommandApi.enablePlugin(pluginId);
     }
 
@@ -93,7 +94,7 @@ public class HarnessPluginCommandController {
      * @return 方法执行结果。
      */
     @PostMapping("/{pluginId}/uninstall")
-    public PluginLifecycleResponse uninstallPlugin(@PathVariable("pluginId") String pluginId) {
+    public Response<PluginLifecycleResponseDTO> uninstallPlugin(@PathVariable("pluginId") String pluginId) {
         return harnessPluginCommandApi.uninstallPlugin(pluginId);
     }
 }

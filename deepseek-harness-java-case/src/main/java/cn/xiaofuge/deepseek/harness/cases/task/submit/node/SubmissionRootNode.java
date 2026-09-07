@@ -1,9 +1,9 @@
 package cn.xiaofuge.deepseek.harness.cases.task.submit.node;
 
-import cn.xiaofuge.deepseek.harness.cases.task.SubmitTaskCommand;
-import cn.xiaofuge.deepseek.harness.cases.task.SubmitTaskResult;
+import cn.xiaofuge.deepseek.harness.api.dto.SubmitTaskRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.SubmitTaskResponseDTO;
 import cn.xiaofuge.deepseek.harness.cases.task.submit.factory.SubmitTaskDynamicContext;
-import cn.xiaofuge.deepseek.harness.domain.shared.StrategyHandler;
+import cn.xiaofuge.deepseek.harness.cases.orchestration.StrategyHandler;
 import cn.xiaofuge.deepseek.harness.domain.runtime.tool.model.valobj.ToolSelectionVO;
 import cn.xiaofuge.deepseek.harness.domain.task.submission.model.valobj.TaskSubmissionVO;
 import cn.xiaofuge.deepseek.harness.domain.task.ITaskSubmissionPolicyService;
@@ -45,7 +45,7 @@ public class SubmissionRootNode extends AbstractSubmitTaskNode {
      */
 
     @Override
-    protected SubmitTaskResult doApply(SubmitTaskCommand request,
+    protected SubmitTaskResponseDTO doApply(SubmitTaskRequestDTO request,
                                          SubmitTaskDynamicContext ctx) throws Exception {
         log.info("[Submit] 收到任务提交请求（workspaceId={} profileCode={} 请求工具={} prompt长度={}）",
                 request.workspaceId(), request.profileCode(),
@@ -63,7 +63,7 @@ public class SubmissionRootNode extends AbstractSubmitTaskNode {
     }
 
     @Override
-    public StrategyHandler<SubmitTaskCommand, SubmitTaskDynamicContext, SubmitTaskResult>
+    public StrategyHandler<SubmitTaskRequestDTO, SubmitTaskDynamicContext, SubmitTaskResponseDTO>
     /**
      * 获取Next。
      * 流程：读取命令 → 执行用例编排 → 返回结果。
@@ -72,7 +72,7 @@ public class SubmissionRootNode extends AbstractSubmitTaskNode {
      * @return 获取到的Next。
      */
 
-    getNext(SubmitTaskCommand request, SubmitTaskDynamicContext ctx) {
+    getNext(SubmitTaskRequestDTO request, SubmitTaskDynamicContext ctx) {
         return profileResolutionNode;
     }
 }

@@ -1,7 +1,8 @@
 package cn.xiaofuge.deepseek.harness.trigger.http.query;
 
-import cn.xiaofuge.deepseek.harness.api.response.goal.GoalViewResponse;
-import cn.xiaofuge.deepseek.harness.api.service.query.GoalQueryApi;
+import cn.xiaofuge.deepseek.harness.api.dto.GoalViewResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.IGoalQueryApi;
+import cn.xiaofuge.deepseek.harness.api.response.Response;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/harness/goals")
 public class GoalQueryController {
 
-    private final GoalQueryApi goalQueryApi;
+    private final IGoalQueryApi goalQueryApi;
 
     /**
      * 处理目标 Query Controller。
@@ -32,7 +33,7 @@ public class GoalQueryController {
      * @param goalQueryApi 目标 Query API参数。
      * @return 方法执行结果。
      */
-    public GoalQueryController(GoalQueryApi goalQueryApi) {
+    public GoalQueryController(IGoalQueryApi goalQueryApi) {
         this.goalQueryApi = goalQueryApi;
     }
 
@@ -45,7 +46,7 @@ public class GoalQueryController {
      * 3. 返回给前端。
      */
     @GetMapping("/{sessionId}")
-    public GoalViewResponse getGoal(@PathVariable("sessionId") String sessionId) {
+    public Response<GoalViewResponseDTO> getGoal(@PathVariable("sessionId") String sessionId) {
         return goalQueryApi.getGoal(sessionId);
     }
 }

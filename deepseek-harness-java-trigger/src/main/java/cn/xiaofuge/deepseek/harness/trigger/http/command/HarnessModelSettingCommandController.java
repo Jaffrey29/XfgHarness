@@ -1,8 +1,9 @@
 package cn.xiaofuge.deepseek.harness.trigger.http.command;
 
-import cn.xiaofuge.deepseek.harness.api.command.settings.SaveModelSettingRequest;
-import cn.xiaofuge.deepseek.harness.api.response.settings.ModelSettingResponse;
-import cn.xiaofuge.deepseek.harness.api.service.command.HarnessModelSettingCommandApi;
+import cn.xiaofuge.deepseek.harness.api.dto.SaveModelSettingRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.ModelSettingResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.IHarnessModelSettingCommandApi;
+import cn.xiaofuge.deepseek.harness.api.response.Response;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -15,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/harness/settings/models")
 public class HarnessModelSettingCommandController {
 
-    private final HarnessModelSettingCommandApi harnessModelSettingCommandApi;
+    private final IHarnessModelSettingCommandApi harnessModelSettingCommandApi;
 
     /**
      * 处理Harness 模型 Setting 命令 Controller。
@@ -23,12 +24,12 @@ public class HarnessModelSettingCommandController {
      * @param harnessModelSettingCommandApi harness 模型 Setting 命令 API参数。
      * @return 方法执行结果。
      */
-    public HarnessModelSettingCommandController(HarnessModelSettingCommandApi harnessModelSettingCommandApi) {
+    public HarnessModelSettingCommandController(IHarnessModelSettingCommandApi harnessModelSettingCommandApi) {
         this.harnessModelSettingCommandApi = harnessModelSettingCommandApi;
     }
 
     @PostMapping
-    public ModelSettingResponse save(@RequestBody SaveModelSettingRequest request) {
+    public Response<ModelSettingResponseDTO> save(@RequestBody SaveModelSettingRequestDTO request) {
         return harnessModelSettingCommandApi.save(request);
     }
 
@@ -38,7 +39,7 @@ public class HarnessModelSettingCommandController {
      * @param profileCode profile 编码参数。
      */
     @DeleteMapping("/{profileCode}")
-    public void delete(@PathVariable("profileCode") String profileCode) {
-        harnessModelSettingCommandApi.delete(profileCode);
+    public Response<Void> delete(@PathVariable("profileCode") String profileCode) {
+        return harnessModelSettingCommandApi.delete(profileCode);
     }
 }

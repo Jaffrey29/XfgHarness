@@ -1,12 +1,15 @@
 package cn.xiaofuge.deepseek.harness.cases.agent.factory;
 
-import cn.xiaofuge.deepseek.harness.cases.agent.SendMessageCommand;
-import cn.xiaofuge.deepseek.harness.cases.agent.SendMessageResult;
+import cn.xiaofuge.deepseek.harness.api.dto.AgentMessageRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.AgentMessageResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.AgentToolCallEventResponseDTO;
 import cn.xiaofuge.deepseek.harness.cases.agent.node.AgentResolveNode;
-import cn.xiaofuge.deepseek.harness.domain.shared.StrategyHandler;
+import cn.xiaofuge.deepseek.harness.cases.orchestration.CasePipeline;
+import cn.xiaofuge.deepseek.harness.cases.orchestration.CasePipelineFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import java.util.function.Consumer;
 
 /**
  * Agent 消息策略树工厂。
@@ -18,7 +21,8 @@ import org.springframework.beans.factory.annotation.Qualifier;
  * @website bugstack.cn
  */
 @Service
-public class AgentMessageFactory {
+public class AgentMessageFactory
+        implements CasePipelineFactory<AgentMessageRequestDTO, AgentMessageDynamicContext, AgentMessageResponseDTO> {
 
     @Autowired
     @Qualifier("agentMessageResolveNode")
@@ -30,17 +34,23 @@ public class AgentMessageFactory {
      *
      * @return 可直接 apply 的消息处理策略
      */
-    public StrategyHandler<SendMessageCommand, AgentMessageDynamicContext, SendMessageResult> strategyHandler() {
-        return rootNode;
+    public CasePipeline<AgentMessageRequestDTO, AgentMessageDynamicContext, AgentMessageResponseDTO> pipeline() {
+        return CasePipeline.of("Agent message", rootNode, AgentMessageDynamicContext::new);
     }
 
-    /**
-     * 创建一次消息处理过程中的动态上下文。
-     * <p>上下文会承载解析出的 Agent 实例和消息意图，贯穿整棵策略树。
-     *
-     * @return 空白动态上下文
-     */
-    public AgentMessageDynamicContext newContext() {
-        return new AgentMessageDynamicContext();
+    public CasePipeline<AgentMessageRequestDTO, AgentMessageDynamicContext, AgentMessageResponseDTO> streamingPipeline(
+            Consumer<String> deltaSink,
+            Consumer<AgentToolCallEventResponseDTO> toolCallEventSink
+    ) {
+        return CasePipeline.of(
+                "Agent message streaming",
+                rootNode,
+                () -> {
+                    AgentMessageDynamicContext context = new AgentMessageDynamicContext();
+                    context.setDeltaSink(deltaSink);
+                    context.setToolCallEventSink(toolCallEventSink);
+                    return context;
+                }
+        );
     }
 }

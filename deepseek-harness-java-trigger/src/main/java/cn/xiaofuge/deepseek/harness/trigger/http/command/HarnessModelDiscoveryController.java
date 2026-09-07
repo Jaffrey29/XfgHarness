@@ -1,10 +1,9 @@
 package cn.xiaofuge.deepseek.harness.trigger.http.command;
 
-import cn.xiaofuge.deepseek.harness.api.command.settings.DiscoverModelsRequest;
-import cn.xiaofuge.deepseek.harness.api.service.command.HarnessModelDiscoveryApi;
+import cn.xiaofuge.deepseek.harness.api.dto.DiscoverModelsRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.IHarnessModelDiscoveryApi;
+import cn.xiaofuge.deepseek.harness.api.response.Response;
 import java.util.List;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/harness/settings/models/discover")
 public class HarnessModelDiscoveryController {
 
-    private final HarnessModelDiscoveryApi harnessModelDiscoveryApi;
+    private final IHarnessModelDiscoveryApi harnessModelDiscoveryApi;
 
     /**
      * 处理Harness 模型 Discovery Controller。
@@ -23,18 +22,12 @@ public class HarnessModelDiscoveryController {
      * @param harnessModelDiscoveryApi harness 模型 Discovery API参数。
      * @return 方法执行结果。
      */
-    public HarnessModelDiscoveryController(HarnessModelDiscoveryApi harnessModelDiscoveryApi) {
+    public HarnessModelDiscoveryController(IHarnessModelDiscoveryApi harnessModelDiscoveryApi) {
         this.harnessModelDiscoveryApi = harnessModelDiscoveryApi;
     }
 
     @PostMapping
-    public ResponseEntity<?> discover(@RequestBody DiscoverModelsRequest request) {
-        try {
-            List<String> models = harnessModelDiscoveryApi.discover(request);
-            return ResponseEntity.ok(models);
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-                    .body(java.util.Map.of("error", e.getMessage() != null ? e.getMessage() : "发现模型失败"));
-        }
+    public Response<List<String>> discover(@RequestBody DiscoverModelsRequestDTO request) {
+        return harnessModelDiscoveryApi.discover(request);
     }
 }

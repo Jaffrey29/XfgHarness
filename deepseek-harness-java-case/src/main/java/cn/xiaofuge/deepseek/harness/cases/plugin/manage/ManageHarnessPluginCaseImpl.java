@@ -1,12 +1,9 @@
 package cn.xiaofuge.deepseek.harness.cases.plugin.manage;
 
-import cn.xiaofuge.deepseek.harness.cases.plugin.PluginLifecycleResult;
+import cn.xiaofuge.deepseek.harness.api.dto.PluginLifecycleResponseDTO;
 import cn.xiaofuge.deepseek.harness.cases.plugin.IManageHarnessPluginCase;
-import cn.xiaofuge.deepseek.harness.domain.plugin.IPluginRegistryService;
-import cn.xiaofuge.deepseek.harness.domain.plugin.IPluginRuntimeService;
-import cn.xiaofuge.deepseek.harness.domain.plugin.registry.model.valobj.PluginInstallStatusEnumVO;
-import cn.xiaofuge.deepseek.harness.domain.plugin.runtime.model.valobj.PluginProcessStatusVO;
-import java.time.Instant;
+import cn.xiaofuge.deepseek.harness.cases.plugin.manage.factory.PluginManagePipelineFactory;
+import cn.xiaofuge.deepseek.harness.cases.plugin.manage.node.ManagePluginNode;
 import org.springframework.stereotype.Service;
 
 /**
@@ -20,19 +17,16 @@ import org.springframework.stereotype.Service;
 @Service
 public class ManageHarnessPluginCaseImpl implements IManageHarnessPluginCase {
 
-    private final IPluginRegistryService pluginRegistryService;
-    private final IPluginRuntimeService pluginRuntimeService;
+    private final PluginManagePipelineFactory pluginManagePipelineFactory;
 
     /**
      * 初始化插件生命周期管理用例。
      * <p>流程：接收启用/停用/卸载命令 → 委托插件领域服务执行。</p>
      */
     public ManageHarnessPluginCaseImpl(
-            IPluginRegistryService pluginRegistryService,
-            IPluginRuntimeService pluginRuntimeService
+            PluginManagePipelineFactory pluginManagePipelineFactory
     ) {
-        this.pluginRegistryService = pluginRegistryService;
-        this.pluginRuntimeService = pluginRuntimeService;
+        this.pluginManagePipelineFactory = pluginManagePipelineFactory;
     }
 
     /**
@@ -43,10 +37,8 @@ public class ManageHarnessPluginCaseImpl implements IManageHarnessPluginCase {
      */
 
     @Override
-    public PluginLifecycleResult disable(String pluginId) {
-        pluginRuntimeService.stop(pluginId);
-        PluginInstallStatusEnumVO status = pluginRegistryService.disablePlugin(pluginId);
-        return new PluginLifecycleResult(pluginId, status.name(), "plugin disabled", Instant.now());
+    public PluginLifecycleResponseDTO disable(String pluginId) {
+        return execute(ManagePluginNode.Action.DISABLE, pluginId);
     }
 
     /**
@@ -57,9 +49,8 @@ public class ManageHarnessPluginCaseImpl implements IManageHarnessPluginCase {
      */
 
     @Override
-    public PluginLifecycleResult enable(String pluginId) {
-        PluginInstallStatusEnumVO status = pluginRegistryService.enablePlugin(pluginId);
-        return new PluginLifecycleResult(pluginId, status.name(), "plugin enabled", Instant.now());
+    public PluginLifecycleResponseDTO enable(String pluginId) {
+        return execute(ManagePluginNode.Action.ENABLE, pluginId);
     }
 
     /**
@@ -70,15 +61,16 @@ public class ManageHarnessPluginCaseImpl implements IManageHarnessPluginCase {
      */
 
     @Override
-    public PluginLifecycleResult uninstall(String pluginId) {
-        pluginRuntimeService.stop(pluginId);
-        PluginInstallStatusEnumVO status = pluginRegistryService.uninstallPlugin(pluginId);
-        return new PluginLifecycleResult(pluginId, status.name(), "plugin uninstalled", Instant.now());
+    public PluginLifecycleResponseDTO uninstall(String pluginId) {
+        return execute(ManagePluginNode.Action.UNINSTALL, pluginId);
     }
 
     @Override
-    public PluginLifecycleResult stop(String pluginId) {
-        PluginProcessStatusVO result = pluginRuntimeService.stop(pluginId);
-        return new PluginLifecycleResult(pluginId, result.running() ? "RUNNING" : "STOPPED", result.message(), Instant.now());
+    public PluginLifecycleResponseDTO stop(String pluginId) {
+        return execute(ManagePluginNode.Action.STOP, pluginId);
+    }
+
+    private PluginLifecycleResponseDTO execute(ManagePluginNode.Action action, String pluginId) {
+        return pluginManagePipelineFactory.pipeline().execute(new ManagePluginNode.Input(action, pluginId));
     }
 }

@@ -1,7 +1,8 @@
 package cn.xiaofuge.deepseek.harness.trigger.http.query;
 
-import cn.xiaofuge.deepseek.harness.api.response.approval.PendingApprovalResponse;
-import cn.xiaofuge.deepseek.harness.api.service.query.HarnessApprovalQueryApi;
+import cn.xiaofuge.deepseek.harness.api.dto.PendingApprovalResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.IHarnessApprovalQueryApi;
+import cn.xiaofuge.deepseek.harness.api.response.Response;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/harness/approvals")
 public class HarnessApprovalQueryController {
 
-    private final HarnessApprovalQueryApi harnessApprovalQueryApi;
+    private final IHarnessApprovalQueryApi harnessApprovalQueryApi;
 
     /**
      * 处理Harness 审批 Query Controller。
@@ -33,7 +34,7 @@ public class HarnessApprovalQueryController {
      * @param harnessApprovalQueryApi harness 审批 Query API参数。
      * @return 方法执行结果。
      */
-    public HarnessApprovalQueryController(HarnessApprovalQueryApi harnessApprovalQueryApi) {
+    public HarnessApprovalQueryController(IHarnessApprovalQueryApi harnessApprovalQueryApi) {
         this.harnessApprovalQueryApi = harnessApprovalQueryApi;
     }
 
@@ -46,7 +47,7 @@ public class HarnessApprovalQueryController {
      * 3. 返回给前端。
      */
     @GetMapping("/pending")
-    public List<PendingApprovalResponse> listPending(@RequestParam(name = "limit", defaultValue = "50") int limit) {
+    public Response<List<PendingApprovalResponseDTO>> listPending(@RequestParam(name = "limit", defaultValue = "50") int limit) {
         return harnessApprovalQueryApi.listPendingApprovals(limit);
     }
 }

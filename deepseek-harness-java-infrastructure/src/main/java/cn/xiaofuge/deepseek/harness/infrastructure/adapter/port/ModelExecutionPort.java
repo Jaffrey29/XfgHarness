@@ -4,9 +4,6 @@ import cn.xiaofuge.deepseek.harness.domain.llm.adapter.port.ILlmRuntimePort;
 import cn.xiaofuge.deepseek.harness.domain.llm.model.valobj.FinishReason;
 import cn.xiaofuge.deepseek.harness.domain.llm.model.valobj.GenerateOptions;
 import cn.xiaofuge.deepseek.harness.domain.llm.model.valobj.StreamChunk;
-import cn.xiaofuge.deepseek.harness.domain.model.entity.Message;
-import cn.xiaofuge.deepseek.harness.domain.model.valobj.TextBlock;
-import cn.xiaofuge.deepseek.harness.domain.runtime.setting.IModelSettingQueryService;
 import cn.xiaofuge.deepseek.harness.domain.task.execution.adapter.port.IModelExecutionPort;
 import cn.xiaofuge.deepseek.harness.domain.task.execution.model.valobj.ModelExecutionResultVO;
 import java.util.List;
@@ -26,35 +23,15 @@ import org.springframework.stereotype.Component;
 public class ModelExecutionPort implements IModelExecutionPort {
 
     private final ILlmRuntimePort llmRuntimePort;
-    private final IModelSettingQueryService modelSettingService;
-
-    public ModelExecutionPort(ILlmRuntimePort llmRuntimePort, IModelSettingQueryService modelSettingService) {
+    public ModelExecutionPort(ILlmRuntimePort llmRuntimePort) {
         this.llmRuntimePort = llmRuntimePort;
-        this.modelSettingService = modelSettingService;
     }
 
     @Override
-    public ModelExecutionResultVO execute(String profileCode, String prompt) {
-        var setting = modelSettingService.findByProfileCode(profileCode)
-                .filter(s -> s.enabled())
-                .orElseThrow(() -> new IllegalStateException(
-                        "model setting is missing or disabled for profile: " + profileCode));
-
-        GenerateOptions options = new GenerateOptions(
-                "deepseek",
-                setting.modelCode(),
-                null,
-                List.of(Message.createUser(
-                        List.of(new TextBlock(prompt)),
-                        new cn.xiaofuge.deepseek.harness.domain.model.entity.MessageSource.UserSource())),
-                null, null, null, null, null, null, null,
-                setting.baseUrl(),
-                setting.apiKeyRef()
-        );
-
+    public ModelExecutionResultVO execute(GenerateOptions options) {
         CountDownLatch latch = new CountDownLatch(1);
         AtomicReference<String> content = new AtomicReference<>("");
-        AtomicReference<String> responseModel = new AtomicReference<>(setting.modelCode());
+        AtomicReference<String> responseModel = new AtomicReference<>(options.model());
         AtomicReference<Throwable> error = new AtomicReference<>(null);
 
         llmRuntimePort.stream(options).subscribe(new Flow.Subscriber<>() {
@@ -103,7 +80,7 @@ public class ModelExecutionPort implements IModelExecutionPort {
 
         try {
             if (!latch.await(120, TimeUnit.SECONDS)) {
-                throw new IllegalStateException("model execution timed out for profile: " + profileCode);
+                throw new IllegalStateException("model execution timed out for session: " + options.sessionId());
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -114,6 +91,6 @@ public class ModelExecutionPort implements IModelExecutionPort {
             throw new IllegalStateException("model execution failed: " + error.get().getMessage(), error.get());
         }
 
-        return new ModelExecutionResultVO(setting.providerCode(), responseModel.get(), content.get());
+        return new ModelExecutionResultVO(options.provider(), responseModel.get(), content.get());
     }
 }

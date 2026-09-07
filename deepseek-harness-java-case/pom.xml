@@ -19,6 +19,11 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
+            <groupId>cn.xiaofuge</groupId>
+            <artifactId>deepseek-harness-java-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-context</artifactId>
         </dependency>
@@ -29,6 +34,12 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit-junit5</artifactId>
+            <version>1.3.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

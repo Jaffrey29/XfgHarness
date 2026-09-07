@@ -1,23 +1,20 @@
 package cn.xiaofuge.deepseek.harness.trigger.service;
 
-import cn.xiaofuge.deepseek.harness.api.dto.agent.AgentMessageRequest;
-import cn.xiaofuge.deepseek.harness.api.dto.agent.AgentMessageResponse;
 import cn.xiaofuge.deepseek.harness.cases.agent.IAgentUseCase;
-import cn.xiaofuge.deepseek.harness.cases.agent.SendMessageCommand;
-import cn.xiaofuge.deepseek.harness.cases.agent.SendMessageResult;
-import cn.xiaofuge.deepseek.harness.api.service.IAgentApi;
-import cn.xiaofuge.deepseek.harness.domain.model.valobj.ToolCallBlock;
+import cn.xiaofuge.deepseek.harness.api.IAgentApi;
+import cn.xiaofuge.deepseek.harness.api.dto.AgentMessageRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.AgentMessageResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.AgentToolCallEventResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.response.Response;
 import org.springframework.stereotype.Service;
 
 /**
  * 智能体应用适配器。
  * <p>
  * 执行流程：
- * 1. 接收触发层传入的 API DTO（AgentMessageRequest）；
- * 2. 映射为 case 层 Command（SendMessageCommand），调用用例层；
- * 3. 将用例层返回的 Result（SendMessageResult）映射回 API DTO（AgentMessageResponse）。
- * <p>
- * 这一层是 DTO ↔ Command 的边界映射点，case 层不直接依赖 API DTO。
+ * 1. 接收触发层传入的 API DTO；
+ * 2. 调用 Case 层用例；
+ * 3. 返回 API DTO。
  *
  * @author 小傅哥
  * @website bugstack.cn
@@ -51,10 +48,8 @@ public class AgentApi implements IAgentApi {
      */
 
     @Override
-    public AgentMessageResponse sendMessage(AgentMessageRequest request) {
-        SendMessageCommand command = toCommand(request);
-        SendMessageResult result = agentUseCase.sendMessage(command);
-        return toResponse(result);
+    public Response<AgentMessageResponseDTO> sendMessage(AgentMessageRequestDTO request) {
+        return execute(() -> agentUseCase.sendMessage(request));
     }
 
     /**
@@ -64,18 +59,25 @@ public class AgentApi implements IAgentApi {
      */
 
     @Override
-    public AgentMessageResponse sendMessageStreaming(
-            AgentMessageRequest request,
+    public Response<AgentMessageResponseDTO> sendMessageStreaming(
+            AgentMessageRequestDTO request,
             java.util.function.Consumer<String> deltaSink,
-            java.util.function.Consumer<ToolCallBlock> toolCallSink) {
-        SendMessageCommand command = toCommand(request);
-        SendMessageResult result = agentUseCase.sendMessageStreaming(command, deltaSink, toolCallSink);
-        return toResponse(result);
+            java.util.function.Consumer<AgentToolCallEventResponseDTO> toolCallSink) {
+        return execute(() -> agentUseCase.sendMessageStreaming(
+                    request,
+                    deltaSink,
+                    event -> toolCallSink.accept(new AgentToolCallEventResponseDTO(
+                            event.callId(),
+                            event.toolName(),
+                            event.arguments(),
+                            "running"
+                    ))
+        ));
     }
 
     @Override
-    public String getAgentStatus(String agentId) {
-        return agentUseCase.getAgentStatus(agentId);
+    public Response<String> getAgentStatus(String agentId) {
+        return execute(() -> agentUseCase.getAgentStatus(agentId));
     }
     /**
      * 取消Agent。
@@ -85,8 +87,29 @@ public class AgentApi implements IAgentApi {
 
 
     @Override
-    public void cancelAgent(String agentId) {
-        agentUseCase.cancelAgent(agentId);
+    public Response<Void> cancelAgent(String agentId) {
+        return executeAction(() -> agentUseCase.cancelAgent(agentId));
+    }
+
+    private <T> Response<T> execute(java.util.function.Supplier<T> action) {
+        try {
+            return Response.success(action.get());
+        } catch (IllegalArgumentException exception) {
+            return Response.invalidArgument(exception.getMessage());
+        } catch (RuntimeException exception) {
+            return Response.internalError(exception.getMessage());
+        }
+    }
+
+    private Response<Void> executeAction(Runnable action) {
+        try {
+            action.run();
+            return Response.success(null);
+        } catch (IllegalArgumentException exception) {
+            return Response.invalidArgument(exception.getMessage());
+        } catch (RuntimeException exception) {
+            return Response.internalError(exception.getMessage());
+        }
     }
 
     // ── DTO ↔ Command 映射 ───────────────────────────────────────
@@ -97,30 +120,4 @@ public class AgentApi implements IAgentApi {
      * @param request 请求对象。
      * @return 转换后的目标对象。
      */
-    private SendMessageCommand toCommand(AgentMessageRequest request) {
-        return new SendMessageCommand(
-                request.agentId(),
-                request.provider(),
-                request.model(),
-                request.maxTokens(),
-                request.cwd(),
-                request.message(),
-                request.images()
-        );
-    }
-
-    /**
-     * 转换为 响应。
-     * 流程：转换协议 → 调用应用门面 → 返回结果。
-     * @param result 结果对象。
-     * @return 转换后的目标对象。
-     */
-    private AgentMessageResponse toResponse(SendMessageResult result) {
-        return new AgentMessageResponse(
-                result.agentId(),
-                result.sessionId(),
-                result.status(),
-                result.messages()
-        );
-    }
 }

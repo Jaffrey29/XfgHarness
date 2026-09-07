@@ -1,9 +1,9 @@
 package cn.xiaofuge.deepseek.harness.cases.agent.node;
 
-import cn.xiaofuge.deepseek.harness.cases.agent.SendMessageCommand;
-import cn.xiaofuge.deepseek.harness.cases.agent.SendMessageResult;
+import cn.xiaofuge.deepseek.harness.api.dto.AgentMessageRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.AgentMessageResponseDTO;
 import cn.xiaofuge.deepseek.harness.cases.agent.factory.AgentMessageDynamicContext;
-import cn.xiaofuge.deepseek.harness.domain.shared.strategy.AbstractStrategyRouter;
+import cn.xiaofuge.deepseek.harness.cases.orchestration.AbstractStrategyRouter;
 
 /**
  * Agent 消息策略树节点的抽象基类。
@@ -14,5 +14,5 @@ import cn.xiaofuge.deepseek.harness.domain.shared.strategy.AbstractStrategyRoute
  * @website bugstack.cn
  */
 public abstract class AbstractAgentMessageNode
-        extends AbstractStrategyRouter<SendMessageCommand, AgentMessageDynamicContext, SendMessageResult> {
+        extends AbstractStrategyRouter<AgentMessageRequestDTO, AgentMessageDynamicContext, AgentMessageResponseDTO> {
 }

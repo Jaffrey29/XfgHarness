@@ -1,6 +1,8 @@
 package cn.xiaofuge.deepseek.harness.cases.agent;
 
-import cn.xiaofuge.deepseek.harness.domain.model.valobj.ToolCallBlock;
+import cn.xiaofuge.deepseek.harness.api.dto.AgentMessageRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.AgentMessageResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.AgentToolCallEventResponseDTO;
 
 /**
  * Agent 交互用例。
@@ -21,15 +23,15 @@ public interface IAgentUseCase {
      * @param command Agent 消息发送命令
      * @return Agent 消息发送结果
      */
-    SendMessageResult sendMessage(SendMessageCommand command);
+    AgentMessageResponseDTO sendMessage(AgentMessageRequestDTO command);
 
     /**
      * 使用实时增量接收器发送消息，用于流式输出。
      */
-    SendMessageResult sendMessageStreaming(
-            SendMessageCommand command,
+    AgentMessageResponseDTO sendMessageStreaming(
+            AgentMessageRequestDTO command,
             java.util.function.Consumer<String> deltaSink,
-            java.util.function.Consumer<ToolCallBlock> toolCallSink);
+            java.util.function.Consumer<AgentToolCallEventResponseDTO> toolCallSink);
 
     /**
      * 查询 Agent 当前状态。

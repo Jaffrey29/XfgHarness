@@ -1,9 +1,9 @@
 package cn.xiaofuge.deepseek.harness.cases.task.submit.node;
 
-import cn.xiaofuge.deepseek.harness.cases.task.SubmitTaskCommand;
-import cn.xiaofuge.deepseek.harness.cases.task.SubmitTaskResult;
+import cn.xiaofuge.deepseek.harness.api.dto.SubmitTaskRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.SubmitTaskResponseDTO;
 import cn.xiaofuge.deepseek.harness.cases.task.submit.factory.SubmitTaskDynamicContext;
-import cn.xiaofuge.deepseek.harness.domain.shared.StrategyHandler;
+import cn.xiaofuge.deepseek.harness.cases.orchestration.StrategyHandler;
 import cn.xiaofuge.deepseek.harness.domain.session.IHarnessSessionRegistryService;
 import cn.xiaofuge.deepseek.harness.domain.session.ISessionLogService;
 import cn.xiaofuge.deepseek.harness.domain.task.IHarnessExecutionService;
@@ -59,7 +59,7 @@ public class EnqueueNode extends AbstractSubmitTaskNode {
      */
 
     @Override
-    protected SubmitTaskResult doApply(SubmitTaskCommand request,
+    protected SubmitTaskResponseDTO doApply(SubmitTaskRequestDTO request,
                                          SubmitTaskDynamicContext ctx) throws Exception {
         var submission = ctx.getSubmission();
         var profile = ctx.getExecutionProfile();
@@ -110,7 +110,7 @@ public class EnqueueNode extends AbstractSubmitTaskNode {
             log.info("[Submit] 需要审批，任务挂起等待审批 taskId={}", ctx.getTaskResult().taskId());
         }
 
-        return new SubmitTaskResult(
+        return new SubmitTaskResponseDTO(
                 ctx.getTaskResult().taskId(),
                 ctx.getSessionResult().sessionId(),
                 ctx.getCurrentStatus(),
@@ -123,7 +123,7 @@ public class EnqueueNode extends AbstractSubmitTaskNode {
     }
 
     @Override
-    public StrategyHandler<SubmitTaskCommand, SubmitTaskDynamicContext, SubmitTaskResult>
+    public StrategyHandler<SubmitTaskRequestDTO, SubmitTaskDynamicContext, SubmitTaskResponseDTO>
     /**
      * 获取Next。
      * 流程：读取命令 → 执行用例编排 → 返回结果。
@@ -132,7 +132,7 @@ public class EnqueueNode extends AbstractSubmitTaskNode {
      * @return 获取到的Next。
      */
 
-    getNext(SubmitTaskCommand request, SubmitTaskDynamicContext ctx) {
+    getNext(SubmitTaskRequestDTO request, SubmitTaskDynamicContext ctx) {
         return defaultStrategyHandler;
     }
 }

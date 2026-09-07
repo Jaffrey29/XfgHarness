@@ -1,15 +1,12 @@
 package cn.xiaofuge.deepseek.harness.cases.plugin.run;
 
-import cn.xiaofuge.deepseek.harness.cases.plugin.RunPluginCommand;
-import cn.xiaofuge.deepseek.harness.cases.plugin.RunPluginResult;
+import cn.xiaofuge.deepseek.harness.api.dto.RunPluginRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.RunPluginResponseDTO;
 import cn.xiaofuge.deepseek.harness.cases.plugin.IRunHarnessPluginCase;
-import cn.xiaofuge.deepseek.harness.domain.plugin.bridge.model.valobj.PluginBridgePlanVO;
-import cn.xiaofuge.deepseek.harness.domain.plugin.IPluginBridgeService;
-import cn.xiaofuge.deepseek.harness.domain.plugin.registry.model.entity.HarnessPluginEntity;
-import cn.xiaofuge.deepseek.harness.domain.plugin.IPluginRegistryService;
-import cn.xiaofuge.deepseek.harness.domain.plugin.runtime.model.valobj.PluginRunResultVO;
-import cn.xiaofuge.deepseek.harness.domain.plugin.IPluginRuntimeService;
-import java.time.Instant;
+import cn.xiaofuge.deepseek.harness.cases.plugin.lifecycle.PluginRuntimeOutcome;
+import cn.xiaofuge.deepseek.harness.cases.plugin.lifecycle.PluginExecutionInput;
+import cn.xiaofuge.deepseek.harness.cases.plugin.lifecycle.PluginRuntimeKind;
+import cn.xiaofuge.deepseek.harness.cases.plugin.lifecycle.factory.PluginRuntimePipelineFactory;
 import org.springframework.stereotype.Service;
 
 /**
@@ -23,41 +20,22 @@ import org.springframework.stereotype.Service;
 @Service
 public class RunHarnessPluginCaseImpl implements IRunHarnessPluginCase {
 
-    private final IPluginRegistryService pluginRegistryService;
-    private final IPluginBridgeService pluginBridgeService;
-    private final IPluginRuntimeService pluginRuntimeService;
+    private final PluginRuntimePipelineFactory pipelineFactory;
 
     /**
      * 运行Harness Plugin Case Impl。
      */
     public RunHarnessPluginCaseImpl(
-            IPluginRegistryService pluginRegistryService,
-            IPluginBridgeService pluginBridgeService,
-            IPluginRuntimeService pluginRuntimeService
+            PluginRuntimePipelineFactory pipelineFactory
     ) {
-        this.pluginRegistryService = pluginRegistryService;
-        this.pluginBridgeService = pluginBridgeService;
-        this.pluginRuntimeService = pluginRuntimeService;
+        this.pipelineFactory = pipelineFactory;
     }
 
     @Override
-    public RunPluginResult execute(RunPluginCommand request) {
-        HarnessPluginEntity plugin = pluginRegistryService.loadPlugin(request.pluginId());
-        PluginBridgePlanVO plan = pluginBridgeService.inspect(plugin);
-        pluginRegistryService.refreshStatus(plugin, plan.bridgeReady());
-        pluginBridgeService.recordBinding(plugin.getPluginId(), plan, Instant.now());
-        if (!plan.bridgeReady()) {
-            throw new IllegalStateException("plugin bridge is not ready: " + plan.message());
+    public RunPluginResponseDTO execute(RunPluginRequestDTO request) {
+        if (pipelineFactory.pluginPipeline().execute(new PluginExecutionInput(request.pluginId(), PluginRuntimeKind.RUN)) instanceof PluginRuntimeOutcome.Run run) {
+            return run.result();
         }
-        PluginRunResultVO result = pluginRuntimeService.start(plugin, plan);
-        return new RunPluginResult(
-                result.pluginId(),
-                result.processId(),
-                result.runtimeCommand(),
-                result.workingDirectory(),
-                result.running(),
-                result.startedAt(),
-                result.message()
-        );
+        throw new IllegalStateException("unexpected plugin run outcome");
     }
 }

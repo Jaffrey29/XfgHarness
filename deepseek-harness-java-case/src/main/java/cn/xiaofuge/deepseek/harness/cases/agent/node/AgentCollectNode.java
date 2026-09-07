@@ -1,7 +1,7 @@
 package cn.xiaofuge.deepseek.harness.cases.agent.node;
 
-import cn.xiaofuge.deepseek.harness.cases.agent.SendMessageCommand;
-import cn.xiaofuge.deepseek.harness.cases.agent.SendMessageResult;
+import cn.xiaofuge.deepseek.harness.api.dto.AgentMessageRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.AgentMessageResponseDTO;
 import cn.xiaofuge.deepseek.harness.cases.agent.factory.AgentMessageDynamicContext;
 import cn.xiaofuge.deepseek.harness.domain.model.entity.Message;
 import cn.xiaofuge.deepseek.harness.domain.model.valobj.ContentBlock;
@@ -11,7 +11,7 @@ import cn.xiaofuge.deepseek.harness.domain.model.entity.MessageSource;
 import cn.xiaofuge.deepseek.harness.domain.model.valobj.ToolResultBlock;
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionEvent;
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionLog;
-import cn.xiaofuge.deepseek.harness.domain.shared.StrategyHandler;
+import cn.xiaofuge.deepseek.harness.cases.orchestration.StrategyHandler;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,7 +42,7 @@ public class AgentCollectNode extends AbstractAgentMessageNode {
      * 成功结果到达后同一卡片变为 status=success 并携带文件内容。
      */
     @Override
-    protected SendMessageResult doApply(SendMessageCommand request,
+    protected AgentMessageResponseDTO doApply(AgentMessageRequestDTO request,
                                            AgentMessageDynamicContext ctx) throws Exception {
         var agent = ctx.getAgent();
         log.info("[Collect] Agent={} 等待 Agent 空闲，开始收集会话结果...", request.agentId());
@@ -102,7 +102,7 @@ public class AgentCollectNode extends AbstractAgentMessageNode {
 
         log.info("[Collect] Agent={} 收集完成，共 {} 条消息，status={}",
                 request.agentId(), messages.size(), agent.status().name().toLowerCase());
-        return new SendMessageResult(
+        return new AgentMessageResponseDTO(
                 request.agentId(),
                 session.sessionId(),
                 agent.status().name().toLowerCase(),
@@ -111,7 +111,7 @@ public class AgentCollectNode extends AbstractAgentMessageNode {
     }
 
     @Override
-    public StrategyHandler<SendMessageCommand, AgentMessageDynamicContext, SendMessageResult>
+    public StrategyHandler<AgentMessageRequestDTO, AgentMessageDynamicContext, AgentMessageResponseDTO>
     /**
      * 获取Next。
      * 流程：读取命令 → 执行用例编排 → 返回结果。
@@ -120,7 +120,7 @@ public class AgentCollectNode extends AbstractAgentMessageNode {
      * @return 获取到的Next。
      */
 
-    getNext(SendMessageCommand request, AgentMessageDynamicContext ctx) {
+    getNext(AgentMessageRequestDTO request, AgentMessageDynamicContext ctx) {
         return defaultStrategyHandler;
     }
 

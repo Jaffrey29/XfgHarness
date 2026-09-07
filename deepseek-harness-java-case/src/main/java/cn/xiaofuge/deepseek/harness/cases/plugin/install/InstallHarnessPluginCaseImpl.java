@@ -1,10 +1,9 @@
 package cn.xiaofuge.deepseek.harness.cases.plugin.install;
 
-import cn.xiaofuge.deepseek.harness.cases.plugin.InstallPluginCommand;
-import cn.xiaofuge.deepseek.harness.cases.plugin.InstallPluginResult;
+import cn.xiaofuge.deepseek.harness.api.dto.InstallPluginRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.InstallPluginResponseDTO;
 import cn.xiaofuge.deepseek.harness.cases.plugin.IInstallHarnessPluginCase;
-import cn.xiaofuge.deepseek.harness.domain.plugin.registry.model.valobj.PluginInstallationResultVO;
-import cn.xiaofuge.deepseek.harness.domain.plugin.IPluginRegistryService;
+import cn.xiaofuge.deepseek.harness.cases.plugin.install.factory.PluginInstallPipelineFactory;
 import org.springframework.stereotype.Service;
 
 /**
@@ -18,32 +17,17 @@ import org.springframework.stereotype.Service;
 @Service
 public class InstallHarnessPluginCaseImpl implements IInstallHarnessPluginCase {
 
-    private final IPluginRegistryService pluginRegistryService;
+    private final PluginInstallPipelineFactory pluginInstallPipelineFactory;
 
     /**
      * 安装组件，写入登记信息并返回安装结果。
      */
-    public InstallHarnessPluginCaseImpl(IPluginRegistryService pluginRegistryService) {
-        this.pluginRegistryService = pluginRegistryService;
+    public InstallHarnessPluginCaseImpl(PluginInstallPipelineFactory pluginInstallPipelineFactory) {
+        this.pluginInstallPipelineFactory = pluginInstallPipelineFactory;
     }
 
     @Override
-    public InstallPluginResult execute(InstallPluginCommand request) {
-        PluginInstallationResultVO result = pluginRegistryService.installPlugin(
-                request.pluginId(),
-                request.displayName(),
-                request.pluginVersion(),
-                request.runtimeType(),
-                request.sourcePath(),
-                request.entrypoint()
-        );
-        return new InstallPluginResult(
-                result.pluginId(),
-                result.runtimeType().name(),
-                result.installMode().name(),
-                result.status().name(),
-                result.directlyExecutable(),
-                result.installedAt()
-        );
+    public InstallPluginResponseDTO execute(InstallPluginRequestDTO request) {
+        return pluginInstallPipelineFactory.pipeline().execute(request);
     }
 }

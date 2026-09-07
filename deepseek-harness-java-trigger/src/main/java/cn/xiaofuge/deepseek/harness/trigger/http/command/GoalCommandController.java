@@ -1,8 +1,9 @@
 package cn.xiaofuge.deepseek.harness.trigger.http.command;
 
-import cn.xiaofuge.deepseek.harness.api.dto.goal.GoalCommandRequest;
-import cn.xiaofuge.deepseek.harness.api.response.goal.GoalViewResponse;
-import cn.xiaofuge.deepseek.harness.api.service.command.GoalCommandApi;
+import cn.xiaofuge.deepseek.harness.api.dto.GoalCommandRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.GoalViewResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.IGoalCommandApi;
+import cn.xiaofuge.deepseek.harness.api.response.Response;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -26,7 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/harness/goals")
 public class GoalCommandController {
 
-    private final GoalCommandApi goalCommandApi;
+    private final IGoalCommandApi goalCommandApi;
 
     /**
      * 处理目标 命令 Controller。
@@ -34,7 +35,7 @@ public class GoalCommandController {
      * @param goalCommandApi 目标 命令 API参数。
      * @return 方法执行结果。
      */
-    public GoalCommandController(GoalCommandApi goalCommandApi) {
+    public GoalCommandController(IGoalCommandApi goalCommandApi) {
         this.goalCommandApi = goalCommandApi;
     }
 
@@ -46,7 +47,7 @@ public class GoalCommandController {
      * @return 方法执行结果。
      */
     @PostMapping("/{sessionId}")
-    public GoalViewResponse apply(@PathVariable("sessionId") String sessionId, @RequestBody GoalCommandRequest request) {
+    public Response<GoalViewResponseDTO> apply(@PathVariable("sessionId") String sessionId, @RequestBody GoalCommandRequestDTO request) {
         return goalCommandApi.apply(sessionId, request);
     }
 }

@@ -1,10 +1,11 @@
 package cn.xiaofuge.deepseek.harness.trigger.http.command;
 
-import cn.xiaofuge.deepseek.harness.api.dto.terminal.TerminalOpenRequest;
-import cn.xiaofuge.deepseek.harness.api.dto.terminal.TerminalSendRequest;
-import cn.xiaofuge.deepseek.harness.api.response.terminal.TerminalSendResponse;
-import cn.xiaofuge.deepseek.harness.api.response.terminal.TerminalSessionResponse;
-import cn.xiaofuge.deepseek.harness.api.service.command.TerminalCommandApi;
+import cn.xiaofuge.deepseek.harness.api.dto.TerminalOpenRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.TerminalSendRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.TerminalSendResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.TerminalSessionResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.ITerminalCommandApi;
+import cn.xiaofuge.deepseek.harness.api.response.Response;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -28,7 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/harness/terminal")
 public class TerminalCommandController {
 
-    private final TerminalCommandApi terminalCommandApi;
+    private final ITerminalCommandApi terminalCommandApi;
 
     /**
      * 处理终端 命令 Controller。
@@ -36,7 +37,7 @@ public class TerminalCommandController {
      * @param terminalCommandApi 终端 命令 API参数。
      * @return 方法执行结果。
      */
-    public TerminalCommandController(TerminalCommandApi terminalCommandApi) {
+    public TerminalCommandController(ITerminalCommandApi terminalCommandApi) {
         this.terminalCommandApi = terminalCommandApi;
     }
 
@@ -47,7 +48,7 @@ public class TerminalCommandController {
      * @return 方法执行结果。
      */
     @PostMapping("/sessions")
-    public TerminalSessionResponse open(@RequestBody TerminalOpenRequest request) {
+    public Response<TerminalSessionResponseDTO> open(@RequestBody TerminalOpenRequestDTO request) {
         return terminalCommandApi.open(request);
     }
 
@@ -59,7 +60,7 @@ public class TerminalCommandController {
      * @return 方法执行结果。
      */
     @PostMapping("/sessions/{sessionId}/send")
-    public TerminalSendResponse send(@PathVariable("sessionId") String sessionId, @RequestBody TerminalSendRequest request) {
+    public Response<TerminalSendResponseDTO> send(@PathVariable("sessionId") String sessionId, @RequestBody TerminalSendRequestDTO request) {
         return terminalCommandApi.send(sessionId, request);
     }
 
@@ -70,7 +71,7 @@ public class TerminalCommandController {
      * @return 方法执行结果。
      */
     @PostMapping("/sessions/{sessionId}/close")
-    public TerminalSessionResponse close(@PathVariable("sessionId") String sessionId) {
+    public Response<TerminalSessionResponseDTO> close(@PathVariable("sessionId") String sessionId) {
         return terminalCommandApi.close(sessionId);
     }
 }

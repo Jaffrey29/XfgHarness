@@ -1,22 +1,21 @@
 package cn.xiaofuge.deepseek.harness.trigger.service;
 
-import cn.xiaofuge.deepseek.harness.api.dto.task.SubmitTaskRequest;
-import cn.xiaofuge.deepseek.harness.api.dto.task.SubmitTaskResponse;
+import cn.xiaofuge.deepseek.harness.api.dto.SubmitTaskRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.SubmitTaskResponseDTO;
 import cn.xiaofuge.deepseek.harness.cases.task.ISubmitHarnessTaskCase;
-import cn.xiaofuge.deepseek.harness.cases.task.SubmitTaskCommand;
-import cn.xiaofuge.deepseek.harness.cases.task.SubmitTaskResult;
-import cn.xiaofuge.deepseek.harness.api.service.IHarnessTaskApi;
+import cn.xiaofuge.deepseek.harness.api.IHarnessTaskApi;
+import cn.xiaofuge.deepseek.harness.api.response.Response;
 import org.springframework.stereotype.Service;
 
 /**
  * 任务提交适配器。
  * <p>
  * 执行流程：
- * 1. 接收 Trigger 层提交的任务请求 DTO（SubmitTaskRequest）；
- * 2. 映射为 case 层 Command（SubmitTaskCommand），调用任务提交用例；
- * 3. 将用例返回的 Result（SubmitTaskResult）映射回 API DTO（SubmitTaskResponse）。
+ * 1. 接收 Trigger 层提交的任务请求 DTO（SubmitTaskRequestDTO）；
+ * 2. 直接调用任务提交用例编排；
+ * 3. 用例返回 API 响应 DTO（SubmitTaskResponseDTO）。
  * <p>
- * 这一层是 DTO ↔ Command 的边界映射点，case 层不直接依赖 API DTO。
+ * 这一层只负责外部协议适配，不承载流程编排。
  *
  * @author 小傅哥
  * @website bugstack.cn
@@ -37,10 +36,14 @@ public class HarnessTaskApi implements IHarnessTaskApi {
     }
 
     @Override
-    public SubmitTaskResponse submitTask(SubmitTaskRequest request) {
-        SubmitTaskCommand command = toCommand(request);
-        SubmitTaskResult result = submitHarnessTaskCase.execute(command);
-        return toResponse(result);
+    public Response<SubmitTaskResponseDTO> submitTask(SubmitTaskRequestDTO request) {
+        try {
+            return Response.success(submitHarnessTaskCase.execute(request));
+        } catch (IllegalArgumentException exception) {
+            return Response.invalidArgument(exception.getMessage());
+        } catch (RuntimeException exception) {
+            return Response.internalError(exception.getMessage());
+        }
     }
 
     // ── DTO ↔ Command 映射 ───────────────────────────────────────
@@ -51,31 +54,4 @@ public class HarnessTaskApi implements IHarnessTaskApi {
      * @param request 请求对象。
      * @return 转换后的目标对象。
      */
-    private SubmitTaskCommand toCommand(SubmitTaskRequest request) {
-        return new SubmitTaskCommand(
-                request.workspaceId(),
-                request.prompt(),
-                request.profileCode(),
-                request.requestedTools()
-        );
-    }
-
-    /**
-     * 转换为 响应。
-     * 流程：转换协议 → 调用应用门面 → 返回结果。
-     * @param result 结果对象。
-     * @return 转换后的目标对象。
-     */
-    private SubmitTaskResponse toResponse(SubmitTaskResult result) {
-        return new SubmitTaskResponse(
-                result.taskId(),
-                result.sessionId(),
-                result.status(),
-                result.resolvedModel(),
-                result.enabledTools(),
-                result.approvalRequired(),
-                result.approvalReason(),
-                result.acceptedAt()
-        );
-    }
 }

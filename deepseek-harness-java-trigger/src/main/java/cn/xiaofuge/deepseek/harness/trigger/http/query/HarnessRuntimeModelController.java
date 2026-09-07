@@ -1,7 +1,8 @@
 package cn.xiaofuge.deepseek.harness.trigger.http.query;
 
-import cn.xiaofuge.deepseek.harness.api.response.runtime.AvailableModelResponse;
-import cn.xiaofuge.deepseek.harness.api.service.query.HarnessRuntimeModelQueryApi;
+import cn.xiaofuge.deepseek.harness.api.dto.AvailableModelResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.IHarnessRuntimeModelQueryApi;
+import cn.xiaofuge.deepseek.harness.api.response.Response;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/harness/runtime/models")
 public class HarnessRuntimeModelController {
 
-    private final HarnessRuntimeModelQueryApi harnessRuntimeModelQueryApi;
+    private final IHarnessRuntimeModelQueryApi harnessRuntimeModelQueryApi;
 
     /**
      * 处理Harness 运行时 模型 Controller。
@@ -32,7 +33,7 @@ public class HarnessRuntimeModelController {
      * @param harnessRuntimeModelQueryApi harness 运行时 模型 Query API参数。
      * @return 方法执行结果。
      */
-    public HarnessRuntimeModelController(HarnessRuntimeModelQueryApi harnessRuntimeModelQueryApi) {
+    public HarnessRuntimeModelController(IHarnessRuntimeModelQueryApi harnessRuntimeModelQueryApi) {
         this.harnessRuntimeModelQueryApi = harnessRuntimeModelQueryApi;
     }
 
@@ -45,7 +46,7 @@ public class HarnessRuntimeModelController {
      * 3. 返回给前端渲染。
      */
     @GetMapping
-    public List<AvailableModelResponse> queryAll() {
+    public Response<List<AvailableModelResponseDTO>> queryAll() {
         return harnessRuntimeModelQueryApi.queryAll();
     }
 }

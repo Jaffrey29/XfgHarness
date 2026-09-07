@@ -1,7 +1,10 @@
 package cn.xiaofuge.deepseek.harness.cases.agent.factory;
 
+import cn.xiaofuge.deepseek.harness.api.dto.AgentToolCallEventResponseDTO;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.ReactLoopAgent;
 import cn.xiaofuge.deepseek.harness.domain.model.entity.Message;
+import cn.xiaofuge.deepseek.harness.domain.model.valobj.ToolCallBlock;
+import java.util.function.Consumer;
 
 /**
  * Agent 消息策略树中流转的可变上下文。
@@ -11,7 +14,7 @@ import cn.xiaofuge.deepseek.harness.domain.model.entity.Message;
  * @author 小傅哥
  * @website bugstack.cn
  */
-public class AgentMessageDynamicContext {
+public class AgentMessageDynamicContext implements AutoCloseable {
 
     /**
      * MessageIntent 定义当前模块中的enum契约与职责。
@@ -26,6 +29,8 @@ public class AgentMessageDynamicContext {
     private ReactLoopAgent agent;
     private Message userMessage;
     private MessageIntent intent;
+    private Consumer<String> deltaSink;
+    private Consumer<AgentToolCallEventResponseDTO> toolCallEventSink;
 
     /**
      * 获取Agent。
@@ -53,4 +58,38 @@ public class AgentMessageDynamicContext {
      * 设置Intent。
      */
     public void setIntent(MessageIntent intent) { this.intent = intent; }
+
+    public Consumer<String> getDeltaSink() { return deltaSink; }
+
+    public void setDeltaSink(Consumer<String> deltaSink) { this.deltaSink = deltaSink; }
+
+    public Consumer<AgentToolCallEventResponseDTO> getToolCallEventSink() { return toolCallEventSink; }
+
+    public void setToolCallEventSink(Consumer<AgentToolCallEventResponseDTO> toolCallEventSink) {
+        this.toolCallEventSink = toolCallEventSink;
+    }
+
+    public void attachSinks(ReactLoopAgent agent) {
+        if (deltaSink == null && toolCallEventSink == null) {
+            return;
+        }
+        agent.setStreamDeltaSink(deltaSink);
+        agent.setStreamToolCallSink(toolCall -> {
+            if (toolCallEventSink != null) {
+                toolCallEventSink.accept(new AgentToolCallEventResponseDTO(
+                        toolCall.id(), toolCall.name(), toolCall.arguments(), "running"
+                ));
+            }
+        });
+    }
+
+    @Override
+    public void close() {
+        if (agent != null) {
+            agent.setStreamDeltaSink(null);
+            agent.setStreamToolCallSink(null);
+        }
+        deltaSink = null;
+        toolCallEventSink = null;
+    }
 }

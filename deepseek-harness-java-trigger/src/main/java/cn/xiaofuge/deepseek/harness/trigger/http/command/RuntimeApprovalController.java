@@ -1,9 +1,10 @@
 package cn.xiaofuge.deepseek.harness.trigger.http.command;
 
-import cn.xiaofuge.deepseek.harness.domain.agent.adapter.port.IRuntimeApprovalBroker;
-import cn.xiaofuge.deepseek.harness.domain.agent.adapter.port.IRuntimeApprovalBroker.PendingApprovalView;
-import cn.xiaofuge.deepseek.harness.domain.tool.service.RuntimeApprovalGate.ApprovalVerdict;
-import org.springframework.http.ResponseEntity;
+import cn.xiaofuge.deepseek.harness.api.dto.ResolveRuntimeApprovalRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.ResolveRuntimeApprovalResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.RuntimeApprovalResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.IRuntimeApprovalApi;
+import cn.xiaofuge.deepseek.harness.api.response.Response;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,19 +23,19 @@ import java.util.Map;
 @RequestMapping("/api/harness/approvals/runtime")
 public class RuntimeApprovalController {
 
-    private final IRuntimeApprovalBroker broker;
+    private final IRuntimeApprovalApi runtimeApprovalApi;
 
     /**
      * 运行time Approval Controller。
      */
-    public RuntimeApprovalController(IRuntimeApprovalBroker broker) {
-        this.broker = broker;
+    public RuntimeApprovalController(IRuntimeApprovalApi runtimeApprovalApi) {
+        this.runtimeApprovalApi = runtimeApprovalApi;
     }
 
     /** 当前待决的运行期审批列表。 */
     @GetMapping("/pending")
-    public List<PendingApprovalView> listPending() {
-        return broker.listPending();
+    public Response<List<RuntimeApprovalResponseDTO>> listPending() {
+        return runtimeApprovalApi.listPending();
     }
 
     /**
@@ -42,25 +43,13 @@ public class RuntimeApprovalController {
      * <p>body: {@code {"verdict": "ALLOW_ONCE" | "ALLOW_SESSION" | "DENY" | "CANCEL"}}
      */
     @PostMapping("/{approvalId}/resolve")
-    public ResponseEntity<Map<String, Object>> resolve(
+    public Response<ResolveRuntimeApprovalResponseDTO> resolve(
             @PathVariable String approvalId,
             @RequestBody Map<String, String> body
     ) {
-        String raw = body.getOrDefault("verdict", "DENY");
-        ApprovalVerdict verdict;
-        try {
-            verdict = ApprovalVerdict.valueOf(raw.trim().toUpperCase().replace('-', '_'));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "resolved", false,
-                    "error", "unknown verdict: " + raw));
-        }
-        boolean accepted = broker.resolve(approvalId, verdict);
-        if (!accepted) {
-            return ResponseEntity.status(404).body(Map.of(
-                    "resolved", false,
-                    "error", "approval not found or already resolved: " + approvalId));
-        }
-        return ResponseEntity.ok(Map.of("resolved", true, "verdict", verdict.name()));
+        return runtimeApprovalApi.resolve(
+                approvalId,
+                new ResolveRuntimeApprovalRequestDTO(body.getOrDefault("verdict", "DENY"))
+        );
     }
 }

@@ -1,7 +1,7 @@
 package cn.xiaofuge.deepseek.harness.cases.task;
 
-import cn.xiaofuge.deepseek.harness.cases.task.SubmitTaskCommand;
-import cn.xiaofuge.deepseek.harness.cases.task.SubmitTaskResult;
+import cn.xiaofuge.deepseek.harness.api.dto.SubmitTaskRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.SubmitTaskResponseDTO;
 
 /**
  * 编排任务提交用例。
@@ -19,5 +19,5 @@ public interface ISubmitHarnessTaskCase {
      * @param request 任务请求
      * @return 已接收的任务摘要
      */
-    SubmitTaskResult execute(SubmitTaskCommand request);
+    SubmitTaskResponseDTO execute(SubmitTaskRequestDTO request);
 }

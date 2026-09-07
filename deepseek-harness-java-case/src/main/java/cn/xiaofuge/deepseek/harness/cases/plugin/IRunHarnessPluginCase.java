@@ -1,7 +1,7 @@
 package cn.xiaofuge.deepseek.harness.cases.plugin;
 
-import cn.xiaofuge.deepseek.harness.cases.plugin.RunPluginCommand;
-import cn.xiaofuge.deepseek.harness.cases.plugin.RunPluginResult;
+import cn.xiaofuge.deepseek.harness.api.dto.RunPluginRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.RunPluginResponseDTO;
 
 /**
  * 编排插件运行用例。
@@ -13,5 +13,5 @@ import cn.xiaofuge.deepseek.harness.cases.plugin.RunPluginResult;
  */
 public interface IRunHarnessPluginCase {
 
-    RunPluginResult execute(RunPluginCommand request);
+    RunPluginResponseDTO execute(RunPluginRequestDTO request);
 }

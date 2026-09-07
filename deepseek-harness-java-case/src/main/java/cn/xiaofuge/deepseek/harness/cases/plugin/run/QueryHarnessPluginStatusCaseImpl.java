@@ -1,9 +1,8 @@
 package cn.xiaofuge.deepseek.harness.cases.plugin.run;
 
-import cn.xiaofuge.deepseek.harness.cases.plugin.QueryPluginStatusResult;
+import cn.xiaofuge.deepseek.harness.api.dto.QueryPluginStatusResponseDTO;
 import cn.xiaofuge.deepseek.harness.cases.plugin.IQueryHarnessPluginStatusCase;
-import cn.xiaofuge.deepseek.harness.domain.plugin.runtime.model.valobj.PluginProcessStatusVO;
-import cn.xiaofuge.deepseek.harness.domain.plugin.IPluginRuntimeService;
+import cn.xiaofuge.deepseek.harness.cases.plugin.query.factory.PluginQueryPipelineFactory;
 import org.springframework.stereotype.Service;
 
 /**
@@ -17,26 +16,17 @@ import org.springframework.stereotype.Service;
 @Service
 public class QueryHarnessPluginStatusCaseImpl implements IQueryHarnessPluginStatusCase {
 
-    private final IPluginRuntimeService pluginRuntimeService;
+    private final PluginQueryPipelineFactory pluginQueryPipelineFactory;
 
     /**
      * 查询Harness Plugin Status Case Impl。
      */
-    public QueryHarnessPluginStatusCaseImpl(IPluginRuntimeService pluginRuntimeService) {
-        this.pluginRuntimeService = pluginRuntimeService;
+    public QueryHarnessPluginStatusCaseImpl(PluginQueryPipelineFactory pluginQueryPipelineFactory) {
+        this.pluginQueryPipelineFactory = pluginQueryPipelineFactory;
     }
 
     @Override
-    public QueryPluginStatusResult execute(String pluginId) {
-        PluginProcessStatusVO result = pluginRuntimeService.status(pluginId);
-        return new QueryPluginStatusResult(
-                result.pluginId(),
-                result.processId(),
-                result.running(),
-                result.runtimeCommand(),
-                result.workingDirectory(),
-                result.startedAt(),
-                result.message()
-        );
+    public QueryPluginStatusResponseDTO execute(String pluginId) {
+        return pluginQueryPipelineFactory.statusPipeline().execute(pluginId);
     }
 }

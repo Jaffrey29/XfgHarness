@@ -1,9 +1,9 @@
 package cn.xiaofuge.deepseek.harness.cases.task.submit.node;
 
-import cn.xiaofuge.deepseek.harness.cases.task.SubmitTaskCommand;
-import cn.xiaofuge.deepseek.harness.cases.task.SubmitTaskResult;
+import cn.xiaofuge.deepseek.harness.api.dto.SubmitTaskRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.SubmitTaskResponseDTO;
 import cn.xiaofuge.deepseek.harness.cases.task.submit.factory.SubmitTaskDynamicContext;
-import cn.xiaofuge.deepseek.harness.domain.shared.strategy.AbstractStrategyRouter;
+import cn.xiaofuge.deepseek.harness.cases.orchestration.AbstractStrategyRouter;
 
 /**
  * 任务提交策略树节点的抽象基类。
@@ -14,5 +14,5 @@ import cn.xiaofuge.deepseek.harness.domain.shared.strategy.AbstractStrategyRoute
  * @website bugstack.cn
  */
 public abstract class AbstractSubmitTaskNode
-        extends AbstractStrategyRouter<SubmitTaskCommand, SubmitTaskDynamicContext, SubmitTaskResult> {
+        extends AbstractStrategyRouter<SubmitTaskRequestDTO, SubmitTaskDynamicContext, SubmitTaskResponseDTO> {
 }

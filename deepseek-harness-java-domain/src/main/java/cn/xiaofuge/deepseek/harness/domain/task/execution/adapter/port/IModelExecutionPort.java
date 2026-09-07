@@ -1,5 +1,6 @@
 package cn.xiaofuge.deepseek.harness.domain.task.execution.adapter.port;
 
+import cn.xiaofuge.deepseek.harness.domain.llm.model.valobj.GenerateOptions;
 import cn.xiaofuge.deepseek.harness.domain.task.execution.model.valobj.ModelExecutionResultVO;
 
 /**
@@ -18,12 +19,7 @@ import cn.xiaofuge.deepseek.harness.domain.task.execution.model.valobj.ModelExec
 public interface IModelExecutionPort {
 
     /**
-     * 使用指定画像执行一次模型调用。
-     * <p>
-     * 执行流程：
-     * 1. 读取 profileCode 和 prompt；
-     * 2. 交给基础设施层执行实际模型请求；
-     * 3. 返回助手回复和提供方信息。
+     * 执行一次已经完成路由和消息装配的模型请求。
      */
-    ModelExecutionResultVO execute(String profileCode, String prompt);
+    ModelExecutionResultVO execute(GenerateOptions options);
 }

@@ -1,9 +1,10 @@
 package cn.xiaofuge.deepseek.harness.cases.task.submit.factory;
 
-import cn.xiaofuge.deepseek.harness.cases.task.SubmitTaskCommand;
-import cn.xiaofuge.deepseek.harness.cases.task.SubmitTaskResult;
+import cn.xiaofuge.deepseek.harness.api.dto.SubmitTaskRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.SubmitTaskResponseDTO;
 import cn.xiaofuge.deepseek.harness.cases.task.submit.node.SubmissionRootNode;
-import cn.xiaofuge.deepseek.harness.domain.shared.StrategyHandler;
+import cn.xiaofuge.deepseek.harness.cases.orchestration.CasePipeline;
+import cn.xiaofuge.deepseek.harness.cases.orchestration.CasePipelineFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -17,7 +18,8 @@ import org.springframework.beans.factory.annotation.Qualifier;
  * @website bugstack.cn
  */
 @Service
-public class SubmitHarnessTaskFactory {
+public class SubmitHarnessTaskFactory
+        implements CasePipelineFactory<SubmitTaskRequestDTO, SubmitTaskDynamicContext, SubmitTaskResponseDTO> {
 
     @Autowired
     @Qualifier("submitTaskRootNode")
@@ -28,16 +30,7 @@ public class SubmitHarnessTaskFactory {
      * 流程：读取命令 → 执行用例编排 → 返回结果。
      * @return 方法执行结果。
      */
-    public StrategyHandler<SubmitTaskCommand, SubmitTaskDynamicContext, SubmitTaskResult> strategyHandler() {
-        return rootNode;
-    }
-
-    /**
-     * 处理new 上下文。
-     * 流程：读取命令 → 执行用例编排 → 返回结果。
-     * @return 方法执行结果。
-     */
-    public SubmitTaskDynamicContext newContext() {
-        return new SubmitTaskDynamicContext();
+    public CasePipeline<SubmitTaskRequestDTO, SubmitTaskDynamicContext, SubmitTaskResponseDTO> pipeline() {
+        return CasePipeline.of("Submit harness task", rootNode, SubmitTaskDynamicContext::new);
     }
 }

@@ -1,8 +1,9 @@
 package cn.xiaofuge.deepseek.harness.trigger.http.query;
 
-import cn.xiaofuge.deepseek.harness.api.response.conversation.ConversationMessageResponse;
-import cn.xiaofuge.deepseek.harness.api.response.conversation.ConversationSessionSummaryResponse;
-import cn.xiaofuge.deepseek.harness.api.service.query.HarnessConsoleQueryApi;
+import cn.xiaofuge.deepseek.harness.api.dto.ConversationMessageResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.ConversationSessionSummaryResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.IHarnessConsoleQueryApi;
+import cn.xiaofuge.deepseek.harness.api.response.Response;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/harness/console")
 public class HarnessConsoleQueryController {
 
-    private final HarnessConsoleQueryApi harnessConsoleQueryApi;
+    private final IHarnessConsoleQueryApi harnessConsoleQueryApi;
 
     /**
      * 处理Harness Console Query Controller。
@@ -30,7 +31,7 @@ public class HarnessConsoleQueryController {
      * @param harnessConsoleQueryApi harness Console Query API参数。
      * @return 方法执行结果。
      */
-    public HarnessConsoleQueryController(HarnessConsoleQueryApi harnessConsoleQueryApi) {
+    public HarnessConsoleQueryController(IHarnessConsoleQueryApi harnessConsoleQueryApi) {
         this.harnessConsoleQueryApi = harnessConsoleQueryApi;
     }
 
@@ -38,7 +39,7 @@ public class HarnessConsoleQueryController {
      * 获取Mapping。
      */
     @GetMapping("/sessions")
-    public List<ConversationSessionSummaryResponse> listRecentSessions(@RequestParam(name = "limit", defaultValue = "50") int limit) {
+    public Response<List<ConversationSessionSummaryResponseDTO>> listRecentSessions(@RequestParam(name = "limit", defaultValue = "50") int limit) {
         return harnessConsoleQueryApi.listRecentSessions(limit);
     }
 
@@ -46,7 +47,7 @@ public class HarnessConsoleQueryController {
      * 获取Mapping。
      */
     @GetMapping("/sessions/{sessionId}/messages")
-    public List<ConversationMessageResponse> listMessages(@PathVariable("sessionId") String sessionId) {
+    public Response<List<ConversationMessageResponseDTO>> listMessages(@PathVariable("sessionId") String sessionId) {
         return harnessConsoleQueryApi.listMessages(sessionId);
     }
 }

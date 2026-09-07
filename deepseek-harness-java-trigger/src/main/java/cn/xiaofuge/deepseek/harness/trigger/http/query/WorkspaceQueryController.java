@@ -1,8 +1,8 @@
 package cn.xiaofuge.deepseek.harness.trigger.http.query;
 
-import cn.xiaofuge.deepseek.harness.api.response.workspace.WorkspaceEntryResponse;
-import cn.xiaofuge.deepseek.harness.api.service.query.WorkspaceQueryApi;
-import java.io.IOException;
+import cn.xiaofuge.deepseek.harness.api.dto.WorkspaceEntryResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.IWorkspaceQueryApi;
+import cn.xiaofuge.deepseek.harness.api.response.Response;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/agent")
 public class WorkspaceQueryController {
 
-    private final WorkspaceQueryApi workspaceQueryApi;
+    private final IWorkspaceQueryApi workspaceQueryApi;
 
     /**
      * 处理工作区 Query Controller。
@@ -34,7 +34,7 @@ public class WorkspaceQueryController {
      * @param workspaceQueryApi 工作区 Query API参数。
      * @return 方法执行结果。
      */
-    public WorkspaceQueryController(WorkspaceQueryApi workspaceQueryApi) {
+    public WorkspaceQueryController(IWorkspaceQueryApi workspaceQueryApi) {
         this.workspaceQueryApi = workspaceQueryApi;
     }
 
@@ -47,7 +47,7 @@ public class WorkspaceQueryController {
      * 3. 返回给前端工作区页面。
      */
     @GetMapping("/workspaces")
-    public List<WorkspaceEntryResponse> getWorkspaces() throws IOException {
+    public Response<List<WorkspaceEntryResponseDTO>> getWorkspaces() {
         return workspaceQueryApi.getWorkspaces();
     }
 
@@ -60,7 +60,7 @@ public class WorkspaceQueryController {
      * 3. 返回目录选择器可直接使用的字符串列表。
      */
     @GetMapping("/workspaces/list")
-    public List<String> listDirectories(@RequestParam(value = "path", required = false) String path) throws IOException {
+    public Response<List<String>> listDirectories(@RequestParam(value = "path", required = false) String path) {
         return workspaceQueryApi.listDirectories(path);
     }
 }

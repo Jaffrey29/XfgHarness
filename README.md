@@ -46,6 +46,8 @@
   - [7.2 Node Bridge Plugin](#72-node-bridge-plugin)
   - [7.3 MCP 工具适配](#73-mcp-工具适配)
   - [7.4 插件生命周期](#74-插件生命周期)
+  - [7.5 二次开发指南](#75-二次开发指南)
+  - [7.6 插件加载流程图](#76-插件加载流程图)
 - [8. REST API 概览](#8-rest-api-概览)
 - [9. Web 控制台](#9-web-控制台)
 - [10. 关键配置](#10-关键配置)
@@ -219,7 +221,7 @@ curl -N -X POST http://localhost:8090/api/agent/stream \
 
 ### 3.1 总体架构图
 
-整体为**六边形架构（端口-适配器）+ DDD 分层**，共 7 个 Maven 模块，依赖严格单向：
+整体为**六边形架构（端口-适配器）+ DDD 分层**，共 10 个 Maven 模块，依赖严格单向：
 
 ```mermaid
 flowchart TB
@@ -234,6 +236,10 @@ flowchart TB
         subgraph Trigger["trigger 模块 · 接入适配"]
             Controllers["19 个 REST Controller<br/>(CQRS 拆 command/query)"]
             Auth["ApiKeyAuthInterceptor"]
+        end
+
+        subgraph Runtime["runtime 模块 · 运行时组合根"]
+            AgentRuntime["AgentFactory · ToolRegistry<br/>RuntimeApprovalBroker · SessionEventBridge"]
         end
 
         subgraph API["api 模块 · 应用门面"]
@@ -286,7 +292,8 @@ flowchart TB
     Controllers --> Auth --> Facade
     Controllers --> UseCase
     UseCase --> Strategy --> Domain
-    Facade --> Domain
+    Facade --> Case
+    Runtime --> Domain
     Infra -.实现端口.-> Domain
     Domain --> Types
     Plugins --> Types
@@ -310,11 +317,21 @@ Domain → Types(SPI) ← Plugins
 | 层 | 约束 |
 | --- | --- |
 | `Trigger` | 不写业务规则，只负责协议、认证、参数绑定和路由 |
-| `API` | 暴露应用层 Facade 和 DTO，隔离外部协议与内部用例 |
+| `API` | 暴露应用层 Facade 和 DTO，只依赖 Case，隔离外部协议与内部用例 |
 | `Case` | 编排跨领域流程，不直接依赖具体数据库、HTTP Client 或进程实现 |
 | `Domain` | 持有实体、值对象、领域服务、**端口（Port）**和仓库接口 |
 | `Infrastructure` | 实现 Domain 端口，负责 MySQL/H2、LLM、Node、Shell、MCP 等外部依赖 |
+| `Runtime` | 组合 Agent 执行器、工具注册中心、审批中介和事件监听，只依赖 Domain |
 | `Types` | 插件与工具的轻量 SPI 契约包，**不依赖 Spring** |
+
+Case 内部采用两种固定形态，避免“所有模块都套策略树”或“所有模块都直接调领域服务”：
+
+1. **薄用例**：单步查询/命令直接放在 `*CaseImpl`，只做命令校验、DTO 映射和领域服务委托。
+2. **流程用例**：跨多个领域服务或包含分支决策的流程，统一放在 `factory` + `node`：
+   - `*Factory` 创建 `CasePipeline`；
+   - `*Node` 执行一个步骤并通过 `getNext()` 显式路由；
+   - `DynamicContext` 承载步骤间状态；
+   - `orchestration` 只提供通用执行器，不写业务规则。
 
 ### 3.3 Maven 模块划分
 
@@ -323,9 +340,10 @@ Domain → Types(SPI) ← Plugins
 | `deepseek-harness-java-app` | Spring Boot 启动器、静态 UI、Profile 配置、预置插件加载 |
 | `deepseek-harness-java-trigger` | 19 个 REST Controller、API Key 拦截器、Web MVC 配置 |
 | `deepseek-harness-java-api` | 应用层 Facade、Command/Query DTO、响应对象 |
-| `deepseek-harness-java-case` | Agent、Session、Task、Plugin 等用例编排（策略树） |
+| `deepseek-harness-java-case` | Agent、Session、Task、Plugin 等用例编排；复杂流程使用 `factory + node` |
 | `deepseek-harness-java-domain` | 27 个限界上下文、实体、值对象、端口与领域服务 |
 | `deepseek-harness-java-infrastructure` | Repository、DAO、Gateway、协议和执行环境适配 |
+| `deepseek-harness-java-runtime` | Agent 运行时组合根、工具装配、运行审批与会话事件桥接 |
 | `deepseek-harness-java-types` | `JavaHarnessPlugin`、`AbstractTool`、`ToolDefinition` 等 SPI 契约 |
 | `plugins/*` | 示例插件（Java JAR + Node demo）、插件 Archetype |
 | `docs/` | 架构图、领域设计详解、插件开发指南 |
@@ -558,13 +576,13 @@ Domain 定义端口，Infrastructure 实现。关键端口：
 | `ILlmRuntimePort` | `InMemoryLlmRuntimePort`（流式生成，重试在此层） |
 | `IModelExecutionPort` | `ModelExecutionPort` |
 | `IModelProviderPort` | `ModelProviderPort` |
-| `IRuntimeApprovalBroker` | `RuntimeApprovalBroker` |
+| `IRuntimeApprovalBroker` | `RuntimeApprovalBroker`（Runtime 组合根） |
 | `IPermissionMatrixPort` / `IApprovalPolicyPort` | `PermissionMatrixPort` / `ApprovalPolicyPort` |
 | `IToolCatalogPort` | `ToolCatalogPort` |
 | `IPluginArtifactInstallerPort` / `IPluginRuntimeBridgePort` / `IPluginProcessPort` | `PluginArtifactInstallerPort` / `PluginRuntimeBridgePort` / `PluginProcessPort` |
 | `IHarnessSessionRepository` / `ISessionEventStore` / `IHarnessTaskQueueRepository` / `IGoalRepository` | MyBatis Repository 对应实现 |
 | `IWorkflowEnginePort` | `LocalWorkflowEnginePort` |
-| `AgentFactoryPort` | `AgentFactory`（组合根：装配 `ReactLoopAgent` + `ToolCallExecutor`） |
+| `AgentFactoryPort` | `AgentFactory`（Runtime 组合根：装配 `ReactLoopAgent` + `ToolCallExecutor`） |
 
 > 更完整的领域说明（事件清单、全部端口、子域细节）见 [`docs/domain-design.md`](docs/md/domain-design.md)；**逐模块速查（含 37 个模块的用途/子包/关键类/端口/关系）**见 [`docs/domain-modules-reference.md`](docs/md/domain-modules-reference.md)。
 
@@ -637,7 +655,7 @@ Java Native Plugin 以 JAR 方式安装，宿主使用**隔离 `URLClassLoader`*
 1. 实现 `JavaHarnessPlugin` 或继承 `AbstractHarnessPlugin`。
 2. 实现 `AbstractTool`，声明 `name()`、`description()`、`parameters()`、`run()`。
 3. 在 `META-INF/plugin.yaml` 中声明插件元数据。
-4. 在 `META-INF/services/cn.walioffice.deepseek.harness.domain.plugin.spi.JavaHarnessPlugin` 中注册入口类。
+4. 在 `META-INF/services/cn.xiaofuge.deepseek.harness.domain.spi.JavaHarnessPlugin` 中注册入口类。
 5. 打包为 JAR 并放入 `harness.plugin.install-root` 指向的目录（默认 `./plugins`）。
 
 插件工具注册后的名称格式：`plugin__<pluginId>__<toolName>`。
@@ -663,9 +681,234 @@ Java Native Plugin 以 JAR 方式安装，宿主使用**隔离 `URLClassLoader`*
 install → activate → run → disable → uninstall
 ```
 
-预置插件可在 `harness.plugin.preset.plugins` 中声明（支持 `auto-enable`），启动时自动装载。完整 Archetype 命令、代码模板和 HTTP 安装示例见 [`docs/java-plugin-development.md`](docs/md/java-plugin-development.md)。
+预置插件可在 `harness.plugin.preset.plugins` 中声明（支持 `auto-start` / 旧字段 `auto-enable`），启动时自动装载。完整 Archetype 命令、代码模板和 HTTP 安装示例见 [`docs/md/java-plugin-development.md`](docs/md/java-plugin-development.md)。
+完整 Java 插件示例见 [`plugins/sample-tools-plugin`](plugins/sample-tools-plugin)；完整 Node Bridge 示例见 [`plugins/dsh-demo-plugin`](plugins/dsh-demo-plugin)。
 
-### 7.5 插件加载流程图
+### 7.5 二次开发指南
+
+#### 7.5.1 先选扩展方式
+
+| 你要扩展什么 | 推荐方式 | 适合场景 |
+| --- | --- | --- |
+| 新增 Agent 可调用的工具 | **Java Native Plugin** | 类型安全、进程内直调，适合 Java 生态和企业内网能力 |
+| 复用已有 Node.js 能力 | **Node Bridge Plugin** | 通过 sidecar + JSON-RPC 调用，适合 Node 生态和进程隔离 |
+| 接入第三方工具服务 | **MCP Server** | 只需配置 `harness.mcp.servers`，无需写 Harness 插件代码 |
+| 修改 Agent 策略 / 领域逻辑 | 直接修改 `case` / `domain` 模块 | 只适合 fork 后深度定制，不建议插件作者这样扩展 |
+
+#### 7.5.2 Java 插件：最小实现
+
+推荐继承 `AbstractHarnessPlugin`，并把每个能力实现成 `AbstractTool`。插件只依赖 `deepseek-harness-java-types`，不要直接依赖 Spring Boot 宿主。
+
+```xml
+<dependency>
+  <groupId>cn.xiaofuge</groupId>
+  <artifactId>deepseek-harness-java-types</artifactId>
+  <version>1.0.0-SNAPSHOT</version>
+  <scope>provided</scope>
+</dependency>
+```
+
+```java
+package com.acme.weather;
+
+import cn.xiaofuge.deepseek.harness.domain.model.entity.AbstractTool;
+import cn.xiaofuge.deepseek.harness.domain.model.entity.ToolDefinition;
+import cn.xiaofuge.deepseek.harness.domain.model.entity.ToolExecutionResult;
+import cn.xiaofuge.deepseek.harness.domain.model.entity.ToolRunContext;
+import cn.xiaofuge.deepseek.harness.domain.spi.AbstractHarnessPlugin;
+import cn.xiaofuge.deepseek.harness.domain.spi.PluginContext;
+
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+
+public class WeatherPlugin extends AbstractHarnessPlugin {
+    public WeatherPlugin() {
+        super("acme-weather");
+    }
+
+    @Override
+    public List<ToolDefinition> tools() {
+        return List.of(new CurrentWeatherTool());
+    }
+
+    @Override
+    public void configure(PluginContext context) {
+        super.configure(context); // 不要省略；tools() 的注册依赖这里
+        context.registerSystemPrompt("about", 100,
+                "## Acme Weather\n- current_weather 可查询城市当前天气。");
+    }
+
+    static class CurrentWeatherTool extends AbstractTool {
+        @Override public String name() { return "current_weather"; }
+        @Override public String description() { return "查询指定城市的当前天气。"; }
+
+        @Override
+        public Map<String, Object> parameters() {
+            return objectSchema()
+                    .prop("city", stringSchema("城市名称，例如 Hangzhou"))
+                    .required("city")
+                    .build();
+        }
+
+        @Override
+        protected CompletableFuture<ToolExecutionResult> run(
+                Map<String, Object> args, ToolRunContext ctx) {
+            String city = str(args, "city");
+            if (city.isBlank()) {
+                return fail("city 不能为空", "MISSING_CITY");
+            }
+            return ok("{\"city\":\"" + city + "\",\"weather\":\"sunny\"}");
+        }
+    }
+}
+```
+
+JAR 内必须包含：
+
+```text
+META-INF/plugin.yaml
+META-INF/services/cn.xiaofuge.deepseek.harness.domain.spi.JavaHarnessPlugin
+```
+
+`plugin.yaml` 的 `entrypoint` 填插件类全限定名：
+
+```yaml
+id: acme-weather
+name: Acme Weather
+version: 1.0.0
+author: Acme
+description: Weather query plugin.
+entrypoint: com.acme.weather.WeatherPlugin
+```
+
+SPI 文件内容只需要一行：
+
+```text
+com.acme.weather.WeatherPlugin
+```
+
+#### 7.5.3 安装并验证 Java 插件
+
+```bash
+mvn package
+
+curl -X POST http://localhost:8090/api/harness/plugins/install \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "pluginId": "acme-weather",
+    "displayName": "Acme Weather",
+    "pluginVersion": "1.0.0",
+    "runtimeType": "JAVA_NATIVE",
+    "sourcePath": "/absolute/path/to/acme-weather-1.0.0.jar",
+    "entrypoint": "acme-weather-1.0.0.jar"
+  }'
+
+curl -X POST http://localhost:8090/api/harness/plugins/activate \
+  -H 'Content-Type: application/json' \
+  -d '{"pluginId":"acme-weather"}'
+
+curl -X POST http://localhost:8090/api/harness/plugins/run \
+  -H 'Content-Type: application/json' \
+  -d '{"pluginId":"acme-weather"}'
+```
+
+加载成功后，Agent 看到的工具名是：
+
+```text
+plugin__acme-weather__current_weather
+```
+
+`sourcePath` 按 Spring Boot 进程的工作目录解析。为避免 Maven/IDE 工作目录差异，HTTP 安装时优先使用绝对路径；`harness.plugin.install-root` 指向宿主管理的插件目录，Java JAR 和 Node 插件目录都会复制到这里。
+
+也可以在 `application.yml` 预装：
+
+```yaml
+harness:
+  plugin:
+    install-root: ./plugins
+    preset:
+      plugins:
+        - plugin-id: acme-weather
+          display-name: Acme Weather
+          plugin-version: 1.0.0
+          runtime-type: JAVA_NATIVE
+          source-path: /absolute/path/to/acme-weather-1.0.0.jar
+          entrypoint: acme-weather-1.0.0.jar
+          auto-start: true
+```
+
+#### 7.5.4 使用插件上下文扩展治理能力
+
+`configure(PluginContext context)` 不只用来注册工具，还可以扩展 Agent 的运行时观测面：
+
+| 能力 | 方法 | 典型用途 |
+| --- | --- | --- |
+| 工具 | `registerTool(tool)` | 默认 `tools()` 已会自动注册；适合动态工具集 |
+| 系统提示词 | `registerSystemPrompt(name, order, text)` | 告诉模型插件能力、调用时机和约束 |
+| 事件订阅 | `subscribe(eventName, handler)` | 观察 `tool.called`、`plugin.started` 等插件事件 |
+| 事件发布 | `emit(eventName, payload)` | 把插件内部状态广播给其他插件 |
+| Hook | `registerHook("PRE_TOOL_USE", hook)` | 审计、限流、注入上下文；返回 BLOCK/DENY 可阻止动作 |
+| 资源释放 | `registerDisposer(autoCloseable)` | 关闭连接池、线程池、文件监听器等资源 |
+| 配置读取 | `getConfig(key, defaultValue)` | 读取宿主注入的插件配置；默认实现为内存态 |
+
+插件停止、卸载或热重载时，宿主会逆序回收这些注册项；插件作者不应自己长期持有对 ToolRegistry、HookRegistry 等宿主组件的引用。
+
+#### 7.5.5 Node Bridge 插件
+
+Node 插件是独立 sidecar 进程。宿主通过 stdin/stdout 发送换行分隔的 JSON-RPC 2.0 消息，插件至少实现：
+
+| 方法 | 说明 |
+| --- | --- |
+| `initialize` | 返回 `serverInfo`，完成握手 |
+| `notifications/initialized` | 宿主发出的初始化通知，插件可忽略 |
+| `tools/list` | 返回 `{ "tools": [ { "name", "description", "inputSchema" } ] }` |
+| `tools/call` | 执行工具，返回 `{ "content": [ { "type": "text", "text": "..." } ] }` |
+
+Node Bridge 当前主要扩展 Agent 可调用的工具；`PluginContext` 提供的 Hook、事件订阅和系统提示词注册能力目前主要面向 Java Native Plugin。如果需要深度治理 Agent 执行链路，优先选择 Java 插件。
+
+最小 `package.json`：
+
+```json
+{
+  "name": "acme-node-plugin",
+  "version": "1.0.0",
+  "main": "index.js"
+}
+```
+
+完整可运行的 JSON-RPC 模板见 [`plugins/dsh-demo-plugin/index.js`](plugins/dsh-demo-plugin/index.js)。安装 Node 插件时，`sourcePath` 指向插件目录，`entrypoint` 指向目录内的 `.js/.mjs/.cjs` 文件：
+
+```json
+{
+  "pluginId": "acme-node-plugin",
+  "displayName": "Acme Node Plugin",
+  "pluginVersion": "1.0.0",
+  "runtimeType": "DSH_NODE_BRIDGE",
+  "sourcePath": "/absolute/path/to/acme-node-plugin",
+  "entrypoint": "index.js"
+}
+```
+
+#### 7.5.6 调试与发布检查清单
+
+- `pluginId`、`plugin.yaml.id`、SPI 实现类返回的 `pluginId()` 三者必须一致。
+- `plugin.yaml.entrypoint` 是 Java 类全限定名；HTTP 安装请求里的 `entrypoint` 是宿主定位制品的文件路径。
+- Java 插件依赖 `deepseek-harness-java-types` 使用 `provided`，业务依赖打进插件 JAR，不要重复打包宿主已有框架。
+- 插件 ID 使用小写短横线命名，避免和数据库主键的大小写敏感策略产生歧义。
+- `configure()` 只做注册和轻量初始化，不要执行长阻塞任务；耗时资源建议懒加载并交给线程池。
+- 替换安装目录中的 JAR 可触发热重载；插件会先注销旧工具/Hook，再加载新 JAR。
+- 高风险操作应设计成显式工具，并依赖宿主的沙箱、审批、Hook 和审计链路；不要在插件构造函数中隐式执行危险动作。
+- 插件抛出的业务失败应返回 `fail(message, code)`，让模型看到结构化错误，而不是直接抛异常终止 Agent。
+
+#### 7.5.7 参考样例
+
+| 样例 | 说明 |
+| --- | --- |
+| [`plugins/sample-tools-plugin`](plugins/sample-tools-plugin) | Java 插件：天气查询 + 文件摘要，并演示 `PluginContext` 注册提示词、事件和 Hook |
+| [`plugins/dsh-demo-plugin`](plugins/dsh-demo-plugin) | Node Bridge 插件：最小 JSON-RPC sidecar，演示 `initialize`、`tools/list`、`tools/call` |
+
+### 7.6 插件加载流程图
 
 ```mermaid
 flowchart TD

@@ -1,10 +1,11 @@
 package cn.xiaofuge.deepseek.harness.cases.session.query;
 
+import cn.xiaofuge.deepseek.harness.api.dto.SessionDetailRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.SessionListRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.SessionQueryResponseDTO;
+
 import cn.xiaofuge.deepseek.harness.cases.session.ISessionQueryCase;
-import cn.xiaofuge.deepseek.harness.cases.session.SessionDetailQuery;
-import cn.xiaofuge.deepseek.harness.cases.session.SessionListQuery;
-import cn.xiaofuge.deepseek.harness.cases.session.SessionView;
-import cn.xiaofuge.deepseek.harness.domain.session.IConversationQueryService;
+import cn.xiaofuge.deepseek.harness.cases.session.factory.SessionPipelineFactory;
 import org.springframework.stereotype.Service;
 import java.util.List;
 
@@ -19,7 +20,7 @@ import java.util.List;
 @Service
 public class SessionQueryCaseImpl implements ISessionQueryCase {
 
-    private final IConversationQueryService conversationQueryService;
+    private final SessionPipelineFactory sessionPipelineFactory;
 
     /**
      * 处理会话 Query Case Impl。
@@ -27,8 +28,8 @@ public class SessionQueryCaseImpl implements ISessionQueryCase {
      * @param conversationQueryService conversation Query Service参数。
      * @return 方法执行结果。
      */
-    public SessionQueryCaseImpl(IConversationQueryService conversationQueryService) {
-        this.conversationQueryService = conversationQueryService;
+    public SessionQueryCaseImpl(SessionPipelineFactory sessionPipelineFactory) {
+        this.sessionPipelineFactory = sessionPipelineFactory;
     }
 
     /**
@@ -46,21 +47,8 @@ public class SessionQueryCaseImpl implements ISessionQueryCase {
      */
 
     @Override
-    public List<SessionView> querySessionList(SessionListQuery query) {
-        return conversationQueryService.querySessions(
-                        query.workspaceId(), query.offset(), query.limit())
-                .stream()
-                .map(s -> new SessionView(
-                        s.sessionId(),
-                        s.workspaceId(),
-                        s.status(),
-                        s.modelCode(),
-                        s.profileCode(),
-                        s.createdAt(),
-                        s.lastActivityAt(),
-                        null
-                ))
-                .toList();
+    public List<SessionQueryResponseDTO> querySessionList(SessionListRequestDTO query) {
+        return sessionPipelineFactory.sessionListPipeline().execute(query);
     }
     /**
      * 查询Session Detail。
@@ -71,26 +59,7 @@ public class SessionQueryCaseImpl implements ISessionQueryCase {
 
 
     @Override
-    public SessionView querySessionDetail(SessionDetailQuery query) {
-        var s = conversationQueryService.querySessionDetail(query.sessionId());
-        List<java.util.Map<String, Object>> messages = new java.util.ArrayList<>();
-        if (s.messages() != null) {
-            for (var msg : s.messages()) {
-                java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
-                m.put("role", msg.role());
-                m.put("content", msg.content());
-                messages.add(m);
-            }
-        }
-        return new SessionView(
-                s.sessionId(),
-                s.workspaceId(),
-                s.status(),
-                s.modelCode(),
-                s.profileCode(),
-                s.createdAt(),
-                s.lastActivityAt(),
-                messages
-        );
+    public SessionQueryResponseDTO querySessionDetail(SessionDetailRequestDTO query) {
+        return sessionPipelineFactory.sessionDetailPipeline().execute(query);
     }
 }

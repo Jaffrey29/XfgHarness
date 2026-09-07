@@ -1,9 +1,9 @@
 package cn.xiaofuge.deepseek.harness.cases.task.submit.node;
 
-import cn.xiaofuge.deepseek.harness.cases.task.SubmitTaskCommand;
-import cn.xiaofuge.deepseek.harness.cases.task.SubmitTaskResult;
+import cn.xiaofuge.deepseek.harness.api.dto.SubmitTaskRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.SubmitTaskResponseDTO;
 import cn.xiaofuge.deepseek.harness.cases.task.submit.factory.SubmitTaskDynamicContext;
-import cn.xiaofuge.deepseek.harness.domain.shared.StrategyHandler;
+import cn.xiaofuge.deepseek.harness.cases.orchestration.StrategyHandler;
 import cn.xiaofuge.deepseek.harness.domain.runtime.IExecutionProfileService;
 import cn.xiaofuge.deepseek.harness.domain.runtime.IModelRoutingService;
 import org.springframework.stereotype.Service;
@@ -40,7 +40,7 @@ public class ProfileResolutionNode extends AbstractSubmitTaskNode {
      */
 
     @Override
-    protected SubmitTaskResult doApply(SubmitTaskCommand request,
+    protected SubmitTaskResponseDTO doApply(SubmitTaskRequestDTO request,
                                          SubmitTaskDynamicContext ctx) throws Exception {
         var submission = ctx.getSubmission();
         ctx.setExecutionProfile(executionProfileService.resolve(submission.profileCode()));
@@ -49,7 +49,7 @@ public class ProfileResolutionNode extends AbstractSubmitTaskNode {
     }
 
     @Override
-    public StrategyHandler<SubmitTaskCommand, SubmitTaskDynamicContext, SubmitTaskResult>
+    public StrategyHandler<SubmitTaskRequestDTO, SubmitTaskDynamicContext, SubmitTaskResponseDTO>
     /**
      * 获取Next。
      * 流程：读取命令 → 执行用例编排 → 返回结果。
@@ -58,7 +58,7 @@ public class ProfileResolutionNode extends AbstractSubmitTaskNode {
      * @return 获取到的Next。
      */
 
-    getNext(SubmitTaskCommand request, SubmitTaskDynamicContext ctx) {
+    getNext(SubmitTaskRequestDTO request, SubmitTaskDynamicContext ctx) {
         return toolResolutionNode;
     }
 }

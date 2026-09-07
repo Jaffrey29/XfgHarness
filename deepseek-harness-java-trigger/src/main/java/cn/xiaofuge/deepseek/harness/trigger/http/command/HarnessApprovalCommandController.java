@@ -1,7 +1,8 @@
 package cn.xiaofuge.deepseek.harness.trigger.http.command;
 
-import cn.xiaofuge.deepseek.harness.api.response.approval.ApprovalActionResponse;
-import cn.xiaofuge.deepseek.harness.api.service.command.HarnessApprovalCommandApi;
+import cn.xiaofuge.deepseek.harness.api.dto.ApprovalActionResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.IHarnessApprovalCommandApi;
+import cn.xiaofuge.deepseek.harness.api.response.Response;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/harness/approvals")
 public class HarnessApprovalCommandController {
 
-    private final HarnessApprovalCommandApi harnessApprovalCommandApi;
+    private final IHarnessApprovalCommandApi harnessApprovalCommandApi;
 
     /**
      * 处理Harness 审批 命令 Controller。
@@ -32,7 +33,7 @@ public class HarnessApprovalCommandController {
      * @param harnessApprovalCommandApi harness 审批 命令 API参数。
      * @return 方法执行结果。
      */
-    public HarnessApprovalCommandController(HarnessApprovalCommandApi harnessApprovalCommandApi) {
+    public HarnessApprovalCommandController(IHarnessApprovalCommandApi harnessApprovalCommandApi) {
         this.harnessApprovalCommandApi = harnessApprovalCommandApi;
     }
 
@@ -45,7 +46,7 @@ public class HarnessApprovalCommandController {
      * 3. 返回审批结果。
      */
     @PostMapping("/{sessionId}/approve")
-    public ApprovalActionResponse approve(@PathVariable("sessionId") String sessionId) {
+    public Response<ApprovalActionResponseDTO> approve(@PathVariable("sessionId") String sessionId) {
         return harnessApprovalCommandApi.approve(sessionId);
     }
 }

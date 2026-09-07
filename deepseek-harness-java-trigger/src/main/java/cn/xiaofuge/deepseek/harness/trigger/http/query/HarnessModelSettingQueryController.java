@@ -1,7 +1,8 @@
 package cn.xiaofuge.deepseek.harness.trigger.http.query;
 
-import cn.xiaofuge.deepseek.harness.api.response.settings.ModelSettingResponse;
-import cn.xiaofuge.deepseek.harness.api.service.query.HarnessModelSettingQueryApi;
+import cn.xiaofuge.deepseek.harness.api.dto.ModelSettingResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.IHarnessModelSettingQueryApi;
+import cn.xiaofuge.deepseek.harness.api.response.Response;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/harness/settings/models")
 public class HarnessModelSettingQueryController {
 
-    private final HarnessModelSettingQueryApi harnessModelSettingQueryApi;
+    private final IHarnessModelSettingQueryApi harnessModelSettingQueryApi;
 
     /**
      * 处理Harness 模型 Setting Query Controller。
@@ -32,7 +33,7 @@ public class HarnessModelSettingQueryController {
      * @param harnessModelSettingQueryApi harness 模型 Setting Query API参数。
      * @return 方法执行结果。
      */
-    public HarnessModelSettingQueryController(HarnessModelSettingQueryApi harnessModelSettingQueryApi) {
+    public HarnessModelSettingQueryController(IHarnessModelSettingQueryApi harnessModelSettingQueryApi) {
         this.harnessModelSettingQueryApi = harnessModelSettingQueryApi;
     }
 
@@ -45,7 +46,7 @@ public class HarnessModelSettingQueryController {
      * 3. 返回给前端配置页。
      */
     @GetMapping
-    public List<ModelSettingResponse> queryAll() {
+    public Response<List<ModelSettingResponseDTO>> queryAll() {
         return harnessModelSettingQueryApi.queryAll();
     }
 }

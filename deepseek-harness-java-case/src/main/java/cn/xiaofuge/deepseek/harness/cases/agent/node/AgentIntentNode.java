@@ -1,9 +1,9 @@
 package cn.xiaofuge.deepseek.harness.cases.agent.node;
 
-import cn.xiaofuge.deepseek.harness.cases.agent.SendMessageCommand;
-import cn.xiaofuge.deepseek.harness.cases.agent.SendMessageResult;
+import cn.xiaofuge.deepseek.harness.api.dto.AgentMessageRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.AgentMessageResponseDTO;
 import cn.xiaofuge.deepseek.harness.cases.agent.factory.AgentMessageDynamicContext;
-import cn.xiaofuge.deepseek.harness.domain.shared.StrategyHandler;
+import cn.xiaofuge.deepseek.harness.cases.orchestration.StrategyHandler;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -65,7 +65,7 @@ public class AgentIntentNode extends AbstractAgentMessageNode {
      * <p>数据示例：“你好”识别为 CHAT；“帮我修复 /src/App.java 的报错”识别为 TASK_EXECUTION。
      */
     @Override
-    protected SendMessageResult doApply(SendMessageCommand request,
+    protected AgentMessageResponseDTO doApply(AgentMessageRequestDTO request,
                                            AgentMessageDynamicContext ctx) throws Exception {
         String msg = request.message() != null ? request.message().trim() : "";
         AgentMessageDynamicContext.MessageIntent intent = classify(msg);
@@ -77,7 +77,7 @@ public class AgentIntentNode extends AbstractAgentMessageNode {
     }
 
     @Override
-    public StrategyHandler<SendMessageCommand, AgentMessageDynamicContext, SendMessageResult>
+    public StrategyHandler<AgentMessageRequestDTO, AgentMessageDynamicContext, AgentMessageResponseDTO>
     /**
      * 获取Next。
      * 流程：读取命令 → 执行用例编排 → 返回结果。
@@ -86,7 +86,7 @@ public class AgentIntentNode extends AbstractAgentMessageNode {
      * @return 获取到的Next。
      */
 
-    getNext(SendMessageCommand request, AgentMessageDynamicContext ctx) {
+    getNext(AgentMessageRequestDTO request, AgentMessageDynamicContext ctx) {
         return dispatchNode;
     }
 

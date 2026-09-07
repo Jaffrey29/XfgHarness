@@ -1,10 +1,10 @@
 package cn.xiaofuge.deepseek.harness.app.plugin;
 
-import cn.xiaofuge.deepseek.harness.cases.plugin.InstallPluginCommand;
 import cn.xiaofuge.deepseek.harness.cases.plugin.IInstallHarnessPluginCase;
 import cn.xiaofuge.deepseek.harness.cases.plugin.IRunHarnessPluginCase;
-import cn.xiaofuge.deepseek.harness.cases.plugin.RunPluginCommand;
-import cn.xiaofuge.deepseek.harness.cases.plugin.RunPluginResult;
+import cn.xiaofuge.deepseek.harness.api.dto.InstallPluginRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.RunPluginRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.RunPluginResponseDTO;
 import cn.xiaofuge.deepseek.harness.domain.plugin.IPluginRegistryService;
 import cn.xiaofuge.deepseek.harness.domain.plugin.registry.model.entity.HarnessPluginEntity;
 import cn.xiaofuge.deepseek.harness.domain.plugin.registry.model.valobj.PluginInstallStatusEnumVO;
@@ -81,7 +81,7 @@ public class PresetPluginLoader implements ApplicationRunner {
             }
         }
         else {
-            InstallPluginCommand cmd = new InstallPluginCommand(
+            InstallPluginRequestDTO request = new InstallPluginRequestDTO(
                     preset.getPluginId(),
                     preset.getDisplayName(),
                     preset.getPluginVersion(),
@@ -89,14 +89,14 @@ public class PresetPluginLoader implements ApplicationRunner {
                     preset.getSourcePath(),
                     preset.getEntrypoint()
             );
-            installCase.execute(cmd);
+            installCase.execute(request);
             log.info("Preset plugin '{}' installed from {}", preset.getPluginId(), preset.getSourcePath());
         }
 
         if (!preset.isAutoStart()) {
             return;
         }
-        RunPluginResult result = runCase.execute(new RunPluginCommand(preset.getPluginId()));
+        RunPluginResponseDTO result = runCase.execute(new RunPluginRequestDTO(preset.getPluginId()));
         if (result.running()) {
             log.info("Preset plugin '{}' restored: {}", preset.getPluginId(), result.message());
         } else {

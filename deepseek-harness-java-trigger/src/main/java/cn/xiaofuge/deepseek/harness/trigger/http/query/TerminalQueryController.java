@@ -1,8 +1,9 @@
 package cn.xiaofuge.deepseek.harness.trigger.http.query;
 
-import cn.xiaofuge.deepseek.harness.api.response.terminal.TerminalReadResponse;
-import cn.xiaofuge.deepseek.harness.api.response.terminal.TerminalSessionResponse;
-import cn.xiaofuge.deepseek.harness.api.service.query.TerminalQueryApi;
+import cn.xiaofuge.deepseek.harness.api.dto.TerminalReadResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.TerminalSessionResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.ITerminalQueryApi;
+import cn.xiaofuge.deepseek.harness.api.response.Response;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/harness/terminal")
 public class TerminalQueryController {
 
-    private final TerminalQueryApi terminalQueryApi;
+    private final ITerminalQueryApi terminalQueryApi;
 
     /**
      * 处理终端 Query Controller。
@@ -35,7 +36,7 @@ public class TerminalQueryController {
      * @param terminalQueryApi 终端 Query API参数。
      * @return 方法执行结果。
      */
-    public TerminalQueryController(TerminalQueryApi terminalQueryApi) {
+    public TerminalQueryController(ITerminalQueryApi terminalQueryApi) {
         this.terminalQueryApi = terminalQueryApi;
     }
 
@@ -43,7 +44,7 @@ public class TerminalQueryController {
      * 获取Mapping。
      */
     @GetMapping("/sessions")
-    public List<TerminalSessionResponse> listSessions() {
+    public Response<List<TerminalSessionResponseDTO>> listSessions() {
         return terminalQueryApi.listSessions();
     }
 
@@ -51,7 +52,7 @@ public class TerminalQueryController {
      * 获取Mapping。
      */
     @GetMapping("/sessions/{sessionId}/read")
-    public TerminalReadResponse read(@PathVariable("sessionId") String sessionId,
+    public Response<TerminalReadResponseDTO> read(@PathVariable("sessionId") String sessionId,
                                      @RequestParam(name = "maxChars", defaultValue = "8000") int maxChars) {
         return terminalQueryApi.read(sessionId, maxChars);
     }

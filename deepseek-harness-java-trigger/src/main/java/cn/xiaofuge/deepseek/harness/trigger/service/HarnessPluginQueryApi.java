@@ -1,10 +1,11 @@
 package cn.xiaofuge.deepseek.harness.trigger.service;
 
-import cn.xiaofuge.deepseek.harness.api.dto.plugin.QueryPluginStatusResponse;
-import cn.xiaofuge.deepseek.harness.api.response.plugin.InstalledPluginResponse;
-import cn.xiaofuge.deepseek.harness.api.service.query.HarnessInstalledPluginQueryApi;
+import cn.xiaofuge.deepseek.harness.api.dto.QueryPluginStatusResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.InstalledPluginResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.IHarnessPluginQueryApi;
+import cn.xiaofuge.deepseek.harness.api.response.Response;
+import cn.xiaofuge.deepseek.harness.trigger.service.query.HarnessInstalledPluginQueryApi;
 import cn.xiaofuge.deepseek.harness.cases.plugin.IQueryHarnessPluginStatusCase;
-import cn.xiaofuge.deepseek.harness.cases.plugin.QueryPluginStatusResult;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
@@ -22,7 +23,7 @@ import org.springframework.stereotype.Service;
  * @website bugstack.cn
  */
 @Service
-public class HarnessPluginQueryApi {
+public class HarnessPluginQueryApi implements IHarnessPluginQueryApi {
 
     private final HarnessInstalledPluginQueryApi harnessInstalledPluginQueryApi;
     private final IQueryHarnessPluginStatusCase queryHarnessPluginStatusCase;
@@ -40,17 +41,24 @@ public class HarnessPluginQueryApi {
     /**
      * 列出Installed Plugins。
      */
-    public List<InstalledPluginResponse> listInstalledPlugins() {
+    public Response<List<InstalledPluginResponseDTO>> listInstalledPlugins() {
         return harnessInstalledPluginQueryApi.listInstalledPlugins();
     }
 
     /**
      * 查询Plugin Status。
      */
-    public QueryPluginStatusResponse queryPluginStatus(String pluginId) {
-        QueryPluginStatusResult r = queryHarnessPluginStatusCase.execute(pluginId);
-        return new QueryPluginStatusResponse(
-                r.pluginId(), r.processId(), r.running(),
-                r.runtimeCommand(), r.workingDirectory(), r.startedAt(), r.message());
+    public Response<QueryPluginStatusResponseDTO> queryPluginStatus(String pluginId) {
+        return execute(() -> queryHarnessPluginStatusCase.execute(pluginId));
+    }
+
+    private <T> Response<T> execute(java.util.function.Supplier<T> action) {
+        try {
+            return Response.success(action.get());
+        } catch (IllegalArgumentException exception) {
+            return Response.invalidArgument(exception.getMessage());
+        } catch (RuntimeException exception) {
+            return Response.internalError(exception.getMessage());
+        }
     }
 }

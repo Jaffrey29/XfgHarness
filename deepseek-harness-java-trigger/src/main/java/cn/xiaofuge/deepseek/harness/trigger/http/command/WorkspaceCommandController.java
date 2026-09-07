@@ -1,22 +1,19 @@
 package cn.xiaofuge.deepseek.harness.trigger.http.command;
 
-import cn.xiaofuge.deepseek.harness.api.dto.workspace.CreateWorkspaceRequest;
-import cn.xiaofuge.deepseek.harness.api.dto.workspace.RenameWorkspaceRequest;
-import cn.xiaofuge.deepseek.harness.api.dto.workspace.ReorderWorkspaceRequest;
-import cn.xiaofuge.deepseek.harness.api.response.workspace.WorkspaceEntryResponse;
-import cn.xiaofuge.deepseek.harness.api.service.command.WorkspaceCommandApi;
-import java.io.IOException;
+import cn.xiaofuge.deepseek.harness.api.dto.CreateWorkspaceRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.RenameWorkspaceRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.ReorderWorkspaceRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.WorkspaceEntryResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.IWorkspaceCommandApi;
+import cn.xiaofuge.deepseek.harness.api.response.Response;
 import java.util.List;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /** 面向 Agent UI 暴露工作区写操作。 */
@@ -24,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/agent")
 public class WorkspaceCommandController {
 
-    private final WorkspaceCommandApi workspaceCommandApi;
+    private final IWorkspaceCommandApi workspaceCommandApi;
 
     /**
      * 处理工作区 命令 Controller。
@@ -32,7 +29,7 @@ public class WorkspaceCommandController {
      * @param workspaceCommandApi 工作区 命令 API参数。
      * @return 方法执行结果。
      */
-    public WorkspaceCommandController(WorkspaceCommandApi workspaceCommandApi) {
+    public WorkspaceCommandController(IWorkspaceCommandApi workspaceCommandApi) {
         this.workspaceCommandApi = workspaceCommandApi;
     }
 
@@ -43,7 +40,7 @@ public class WorkspaceCommandController {
      * @return 创建的领域对象。
      */
     @PostMapping("/workspaces")
-    public List<WorkspaceEntryResponse> createWorkspace(@RequestBody CreateWorkspaceRequest request) throws IOException {
+    public Response<List<WorkspaceEntryResponseDTO>> createWorkspace(@RequestBody CreateWorkspaceRequestDTO request) {
         return workspaceCommandApi.createWorkspace(request);
     }
 
@@ -54,7 +51,7 @@ public class WorkspaceCommandController {
      * @return 方法执行结果。
      */
     @DeleteMapping("/workspaces/{name}")
-    public List<WorkspaceEntryResponse> deleteWorkspace(@PathVariable("name") String name) throws IOException {
+    public Response<List<WorkspaceEntryResponseDTO>> deleteWorkspace(@PathVariable("name") String name) {
         return workspaceCommandApi.deleteWorkspace(name);
     }
 
@@ -67,8 +64,8 @@ public class WorkspaceCommandController {
      * @return 更新后的工作区列表。
      */
     @PatchMapping("/workspaces/{name}")
-    public List<WorkspaceEntryResponse> renameWorkspace(@PathVariable("name") String name,
-                                                        @RequestBody RenameWorkspaceRequest request) throws IOException {
+    public Response<List<WorkspaceEntryResponseDTO>> renameWorkspace(@PathVariable("name") String name,
+                                                        @RequestBody RenameWorkspaceRequestDTO request) {
         return workspaceCommandApi.renameWorkspace(name, request);
     }
 
@@ -79,17 +76,8 @@ public class WorkspaceCommandController {
      * @return 方法执行结果。
      */
     @PutMapping("/workspaces/order")
-    public List<WorkspaceEntryResponse> reorderWorkspaces(@RequestBody ReorderWorkspaceRequest request) throws IOException {
+    public Response<List<WorkspaceEntryResponseDTO>> reorderWorkspaces(@RequestBody ReorderWorkspaceRequestDTO request) {
         return workspaceCommandApi.reorderWorkspaces(request);
     }
 
-    /**
-     * 将非法参数异常转换为 400 响应。
-     * <p>流程：捕获 IllegalArgumentException → 设置状态码 → 不输出响应体。</p>
-     */
-    @ExceptionHandler(IllegalArgumentException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public void handleIllegalArgument() {
-        // 返回 400，不输出响应体
-    }
 }

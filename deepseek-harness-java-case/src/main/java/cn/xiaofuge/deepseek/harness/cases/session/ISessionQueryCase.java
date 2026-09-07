@@ -1,5 +1,9 @@
 package cn.xiaofuge.deepseek.harness.cases.session;
 
+import cn.xiaofuge.deepseek.harness.api.dto.SessionDetailRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.SessionListRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.SessionQueryResponseDTO;
+
 import java.util.List;
 
 /**
@@ -12,7 +16,7 @@ import java.util.List;
  */
 public interface ISessionQueryCase {
 
-    List<SessionView> querySessionList(SessionListQuery query);
+    List<SessionQueryResponseDTO> querySessionList(SessionListRequestDTO query);
 
-    SessionView querySessionDetail(SessionDetailQuery query);
+    SessionQueryResponseDTO querySessionDetail(SessionDetailRequestDTO query);
 }

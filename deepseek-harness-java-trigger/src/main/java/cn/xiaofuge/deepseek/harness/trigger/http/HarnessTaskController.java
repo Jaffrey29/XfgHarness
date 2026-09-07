@@ -1,8 +1,8 @@
 package cn.xiaofuge.deepseek.harness.trigger.http;
 
-import cn.xiaofuge.deepseek.harness.api.dto.task.SubmitTaskRequest;
-import cn.xiaofuge.deepseek.harness.api.dto.task.SubmitTaskResponse;
-import cn.xiaofuge.deepseek.harness.api.service.IHarnessTaskApi;
+import cn.xiaofuge.deepseek.harness.api.dto.SubmitTaskRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.IHarnessTaskApi;
+import cn.xiaofuge.deepseek.harness.api.response.Response;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -46,7 +46,7 @@ public class HarnessTaskController {
      * 3. 返回提交结果给前端。
      */
     @PostMapping("/submit")
-    public SubmitTaskResponse submitTask(@RequestBody SubmitTaskRequest request) {
+    public Response<?> submitTask(@RequestBody SubmitTaskRequestDTO request) {
         return harnessTaskApi.submitTask(request);
     }
 }

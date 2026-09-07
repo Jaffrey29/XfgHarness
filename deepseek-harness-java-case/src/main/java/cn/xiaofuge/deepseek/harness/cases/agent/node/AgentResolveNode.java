@@ -1,13 +1,13 @@
 package cn.xiaofuge.deepseek.harness.cases.agent.node;
 
-import cn.xiaofuge.deepseek.harness.cases.agent.SendMessageCommand;
-import cn.xiaofuge.deepseek.harness.cases.agent.AgentModelOptionsResolver;
-import cn.xiaofuge.deepseek.harness.cases.agent.SendMessageResult;
+import cn.xiaofuge.deepseek.harness.api.dto.AgentMessageRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.AgentMessageResponseDTO;
 import cn.xiaofuge.deepseek.harness.cases.agent.factory.AgentMessageDynamicContext;
 import cn.xiaofuge.deepseek.harness.domain.agent.model.entity.AgentOptions;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.AgentFactoryPort;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.ReactLoopAgent;
-import cn.xiaofuge.deepseek.harness.domain.shared.StrategyHandler;
+import cn.xiaofuge.deepseek.harness.domain.runtime.setting.service.AgentModelSettingResolver;
+import cn.xiaofuge.deepseek.harness.cases.orchestration.StrategyHandler;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -31,7 +31,7 @@ public class AgentResolveNode extends AbstractAgentMessageNode {
     private AgentFactoryPort agentFactory;
 
     @Autowired
-    private AgentModelOptionsResolver modelOptionsResolver;
+    private AgentModelSettingResolver modelSettingResolver;
 
     @Autowired
     @Qualifier("agentMessageIntentNode")
@@ -44,7 +44,7 @@ public class AgentResolveNode extends AbstractAgentMessageNode {
      * <p>数据示例：agentId="a-1"，request.model="deepseek-chat"，cwd=null，则使用当前进程目录创建 Agent。
      */
     @Override
-    protected SendMessageResult doApply(SendMessageCommand request,
+    protected AgentMessageResponseDTO doApply(AgentMessageRequestDTO request,
                                            AgentMessageDynamicContext ctx) throws Exception {
         ReactLoopAgent agent = agentFactory.get(request.agentId());
         if (agent == null) {
@@ -55,13 +55,15 @@ public class AgentResolveNode extends AbstractAgentMessageNode {
             agent = agentFactory.create(request.agentId(), options, workDir);
         } else {
             log.debug("[Resolve] Agent={} 已存在，复用实例", request.agentId());
+            agent.updateOptions(buildAgentOptions(request));
         }
+        ctx.attachSinks(agent);
         ctx.setAgent(agent);
         return null;
     }
 
     @Override
-    public StrategyHandler<SendMessageCommand, AgentMessageDynamicContext, SendMessageResult>
+    public StrategyHandler<AgentMessageRequestDTO, AgentMessageDynamicContext, AgentMessageResponseDTO>
     /**
      * 获取Next。
      * 流程：读取命令 → 执行用例编排 → 返回结果。
@@ -70,7 +72,7 @@ public class AgentResolveNode extends AbstractAgentMessageNode {
      * @return 获取到的Next。
      */
 
-    getNext(SendMessageCommand request, AgentMessageDynamicContext ctx) {
+    getNext(AgentMessageRequestDTO request, AgentMessageDynamicContext ctx) {
         return intentNode;
     }
 
@@ -79,7 +81,7 @@ public class AgentResolveNode extends AbstractAgentMessageNode {
      * <p>统一使用 {@link AgentModelOptionsResolver}：请求显式值优先，其次数据库默认配置，
      * 最后才使用 application.yml 的模型兜底。
      */
-    private AgentOptions buildAgentOptions(SendMessageCommand request) {
-        return modelOptionsResolver.resolve(request);
+    private AgentOptions buildAgentOptions(AgentMessageRequestDTO request) {
+        return modelSettingResolver.resolve(request.provider(), request.model(), request.maxTokens());
     }
 }
