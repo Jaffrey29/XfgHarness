@@ -21,6 +21,8 @@ import cn.xiaofuge.deepseek.harness.domain.tool.shell.ShellExecuteTool;
 import cn.xiaofuge.deepseek.harness.domain.tool.web.WebFetchTool;
 import cn.xiaofuge.deepseek.harness.domain.tool.web.WebSearchTool;
 import cn.xiaofuge.deepseek.harness.domain.tool.web.adapter.port.IWebPort;
+import cn.xiaofuge.deepseek.harness.domain.skill.ISkillService;
+import cn.xiaofuge.deepseek.harness.domain.tool.skill.SkillTool;
 
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -32,6 +34,7 @@ public final class AgentToolCatalog {
     private final PlanModeService planModeService;
     private final TodoWriteService todoWriteService;
     private final SubagentRegistry subagentRegistry;
+    private final ISkillService skillService;
 
     public AgentToolCatalog(
             IShellExecutor shellExecutor,
@@ -39,7 +42,8 @@ public final class AgentToolCatalog {
             IWebPort webPort,
             PlanModeService planModeService,
             TodoWriteService todoWriteService,
-            SubagentRegistry subagentRegistry
+            SubagentRegistry subagentRegistry,
+            ISkillService skillService
     ) {
         this.shellExecutor = shellExecutor;
         this.fsPort = fsPort;
@@ -47,6 +51,7 @@ public final class AgentToolCatalog {
         this.planModeService = planModeService;
         this.todoWriteService = todoWriteService;
         this.subagentRegistry = subagentRegistry;
+        this.skillService = skillService;
     }
 
     public ToolRegistry createRegistry(AgentToolContext context, ToolRegistry sharedRegistry) {
@@ -64,6 +69,9 @@ public final class AgentToolCatalog {
         localRegistry.register(new StrReplaceEditorTool(fsPort));
         localRegistry.register(new WebSearchTool(webPort));
         localRegistry.register(new WebFetchTool(webPort));
+        if (skillService != null) {
+            localRegistry.register(new SkillTool(skillService, context.cwd()));
+        }
 
         if (subagentRegistry != null && !subagentRegistry.listProviderNames().isEmpty()) {
             String providerName = subagentRegistry.listProviderNames().get(0);

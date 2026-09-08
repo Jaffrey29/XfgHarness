@@ -9,6 +9,7 @@ import cn.xiaofuge.deepseek.harness.domain.agent.service.ScopedSystemPromptAssem
 import cn.xiaofuge.deepseek.harness.domain.agent.service.ScopedSystemPromptAssembler;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.SystemPromptAssembler;
 import cn.xiaofuge.deepseek.harness.domain.tool.adapter.ToolRegistry;
+import cn.xiaofuge.deepseek.harness.infrastructure.config.HarnessExtensionsProperties;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -19,7 +20,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
@@ -67,7 +67,7 @@ public class JavaPluginRuntimeManager {
             SystemPromptAssembler promptAssembler,
             ScopedSystemPromptAssembler scopedPromptAssembler,
             PluginHotReloader hotReloader,
-            @Value("${harness.plugin.install-root:./plugins}") String installRoot
+            HarnessExtensionsProperties extensions
     ) {
         this.loader = loader;
         this.toolRegistry = toolRegistry;
@@ -77,7 +77,7 @@ public class JavaPluginRuntimeManager {
         this.promptAssembler = promptAssembler;
         this.scopedPromptAssembler = scopedPromptAssembler;
         this.hotReloader = hotReloader;
-        this.installRoot = Path.of(installRoot).toAbsolutePath().normalize();
+        this.installRoot = Path.of(extensions.getPlugins().getInstallRoot()).toAbsolutePath().normalize();
     }
 
     /**

@@ -2,6 +2,7 @@ package cn.xiaofuge.deepseek.harness.infrastructure.adapter.port;
 
 import cn.xiaofuge.deepseek.harness.domain.plugin.registry.adapter.port.IPluginArtifactInstallerPort;
 import cn.xiaofuge.deepseek.harness.domain.plugin.registry.model.valobj.PluginArtifactInstallPlanVO;
+import cn.xiaofuge.deepseek.harness.infrastructure.config.HarnessExtensionsProperties;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -9,7 +10,6 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
@@ -32,8 +32,8 @@ public class PluginArtifactInstallerPort implements IPluginArtifactInstallerPort
      * @param installRoot install 根路径参数。
      * @return 方法执行结果。
      */
-    public PluginArtifactInstallerPort(@Value("${harness.plugin.install-root:./plugins}") String installRoot) {
-        this.installRoot = Path.of(installRoot).toAbsolutePath().normalize();
+    public PluginArtifactInstallerPort(HarnessExtensionsProperties extensions) {
+        this.installRoot = Path.of(extensions.getPlugins().getInstallRoot()).toAbsolutePath().normalize();
     }
 
     @Override

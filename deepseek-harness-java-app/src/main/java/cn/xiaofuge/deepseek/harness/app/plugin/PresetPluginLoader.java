@@ -8,6 +8,7 @@ import cn.xiaofuge.deepseek.harness.api.dto.RunPluginResponseDTO;
 import cn.xiaofuge.deepseek.harness.domain.plugin.IPluginRegistryService;
 import cn.xiaofuge.deepseek.harness.domain.plugin.registry.model.entity.HarnessPluginEntity;
 import cn.xiaofuge.deepseek.harness.domain.plugin.registry.model.valobj.PluginInstallStatusEnumVO;
+import cn.xiaofuge.deepseek.harness.infrastructure.config.HarnessExtensionsProperties;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +31,7 @@ public class PresetPluginLoader implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(PresetPluginLoader.class);
 
-    private final PresetPluginProperties properties;
+    private final HarnessExtensionsProperties properties;
     private final IInstallHarnessPluginCase installCase;
     private final IRunHarnessPluginCase runCase;
     private final IPluginRegistryService pluginRegistryService;
@@ -40,7 +41,7 @@ public class PresetPluginLoader implements ApplicationRunner {
      * <p>流程：读取 application.yml 中的预置插件配置 → 调用插件注册服务安装/激活。</p>
      */
     public PresetPluginLoader(
-            PresetPluginProperties properties,
+            HarnessExtensionsProperties properties,
             IInstallHarnessPluginCase installCase,
             IRunHarnessPluginCase runCase,
             IPluginRegistryService pluginRegistryService
@@ -56,10 +57,10 @@ public class PresetPluginLoader implements ApplicationRunner {
      */
     @Override
     public void run(org.springframework.boot.ApplicationArguments args) {
-        if (properties.getPlugins() == null || properties.getPlugins().isEmpty()) {
+        if (properties.getPlugins().getPreset() == null || properties.getPlugins().getPreset().isEmpty()) {
             return;
         }
-        for (PresetPluginProperties.PresetPlugin preset : properties.getPlugins()) {
+        for (HarnessExtensionsProperties.PresetPlugin preset : properties.getPlugins().getPreset()) {
             try {
                 installPreset(preset);
             } catch (Exception e) {
@@ -71,7 +72,7 @@ public class PresetPluginLoader implements ApplicationRunner {
     /**
      * 安装组件，写入登记信息并返回安装结果。
      */
-    private void installPreset(PresetPluginProperties.PresetPlugin preset) {
+    private void installPreset(HarnessExtensionsProperties.PresetPlugin preset) {
         Optional<HarnessPluginEntity> existing = pluginRegistryService.loadPluginOptional(preset.getPluginId());
         if (existing.isPresent()) {
             HarnessPluginEntity plugin = existing.get();

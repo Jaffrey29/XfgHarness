@@ -168,6 +168,7 @@ public class AgentRunBeanConfig {
             IWebPort webService,
             PlanModeService planModeService,
             TodoWriteService todoWriteService,
+            cn.xiaofuge.deepseek.harness.domain.skill.ISkillService skillService,
             ObjectMapper objectMapper,
             ObjectProvider<ISessionEventStore> sessionEventStoreProvider
     ) {
@@ -185,7 +186,8 @@ public class AgentRunBeanConfig {
                 webService,
                 planModeService,
                 todoWriteService,
-                subagentRegistry
+                subagentRegistry,
+                skillService
         );
 
         return new AgentRunFactory(

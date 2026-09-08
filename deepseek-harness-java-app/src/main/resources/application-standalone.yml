@@ -10,25 +10,6 @@ spring:
       encoding: UTF-8
 
 harness:
-  plugin:
-    install-root: ./plugins
-    node-bridge-enabled: true
-    preset:
-      plugins:
-        - plugin-id: dsh-demo-plugin
-          display-name: DSH Demo Plugin
-          plugin-version: 1.0.0
-          runtime-type: DSH_NODE_BRIDGE
-          source-path: ./plugins/demo-plugin
-          entrypoint: index.js
-          auto-start: true
-        - plugin-id: sample-tools
-          display-name: Sample Tools Plugin
-          plugin-version: 1.0.0
-          runtime-type: JAVA_NATIVE
-          source-path: ./plugins/sample-tools-plugin-1.0.0.jar
-          entrypoint: sample-tools-plugin-1.0.0.jar
-          auto-start: true
   llm:
     deepseek:
       base-url: http://127.0.0.1:8777/v1

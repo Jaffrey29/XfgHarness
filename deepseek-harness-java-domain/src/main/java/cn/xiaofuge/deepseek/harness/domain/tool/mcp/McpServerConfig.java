@@ -22,10 +22,40 @@ public record McpServerConfig(
         String command,
         List<String> args,
         Map<String, String> env,
-        String cwd
+        String cwd,
+        String transport,
+        String url,
+        Map<String, String> headers
 ) {
     public McpServerConfig {
         args = args == null ? List.of() : List.copyOf(args);
         env = env == null ? Map.of() : Map.copyOf(env);
+        transport = normalizeTransport(transport);
+        headers = headers == null ? Map.of() : Map.copyOf(headers);
+        if ("stdio".equals(transport) && (command == null || command.isBlank())) {
+            throw new IllegalArgumentException("stdio MCP transport requires command");
+        }
+        if (!"stdio".equals(transport) && (url == null || url.isBlank())) {
+            throw new IllegalArgumentException(transport + " MCP transport requires url");
+        }
+    }
+
+    public McpServerConfig(
+            String name,
+            String command,
+            List<String> args,
+            Map<String, String> env,
+            String cwd
+    ) {
+        this(name, command, args, env, cwd, "stdio", null, Map.of());
+    }
+
+    private static String normalizeTransport(String transport) {
+        String normalized = transport == null || transport.isBlank() ? "stdio" : transport.trim().toLowerCase();
+        return switch (normalized) {
+            case "http", "streamable_http", "streamable-http" -> "streamable-http";
+            case "sse", "stdio" -> normalized;
+            default -> throw new IllegalArgumentException("unsupported MCP transport: " + transport);
+        };
     }
 }

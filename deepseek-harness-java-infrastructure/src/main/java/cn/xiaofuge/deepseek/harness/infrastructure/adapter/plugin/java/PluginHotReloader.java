@@ -14,10 +14,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import jakarta.annotation.PreDestroy;
+import cn.xiaofuge.deepseek.harness.infrastructure.config.HarnessExtensionsProperties;
 
 /**
  * 监听插件安装目录中 JAR 文件变化的热重载器。
@@ -44,8 +44,11 @@ public final class PluginHotReloader {
         void onPluginChanged(String pluginId, Path jarPath);
     }
 
-    @Value("${harness.plugin.install-root:./plugins}")
-    private String installRoot;
+    private final Path installRoot;
+
+    public PluginHotReloader(HarnessExtensionsProperties extensions) {
+        this.installRoot = Path.of(extensions.getPlugins().getInstallRoot()).toAbsolutePath().normalize();
+    }
 
     /**
      * 启动安装目录监听线程。
@@ -57,7 +60,7 @@ public final class PluginHotReloader {
             return;
         }
         this.listener = reloadListener;
-        Path dir = Path.of(installRoot).toAbsolutePath().normalize();
+        Path dir = installRoot.toAbsolutePath().normalize();
         try {
             Files.createDirectories(dir);
         } catch (IOException exception) {

@@ -23,6 +23,7 @@ import java.util.regex.Pattern;
 public class FilesystemSkillProviderPort implements ISkillProviderPort {
 
     private static final int PROJECT_DSH_RANK = 100;
+    private static final int CUSTOM_RANK = 300;
     private static final int USER_DSH_RANK = 400;
     private static final int BUNDLED_RANK = 600;
     private static final Pattern FRONTMATTER = Pattern.compile("^---\\s*\\n(.*?)\\n---\\s*\\n(.*)$", Pattern.DOTALL);
@@ -30,6 +31,9 @@ public class FilesystemSkillProviderPort implements ISkillProviderPort {
     private final Path dshHome;
     private final Path bundledDir;
     private final String providerName;
+    private final List<Path> customRoots;
+    private final boolean enabled;
+    private final boolean projectEnabled;
 
     /**
      * 处理Filesystem Skill 模型提供方 Port。
@@ -39,7 +43,7 @@ public class FilesystemSkillProviderPort implements ISkillProviderPort {
      * @return 方法执行结果。
      */
     public FilesystemSkillProviderPort(Path dshHome, Path bundledDir) {
-        this(dshHome, bundledDir, "filesystem");
+        this(dshHome, bundledDir, "filesystem", List.of(), true, true);
     }
 
     /**
@@ -51,18 +55,36 @@ public class FilesystemSkillProviderPort implements ISkillProviderPort {
      * @return 方法执行结果。
      */
     public FilesystemSkillProviderPort(Path dshHome, Path bundledDir, String providerName) {
+        this(dshHome, bundledDir, providerName, List.of(), true, true);
+    }
+
+    public FilesystemSkillProviderPort(
+            Path dshHome,
+            Path bundledDir,
+            String providerName,
+            List<Path> customRoots,
+            boolean enabled,
+            boolean projectEnabled
+    ) {
         this.dshHome = dshHome;
         this.bundledDir = bundledDir;
         this.providerName = providerName;
+        this.customRoots = customRoots != null ? List.copyOf(customRoots) : List.of();
+        this.enabled = enabled;
+        this.projectEnabled = projectEnabled;
     }
 
     @Override
     public List<SkillCandidate> discover(String cwd) {
+        if (!enabled) return List.of();
         List<SkillCandidate> candidates = new ArrayList<>();
         // Project skills: <cwd>/.dsh/skills
-        if (cwd != null) {
+        if (projectEnabled && cwd != null) {
             Path projectSkills = Path.of(cwd).resolve(".dsh").resolve("skills");
             candidates.addAll(discoverRoot(projectSkills, SkillSource.PROJECT_DSH, PROJECT_DSH_RANK));
+        }
+        for (Path customRoot : customRoots) {
+            candidates.addAll(discoverRoot(customRoot, SkillSource.CUSTOM, CUSTOM_RANK));
         }
         // User skills: <dshHome>/skills
         candidates.addAll(discoverRoot(dshHome.resolve("skills"), SkillSource.USER_DSH, USER_DSH_RANK));
@@ -78,6 +100,7 @@ public class FilesystemSkillProviderPort implements ISkillProviderPort {
 
     @Override
     public Optional<SkillDefinition> load(SkillCandidate candidate) {
+        if (!enabled) return Optional.empty();
         if (candidate.path().isEmpty()) return Optional.empty();
         Path skillFile = Path.of(candidate.path().get());
         try {

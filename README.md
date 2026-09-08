@@ -650,7 +650,7 @@ Java Native Plugin 以 JAR 方式安装，宿主使用**隔离 `URLClassLoader`*
 2. 实现 `AbstractTool`，声明 `name()`、`description()`、`parameters()`、`run()`。
 3. 在 `META-INF/plugin.yaml` 中声明插件元数据。
 4. 在 `META-INF/services/cn.xiaofuge.deepseek.harness.domain.spi.JavaHarnessPlugin` 中注册入口类。
-5. 打包为 JAR 并放入 `harness.plugin.install-root` 指向的目录（默认 `./plugins`）。
+5. 打包为 JAR 并放入 `harness.extensions.plugins.install-root` 指向的目录（默认 `./plugins`）。
 
 插件工具注册后的名称格式：`plugin__<pluginId>__<toolName>`。
 
@@ -658,7 +658,7 @@ Java Native Plugin 以 JAR 方式安装，宿主使用**隔离 `URLClassLoader`*
 
 `DSH_NODE_BRIDGE` 用于兼容 Node 侧插件：
 
-- 插件包复制到 `harness.plugin.install-root`；
+- 插件包复制到 `harness.extensions.plugins.install-root`；
 - 识别 `.codex-plugin/plugin.json`、`package.json`、`cordis.yml` 入口；
 - 对可执行的 Node 插件生成受限 `node <entrypoint>` 运行计划，通过 **sidecar 进程 + JSON-RPC** 通信，不经 Shell 拼接；
 - 入口限制在插件安装目录内的 `.js`、`.mjs`、`.cjs` 文件。
@@ -666,8 +666,9 @@ Java Native Plugin 以 JAR 方式安装，宿主使用**隔离 `URLClassLoader`*
 ### 7.3 MCP 工具适配
 
 - `StdioMcpClient`：通过 stdin/stdout 与 MCP Server 做 JSON-RPC 2.0 通信；
+- `HttpMcpClient`：支持 `sse` 与 `streamable-http` 传输，请求头可在 `headers` 中配置；
 - `McpToolAdapter` 把远端工具注册为 `mcp__<serverName>__<toolName>`，与内置工具同链执行；
-- 在 `harness.mcp.servers` 中配置 `name/command/args/env/cwd`，启动时自动连接。
+- 在 `harness.extensions.mcp.servers` 中配置 `transport`，stdio 使用 `name/command/args/env/cwd`，HTTP 使用 `name/transport/url/headers`，启动时自动连接。
 
 ### 7.4 插件生命周期
 
@@ -675,7 +676,7 @@ Java Native Plugin 以 JAR 方式安装，宿主使用**隔离 `URLClassLoader`*
 install → activate → run → disable → uninstall
 ```
 
-预置插件可在 `harness.plugin.preset.plugins` 中声明（支持 `auto-start` / 旧字段 `auto-enable`），启动时自动装载。完整 Archetype 命令、代码模板和 HTTP 安装示例见 [`docs/md/java-plugin-development.md`](docs/md/java-plugin-development.md)。
+预置插件可在 `harness.extensions.plugins.preset` 中声明（支持 `auto-start` / 旧字段 `auto-enable`），启动时自动装载。完整 Archetype 命令、代码模板和 HTTP 安装示例见 [`docs/md/java-plugin-development.md`](docs/md/java-plugin-development.md)。
 完整 Java 插件示例见 [`plugins/sample-tools-plugin`](plugins/sample-tools-plugin)；完整 Node Bridge 示例见 [`plugins/dsh-demo-plugin`](plugins/dsh-demo-plugin)。
 
 ### 7.5 二次开发指南
@@ -686,7 +687,7 @@ install → activate → run → disable → uninstall
 | --- | --- | --- |
 | 新增 Agent 可调用的工具 | **Java Native Plugin** | 类型安全、进程内直调，适合 Java 生态和企业内网能力 |
 | 复用已有 Node.js 能力 | **Node Bridge Plugin** | 通过 sidecar + JSON-RPC 调用，适合 Node 生态和进程隔离 |
-| 接入第三方工具服务 | **MCP Server** | 只需配置 `harness.mcp.servers`，无需写 Harness 插件代码 |
+| 接入第三方工具服务 | **MCP Server** | 只需配置 `harness.extensions.mcp.servers`，无需写 Harness 插件代码 |
 | 修改 Agent 策略 / 领域逻辑 | 直接修改 `case` / `domain` 模块 | 只适合 fork 后深度定制，不建议插件作者这样扩展 |
 
 #### 7.5.2 Java 插件：最小实现
@@ -813,16 +814,16 @@ curl -X POST http://localhost:8090/api/harness/plugins/run \
 plugin__acme-weather__current_weather
 ```
 
-`sourcePath` 按 Spring Boot 进程的工作目录解析。为避免 Maven/IDE 工作目录差异，HTTP 安装时优先使用绝对路径；`harness.plugin.install-root` 指向宿主管理的插件目录，Java JAR 和 Node 插件目录都会复制到这里。
+`sourcePath` 按 Spring Boot 进程的工作目录解析。为避免 Maven/IDE 工作目录差异，HTTP 安装时优先使用绝对路径；`harness.extensions.plugins.install-root` 指向宿主管理的插件目录，Java JAR 和 Node 插件目录都会复制到这里。
 
-也可以在 `application.yml` 预装：
+也可以在 `harness-extensions.yml` 预装：
 
 ```yaml
 harness:
-  plugin:
-    install-root: ./plugins
-    preset:
-      plugins:
+  extensions:
+    plugins:
+      install-root: ./plugins
+      preset:
         - plugin-id: acme-weather
           display-name: Acme Weather
           plugin-version: 1.0.0
@@ -908,9 +909,9 @@ Node Bridge 当前主要扩展 Agent 可调用的工具；`PluginContext` 提供
 flowchart TD
     subgraph INSTALL["① 安装 install"]
         SRC1["HTTP 接口上传/安装"] --> CASE["InstallHarnessPluginCase"]
-        SRC2["预置声明 harness.plugin.preset.plugins<br/>（启动时 PresetPluginLoader 扫描）"] --> CASE
+        SRC2["预置声明 harness.extensions.plugins.preset<br/>（启动时 PresetPluginLoader 扫描）"] --> CASE
         CASE --> REG["PluginRegistryService.installPlugin()"]
-        REG --> ART["ArtifactInstallerPort.install()<br/>制品复制到 harness.plugin.install-root"]
+        REG --> ART["ArtifactInstallerPort.install()<br/>制品复制到 harness.extensions.plugins.install-root"]
         ART --> DB1[("落库 HarnessPluginEntity<br/>状态 REGISTERED")]
     end
 
@@ -990,6 +991,10 @@ flowchart TD
 
 ## 10. 关键配置
 
+扩展能力统一在 `deepseek-harness-java-app/src/main/resources/harness-extensions.yml` 中配置。部署时可以在进程工作目录放置同名文件，Spring Boot 会用它覆盖包内默认值；skills、MCP 和插件不再分散到多个入口。
+
+仓库内置了一个 Baidu AI Search 示例 skill：`skills/baidu-ai-search/SKILL.md`。它会被 `harness.extensions.skills.roots` 中的 `./skills` 根目录发现，并指导 Agent 使用 `mcp__baidu-ai-search__<tool-name>` 工具。
+
 | 配置项 | 作用 | 说明 |
 | --- | --- | --- |
 | `server.port` | HTTP 端口 | 默认 `8090` |
@@ -1003,9 +1008,11 @@ flowchart TD
 | `harness.approval.required-profiles` | 需要审批的 Profile | 默认含 `web` |
 | `harness.approval.runtime-timeout-ms` | 运行期审批等待超时 | 默认 `600000`（10 分钟） |
 | `harness.sandbox.default-mode` | 沙箱模式 | `READ_ONLY / WORKSPACE_WRITE / DANGER_FULL_ACCESS` |
-| `harness.mcp.servers` | MCP Server 列表 | stdio 传输，启动时连接注册 |
-| `harness.plugin.install-root` | 插件安装根目录 | 默认 `./plugins` |
-| `harness.plugin.preset.plugins` | 启动预装插件 | 支持设置 `auto-enable` |
+| `harness.extensions.skills.roots` | 额外技能目录 | 支持 `<name>/SKILL.md` 和 `<name>.md` |
+| `harness.extensions.skills.home` | 用户技能根目录 | 留空时回退到 `harness.credentials.home` |
+| `harness.extensions.mcp.servers` | MCP Server 列表 | 支持 `stdio`、`sse`、`streamable-http` |
+| `harness.extensions.plugins.install-root` | 插件安装根目录 | 默认 `./plugins` |
+| `harness.extensions.plugins.preset` | 启动预装插件 | 支持设置 `auto-enable` |
 | `harness.agent.temperature` | LLM 采样温度 | 系统属性/环境变量；为空则不发送该参数（适配只接受 temperature=1 的网关） |
 
 ---

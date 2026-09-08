@@ -2,6 +2,7 @@ package cn.xiaofuge.deepseek.harness.infrastructure.gateway;
 
 import cn.xiaofuge.deepseek.harness.domain.plugin.runtime.model.valobj.PluginProcessStatusVO;
 import cn.xiaofuge.deepseek.harness.domain.plugin.runtime.model.valobj.PluginRunResultVO;
+import cn.xiaofuge.deepseek.harness.infrastructure.config.HarnessExtensionsProperties;
 import java.io.File;
 import java.io.IOException;
 import java.lang.ProcessBuilder.Redirect;
@@ -10,7 +11,6 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 /**
@@ -33,11 +33,10 @@ public class PluginSidecarGatewayService {
      * <p>流程：定位 sidecar 入口 → 启动子进程 → 转发 JSON-RPC 请求。</p>
      */
     public PluginSidecarGatewayService(
-            @Value("${harness.plugin.node-bridge-enabled:true}") boolean nodeBridgeEnabled,
-            @Value("${harness.plugin.install-root:./plugins}") String installRoot
+            HarnessExtensionsProperties extensions
     ) {
-        this.nodeBridgeEnabled = nodeBridgeEnabled;
-        this.installRoot = Path.of(installRoot).toAbsolutePath().normalize();
+        this.nodeBridgeEnabled = extensions.getPlugins().isNodeBridgeEnabled();
+        this.installRoot = Path.of(extensions.getPlugins().getInstallRoot()).toAbsolutePath().normalize();
     }
 
     /**

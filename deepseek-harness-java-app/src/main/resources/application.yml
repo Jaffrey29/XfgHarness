@@ -17,6 +17,10 @@ spring:
     init:
       mode: always
       encoding: UTF-8
+  config:
+    import:
+      - optional:classpath:harness-extensions.yml
+      - optional:file:./harness-extensions.yml
 mybatis:
   configuration:
     map-underscore-to-camel-case: true
@@ -48,33 +52,3 @@ harness:
     default-mode: WORKSPACE_WRITE
     shell-enabled: true
     fs-enabled: true
-  # MCP servers（stdio 传输），启动时连接并把远端工具注册为 mcp__<server>__<tool>
-  mcp:
-    enabled: true
-    servers: []
-    # 示例：
-    # servers:
-    #   - name: filesystem
-    #     command: npx
-    #     args: ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
-    #     env: {}
-    #     cwd: ~
-  plugin:
-    install-root: ./plugins
-    node-bridge-enabled: true
-    preset:
-      plugins:
-        - plugin-id: dsh-demo-plugin
-          display-name: DSH Demo Plugin
-          plugin-version: 1.0.0
-          runtime-type: DSH_NODE_BRIDGE
-          source-path: ./plugins/demo-plugin
-          entrypoint: index.js
-          auto-start: true
-        - plugin-id: sample-tools
-          display-name: Sample Tools Plugin
-          plugin-version: 1.0.0
-          runtime-type: JAVA_NATIVE
-          source-path: ./plugins/sample-tools-plugin-1.0.0.jar
-          entrypoint: sample-tools-plugin-1.0.0.jar
-          auto-start: true

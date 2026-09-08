@@ -65,6 +65,7 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
 /**
  * 基础设施装配配置。
@@ -80,6 +81,7 @@ import org.springframework.context.annotation.Configuration;
  * @website bugstack.cn
  */
 @Configuration
+@EnableConfigurationProperties(HarnessExtensionsProperties.class)
 public class HarnessApplicationConfig {
 
     @Bean
@@ -271,9 +273,25 @@ public class HarnessApplicationConfig {
 
     @Bean
     public ISkillProviderPort skillProviderPort(
-            @Value("${harness.credentials.home:${user.home}/.dsh}") String dshHome
+            HarnessExtensionsProperties extensions,
+            @Value("${harness.credentials.home:${user.home}/.dsh}") String defaultDshHome
     ) {
-        return new FilesystemSkillProviderPort(Path.of(dshHome), null);
+        HarnessExtensionsProperties.Skills skills = extensions.getSkills();
+        String configuredHome = skills.getHome();
+        Path dshHome = Path.of(configuredHome.isBlank() ? defaultDshHome : configuredHome);
+        Path bundledDir = skills.getBundledDir().isBlank() ? null : Path.of(skills.getBundledDir());
+        List<Path> customRoots = skills.getRoots().stream()
+                .filter(root -> root != null && !root.isBlank())
+                .map(Path::of)
+                .toList();
+        return new FilesystemSkillProviderPort(
+                dshHome,
+                bundledDir,
+                "filesystem",
+                customRoots,
+                skills.isEnabled(),
+                skills.isProjectEnabled()
+        );
     }
 
     // ── LSP 层 ────────────────────────────────────────────────
