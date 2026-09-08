@@ -19,7 +19,7 @@ CHAPTERS_DIR = ROOT / 'chapters'
 # 部署域名（百度收录需要绝对 URL；换域名只改这一行）
 SITE_URL = 'https://fuzhengwei.github.io/deepseek-harness-java/docs/html'
 SITE_TITLE = 'DeepSeek Harness Java 实战教程'
-ASSET_VERSION = '20260906-9'
+ASSET_VERSION = '20260909-1'
 
 # 阅读/滚动进度条脚本（普通字符串：JS 花括号不能进 f-string）
 SCROLL_PROGRESS_JS = """  <script>
@@ -74,7 +74,7 @@ CH_DESC = {
     'ch04': 'ReAct 循环 · Agent 核心引擎剖析',
     'ch05': '会话事件 · SessionLog 事件溯源',
     'ch06': '意图策略 · 消息路由与责任链',
-    'ch07': 'SSE 协议 · meta chunk step_break',
+    'ch07': 'SSE 协议 · 推理工具卡片与会话终态',
     'ch08': '工具系统 · Executor 与 Hook 链',
     'ch09': '插件开发 · Java 与 Node 双模式',
     'ch10': 'MCP 集成 · 连接外部工具生态',
@@ -254,7 +254,7 @@ HOME_ARCH_HTML = (
         'ch01-quickstart.html', '第1章：十分钟跑起来')
     + _arch_detail('trigger', '#6366f1', '接口适配层', 'Trigger · REST + SSE 入口', 'deepseek-harness-java-trigger',
         '18 个 Controller 按 CQRS 拆成 command/query 两侧，统一前缀 /api/agent、/api/harness/*、/api/workflow。'
-        '它只做协议转换：把 HTTP 请求翻译成用例调用，把用例的流式输出翻译成 SSE 事件（meta/chunk/step_break/done）。',
+        '它只做协议转换：把 HTTP 请求翻译成用例调用，把用例的流式输出翻译成推理、回答、工具调用、工具结果与终态事件。',
         ['AgentController', 'HarnessTaskController', 'ApprovalController', 'PluginController'],
         'ch07-sse-protocol.html', '第7章：SSE 流式协议')
     + _arch_detail('case', '#0ea5e9', '用例编排层', 'API / Case · 策略树与责任链', 'deepseek-harness-java-api + deepseek-harness-java-case',
@@ -274,7 +274,7 @@ HOME_ARCH_HTML = (
         'ch02-architecture.html', '第2章：六边形架构')
     + _arch_detail('plugins', '#ec4899', '扩展生态', 'Plugins · 双模式插件体系', 'plugins/ 目录',
         '三段式生命周期：Registry（安装/启停）→ Bridge（识别 DSH_PACKAGE / JAVA_NATIVE 等包型）→ Runtime'
-        '（Java = 进程内 URLClassLoader 隔离加载；Node = sidecar 子进程 JSON-RPC）。MCP 通过 StdioMcpClient 接入外部工具生态。',
+        '（Java = 进程内 URLClassLoader 隔离加载；Node = sidecar 子进程 JSON-RPC）。MCP 通过 StdioMcpClient / HttpMcpClient 支持 stdio、SSE 与 streamable-http。',
         ['PluginRegistry', 'PluginBridge', 'NodeSidecarRuntime', 'StdioMcpClient', 'McpToolAdapter'],
         'ch09-plugin.html', '第9章：插件开发实战')
     + _arch_detail('infra', '#64748b', '适配器层', 'Infrastructure · 技术实现', 'deepseek-harness-java-infrastructure',
@@ -308,7 +308,7 @@ HOME_JOURNEY_HTML = (
     + _journey_step('🧭', '策略责任链', 'Resolve→Intent<br>→Dispatch', 'ch06-intent-strategy.html', '第6章')
     + _journey_step('🧠', 'ReAct 循环', 'ReactLoopAgent<br>思考-行动-观察', 'ch04-react-loop.html', '第4章')
     + _journey_step('🔧', '工具执行器', 'ToolCallExecutor<br>Hook 链 + 审批', 'ch08-tools.html', '第8章')
-    + _journey_step('📡', 'SSE 事件流', 'meta/chunk<br>step_break/done', 'ch07-sse-protocol.html', '第7章')
+    + _journey_step('📡', 'SSE 事件流', 'reasoning/chunk<br>tool_result/done', 'ch07-sse-protocol.html', '第7章')
     + '</div>'
     '<div class="journey-note">💡 关键认知：LLM 只出现在第 4 步的一次 <code>stream()</code> 调用里——其余全是 Harness 的工程：'
     '协议、路由、状态、工具、治理。这正是"模型之外的外壳"的含义。</div>'
@@ -589,7 +589,7 @@ def render_index(chapters):
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{SITE_TITLE} — 从零精通 Agent Harness 的设计与实现</title>
-  <meta name="description" content="17 章正文，基于真实开源项目 deepseek-harness-java，深入 DDD 六边形架构、ReAct 循环、事件溯源、策略树、插件体系、审批治理、工作流、子代理与平台能力。">
+  <meta name="description" content="17 章正文，基于真实开源项目 deepseek-harness-java，深入 DDD 六边形架构、ReAct 循环、事件溯源、统一配置、插件、MCP、Skills、审批治理、SSE 协议、工作流、子代理与平台能力。">
   <link rel="canonical" href="{SITE_URL}/">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
   <link rel="stylesheet" href="{asset('css/book.css')}">
@@ -633,7 +633,7 @@ def render_index(chapters):
           <div class="home-hero-inner">
             <div class="home-hero-eyebrow"><span class="tag-dot"></span>实战教程 · 基于真实开源项目</div>
             <h1 class="home-hero-title">把 Agent Harness<br>读得<span class="title-em">明明白白</span></h1>
-            <p class="home-hero-desc">17 章正文，基于开源项目 <strong>deepseek-harness-java</strong>，<br>从跑起来到读懂 ReAct 循环、事件溯源、策略树、插件体系、审批治理、工作流、子代理与平台能力。</p>
+            <p class="home-hero-desc">17 章正文，基于开源项目 <strong>deepseek-harness-java</strong>，<br>从跑起来到读懂 ReAct 循环、事件溯源、统一配置、插件、MCP、Skills、审批治理与 SSE 工具流。</p>
             <div class="home-hero-actions">
               <a class="home-btn primary" href="ch00-intro.html">开始阅读<span class="btn-arrow">→</span></a>
               <a class="home-btn ghost" href="https://gitcode.net/KnowledgePlanet/deepseek-harness-java" target="_blank" rel="noopener">查看源码</a>

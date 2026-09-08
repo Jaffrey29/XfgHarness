@@ -21,7 +21,7 @@ const App = {
     { id: 'ch04', num: 4, title: 'ReactLoopAgent：ReAct 循环引擎', section: '🧠 第三篇：核心机制', file: 'ch04-react-loop.html' },
     { id: 'ch05', num: 5, title: '会话与事件溯源：SessionLog 的秘密', section: '🧠 第三篇：核心机制', file: 'ch05-session-event.html' },
     { id: 'ch06', num: 6, title: '意图识别与策略树：消息如何流转', section: '🧠 第三篇：核心机制', file: 'ch06-intent-strategy.html' },
-    { id: 'ch07', num: 7, title: 'SSE 流式协议：meta/chunk/step_break/done', section: '🧠 第三篇：核心机制', file: 'ch07-sse-protocol.html' },
+    { id: 'ch07', num: 7, title: 'SSE 流式协议：推理、工具卡片与会话终态', section: '🧠 第三篇：核心机制', file: 'ch07-sse-protocol.html' },
 
     // 第四篇：工具与扩展
     { id: 'ch08', num: 8, title: '工具系统：ToolCallExecutor 与 Hook 链', section: '🛠️ 第四篇：工具与扩展', file: 'ch08-tools.html' },
