@@ -33,6 +33,7 @@ public class AgentMessageDynamicContext implements AutoCloseable {
     private Consumer<String> deltaSink;
     private Consumer<String> reasoningSink;
     private Consumer<AgentToolCallEventResponseDTO> toolCallEventSink;
+    private Runnable finishSink;
 
     /**
      * 获取Agent。
@@ -85,6 +86,8 @@ public class AgentMessageDynamicContext implements AutoCloseable {
         this.toolCallEventSink = toolCallEventSink;
     }
 
+    public void setFinishSink(Runnable finishSink) { this.finishSink = finishSink; }
+
     /**
      * 将上下文中的流式接收器绑定到 Agent 执行循环。
      */
@@ -114,6 +117,7 @@ public class AgentMessageDynamicContext implements AutoCloseable {
                 ));
             }
         });
+        agent.setStreamFinishSink(finishSink);
     }
 
     @Override
@@ -124,7 +128,8 @@ public class AgentMessageDynamicContext implements AutoCloseable {
         if (agent != null) {
             agent.setStreamDeltaSink(null);
             agent.setStreamReasoningSink(null);
-            agent.setStreamToolCallSink(null);
+        agent.setStreamToolCallSink(null);
+        agent.setStreamFinishSink(null);
         }
         deltaSink = null;
         reasoningSink = null;

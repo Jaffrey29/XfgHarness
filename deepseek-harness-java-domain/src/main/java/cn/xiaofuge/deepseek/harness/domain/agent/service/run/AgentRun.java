@@ -38,6 +38,8 @@ public interface AgentRun extends Agent {
     void setStreamToolEventSink(java.util.function.Consumer<
             cn.xiaofuge.deepseek.harness.domain.tool.service.ToolCallExecutor.ToolLifecycleEvent> sink);
 
+    void setStreamFinishSink(Runnable sink);
+
     /**
      * 释放当前运行占用的资源。
      */

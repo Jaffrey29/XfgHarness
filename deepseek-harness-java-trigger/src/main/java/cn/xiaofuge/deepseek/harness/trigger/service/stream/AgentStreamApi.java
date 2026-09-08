@@ -70,9 +70,10 @@ public class AgentStreamApi implements IAgentStreamApi {
             java.util.function.Consumer<String> reasoningSink = delta -> sendReasoning(emitter, emitterClosed, delta);
             java.util.function.Consumer<AgentToolCallEventResponseDTO> toolCallSink = event ->
                     sendToolCall(emitter, emitterClosed, event);
+            Runnable finishSink = () -> sendFinish(emitter, emitterClosed);
 
             Response<AgentMessageResponseDTO> wrappedResponse =
-                    agentApi.sendMessageStreaming(request, deltaSink, reasoningSink, toolCallSink);
+                    agentApi.sendMessageStreaming(request, deltaSink, reasoningSink, toolCallSink, finishSink);
             if (wrappedResponse.data() == null) {
                 throw new IllegalStateException(wrappedResponse.info());
             }
@@ -147,6 +148,18 @@ public class AgentStreamApi implements IAgentStreamApi {
         } catch (IOException exception) {
             emitterClosed.set(true);
             log.warn("[SSE] step_break 推送失败，emitter 已关闭：{}", exception.getMessage());
+        }
+    }
+
+    private void sendFinish(
+            SseEmitter emitter,
+            java.util.concurrent.atomic.AtomicBoolean emitterClosed
+    ) {
+        if (emitterClosed.get()) return;
+        try {
+            emitter.send(SseEmitter.event().name("finish").data("{}"));
+        } catch (IOException ignored) {
+            emitterClosed.set(true);
         }
     }
 

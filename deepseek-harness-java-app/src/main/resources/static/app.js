@@ -1608,7 +1608,19 @@ function renderApprovalBanner() {
   actions.appendChild(el('button', { class: 'btn btn-secondary', onclick: function() { resolveRuntimeApproval(approval, 'DENY'); } }, '拒绝'));
   actions.appendChild(el('button', { class: 'btn btn-secondary', onclick: function() { resolveRuntimeApproval(approval, 'ALLOW_ONCE'); } }, '允许一次'));
   actions.appendChild(el('button', { class: 'btn btn-primary', onclick: function() { resolveRuntimeApproval(approval, 'ALLOW_SESSION'); } }, '本会话允许'));
-  banner.appendChild(actions);
+  banner.appendChild(el('div', { class: 'approval-card' },
+    el('div', { class: 'approval-head' },
+      el('span', { class: 'approval-icon' }, '⚠️'),
+      el('div', { class: 'approval-copy' },
+        el('div', { class: 'approval-title-row' },
+          el('strong', null, '运行审批'),
+          el('span', { class: 'approval-tool' }, approval.toolName)
+        ),
+        el('div', { class: 'approval-command', title: command }, command)
+      )
+    ),
+    actions
+  ));
   return banner;
 }
 
@@ -3512,9 +3524,44 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
               sess.currentStage = (data.status === 'error' ? '工具失败 · ' : '工具完成 · ')
                 + (data.toolName || 'unknown');
               if (state.currentSessionId === sess.agentId) render();
+            } else if (eventType === 'finish') {
+              receivedChunks = true;
+              stopWaitTimer(sess);
+              stopApprovalPolling(sess);
+              sess.currentStage = null;
+              assistantMsg.streaming = false;
+              stopStreamReveal(assistantMsg);
+              if (fullContent) assistantMsg.content = fullContent;
+              const finishTime = Date.now();
+              const finishDuration = finishTime - startTime;
+              const finishFirstToken = firstChunkTime ? finishTime - startTime : 0;
+              assistantMsg.meta = {
+                time: new Date().toISOString(),
+                duration: (finishDuration / 1000).toFixed(1) + 's',
+                firstToken: finishFirstToken > 0 ? (finishFirstToken / 1000).toFixed(1) + 's' : '-',
+                tokens: estimateTokens(fullContent),
+              };
+              sess.stats.turns++;
+              sess.stats.steps++;
+              sess.stats.llmTimeMs += finishDuration;
+              sess.stats.firstTokenMs += finishFirstToken;
+              sess.stats.outputTokens += estimateTokens(fullContent);
+              sess.stats.inputTokens += estimateTokens(text);
+              sess.sending = false;
+              sess.streaming = false;
+              sess.abortController = null;
+              if (state.currentSessionId === sess.agentId) {
+                updateStreamingMessage._lastHtml = null;
+                render();
+                updateSidebarStatus();
+              } else {
+                updateSidebarStatus();
+              }
+              await sleep(0);
             } else if (eventType === 'done') {
               receivedChunks = true;
               stopWaitTimer(sess);
+              stopApprovalPolling(sess);
               sess.currentStage = null;
               // done 事件：优先用 extractAssistantTextFromDone 提取，若为空则保留 chunk 累积的内容
               const extracted = extractAssistantTextFromDone(data);
@@ -3550,12 +3597,14 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
                 tokens: estimateTokens(fullContent),
               };
 
-              sess.stats.turns++;
-              sess.stats.steps++;
-              sess.stats.llmTimeMs += duration;
-              sess.stats.firstTokenMs += firstToken;
-              sess.stats.outputTokens += estimateTokens(fullContent);
-              sess.stats.inputTokens += estimateTokens(text);
+              if (!assistantMsg.meta) {
+                sess.stats.turns++;
+                sess.stats.steps++;
+                sess.stats.llmTimeMs += duration;
+                sess.stats.firstTokenMs += firstToken;
+                sess.stats.outputTokens += estimateTokens(fullContent);
+                sess.stats.inputTokens += estimateTokens(text);
+              }
 
               // v28: 轨迹日志 — 记录模型回复（v29: 带精确 t0/t1 驱动时间线）
               trajPush(sess, 'message', fullContent, {
@@ -3571,6 +3620,17 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
               sess.sending = false;
               sess.streaming = false;
               sess.abortController = null;
+
+              // 立即释放输入区，避免收尾数据处理阻塞停止按钮。
+              if (state.currentSessionId === sess.agentId) {
+                updateStreamingMessage._lastHtml = null;
+                render();
+                updateSidebarStatus();
+              } else {
+                updateSidebarStatus();
+              }
+
+              await sleep(0);
 
               // v11: 解析 done 中的工具调用、计划等信息
               if (data.messages) {

@@ -32,7 +32,8 @@ public interface IAgentUseCase {
             AgentMessageRequestDTO command,
             java.util.function.Consumer<String> deltaSink,
             java.util.function.Consumer<String> reasoningSink,
-            java.util.function.Consumer<AgentToolCallEventResponseDTO> toolCallSink);
+            java.util.function.Consumer<AgentToolCallEventResponseDTO> toolCallSink,
+            Runnable finishSink);
 
     /**
      * 查询 Agent 当前状态。

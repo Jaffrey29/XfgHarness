@@ -12,7 +12,8 @@ public interface IAgentApi {
             AgentMessageRequestDTO request,
             java.util.function.Consumer<String> deltaSink,
             java.util.function.Consumer<String> reasoningSink,
-            java.util.function.Consumer<AgentToolCallEventResponseDTO> toolCallSink);
+            java.util.function.Consumer<AgentToolCallEventResponseDTO> toolCallSink,
+            Runnable finishSink);
 
     Response<String> getAgentStatus(String agentId);
 

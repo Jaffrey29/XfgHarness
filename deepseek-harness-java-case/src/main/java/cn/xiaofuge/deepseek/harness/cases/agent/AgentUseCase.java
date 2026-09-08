@@ -60,10 +60,11 @@ public class AgentUseCase implements IAgentUseCase {
             AgentMessageRequestDTO request,
             java.util.function.Consumer<String> deltaSink,
             java.util.function.Consumer<String> reasoningSink,
-            java.util.function.Consumer<AgentToolCallEventResponseDTO> toolCallSink) {
+            java.util.function.Consumer<AgentToolCallEventResponseDTO> toolCallSink,
+            Runnable finishSink) {
         log.info("[UseCase] Agent={} 收到流式消息发送请求（provider={} model={}）",
                 request.agentId(), request.provider(), request.model());
-        return agentMessageFactory.streamingPipeline(deltaSink, reasoningSink, toolCallSink).execute(request);
+        return agentMessageFactory.streamingPipeline(deltaSink, reasoningSink, toolCallSink, finishSink).execute(request);
     }
 
     /**

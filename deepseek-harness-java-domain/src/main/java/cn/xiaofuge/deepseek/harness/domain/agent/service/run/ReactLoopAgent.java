@@ -79,6 +79,7 @@ public class ReactLoopAgent implements AgentRun {
     private volatile java.util.function.Consumer<ToolCallExecutor.ToolLifecycleEvent> streamToolEventSink;
     // ── 工具调用事件接收器（用于 SSE 推送 tool_call 事件，让前端分段） ──
     private volatile java.util.function.Consumer<ToolCallBlock> streamToolCallSink;
+    private volatile Runnable streamFinishSink;
     private boolean continuationRequested;
     // ── 阶段状态 ──────────────────────────────────────────────
     private volatile Phase phase;
@@ -211,6 +212,11 @@ public class ReactLoopAgent implements AgentRun {
 
     public void setStreamToolEventSink(java.util.function.Consumer<ToolCallExecutor.ToolLifecycleEvent> sink) {
         this.streamToolEventSink = sink;
+    }
+
+    @Override
+    public void setStreamFinishSink(Runnable sink) {
+        this.streamFinishSink = sink;
     }
 
     private void onToolLifecycleEvent(ToolCallExecutor.ToolLifecycleEvent event) {
@@ -695,6 +701,10 @@ public class ReactLoopAgent implements AgentRun {
             if (toolCalls.isEmpty()) {
                 log.info("[step] ◁ Agent={} Turn#{} Step#{} 完成，无工具调用，耗时={}ms",
                         id, turn, step, System.currentTimeMillis() - stepStart);
+                Runnable finishSink = streamFinishSink;
+                if (finishSink != null) {
+                    try { finishSink.run(); } catch (RuntimeException ignored) {}
+                }
                 return new TurnEndReason.Completed();
             }
 

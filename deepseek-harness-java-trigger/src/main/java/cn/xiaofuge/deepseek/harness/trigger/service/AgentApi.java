@@ -63,7 +63,8 @@ public class AgentApi implements IAgentApi {
             AgentMessageRequestDTO request,
             java.util.function.Consumer<String> deltaSink,
             java.util.function.Consumer<String> reasoningSink,
-            java.util.function.Consumer<AgentToolCallEventResponseDTO> toolCallSink) {
+            java.util.function.Consumer<AgentToolCallEventResponseDTO> toolCallSink,
+            Runnable finishSink) {
         return execute(() -> agentUseCase.sendMessageStreaming(
                     request,
                     deltaSink,
@@ -73,7 +74,8 @@ public class AgentApi implements IAgentApi {
                             event.toolName(),
                             event.arguments(),
                             "running"
-                    ))
+                    )),
+                    finishSink
         ));
     }
 
