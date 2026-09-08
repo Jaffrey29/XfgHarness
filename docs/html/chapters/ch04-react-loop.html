@@ -1,0 +1,340 @@
+<h1 class="chapter-title">第4章 ReactLoopAgent：ReAct 循环引擎</h1>
+<p class="chapter-subtitle">整个系统的心脏——一个 769 行的类如何驱动"思考-行动-观察"</p>
+
+<h2 class="section-heading" id="sec-1">4.1 本章导读</h2>
+
+<p>前面两章建立的是"静态地图"：模块怎么分、领域怎么划。本章我们进入"动态核心"——<code>domain/agent/service/ReactLoopAgent.java</code>，这是整个系统最重要、也最精巧的一个类。你将看到：ReAct 循环如何用 turn/step 两级结构实现、取消如何做到协作式不丢数据、max_tokens 截断如何自动续写，以及一个曾经让"工具结果永远送不到模型眼里"的真实 Bug 是怎么修掉的。</p>
+
+<h2 class="section-heading" id="sec-2">4.2 ReAct 模式回顾</h2>
+
+<p>ReAct（Reason + Act）是最经典的 Agent 范式：<strong>模型不只是生成文本，而是在"推理 → 调用工具 → 观察结果 → 再推理"的循环中逼近目标</strong>。</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"reason","label":"Reason 推理\nLLM 分析上下文\n输出文本或工具调用","type":"process"},{"id":"act","label":"Act 行动\n执行工具\nfs_read / shell_execute ...","type":"process"},{"id":"observe","label":"Observe 观察\n工具结果回填上下文\n模型看到结果继续推理","type":"process"},{"id":"done","label":"完成判断\n模型不再请求工具\n输出最终答案","type":"end"}],"edges":[{"from":"reason","to":"act","label":"有工具调用"},{"from":"act","to":"observe"},{"from":"observe","to":"reason"},{"from":"reason","to":"done","label":"无工具调用"}]}'></div>
+
+<p>听起来简单，但工程化时有一堆硬问题：<em>循环什么时候停？模型输出被 token 截断怎么办？用户中途取消怎么处理？多个消息同时进来怎么排队？</em>这些正是 <code>ReactLoopAgent</code> 要解决的。</p>
+
+<h2 class="section-heading" id="sec-3">4.3 三级驱动结构：kick → turn → step</h2>
+
+<p><code>ReactLoopAgent</code> 的驱动分为三层，从外到内是：<strong>kick（驱动器）→ turn（轮）→ step（步）</strong>。</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"kick","label":"kick() 驱动器\n虚拟线程中运行\n循环: 只要 inbox 有消息就开新 turn","type":"start"},{"id":"turn","label":"turn() 一轮对话\n上限 50 步 · 续写最多 4 次\n打开 TurnStart ... 关闭 TurnEnd","type":"process"},{"id":"step","label":"step() 一步\n一次 LLM 流式调用\n+ 可选的工具执行","type":"process"},{"id":"llm","label":"ILlmRuntimePort.stream()\nFlow.Publisher 流式返回","type":"end"}],"edges":[{"from":"kick","to":"turn","label":"inbox 有消息"},{"from":"turn","to":"step","label":"循环"},{"from":"step","to":"llm"},{"from":"step","to":"turn","label":"工具结果需续步"},{"from":"turn","to":"kick","label":"turn 结束"}]}'></div>
+
+<p>对应源码的三个方法：</p>
+
+<div class="code-block"><pre>// ReactLoopAgent.java · 三级驱动（简化注释版）
+private CompletableFuture&lt;Void&gt; kick(Phase.Running running) {   // 246行：驱动器
+    return CompletableFuture.runAsync(() -&gt; {
+        while (true) {
+            if (running.abort().get()) break;                    // 被取消则停
+            if (!inbox.hasPending()) break;                      // 没消息则停
+            if (!turn(running)) break;                           // 执行一轮
+        }
+        // finally 里：若期间又来了新消息，递归 kick 继续处理
+    }, Executors.newCachedThreadPool());
+}
+
+private boolean turn(Phase.Running running) {                    // 282行：一轮
+    session.append(SessionEventFactory.turnStart());
+    final long MAX_STEPS_PER_TURN = 50;                          // 安全上限
+    final int MAX_TOKEN_CONTINUATIONS = 4;                       // 续写上限
+    boolean midTurnContinuation = false;                         // 关键标志（见4.6）
+    while (true) {
+        // ... 检查步数上限、取消、抢占 inbox 消息
+        TurnEndReason stepResult = step(running, turn, step);    // 执行一步
+        if (stepResult == null) { midTurnContinuation = true; continue; }  // 工具续步
+        // ... 根据 Completed/MaxTokens/Blocked/Aborted/Error 决定 turn 结局
+    }
+}
+
+private TurnEndReason step(Phase.Running running, long turn, long step) {  // 404行：一步
+    // 1. 组装系统提示词  2. 构建请求  3. 流式调用 LLM
+    // 4. BlockAssembler 组装响应  5. 有工具调用则执行并回填
+}</pre></div>
+
+<h2 class="section-heading" id="sec-4">4.4 Phase 状态机与协作式取消</h2>
+
+<p>Agent 的运行状态用 sealed 类型 <code>Phase</code> 表达：<code>Idle</code>（空闲）/ <code>Running</code>（运行中，携带 abort 标志）/ <code>Maintenance</code>（维护，如压缩上下文）。</p>
+
+<p>取消的设计非常关键——<strong>不能粗暴中断线程</strong>（那样可能写到一半的会话事件丢失），而是协作式：</p>
+
+<div class="code-block"><pre>// 取消：只设置标志位，不断线程
+public synchronized void cancel(AgentCancelCause cause, boolean keepInbox) {
+    if (phase instanceof Phase.Running r) {
+        r.abort().set(true);   // AtomicBoolean，运行中的循环自己检查发现
+    }
+}
+
+// step 内等待流式结束时的检查（485行）
+while (!done.await(100, TimeUnit.MILLISECONDS)) {
+    if (running.abort().get()) { aborted.set(true); break; }  // 100ms 轮询
+}
+
+// 流式订阅 onNext 里也检查（442行）：一旦发现 abort 立即 subscription.cancel()</pre></div>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">💡 为什么用 100ms 轮询而不是中断</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">LLM 流式调用可能在任何时刻收到取消。协作式取消保证：当前已收到的 chunk 全部写入 SessionLog、工具执行要么完整完成要么干净放弃、TurnEnd 事件一定落库。这样取消后的会话仍然是<strong>可回放的完整事件流</strong>，而不是一堆残片。</p>
+</div>
+
+<h2 class="section-heading" id="sec-5">4.5 流式组装的细节：Flow + CountDownLatch + BlockAssembler</h2>
+
+<p>step 的核心是订阅 LLM 的流式响应。这里用了 JDK 9 的响应式流 <code>Flow.Publisher</code>（Domain 层因此不依赖任何 HTTP 客户端库）：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"pub","label":"ILlmRuntimePort.stream()\n返回 Flow.Publisher\u003cStreamChunk\u003e","type":"start"},{"id":"sub","label":"订阅 onNext(chunk)\n每个 chunk 做三件事","type":"process"},{"id":"check","label":"1. 检查 abort\n是 → subscription.cancel()","type":"process"},{"id":"assemble","label":"2. BlockAssembler.push(chunk)\n增量组装 ContentBlock","type":"process"},{"id":"push","label":"3. TextDelta → streamDeltaSink\n实时推给 SSE 通道","type":"process"},{"id":"latch","label":"onComplete/onError\nCountDownLatch.countDown()","type":"process"},{"id":"blocks","label":"流结束后\nassembler.blocks() 得到完整消息\nToolCallBlock? 执行工具","type":"end"}],"edges":[{"from":"pub","to":"sub"},{"from":"sub","to":"check"},{"from":"check","to":"assemble"},{"from":"assemble","to":"push"},{"from":"sub","to":"latch"},{"from":"latch","to":"blocks"}]}'></div>
+
+<p><code>StreamChunk</code> 是 sealed 接口，有 <code>TextDelta</code>（文本增量）、<code>Retry</code>（重试提示，会转成人类可读的"模型请求失败，正在重试（1/3）"推给前端）等子类型。<code>BlockAssembler</code> 负责把零散的 chunk 组装成完整的 <code>ContentBlock</code> 列表（文本块 + 工具调用块）。</p>
+
+<h2 class="section-heading" id="sec-6">4.6 真实 Bug 复盘：midTurnContinuation 标志的诞生</h2>
+
+<p>这是本项目修复过的最有教学价值的一个 Bug，完美展示了"循环退出条件"设计的微妙之处。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-error);">
+  <div class="card-title">🐛 Bug 现象</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">让 Agent 执行"列出目录文件并介绍"——它确实调用了 <code>shell_execute</code>，工具也执行成功了，但<strong>对话就此中断</strong>，模型从不基于工具结果给出最终回答。工具结果仿佛石沉大海。</p>
+</div>
+
+<p><strong>根因</strong>：turn 循环的每个 step 开头都要检查 inbox 是否有新消息（<code>inbox.claim(...)</code>），如果 inbox 为空就 <code>break</code> 退出 turn。这个逻辑对"第一步"是对的（没有用户消息就不该开始），但<strong>工具调用完成后的后续 step 也走了同样的检查</strong>——此时 inbox 本来就是空的（用户没发新消息），于是循环在工具结果回填后直接退出，模型永远没机会看到工具结果。</p>
+
+<div class="code-block"><pre>// 修复：引入 midTurnContinuation 标志
+boolean midTurnContinuation = false;
+while (true) {
+    if (!midTurnContinuation) {
+        claimed = inbox.claim(InboxTarget.NEXT_TURN, (int) turn);
+        if (claimed.isEmpty() &amp;&amp; !inbox.hasPending() &amp;&amp; !continuationRequested) break;
+        // ...
+    }
+    TurnEndReason stepResult = step(running, turn, step);
+    if (stepResult == null) {           // null = 工具调用已完成，模型应继续推理
+        midTurnContinuation = true;      // 后续 step 跳过 inbox 检查
+        continue;
+    }
+}</pre></div>
+
+<p>修复的本质：<strong>区分"turn 的第一步"和"turn 内的续步"</strong>。第一步必须有用户消息才启动；续步（工具调用后）不需要用户消息，直接继续让模型推理。</p>
+
+<h2 class="section-heading" id="sec-7">4.7 max_tokens 截断的受控续写</h2>
+
+<p>模型输出有 token 上限，超长回复会被截断（<code>finish_reason = max_tokens</code>）。<code>ReactLoopAgent</code> 的处理是<strong>自动续写，但有上限</strong>：</p>
+
+<div class="code-block"><pre>final int MAX_TOKEN_CONTINUATIONS = 4;
+// ...
+} else if (stepResult instanceof TurnEndReason.MaxTokens) {
+    if (++tokenContinuations &gt; MAX_TOKEN_CONTINUATIONS) {
+        session.append(SessionEventFactory.turnEnd(new TurnEndReason.MaxTokens()));
+        return true;   // 续写 4 次还不够，放弃，turn 结束
+    }
+    continuationRequested = true;   // 标记：下一步是续写，不要从 inbox 取新消息
+    continue;
+}</pre></div>
+
+<p>注意 <code>continuationRequested</code> 与 <code>midTurnContinuation</code> 是两个不同的标志：前者处理"模型话没说完"，后者处理"模型要基于工具结果继续"。两个都会阻止循环从 inbox 抢占新消息，但触发原因和计数方式不同。</p>
+
+<h2 class="section-heading" id="sec-8">4.8 与外部世界的接口</h2>
+
+<p><code>ReactLoopAgent</code> 通过构造器注入的 7 个依赖与外部协作，全部是 Domain 抽象：</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">依赖</th><th style="text-align:left;">类型</th><th style="text-align:left;">职责</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>session</code></td><td><code>SessionLog</code></td><td>事件追加（TurnStart/StepStart/UserMessage/AssistantChunk/ToolCall...）</td></tr>
+      <tr><td><code>inbox</code></td><td><code>Inbox</code></td><td>消息输入箱，支持 NEXT_TURN / nextStep 两种目标</td></tr>
+      <tr><td><code>llm</code></td><td><code>ILlmRuntimePort</code></td><td>流式生成端口，实现由 Infrastructure 提供</td></tr>
+      <tr><td><code>toolRegistry</code> / <code>toolExecutor</code></td><td>工具域</td><td>工具查找与统一执行（Hook + 守卫）</td></tr>
+      <tr><td><code>systemPromptAssembler</code></td><td><code>SystemPromptAssembler</code></td><td>组装系统提示词（含工具 schema）</td></tr>
+      <tr><td><code>events</code></td><td><code>AgentEventListener</code></td><td>生命周期事件回调</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>另有两个按次设置的"流式接收器"：<code>streamDeltaSink</code>（文本增量，推给 SSE chunk）和 <code>streamToolCallSink</code>（工具调用，推给 SSE step_break）——它们让同一个 Agent 引擎既能服务 SSE 流式请求，也能服务阻塞式请求，还能被工作流复用。</p>
+
+<h2 class="section-heading" id="sec-9">4.9 课程补充：Inbox 双队列与请求构建细节</h2>
+
+<p>本章主链路（<code>kick → turn → step</code>）只展现了 Agent 引擎的"骨架"。下面四个细节决定了它在真实工作负载下能否<strong>不出错、不丢消息、不浪费 token</strong>——它们都在源码里，但主章节没展开，是课程里覆盖不全的部分。</p>
+
+<h3 class="sub-heading">4.9.1 Inbox 的双队列语义</h3>
+
+<p><code>Inbox</code>（📦 <code>domain/agent/service/Inbox.java</code>）持有<strong>两个有序列表</strong>，分别对应不同的"注入时机"：</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">列表</th><th style="text-align:left;">目标枚举</th><th style="text-align:left;">语义</th><th style="text-align:left;">典型场景</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>nextTurn</code></td><td><code>InboxTarget.NEXT_TURN</code></td><td>等一个完整 turn 的消息</td><td>用户输入、followup 消息</td></tr>
+      <tr><td><code>nextStep</code></td><td><code>InboxTarget.NEXT_STEP</code></td><td>注入到下一步但不唤醒</td><td>计划模式提示、上下文注入</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>关键操作 <code>claim(target, turn)</code> 的工作方式：</p>
+
+<div class="code-block"><pre>// Inbox.claim()（简化）
+public List<Message> claim(InboxTarget target, int turn) {
+    List<Message> claimed = new ArrayList<>(mutate(NEXT_STEP, 0, nextStep.size(), List.of(), false));
+    if (target == InboxTarget.NEXT_TURN) {
+        claimed.addAll(mutate(NEXT_TURN, 0, 1, List.of(), false));  // 抢占 1 条
+    }
+    for (Message m : claimed) notifications.claimed(m, turn);  // 发布 claimed 通知
+    return claimed;
+}</pre></div>
+
+<p>注意几个微妙之处：</p>
+
+<ul>
+  <li><strong>nextStep 每次都被清空</strong>（只要消费就全清）；nextTurn 每次只取 1 条。</li>
+  <li><strong>claim 不写 insert 事件</strong>，只写"删除"事件——这是因为用户消息早已 append 时落地过 <code>AgentInboxSpliced</code> 事件，再写一遍就是冗余。</li>
+  <li><strong>uniqueness 校验</strong>：跨两个列表的全集做 <code>HashSet</code> 去重，重复 id 直接抛 <code>IllegalStateException</code>——防止同一消息被排到两次。</li>
+</ul>
+
+<h3 class="sub-heading">4.9.2 "持久化先于状态变更"的因果序</h3>
+
+<p>Inbox 每次变更（append/prepend/replace/clear）的内部流程是<strong>先写事件，再改内存</strong>：</p>
+
+<div class="code-block"><pre>// Inbox.mutate()（简化）
+public List<Message> splice(target, start, deleteCount, inserted) {
+    var event = SessionEventFactory.inboxSpliced(...);  // 1. 构造事件
+    session.append(event);                              // 2. 先追加到 WAL
+    // 3. 再改内存列表
+    inbox.subList(start, start + actualDeleteCount).clear();
+    for (int i = inserted.size() - 1; i >= 0; i--) inbox.add(start, inserted.get(i));
+    // 4. 发通知
+    if (discardRemoved) removed.forEach(notifications::discarded);
+    inserted.forEach(notifications::inserted);
+}</pre></div>
+
+<p>这种顺序保证了一件关键事：<strong>任何同步观察 session 事件的订阅者，看到的都是"尚未变更"的旧状态</strong>，可以凭 <code>InboxSplicedPayload</code> 的归一化坐标自己重建被移除的消息。如果反过来（先改内存再写事件），订阅者会看到一个"事件还没到但状态已经变了"的中间态。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">💡 这是 Event Sourcing 的关键纪律</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">"持久化先于状态变更"看似多此一举，但它让"重建"和"重放"在因果上完全等价——任何时刻只要按 seq 重放所有事件，结果与实时运行一致。这正是第5章"事件溯源"在 Inbox 上的具体落地。</p>
+</div>
+
+<h3 class="sub-heading">4.9.3 buildRequest：上下文截断公式</h3>
+
+<p><code>step()</code> 每次发请求前都要从 <code>session.deriveMessages()</code> 重建历史，再按 token 预算裁剪。完整逻辑（<code>ReactLoopAgent.buildRequest()</code>，第 611 行起）：</p>
+
+<div class="code-block"><pre>private static final int CONTEXT_WINDOW_FALLBACK = 128_000;  // 对应 yml context-window
+
+private GenerateOptions buildRequest(PromptAssembly assembly, long turn, long step) {
+    List<Message> history = session.deriveMessages();
+    if (continuationRequested) {  // 续写场景：注入"接着写"指令
+        history.add(Message.createUser(
+            List.of(new TextBlock(CONTINUATION_PROMPT)),
+            new PluginSource("react-loop")));
+    }
+    int maxContext = CONTEXT_WINDOW_FALLBACK;
+    int systemTokens = estimateTokens(assembly.system());
+    int budget = maxContext - systemTokens - options.maxTokens() - 1024;
+    if (budget < 4096) budget = 4096;  // 保底
+    history = truncateToBudget(history, budget);
+    return new GenerateOptions(...);
+}</pre></div>
+
+<p><strong>预算公式</strong>：</p>
+
+<div class="code-block"><pre>budget = context_window(128k)
+       - system_tokens        // 系统提示词占的 token
+       - max_tokens            // 本次回复的预留 token
+       - 1024                  // 安全余量
+（最低 4096）</pre></div>
+
+<p><code>truncateToBudget()</code> 从历史<strong>尾部向前</strong>贪心装回，保留最近消息的完整语义；如果发现裁掉太多（少于 6 条），改为"只保留最近 6 条"——绝对不丢到 0。</p>
+
+<p><strong>token 估算</strong>很粗：<code>(int) Math.ceil(text.length() / 4.0)</code>，对中文实际是 1.5~2 token/字，对代码标识符约 0.25 token/字符，所以预算偏保守（多裁一些）。在 <code>MEMORY.md</code> 的"已知隐患"里也标记了这一点。</p>
+
+<h3 class="sub-heading">4.9.4 temperature 可配置：踩过的 400 坑</h3>
+
+<p>代码里有一段很不起眼的常量：</p>
+
+<div class="code-block"><pre>// 读系统属性 / 环境变量；null = 不发送 temperature
+private static final Double SAMPLING_TEMPERATURE = parseTemperature(
+    System.getProperty("harness.agent.temperature",
+            System.getenv("HARNESS_AGENT_TEMPERATURE")));
+
+private static Double parseTemperature(String raw) {
+    if (raw == null || raw.isBlank()) return null;  // 关键：null → 不发送
+    try { return Double.parseDouble(raw.trim()); }
+    catch (NumberFormatException e) { return null; }
+}</pre></div>
+
+<p>这背后有个<strong>真实踩过的坑</strong>：本项目默认模型 <code>gpt-5.5</code> 走的上游网关<strong>只接受 temperature=1</strong>，发任何其他值（如代码里曾经硬编码的 <code>0.3</code>）都会被网关 400 拒掉。于是代码改成"可配置 + 默认不发"——上游网关自己会用默认值（一般是 1），既兼容只接受 1 的网关，也兼容接受自定义温度的模型。</p>
+
+<p>配置方式有两种（顺序优先级）：</p>
+
+<div class="code-block"><pre># 方式 1：环境变量
+export HARNESS_AGENT_TEMPERATURE=1
+
+# 方式 2：JVM 启动参数
+java -Dharness.agent.temperature=1 -jar app.jar
+
+# 不设 = 不发送 temperature 字段，让上游自己决定</pre></div>
+
+<div class="card" style="border-left: 3px solid var(--color-warning);">
+  <div class="card-title">📐 设计原则：让出可变参数</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">"可配置 + 默认留空"是一个常被忽视的工程原则：上游规则会变，今天只接受 1、明天可能支持 0~2；与其把参数写死导致每次模型变更都要改代码+重打包，不如让出配置权，让上游规则自己消化。temperature、context-window、request-timeout 都是这个思路。</p>
+</div>
+
+<h2 class="section-heading" id="sec-10">4.10 课程补充：意图识别与工具选择纠偏</h2>
+
+<p>ReAct 循环的上游是意图链（第6章展开策略树细节），本节讲两个 case 层节点的工程细节——它们直接决定"模型第一步调什么工具"，也各自埋着一个本项目真实修过的 Bug。</p>
+
+<h3 class="sub-heading">4.10.1 AgentIntentNode：纯正则意图分类</h3>
+
+<p><code>AgentIntentNode.classify()</code>（📦 <code>cases/agent/node/AgentIntentNode.java</code>）是<strong>纯正则规则</strong>，没有 LLM 参与，按优先级短路返回四类意图：</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">优先级</th><th style="text-align:left;">条件</th><th style="text-align:left;">意图</th><th style="text-align:left;">下游效应</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>0</td><td>空消息</td><td><code>CLARIFICATION</code></td><td>向用户发起澄清</td></tr>
+      <tr><td>1</td><td>问候语全文匹配（<code>^(你好|hi|thanks...)$</code>）</td><td><code>CHAT</code></td><td>直接闲聊回复</td></tr>
+      <tr><td>2</td><td>文件路径 / 目录路径 / 代码围栏 / (代码关键词 AND 任务动词)</td><td><code>TASK_EXECUTION</code></td><td>注入"先调工具"指令</td></tr>
+      <tr><td>3</td><td>闲聊短语（你是谁/谢谢/bye...）</td><td><code>CHAT</code></td><td>闲聊回复</td></tr>
+      <tr><td>4</td><td>代码关键词（bug/api/线程/正则...）</td><td><code>CODE_QUESTION</code></td><td>讲解优先</td></tr>
+      <tr><td>5</td><td>解释词 AND 任务动词</td><td><code>CODE_QUESTION</code></td><td>讲解优先</td></tr>
+      <tr><td>6</td><td>任务动词（帮我/请/执行/修复/构建...）</td><td><code>TASK_EXECUTION</code></td><td>注入"先调工具"指令</td></tr>
+      <tr><td>7</td><td>文件系统关键词 AND 问号结尾</td><td><code>TASK_EXECUTION</code></td><td>注入"先调工具"指令</td></tr>
+      <tr><td>兜底</td><td>以上都不命中</td><td><code>CHAT</code></td><td>闲聊回复</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>规则顺序就是语义优先级：<strong>先收窄"必然是任务"的强信号</strong>（路径/代码围栏），再排除闲聊，再按弱信号组合判断。TASK_EXECUTION 消息会被 <code>AgentDispatchNode.prepareMessageText()</code> 改写，注入"请先使用可用工具完成下面的任务，不要在未使用工具前直接给出结论"——防止模型跳过工具直接"想象"答案。</p>
+
+<h3 class="sub-heading">4.10.2 真实 Bug 复盘：列目录场景的工具选择纠偏</h3>
+
+<p><code>AgentDispatchNode.buildDirectoryInstruction()</code>（📦 <code>cases/agent/node/AgentDispatchNode.java:115</code>）对"目录里有什么"类问题注入固定指令。这个函数曾经硬编码"必须调用 <code>fs_search</code>"——但 <code>fs_search</code> 是 glob 文件搜索（<code>pattern="*"</code> 会<strong>递归匹配所有文件</strong>），用来"列一级目录"会产生几千行的递归清单，模型拿到的是噪声不是答案。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-error);">
+  <div class="card-title">🐛 教训：注入指令里的工具名不能只看名字像</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">"search"这个名字让人以为它是目录列表器，实际是递归 glob。修复方式：指令改为推荐 <code>shell_execute</code> 执行 <code>ls -la &lt;dir&gt;</code> 或 <code>find &lt;dir&gt; -maxdepth 1 -type d</code>——语义精确（-maxdepth 1 限定一级），且系统提示词同步强化。给模型注入工具建议时，<strong>工具语义必须与任务形状严格对齐</strong>，名字相似性不算数。</p>
+</div>
+
+<div class="code-block"><pre>// AgentDispatchNode.buildDirectoryInstruction()（当前版本，:115 起）
+private static String buildDirectoryInstruction(String messageText) {
+    if (messageText == null || !DIRECTORY_QUESTION.matcher(messageText).find()) return null;
+    Matcher matcher = ABSOLUTE_PATH.matcher(messageText);
+    if (!matcher.find()) return null;
+    String directory = matcher.group(1);
+    return "你需要列出这个目录的一级子目录和文件。推荐用 `shell_execute` 执行 `ls -la \""
+         + directory + "\"` 获取完整列表，\n"
+         + "或者用 `find \"" + directory + "\" -maxdepth 1 -type d` 只列目录。\n"
+         + "拿到真实结果后，用 Markdown 列表展示所有一级项目，不要遗漏、不要模糊化。\n\n"
+         + "用户原始请求：" + messageText;
+}</pre></div>
+
+<p>指令里有两个工程细节值得注意：<code>ABSOLUTE_PATH</code> 正则在空白和常见中英文标点处截断（避免把后续说明文字吞进路径）；指令尾部附<strong>用户原始请求</strong>——注入指令替换了原文，不带回原文模型就丢失了用户的完整语境。</p>
+
+<h2 class="section-heading" id="sec-11">4.11 小结与下一章预告</h2>
+
+<div class="summary-box">
+  <p><strong>本章要点</strong>：三级驱动 kick→turn→step；单 turn ≤ 50 步、续写 ≤ 4 次是安全护栏；取消用 AtomicBoolean + 100ms 轮询实现协作式中断保证事件完整；midTurnContinuation 标志修复了"工具结果送不到模型"的经典 Bug；Flow.Publisher 让 Domain 不依赖 HTTP 客户端。</p>
+  <p style="margin-bottom:0;"><strong>下一章</strong>：本章反复出现的 <code>session.append(...)</code> 到底做了什么？为什么说"事件日志就是真相之源"？取消后如何回放完整会话？第5章讲会话与事件溯源。</p>
+</div></div></div>

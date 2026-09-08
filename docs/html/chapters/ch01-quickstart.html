@@ -1,0 +1,114 @@
+<h1 class="chapter-title">第1章 十分钟跑起来：构建、启动与第一次对话</h1>
+<p class="chapter-subtitle">先获得直觉，再深入原理——让系统在你眼前活起来</p>
+
+<h2 class="section-heading" id="sec-1">1.1 本章导读</h2>
+
+<p>上一章我们说了"Harness 是什么"，这一章就把它<strong>真正跑起来</strong>。你将完成：克隆代码 → 一次构建 → 选择一种方式启动 → 在浏览器里和 Agent 对话。本章不需要你理解任何内部原理，照着做即可。</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"clone","label":"1. 克隆代码\ngit clone","type":"start"},{"id":"build","label":"2. 构建\nmvn clean package","type":"process"},{"id":"start","label":"3. 启动（三选一）\nH2 / MySQL / Docker","type":"process"},{"id":"ui","label":"4. 打开控制台\nlocalhost:8090","type":"process"},{"id":"chat","label":"5. 第一次对话\nHello, Agent!","type":"end"}],"edges":[{"from":"clone","to":"build"},{"from":"build","to":"start"},{"from":"start","to":"ui"},{"from":"ui","to":"chat"}]}'></div>
+
+<h2 class="section-heading" id="sec-2">1.2 环境检查</h2>
+
+<p>打开终端，确认以下命令都有输出：</p>
+
+<div class="code-block"><pre>java -version    # 需要 17 或更高
+mvn -version     # 需要 3.9 或更高</pre></div>
+
+<p>如果用的是 Node 插件（第9章）或 MCP（第10章），还需要 <code>node -v</code> 18+。MySQL 和 Docker 都是可选的——本章默认用零依赖的 H2 模式。</p>
+
+<h2 class="section-heading" id="sec-3">1.3 克隆与构建</h2>
+
+<div class="code-block"><pre>git clone https://gitcode.net/KnowledgePlanet/deepseek-harness-java.git
+cd deepseek-harness-java
+
+# 快速打包（跳过测试，约 1-2 分钟）
+mvn clean package -DskipTests</pre></div>
+
+<p>构建成功后会生成一个可执行 JAR：</p>
+
+<div class="code-block"><pre>deepseek-harness-java-app/target/deepseek-harness-java-app-1.0.0-SNAPSHOT.jar</pre></div>
+
+<div class="info-box">
+  <h4>📦 幕后发生了什么</h4>
+  <p>这是一个 7 模块的 Maven 聚合工程。<code>app</code> 模块依赖其余所有模块，Spring Boot Maven 插件把所有内容打成一个 fat jar——你拿到的这个 JAR 就是<strong>整个系统</strong>，包含 Web 控制台、Agent 引擎、插件加载器和内嵌 H2 支持。</p>
+</div>
+
+<h2 class="section-heading" id="sec-4">1.4 启动：三种方式选一种</h2>
+
+<h3 class="sub-heading">方式一：Standalone（推荐首次体验，零外部依赖）</h3>
+
+<p>使用内嵌 H2 文件数据库，不需要装 MySQL：</p>
+
+<div class="code-block"><pre>export DEEPSEEK_API_KEY='你的模型API Key'
+
+java -jar deepseek-harness-java-app/target/deepseek-harness-java-app-1.0.0-SNAPSHOT.jar \
+  --spring.profiles.active=standalone</pre></div>
+
+<p>看到 <code>Started DeepSeekHarnessApplication in X seconds</code> 即启动成功，H2 数据文件写入 <code>./data/deepseek-harness-java.mv.db</code>。</p>
+
+<h3 class="sub-heading">方式二：MySQL（默认 profile，贴近生产）</h3>
+
+<div class="code-block"><pre>export SPRING_DATASOURCE_URL='jdbc:mysql://127.0.0.1:3306/deepseek_harness_java?useUnicode=true&amp;characterEncoding=UTF-8&amp;serverTimezone=Asia/Shanghai&amp;useSSL=false&amp;allowPublicKeyRetrieval=true'
+export SPRING_DATASOURCE_USERNAME='root'
+export SPRING_DATASOURCE_PASSWORD='你的密码'
+export DEEPSEEK_API_KEY='你的模型API Key'
+
+java -jar deepseek-harness-java-app/target/deepseek-harness-java-app-1.0.0-SNAPSHOT.jar</pre></div>
+
+<p>首次启动会自动执行 <code>schema.sql</code> 创建 12 张表（幂等，可重复启动）。</p>
+
+<h3 class="sub-heading">方式三：Docker Compose（最省心）</h3>
+
+<div class="code-block"><pre>export DEEPSEEK_API_KEY='你的模型API Key'
+docker compose up --build -d</pre></div>
+
+<p>Compose 会暴露 <code>8090:8090</code>，使用 standalone profile，并把 <code>./data</code>、<code>./plugins</code>、<code>./workspaces</code> 挂载出来。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-warning);">
+  <div class="card-title">⚠️ 关于 API Key</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">系统通过 <code>harness.llm.deepseek.api-key</code> 配置模型网关的 Key，默认从环境变量 <code>DEEPSEEK_API_KEY</code> 读取。任何 OpenAI 兼容网关（DeepSeek 官方、自建网关、OneAPI 等）都可以，配合 <code>base-url</code> 一起改。</p>
+</div>
+
+<h2 class="section-heading" id="sec-5">1.5 打开 Web 控制台</h2>
+
+<p>浏览器访问 <code>http://localhost:8090/</code>，你会看到一个类似 AI 编程助手的界面。左侧是工作区与会话列表，中间是对话区，顶部可以切换模型。</p>
+
+<p>控制台是<strong>纯原生 JavaScript</strong> 实现的（约 3300 行，无前端构建链），本地加载 marked（Markdown 解析）、DOMPurify（XSS 过滤）、highlight.js（代码高亮）三个库——即使在内网环境也能完整运行。</p>
+
+<h2 class="section-heading" id="sec-6">1.6 第一次对话</h2>
+
+<p>在控制台输入框里发一句"你好，介绍一下你自己"，稍等片刻就能看到流式输出的回复。如果你让它"列出当前目录的文件"，你会看到界面中出现一张<strong>工具卡片</strong>——那是 Agent 在调用 <code>shell_execute</code> 工具，这正是 Harness 的核心能力：模型不只是说话，还能<strong>动手</strong>。</p>
+
+<p>也可以用 curl 直接调 API：</p>
+
+<div class="code-block"><pre># 阻塞式对话
+curl -X POST http://localhost:8090/api/agent/message \
+  -H 'Content-Type: application/json' \
+  -d '{"agentId": "local-agent", "message": "Hello!"}'
+
+# SSE 流式对话（观察事件流）
+curl -N -X POST http://localhost:8090/api/agent/stream \
+  -H 'Content-Type: application/json' \
+  -d '{"agentId": "local-agent", "message": "介绍这个项目的架构"}'</pre></div>
+
+<p>流式接口会返回一系列事件：<code>meta</code>（起始帧）→ <code>chunk</code>（文本增量）→ 可能有 <code>step_break</code>（工具调用边界）→ <code>done</code>（终态）。第7章会完整解析这个协议。</p>
+
+<h2 class="section-heading" id="sec-7">1.7 验证清单</h2>
+
+<div class="checklist-box">
+  <ul>
+    <li>☐ <code>java -version</code> 显示 17+，<code>mvn -version</code> 显示 3.9+</li>
+    <li>☐ <code>mvn clean package -DskipTests</code> 构建成功</li>
+    <li>☐ 启动日志出现 <code>Started DeepSeekHarnessApplication</code></li>
+    <li>☐ 浏览器打开 <code>http://localhost:8090/</code> 能看到控制台</li>
+    <li>☐ 发送一条消息能收到流式回复</li>
+    <li>☐（可选）让它列目录，能看到工具卡片出现</li>
+  </ul>
+</div>
+
+<h2 class="section-heading" id="sec-8">1.8 小结与下一章预告</h2>
+
+<div class="summary-box">
+  <p><strong>本章要点</strong>：一个 fat jar 就是整个系统；standalone 模式用 H2 零依赖启动；控制台是原生 JS 无需构建；对话走 <code>/api/agent/stream</code> SSE 接口。</p>
+  <p style="margin-bottom:0;"><strong>下一章</strong>：你已经见过它跑起来的样子了。现在我们退一步俯瞰——这个系统的 7 个 Maven 模块如何划分？为什么依赖方向必须是单向的？什么是六边形架构？第2章带你建立全局视图。</p>
+</div></div></div>
