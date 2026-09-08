@@ -1,16 +1,11 @@
 package cn.xiaofuge.deepseek.harness.infrastructure.config;
 
-import cn.xiaofuge.deepseek.harness.domain.agent.ask.UserQuestionsPort;
 import cn.xiaofuge.deepseek.harness.domain.llm.model.valobj.LlmErrorCodes;
-import cn.xiaofuge.deepseek.harness.domain.session.event.adapter.repository.ISessionEventStore;
-import cn.xiaofuge.deepseek.harness.domain.plan.service.PlanModeService;
-import cn.xiaofuge.deepseek.harness.domain.todo.service.TodoWriteService;
 import cn.xiaofuge.deepseek.harness.domain.terminal.adapter.port.ITerminalPort;
 import cn.xiaofuge.deepseek.harness.domain.sandbox.ISandboxPolicyService;
 import cn.xiaofuge.deepseek.harness.domain.llm.adapter.LlmAdapter;
 import cn.xiaofuge.deepseek.harness.domain.llm.adapter.ResolvedRetryPolicy;
 import cn.xiaofuge.deepseek.harness.domain.llm.adapter.port.ILlmRuntimePort;
-import cn.xiaofuge.deepseek.harness.domain.agent.subagent.SubagentRegistry;
 import cn.xiaofuge.deepseek.harness.domain.tool.fs.adapter.port.IFsPort;
 import cn.xiaofuge.deepseek.harness.domain.tool.shell.IShellExecutor;
 import cn.xiaofuge.deepseek.harness.domain.tool.web.adapter.port.IWebPort;
@@ -46,7 +41,6 @@ import cn.xiaofuge.deepseek.harness.infrastructure.adapter.terminal.LocalTermina
 import cn.xiaofuge.deepseek.harness.domain.skill.adapter.port.ISkillProviderPort;
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.skill.FilesystemSkillProviderPort;
 
-import cn.xiaofuge.deepseek.harness.domain.hooks.IHookService;
 import cn.xiaofuge.deepseek.harness.domain.hooks.adapter.port.IHookRunnerPort;
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.hooks.LocalShellHookRunner;
 

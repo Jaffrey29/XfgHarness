@@ -1,6 +1,6 @@
 package cn.xiaofuge.deepseek.harness.domain.agent.model.entity;
 
-import cn.xiaofuge.deepseek.harness.domain.agentrun.model.valobj.ApprovalModeVO;
+import cn.xiaofuge.deepseek.harness.domain.agent.model.valobj.ApprovalModeVO;
 
 /**
  * AgentOptions 表示智能体运行时的领域配置实体。

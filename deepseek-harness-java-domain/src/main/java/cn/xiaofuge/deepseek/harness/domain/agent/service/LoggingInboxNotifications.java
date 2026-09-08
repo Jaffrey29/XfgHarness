@@ -1,11 +1,12 @@
 package cn.xiaofuge.deepseek.harness.domain.agent.service;
 
 import cn.xiaofuge.deepseek.harness.domain.model.entity.Message;
+import cn.xiaofuge.deepseek.harness.domain.agent.contract.outbound.InboxNotificationPublisher;
 
 /**
  * LoggingInboxNotifications 表示收件箱日志通知的领域适配实现。
  */
-public final class LoggingInboxNotifications implements InboxNotifications {
+public final class LoggingInboxNotifications implements InboxNotificationPublisher {
 
     public static final LoggingInboxNotifications INSTANCE = new LoggingInboxNotifications();
 

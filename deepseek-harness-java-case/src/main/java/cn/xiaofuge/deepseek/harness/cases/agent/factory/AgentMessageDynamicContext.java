@@ -1,9 +1,9 @@
 package cn.xiaofuge.deepseek.harness.cases.agent.factory;
 
 import cn.xiaofuge.deepseek.harness.api.dto.AgentToolCallEventResponseDTO;
-import cn.xiaofuge.deepseek.harness.domain.agentrun.AgentRun;
+import cn.xiaofuge.deepseek.harness.domain.agent.service.run.AgentRun;
 import cn.xiaofuge.deepseek.harness.domain.model.entity.Message;
-import cn.xiaofuge.deepseek.harness.domain.model.valobj.ToolCallBlock;
+
 import java.util.function.Consumer;
 
 /**

@@ -255,7 +255,7 @@ flowchart TB
             ToolD["tool / guard / hooks<br/>ToolRegistry · ToolCallExecutor"]
             PluginD["plugin<br/>Registry / Bridge / Runtime"]
             RuntimeD["runtime / llm / credentials<br/>ModelSetting · ILlmRuntimePort"]
-            AgentRunD["agentrun<br/>AgentRun · AgentRunFactory"]
+            AgentRunD["agent.run<br/>AgentRun · AgentRunFactory"]
             OtherD["goal / plan / todo / workflow<br/>schedule / jobs / terminal / sandbox ..."]
         end
 
@@ -576,7 +576,7 @@ Domain 定义端口，Infrastructure 实现。关键端口：
 | `IPluginArtifactInstallerPort` / `IPluginRuntimeBridgePort` / `IPluginProcessPort` | `PluginArtifactInstallerPort` / `PluginRuntimeBridgePort` / `PluginProcessPort` |
 | `IHarnessSessionRepository` / `ISessionEventStore` / `IHarnessTaskQueueRepository` / `IGoalRepository` | MyBatis Repository 对应实现 |
 | `IWorkflowEnginePort` | `LocalWorkflowEnginePort` |
-| `AgentRunFactoryPort` | `AgentFactory`（Domain AgentRun：装配 `AgentRun` + `ToolCallExecutor`） |
+| `AgentRunFactoryPort` | `AgentRunFactory`（Domain AgentRun：装配 `AgentRun` + `ToolCallExecutor`） |
 
 > 更完整的领域说明（事件清单、全部端口、子域细节）见 [`docs/domain-design.md`](docs/md/domain-design.md)；**逐模块速查（含 37 个模块的用途/子包/关键类/端口/关系）**见 [`docs/domain-modules-reference.md`](docs/md/domain-modules-reference.md)。
 
@@ -1059,7 +1059,7 @@ MySQL 承载结构化状态和事件（默认 profile）；standalone profile �
 - 部分外部能力依赖可选环境：E2B、ACP、MCP、Codex/Claude Code Subagent 等需要对应服务或命令存在。
 - Agent 的运行状态和流式执行链路偏向单实例模型；分布式任务调度尚未完整引入。
 - API 认证目前是简单 API Key 拦截器，还不是多租户身份体系。
-- **运行期审批 gate 默认未启用**：审批只在任务提交期拦截（`PermissionCheckNode`）；`AgentFactory` 默认构造时 `approvalBroker=null`，工具执行器走 allowAll，对话链路里的高风险工具不受运行期拦截。
+- **运行期审批 gate 默认未启用**：审批只在任务提交期拦截（`PermissionCheckNode`）；`AgentRunFactory` 默认构造时 `approvalBroker=null`，工具执行器走 allowAll，对话链路里的高风险工具不受运行期拦截。
 - **`shell_execute` 零沙箱**：`LocalShellExecutor` 直接 `/bin/sh -c`，无命令白名单，仅靠提交期审批兜底；生产环境务必配合审批策略与容器隔离。
 - **`ScheduleService` 无驱动方**：`drive()` 无 `@Scheduled`/Quartz 调用方，且仓储为 InMemory，重启即丢。
 - **线程池与阻塞**：`ReactLoopAgent.kick()` 与 `JobRegistryService` 用无界 `newCachedThreadPool`；`AgentCollectNode` 用 `.join()` 阻塞请求线程，高并发下需关注。

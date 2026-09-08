@@ -10,7 +10,7 @@ import java.util.Map;
  * allow / allow-session（会话级记忆放行）/ deny，以及 ask（实时挂起等待人工裁决）。
  * <p>
  * 默认实现 {@link #allowAll()} 放行一切，保持无审批配置时的既有行为；
- * 由装配层（AgentFactory）按权限矩阵注入真实实现。
+ * 由装配层（AgentRunFactory）按权限矩阵注入真实实现。
  *
  * @author 小傅哥
  * @website bugstack.cn

@@ -1,6 +1,6 @@
 package cn.xiaofuge.deepseek.harness.infrastructure.adapter.subagent;
 
-import cn.xiaofuge.deepseek.harness.domain.agent.subagent.SubagentProvider;
+import cn.xiaofuge.deepseek.harness.domain.agent.service.subagent.SubagentProvider;
 import cn.xiaofuge.deepseek.harness.domain.model.valobj.ContentBlock;
 import cn.xiaofuge.deepseek.harness.domain.model.valobj.TextBlock;
 import java.io.*;

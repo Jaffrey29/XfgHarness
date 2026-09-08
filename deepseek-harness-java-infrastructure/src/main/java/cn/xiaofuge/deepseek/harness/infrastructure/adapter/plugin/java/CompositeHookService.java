@@ -18,7 +18,7 @@ import org.springframework.stereotype.Service;
  * <p>核心流程：先执行进程内插件 Hook，再执行原有 Shell Hook，最后用限制性策略合并结果。
  * 只要任一来源要求 BLOCK/DENY/STOP，合并后的执行链就会被阻断。
  * <p>数据示例：PRE_TOOL_USE 中插件 Hook 返回 DENY，即使 Shell Hook 放行，最终也不会执行工具。
- * <p>该服务标注 @Primary，AgentFactory 到 ToolCallExecutor 的注入点会优先使用它。
+ * <p>该服务标注 @Primary，AgentRunFactory 到 ToolCallExecutor 的注入点会优先使用它。
  */
 @Service
 @Primary

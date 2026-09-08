@@ -225,7 +225,7 @@ public class ConversationQueryService implements IConversationQueryService {
      * 执行流程：
      * 1. 从事件表读取全部事件；
      * 2. 取首条 user/message 文本作为标题、末条 user/assistant 文本作为摘要；
-     * 3. 组装摘要读模型，agentId 从 agentPreset 还原（AgentFactory 创建时写入）。
+     * 3. 组装摘要读模型，agentId 从 agentPreset 还原（AgentRunFactory 创建时写入）。
      */
     private ConversationSessionSummaryVO toSummaryFromHeader(SessionHeader header) {
         List<SessionEvent> events = sessionEventStore.readAll(header.sessionId());

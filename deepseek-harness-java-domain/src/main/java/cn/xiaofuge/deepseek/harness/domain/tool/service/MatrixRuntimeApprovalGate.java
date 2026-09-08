@@ -1,7 +1,7 @@
 package cn.xiaofuge.deepseek.harness.domain.tool.service;
 
 import cn.xiaofuge.deepseek.harness.domain.task.permission.adapter.port.IPermissionMatrixPort;
-import cn.xiaofuge.deepseek.harness.domain.agentrun.model.valobj.ApprovalModeVO;
+import cn.xiaofuge.deepseek.harness.domain.agent.model.valobj.ApprovalModeVO;
 
 import java.util.Map;
 import java.util.Set;

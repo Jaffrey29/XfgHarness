@@ -6,7 +6,7 @@ import cn.xiaofuge.deepseek.harness.cases.orchestration.AbstractStrategyRouter;
 import cn.xiaofuge.deepseek.harness.cases.orchestration.NoContext;
 import cn.xiaofuge.deepseek.harness.cases.orchestration.StrategyHandler;
 import cn.xiaofuge.deepseek.harness.cases.support.CaseGuard;
-import cn.xiaofuge.deepseek.harness.domain.agent.adapter.port.IRuntimeApprovalBroker;
+import cn.xiaofuge.deepseek.harness.domain.agent.contract.outbound.RuntimeApprovalGateway;
 import cn.xiaofuge.deepseek.harness.domain.agent.model.valobj.RuntimeApprovalDecisionVO;
 import cn.xiaofuge.deepseek.harness.domain.tool.service.RuntimeApprovalGate.ApprovalVerdict;
 import org.slf4j.Logger;
@@ -25,9 +25,9 @@ public class ResolveRuntimeApprovalNode
 
     private static final Logger log = LoggerFactory.getLogger(ResolveRuntimeApprovalNode.class);
 
-    private final IRuntimeApprovalBroker approvalBroker;
+    private final RuntimeApprovalGateway approvalBroker;
 
-    public ResolveRuntimeApprovalNode(IRuntimeApprovalBroker approvalBroker) {
+    public ResolveRuntimeApprovalNode(RuntimeApprovalGateway approvalBroker) {
         this.approvalBroker = approvalBroker;
     }
 

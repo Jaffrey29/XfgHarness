@@ -4,9 +4,9 @@ import cn.xiaofuge.deepseek.harness.api.dto.AgentMessageRequestDTO;
 import cn.xiaofuge.deepseek.harness.api.dto.AgentMessageResponseDTO;
 import cn.xiaofuge.deepseek.harness.cases.agent.factory.AgentMessageDynamicContext;
 import cn.xiaofuge.deepseek.harness.domain.agent.model.entity.AgentOptions;
-import cn.xiaofuge.deepseek.harness.domain.agentrun.AgentRun;
-import cn.xiaofuge.deepseek.harness.domain.agentrun.AgentRunFactoryPort;
-import cn.xiaofuge.deepseek.harness.domain.agentrun.model.valobj.ApprovalModeVO;
+import cn.xiaofuge.deepseek.harness.domain.agent.service.run.AgentRun;
+import cn.xiaofuge.deepseek.harness.domain.agent.contract.inbound.AgentRunLifecycle;
+import cn.xiaofuge.deepseek.harness.domain.agent.model.valobj.ApprovalModeVO;
 import cn.xiaofuge.deepseek.harness.domain.runtime.setting.service.AgentModelSettingResolver;
 import cn.xiaofuge.deepseek.harness.cases.orchestration.StrategyHandler;
 import org.springframework.stereotype.Service;
@@ -29,7 +29,7 @@ public class AgentResolveNode extends AbstractAgentMessageNode {
     private static final Logger log = LoggerFactory.getLogger(AgentResolveNode.class);
 
     @Autowired
-    private AgentRunFactoryPort agentFactory;
+    private AgentRunLifecycle agentFactory;
 
     @Autowired
     private AgentModelSettingResolver modelSettingResolver;

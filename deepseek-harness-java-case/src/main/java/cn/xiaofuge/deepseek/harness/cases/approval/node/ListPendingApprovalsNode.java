@@ -4,7 +4,7 @@ import cn.xiaofuge.deepseek.harness.api.dto.RuntimeApprovalResponseDTO;
 import cn.xiaofuge.deepseek.harness.cases.orchestration.AbstractStrategyRouter;
 import cn.xiaofuge.deepseek.harness.cases.orchestration.NoContext;
 import cn.xiaofuge.deepseek.harness.cases.orchestration.StrategyHandler;
-import cn.xiaofuge.deepseek.harness.domain.agent.adapter.port.IRuntimeApprovalBroker;
+import cn.xiaofuge.deepseek.harness.domain.agent.contract.outbound.RuntimeApprovalGateway;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,9 +22,9 @@ public class ListPendingApprovalsNode
 
     private static final Logger log = LoggerFactory.getLogger(ListPendingApprovalsNode.class);
 
-    private final IRuntimeApprovalBroker approvalBroker;
+    private final RuntimeApprovalGateway approvalBroker;
 
-    public ListPendingApprovalsNode(IRuntimeApprovalBroker approvalBroker) {
+    public ListPendingApprovalsNode(RuntimeApprovalGateway approvalBroker) {
         this.approvalBroker = approvalBroker;
     }
 

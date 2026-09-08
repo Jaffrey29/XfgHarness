@@ -5,8 +5,8 @@ import cn.xiaofuge.deepseek.harness.api.dto.AgentMessageResponseDTO;
 import cn.xiaofuge.deepseek.harness.api.dto.AgentToolCallEventResponseDTO;
 import cn.xiaofuge.deepseek.harness.cases.agent.factory.AgentMessageFactory;
 import cn.xiaofuge.deepseek.harness.domain.agent.model.valobj.AgentCancelCause;
-import cn.xiaofuge.deepseek.harness.domain.agentrun.AgentRun;
-import cn.xiaofuge.deepseek.harness.domain.agentrun.AgentRunFactoryPort;
+import cn.xiaofuge.deepseek.harness.domain.agent.service.run.AgentRun;
+import cn.xiaofuge.deepseek.harness.domain.agent.contract.inbound.AgentRunLifecycle;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
@@ -30,7 +30,7 @@ public class AgentUseCase implements IAgentUseCase {
     private AgentMessageFactory agentMessageFactory;
 
     @Autowired
-    private AgentRunFactoryPort agentFactory;
+    private AgentRunLifecycle agentFactory;
 
     /**
      * 发送Message。

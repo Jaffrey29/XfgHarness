@@ -1,5 +1,6 @@
 package cn.xiaofuge.deepseek.harness.domain.agent.service;
 
+import cn.xiaofuge.deepseek.harness.domain.agent.contract.outbound.InboxNotificationPublisher;
 import cn.xiaofuge.deepseek.harness.domain.agent.model.valobj.InboxSplice;
 import cn.xiaofuge.deepseek.harness.domain.agent.model.valobj.InboxTarget;
 import cn.xiaofuge.deepseek.harness.domain.model.entity.Message;
@@ -17,7 +18,7 @@ import java.util.Optional;
 public final class Inbox {
 
     private final SessionLog session;
-    private final InboxNotifications notifications;
+    private final InboxNotificationPublisher notifications;
     private final List<Message> nextTurn = new ArrayList<>();
     private final List<Message> nextStep = new ArrayList<>();
 
@@ -26,7 +27,7 @@ public final class Inbox {
      * <p>流程：校验入参 → 执行领域动作 → 返回处理结果。</p>
      * @param session 会话。
      */
-    public Inbox(SessionLog session, InboxNotifications notifications) {
+    public Inbox(SessionLog session, InboxNotificationPublisher notifications) {
         this.session = session;
         this.notifications = notifications;
         replay();

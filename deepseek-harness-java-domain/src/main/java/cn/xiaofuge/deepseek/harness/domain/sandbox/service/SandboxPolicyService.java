@@ -32,7 +32,10 @@ public class SandboxPolicyService implements ISandboxPolicyService {
     @Override
     public SandboxExecutionPolicy resolve(SandboxPolicyRequest request) {
         SandboxMode mode = request.modeOverride().orElse(defaultMode);
-        Path root = request.sessionCwd().orElse(fallbackWorkspaceRoot);
+        Path root = request.sessionCwd()
+                .map(Path::toAbsolutePath)
+                .map(Path::normalize)
+                .orElse(fallbackWorkspaceRoot);
         return switch (mode) {
             case READ_ONLY -> SandboxExecutionPolicy.readOnly();
             case WORKSPACE_WRITE -> SandboxExecutionPolicy.workspaceWrite(root);
