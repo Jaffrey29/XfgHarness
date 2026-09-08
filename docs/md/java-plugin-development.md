@@ -19,7 +19,20 @@ mvn -q -pl plugins/plugin-archetype install -DskipTests
 ### 生成插件工程
 
 ```bash
-mvn archetype:generate \  -DarchetypeGroupId=cn.walioffice \  -DarchetypeArtifactId=deepseek-harness-plugin-archetype \  -DarchetypeVersion=1.0.0-SNAPSHOT \  -DgroupId=com.acme \  -DartifactId=acme-weather-plugin \  -Dversion=1.0.0-SNAPSHOT \  -Dpackage=com.acme.weather \  -DpluginId=acme-weather \  -DpluginName="Acme Weather Plugin" \  -DpluginClass=WeatherPlugin \  -DpluginDescription="Weather query plugin" \  -DpluginAuthor="Acme Team" \  -DinteractiveMode=false
+mvn archetype:generate \
+  -DarchetypeGroupId=cn.xiaofuge \
+  -DarchetypeArtifactId=deepseek-harness-plugin-archetype \
+  -DarchetypeVersion=1.0.0-SNAPSHOT \
+  -DgroupId=com.acme \
+  -DartifactId=acme-weather-plugin \
+  -Dversion=1.0.0-SNAPSHOT \
+  -Dpackage=com.acme.weather \
+  -DpluginId=acme-weather \
+  -DpluginName="Acme Weather Plugin" \
+  -DpluginClass=WeatherPlugin \
+  -DpluginDescription="Weather query plugin" \
+  -DpluginAuthor="Acme Team" \
+  -DinteractiveMode=false
 ```
 
 ### 生成参数说明
@@ -89,14 +102,14 @@ my-plugin/
         └── META-INF/
             ├── plugin.yaml
             └── services/
-                └── cn.walioffice.deepseek.harness.domain.plugin.spi.JavaHarnessPlugin
+                └── cn.xiaofuge.deepseek.harness.domain.spi.JavaHarnessPlugin
 ```
 
 ### 2. Maven 依赖
 
 ```xml
 <dependency>
-    <groupId>cn.walioffice</groupId>
+    <groupId>cn.xiaofuge</groupId>
     <artifactId>deepseek-harness-java-types</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <scope>provided</scope>   <!-- 打包时不打入插件 JAR，由宿主 JVM 提供 -->
@@ -116,7 +129,7 @@ entrypoint: com.example.MyPlugin   # 可选，不填则用 ServiceLoader 发现
 
 ### 4. ServiceLoader 注册
 
-文件：`META-INF/services/cn.walioffice.deepseek.harness.domain.plugin.spi.JavaHarnessPlugin`
+文件：`META-INF/services/cn.xiaofuge.deepseek.harness.domain.spi.JavaHarnessPlugin`
 
 内容为实现类全限定名。
 
@@ -233,17 +246,17 @@ curl -X POST http://localhost:8090/api/harness/plugins/my-plugin/uninstall
 
 ```yaml
 harness:
-  plugin:
-    install-root: ./plugins
-    preset:
-      plugins:
+  extensions:
+    plugins:
+      install-root: ./plugins
+      preset:
         - plugin-id: my-plugin
           display-name: My Plugin
           plugin-version: 1.0.0
           runtime-type: JAVA_NATIVE
           source-path: ./plugins/my-plugin.jar
           entrypoint: my-plugin.jar
-          auto-enable: true
+          auto-start: true
 ```
 
 ## 工具命名

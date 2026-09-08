@@ -22,7 +22,7 @@
     <dependencies>
         <!-- 插件开发只需依赖 types 契约包；provided 表示由 harness 宿主提供，不打进插件 JAR -->
         <dependency>
-            <groupId>cn.walioffice</groupId>
+            <groupId>cn.xiaofuge</groupId>
             <artifactId>deepseek-harness-java-types</artifactId>
             <version>1.0.0-SNAPSHOT</version>
             <scope>provided</scope>

@@ -20,7 +20,7 @@ import java.util.List;
  * <b>1. Maven 依赖（provided scope，JAR 不打入插件包）：</b>
  * <pre>{@code
  * <dependency>
- *     <groupId>cn.walioffice</groupId>
+     *     <groupId>cn.xiaofuge</groupId>
  *     <artifactId>deepseek-harness-java-types</artifactId>
  *     <version>1.0.0-SNAPSHOT</version>
  *     <scope>provided</scope>
@@ -40,7 +40,7 @@ import java.util.List;
  * <p><b>3. 打包两个清单文件到 JAR：</b>
  * <pre>
  * META-INF/plugin.yaml          → id / name / version / entrypoint
- * META-INF/services/cn.walioffice.deepseek.harness.domain.plugin.spi.JavaHarnessPlugin
+     * META-INF/services/cn.xiaofuge.deepseek.harness.domain.spi.JavaHarnessPlugin
  *                               → 实现类全限定名
  * </pre>
  *

@@ -1,10 +1,10 @@
 package com.example.plugin;
 
-import cn.walioffice.deepseek.harness.domain.plugin.spi.AbstractHarnessPlugin;
-import cn.walioffice.deepseek.harness.domain.tool.model.entity.AbstractTool;
-import cn.walioffice.deepseek.harness.domain.tool.model.entity.ToolDefinition;
-import cn.walioffice.deepseek.harness.domain.tool.model.entity.ToolExecutionResult;
-import cn.walioffice.deepseek.harness.domain.tool.model.entity.ToolRunContext;
+import cn.xiaofuge.deepseek.harness.domain.model.entity.AbstractTool;
+import cn.xiaofuge.deepseek.harness.domain.model.entity.ToolDefinition;
+import cn.xiaofuge.deepseek.harness.domain.model.entity.ToolExecutionResult;
+import cn.xiaofuge.deepseek.harness.domain.model.entity.ToolRunContext;
+import cn.xiaofuge.deepseek.harness.domain.spi.AbstractHarnessPlugin;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;

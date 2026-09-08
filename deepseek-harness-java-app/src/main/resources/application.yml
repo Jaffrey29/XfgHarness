@@ -19,6 +19,8 @@ spring:
       encoding: UTF-8
   config:
     import:
+      - optional:classpath:harness.yml
+      - optional:file:./harness.yml
       - optional:classpath:harness-extensions.yml
       - optional:file:./harness-extensions.yml
 mybatis:
@@ -26,29 +28,3 @@ mybatis:
     map-underscore-to-camel-case: true
     default-fetch-size: 100
     default-statement-timeout: 30
-
-harness:
-  llm:
-    # 运行时优先读取 harness_model_setting；这里的 deepseek 配置只在数据库无默认记录时用于初始化。
-    deepseek:
-      base-url: http://127.0.0.1:8777/v1
-      api-key: ${DEEPSEEK_API_KEY:sk-waliapi-7ae2ec845ed04815b6374a058d025439}
-      max-tokens: 8192
-      context-window: 128000
-      default-model: glm-5.3-flash
-  approval:
-    required-profiles:
-      - web
-    required-tools:
-      - shell_execute
-      - fs_write
-      - plugin.run
-      - subprocess.spawn
-    # 运行期审批等待超时（agent 实时挂起等待用户裁决）
-    runtime-timeout-ms: 600000
-  # 沙箱：三档模式（READ_ONLY / WORKSPACE_WRITE / DANGER_FULL_ACCESS）
-  # 本地开发默认 WORKSPACE_WRITE——写操作限制在工作区内、shell cwd 不得越界
-  sandbox:
-    default-mode: WORKSPACE_WRITE
-    shell-enabled: true
-    fs-enabled: true

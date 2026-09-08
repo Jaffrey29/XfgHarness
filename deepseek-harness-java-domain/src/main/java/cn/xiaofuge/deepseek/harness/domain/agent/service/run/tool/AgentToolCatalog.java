@@ -4,20 +4,38 @@ import cn.xiaofuge.deepseek.harness.domain.agent.contract.outbound.UserQuestionG
 import cn.xiaofuge.deepseek.harness.domain.agent.service.ask.AskUserTool;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.subagent.SubagentRegistry;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.subagent.SubagentTool;
+import cn.xiaofuge.deepseek.harness.domain.goal.IGoalCommandService;
+import cn.xiaofuge.deepseek.harness.domain.goal.IGoalQueryService;
+import cn.xiaofuge.deepseek.harness.domain.jobs.IJobRegistryService;
+import cn.xiaofuge.deepseek.harness.domain.lsp.ILspService;
 import cn.xiaofuge.deepseek.harness.domain.plan.ExitPlanModeTool;
 import cn.xiaofuge.deepseek.harness.domain.plan.model.valobj.PlanModeState;
 import cn.xiaofuge.deepseek.harness.domain.plan.service.PlanModeService;
+import cn.xiaofuge.deepseek.harness.domain.schedule.IScheduleService;
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionLog;
+import cn.xiaofuge.deepseek.harness.domain.session.IConversationQueryService;
 import cn.xiaofuge.deepseek.harness.domain.todo.service.TodoWriteService;
 import cn.xiaofuge.deepseek.harness.domain.todo.service.TodoWriteTool;
 import cn.xiaofuge.deepseek.harness.domain.tool.adapter.ToolRegistry;
+import cn.xiaofuge.deepseek.harness.domain.tool.fs.FsEditTool;
+import cn.xiaofuge.deepseek.harness.domain.tool.fs.FsGrepTool;
+import cn.xiaofuge.deepseek.harness.domain.tool.fs.FsReadImageTool;
 import cn.xiaofuge.deepseek.harness.domain.tool.fs.FsReadTool;
 import cn.xiaofuge.deepseek.harness.domain.tool.fs.FsSearchTool;
 import cn.xiaofuge.deepseek.harness.domain.tool.fs.FsWriteTool;
 import cn.xiaofuge.deepseek.harness.domain.tool.fs.StrReplaceEditorTool;
 import cn.xiaofuge.deepseek.harness.domain.tool.fs.adapter.port.IFsPort;
+import cn.xiaofuge.deepseek.harness.domain.tool.goal.GoalTools;
+import cn.xiaofuge.deepseek.harness.domain.tool.jobs.JobKillTool;
+import cn.xiaofuge.deepseek.harness.domain.tool.jobs.JobListTool;
+import cn.xiaofuge.deepseek.harness.domain.tool.jobs.JobOutputTool;
+import cn.xiaofuge.deepseek.harness.domain.tool.jobs.JobRunTool;
+import cn.xiaofuge.deepseek.harness.domain.tool.lsp.LspTool;
+import cn.xiaofuge.deepseek.harness.domain.tool.schedule.ScheduleTools;
+import cn.xiaofuge.deepseek.harness.domain.tool.session.SessionSearchTool;
 import cn.xiaofuge.deepseek.harness.domain.tool.shell.IShellExecutor;
 import cn.xiaofuge.deepseek.harness.domain.tool.shell.ShellExecuteTool;
+import cn.xiaofuge.deepseek.harness.domain.tool.terminal.TerminalTools;
 import cn.xiaofuge.deepseek.harness.domain.tool.web.WebFetchTool;
 import cn.xiaofuge.deepseek.harness.domain.tool.web.WebSearchTool;
 import cn.xiaofuge.deepseek.harness.domain.tool.web.adapter.port.IWebPort;
@@ -35,6 +53,13 @@ public final class AgentToolCatalog {
     private final TodoWriteService todoWriteService;
     private final SubagentRegistry subagentRegistry;
     private final ISkillService skillService;
+    private final IJobRegistryService jobRegistryService;
+    private final IGoalQueryService goalQueryService;
+    private final IGoalCommandService goalCommandService;
+    private final IScheduleService scheduleService;
+    private final ILspService lspService;
+    private final IConversationQueryService conversationQueryService;
+    private final cn.xiaofuge.deepseek.harness.domain.terminal.adapter.port.ITerminalPort terminalPort;
 
     public AgentToolCatalog(
             IShellExecutor shellExecutor,
@@ -43,7 +68,14 @@ public final class AgentToolCatalog {
             PlanModeService planModeService,
             TodoWriteService todoWriteService,
             SubagentRegistry subagentRegistry,
-            ISkillService skillService
+            ISkillService skillService,
+            IJobRegistryService jobRegistryService,
+            IGoalQueryService goalQueryService,
+            IGoalCommandService goalCommandService,
+            IScheduleService scheduleService,
+            ILspService lspService,
+            IConversationQueryService conversationQueryService,
+            cn.xiaofuge.deepseek.harness.domain.terminal.adapter.port.ITerminalPort terminalPort
     ) {
         this.shellExecutor = shellExecutor;
         this.fsPort = fsPort;
@@ -52,6 +84,13 @@ public final class AgentToolCatalog {
         this.todoWriteService = todoWriteService;
         this.subagentRegistry = subagentRegistry;
         this.skillService = skillService;
+        this.jobRegistryService = jobRegistryService;
+        this.goalQueryService = goalQueryService;
+        this.goalCommandService = goalCommandService;
+        this.scheduleService = scheduleService;
+        this.lspService = lspService;
+        this.conversationQueryService = conversationQueryService;
+        this.terminalPort = terminalPort;
     }
 
     public ToolRegistry createRegistry(AgentToolContext context, ToolRegistry sharedRegistry) {
@@ -67,8 +106,44 @@ public final class AgentToolCatalog {
         localRegistry.register(new FsWriteTool(fsPort));
         localRegistry.register(new FsSearchTool(fsPort));
         localRegistry.register(new StrReplaceEditorTool(fsPort));
+        localRegistry.register(new FsGrepTool(fsPort));
+        localRegistry.register(new FsReadImageTool(fsPort));
+        localRegistry.register(new FsEditTool(fsPort));
         localRegistry.register(new WebSearchTool(webPort));
         localRegistry.register(new WebFetchTool(webPort));
+        if (lspService != null) {
+            localRegistry.register(new LspTool(lspService, fsPort));
+        }
+        if (terminalPort != null) {
+            localRegistry.register(new TerminalTools.Open(terminalPort));
+            localRegistry.register(new TerminalTools.Send(terminalPort));
+            localRegistry.register(new TerminalTools.Read(terminalPort));
+            localRegistry.register(new TerminalTools.Close(terminalPort));
+            localRegistry.register(new TerminalTools.ListSessions(terminalPort));
+        }
+        if (jobRegistryService != null) {
+            localRegistry.register(new JobRunTool(jobRegistryService, shellExecutor, context.sessionId(), context.cwd()));
+            localRegistry.register(new JobListTool(jobRegistryService, context.sessionId()));
+            localRegistry.register(new JobOutputTool(jobRegistryService, context.sessionId()));
+            localRegistry.register(new JobKillTool(jobRegistryService, context.sessionId()));
+        }
+        if (context.session() != null) {
+            if (goalQueryService != null) {
+                localRegistry.register(new GoalTools.Get(goalQueryService, context.sessionId()));
+            }
+            if (goalCommandService != null) {
+                localRegistry.register(new GoalTools.Create(goalCommandService, context.sessionId()));
+                localRegistry.register(new GoalTools.Update(goalCommandService, context.sessionId()));
+            }
+            if (scheduleService != null) {
+                localRegistry.register(new ScheduleTools.Create(scheduleService, context.sessionId()));
+                localRegistry.register(new ScheduleTools.ListAll(scheduleService, context.sessionId()));
+                localRegistry.register(new ScheduleTools.Delete(scheduleService, context.sessionId()));
+            }
+        }
+        if (conversationQueryService != null) {
+            localRegistry.register(new SessionSearchTool(conversationQueryService));
+        }
         if (skillService != null) {
             localRegistry.register(new SkillTool(skillService, context.cwd()));
         }
@@ -83,6 +158,7 @@ public final class AgentToolCatalog {
 
     public record AgentToolContext(
             String agentId,
+            String sessionId,
             String cwd,
             SessionLog session,
             UserQuestionGateway userQuestions

@@ -14,10 +14,12 @@ class AgentToolCatalogTest {
 
     @Test
     void exposesSkillToolWhenSkillServiceIsConfigured() {
-        AgentToolCatalog catalog = new AgentToolCatalog(null, null, null, null, null, null, skillService());
+        AgentToolCatalog catalog = new AgentToolCatalog(
+                null, null, null, null, null, null, skillService(),
+                null, null, null, null, null, null, null);
 
         var registry = catalog.createRegistry(
-                new AgentToolCatalog.AgentToolContext("agent", null, null, null),
+                new AgentToolCatalog.AgentToolContext("agent", "session", null, null, null),
                 new InMemoryToolRegistry());
 
         assertTrue(registry.lookup("skill").isPresent());

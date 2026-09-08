@@ -53,7 +53,9 @@ public class PersistingAgentEventListener implements AgentEventListener {
     public void emit(String name, Object payload) {
         try {
             String json = serializePayload(payload);
-            SessionEvent event = SessionEventFactory.generic(
+            SessionEvent event = new SessionEvent.Generic(
+                    store.getLastSeq(sessionId) + 1,
+                    java.time.Instant.now(),
                     SessionEventType.AGENT_EVENT,
                     "{\"name\":\"" + name + "\",\"payload\":" + json + "}"
             );
@@ -75,7 +77,9 @@ public class PersistingAgentEventListener implements AgentEventListener {
     public CompletableFuture<Void> serial(String name, Object payload) {
         try {
             String json = serializePayload(payload);
-            SessionEvent event = SessionEventFactory.generic(
+            SessionEvent event = new SessionEvent.Generic(
+                    store.getLastSeq(sessionId) + 1,
+                    java.time.Instant.now(),
                     SessionEventType.AGENT_EVENT,
                     "{\"name\":\"" + name + "\",\"payload\":" + json + "}"
             );

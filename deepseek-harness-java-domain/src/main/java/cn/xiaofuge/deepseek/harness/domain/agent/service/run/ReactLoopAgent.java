@@ -9,6 +9,8 @@ import cn.xiaofuge.deepseek.harness.domain.agent.service.run.AgentRun;
 import cn.xiaofuge.deepseek.harness.domain.agent.contract.outbound.AgentEventListener;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.Inbox;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.SystemPromptAssembler;
+import cn.xiaofuge.deepseek.harness.domain.agent.service.compaction.CompactionEngine;
+import cn.xiaofuge.deepseek.harness.domain.agent.service.compaction.CompactionResult;
 import cn.xiaofuge.deepseek.harness.domain.model.entity.Message;
 import cn.xiaofuge.deepseek.harness.domain.model.entity.MessageSource;
 import cn.xiaofuge.deepseek.harness.domain.model.valobj.ContentBlock;
@@ -69,6 +71,7 @@ public class ReactLoopAgent implements AgentRun {
     private final ToolCallExecutor toolExecutor;
     private final SystemPromptAssembler systemPromptAssembler;
     private final AgentEventListener events;
+    private final CompactionEngine compactionEngine;
 
     // ── 流式输出接收器（由 SSE 请求按次设置，用于实时推送增量） ──
     private volatile java.util.function.Consumer<String> streamDeltaSink;
@@ -101,7 +104,8 @@ public class ReactLoopAgent implements AgentRun {
             ToolRegistry toolRegistry,
             ToolCallExecutor toolExecutor,
             SystemPromptAssembler systemPromptAssembler,
-            AgentEventListener events
+            AgentEventListener events,
+            CompactionEngine compactionEngine
     ) {
         this.id = Objects.requireNonNull(id, "id");
         this.options = Objects.requireNonNull(options, "options");
@@ -113,6 +117,7 @@ public class ReactLoopAgent implements AgentRun {
         this.toolExecutor = Objects.requireNonNull(toolExecutor, "toolExecutor");
         this.systemPromptAssembler = Objects.requireNonNull(systemPromptAssembler, "systemPromptAssembler");
         this.events = events != null ? events : new NoopAgentEventListener();
+        this.compactionEngine = Objects.requireNonNull(compactionEngine, "compactionEngine");
         this.phase = new Phase.Idle(0);
     }
 
@@ -340,6 +345,7 @@ public class ReactLoopAgent implements AgentRun {
         synchronized (this) { phase = running; }
         session.append(SessionEventFactory.turnStart());
         log.info("[turn] ▶ Agent={} Turn#{} 开始（model={}）", id, turn, options.model());
+        runCompaction();
 
         final long MAX_STEPS_PER_TURN = 50; // safety limit
         final int MAX_TOKEN_CONTINUATIONS = 4;
@@ -453,6 +459,20 @@ public class ReactLoopAgent implements AgentRun {
             session.append(SessionEventFactory.turnEnd(
                     new TurnEndReason.Error(e.getMessage() != null ? e.getMessage() : e.toString(), "UNKNOWN")));
             return false;
+        }
+    }
+
+    private void runCompaction() {
+        try {
+            CompactionResult result = compactionEngine
+                    .compactIfNeeded(session, options, CompactionEngine.CompactionTrigger.PRESSURE)
+                    .join();
+            if (result != null) {
+                log.info("[Compaction] Agent={} 上下文压缩完成，token {}→{}", id,
+                        result.tokensBefore(), result.tokensAfter());
+            }
+        } catch (RuntimeException exception) {
+            log.warn("[Compaction] Agent={} 上下文压缩失败：{}", id, exception.getMessage(), exception);
         }
     }
 

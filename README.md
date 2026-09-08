@@ -816,7 +816,7 @@ plugin__acme-weather__current_weather
 
 `sourcePath` 按 Spring Boot 进程的工作目录解析。为避免 Maven/IDE 工作目录差异，HTTP 安装时优先使用绝对路径；`harness.extensions.plugins.install-root` 指向宿主管理的插件目录，Java JAR 和 Node 插件目录都会复制到这里。
 
-也可以在 `harness-extensions.yml` 预装：
+也可以在 `harness.yml` 预装：
 
 ```yaml
 harness:
@@ -902,6 +902,8 @@ Node Bridge 当前主要扩展 Agent 可调用的工具；`PluginContext` 提供
 | --- | --- |
 | [`plugins/sample-tools-plugin`](plugins/sample-tools-plugin) | Java 插件：天气查询 + 文件摘要，并演示 `PluginContext` 注册提示词、事件和 Hook |
 | [`plugins/dsh-demo-plugin`](plugins/dsh-demo-plugin) | Node Bridge 插件：最小 JSON-RPC sidecar，演示 `initialize`、`tools/list`、`tools/call` |
+
+智能客服场景的插件接入、示例工具、安装验证和生产化边界见 [`docs/md/smart-customer-service-plugin.md`](docs/md/smart-customer-service-plugin.md)。
 
 ### 7.6 插件加载流程图
 
@@ -991,7 +993,7 @@ flowchart TD
 
 ## 10. 关键配置
 
-扩展能力统一在 `deepseek-harness-java-app/src/main/resources/harness-extensions.yml` 中配置。部署时可以在进程工作目录放置同名文件，Spring Boot 会用它覆盖包内默认值；skills、MCP 和插件不再分散到多个入口。
+运行时能力统一在 `deepseek-harness-java-app/src/main/resources/harness.yml` 中配置。部署时可以在进程工作目录放置同名文件，Spring Boot 会用它覆盖包内默认值；模型、审批、沙箱、skills、MCP 和插件使用同一个入口。旧的 `harness-extensions.yml` 仍以 optional 方式兼容加载，但新部署建议只使用 `harness.yml`。
 
 仓库内置了一个 Baidu AI Search 示例 skill：`skills/baidu-ai-search/SKILL.md`。它会被 `harness.extensions.skills.roots` 中的 `./skills` 根目录发现，并指导 Agent 使用 `mcp__baidu-ai-search__<tool-name>` 工具。
 
@@ -1014,6 +1016,7 @@ flowchart TD
 | `harness.extensions.plugins.install-root` | 插件安装根目录 | 默认 `./plugins` |
 | `harness.extensions.plugins.preset` | 启动预装插件 | 支持设置 `auto-enable` |
 | `harness.agent.temperature` | LLM 采样温度 | 系统属性/环境变量；为空则不发送该参数（适配只接受 temperature=1 的网关） |
+| `GET /api/harness/config/effective` | 查看有效配置 | 返回 Spring 环境合并后的配置；API Key、Password、Secret、Token 会被脱敏 |
 
 ---
 

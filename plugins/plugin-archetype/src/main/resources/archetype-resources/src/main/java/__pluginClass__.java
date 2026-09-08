@@ -40,7 +40,7 @@ public class ${pluginClass} extends AbstractHarnessPlugin {
 
         // 注册系统提示词段落
         context.registerSystemPrompt("about", 10,
-                "## ${pluginName}\n- 插件描述：${pluginDescription}");
+                String.join(System.lineSeparator(), "Plugin: ${pluginName}", "- 插件描述：${pluginDescription}"));
 
         // 订阅事件
         context.subscribe("tool.called", event ->

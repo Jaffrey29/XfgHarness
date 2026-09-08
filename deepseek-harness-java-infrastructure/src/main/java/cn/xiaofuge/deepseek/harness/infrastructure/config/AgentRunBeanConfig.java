@@ -16,6 +16,12 @@ import cn.xiaofuge.deepseek.harness.domain.agent.service.SystemPromptAssembler;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.ScopedSystemPromptAssembler;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.subagent.SubagentRegistry;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.subagent.SpawnInProcessProvider;
+import cn.xiaofuge.deepseek.harness.domain.goal.IGoalCommandService;
+import cn.xiaofuge.deepseek.harness.domain.goal.IGoalQueryService;
+import cn.xiaofuge.deepseek.harness.domain.jobs.IJobRegistryService;
+import cn.xiaofuge.deepseek.harness.domain.lsp.ILspService;
+import cn.xiaofuge.deepseek.harness.domain.schedule.IScheduleService;
+import cn.xiaofuge.deepseek.harness.domain.session.IConversationQueryService;
 import cn.xiaofuge.deepseek.harness.domain.hooks.IHookService;
 import cn.xiaofuge.deepseek.harness.domain.llm.adapter.port.ILlmRuntimePort;
 import cn.xiaofuge.deepseek.harness.domain.llm.service.LlmGenerationService;
@@ -166,11 +172,19 @@ public class AgentRunBeanConfig {
             IShellExecutor shellExecutor,
             IFsPort fsService,
             IWebPort webService,
+            IJobRegistryService jobRegistryService,
+            IGoalQueryService goalQueryService,
+            IGoalCommandService goalCommandService,
+            IScheduleService scheduleService,
+            ILspService lspService,
+            IConversationQueryService conversationQueryService,
+            cn.xiaofuge.deepseek.harness.domain.terminal.adapter.port.ITerminalPort terminalPort,
             PlanModeService planModeService,
             TodoWriteService todoWriteService,
             cn.xiaofuge.deepseek.harness.domain.skill.ISkillService skillService,
             ObjectMapper objectMapper,
-            ObjectProvider<ISessionEventStore> sessionEventStoreProvider
+            ObjectProvider<ISessionEventStore> sessionEventStoreProvider,
+            CompactionEngine compactionEngine
     ) {
         ISessionEventStore sessionEventStore = sessionEventStoreProvider.getIfAvailable();
         AgentRunFactory.SessionLogFactory sessionLogFactory = header -> sessionEventStore == null
@@ -187,7 +201,14 @@ public class AgentRunBeanConfig {
                 planModeService,
                 todoWriteService,
                 subagentRegistry,
-                skillService
+                skillService,
+                jobRegistryService,
+                goalQueryService,
+                goalCommandService,
+                scheduleService,
+                lspService,
+                conversationQueryService,
+                terminalPort
         );
 
         return new AgentRunFactory(
@@ -201,7 +222,8 @@ public class AgentRunBeanConfig {
                 permissionMatrixPort,
                 runtimeApprovalBroker,
                 sessionLogFactory,
-                agentEventListenerFactory
+                agentEventListenerFactory,
+                compactionEngine
         );
     }
 }

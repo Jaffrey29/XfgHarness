@@ -11,6 +11,7 @@ import cn.xiaofuge.deepseek.harness.domain.agent.service.LoggingInboxNotificatio
 import cn.xiaofuge.deepseek.harness.domain.agent.service.SystemPromptAssembler;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.run.tool.AgentToolCatalog;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.run.tool.AgentToolCatalog.AgentToolContext;
+import cn.xiaofuge.deepseek.harness.domain.agent.service.compaction.CompactionEngine;
 import cn.xiaofuge.deepseek.harness.domain.hooks.IHookService;
 import cn.xiaofuge.deepseek.harness.domain.llm.adapter.port.ILlmRuntimePort;
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionHeader;
@@ -40,6 +41,7 @@ public class AgentRunFactory implements AgentRunLifecycle {
     private final RuntimeApprovalGateway approvalGateway;
     private final SessionLogFactory sessionLogFactory;
     private final AgentEventListenerFactory agentEventListenerFactory;
+    private final CompactionEngine compactionEngine;
     private final ConcurrentMap<String, AgentRun> liveAgents = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, MatrixRuntimeApprovalGate> approvalGates = new ConcurrentHashMap<>();
 
@@ -54,7 +56,8 @@ public class AgentRunFactory implements AgentRunLifecycle {
             IPermissionMatrixPort permissionMatrixPort,
             RuntimeApprovalGateway approvalGateway,
             SessionLogFactory sessionLogFactory,
-            AgentEventListenerFactory agentEventListenerFactory
+            AgentEventListenerFactory agentEventListenerFactory,
+            CompactionEngine compactionEngine
     ) {
         this.llm = llm;
         this.sharedToolRegistry = sharedToolRegistry;
@@ -67,6 +70,7 @@ public class AgentRunFactory implements AgentRunLifecycle {
         this.approvalGateway = approvalGateway;
         this.sessionLogFactory = sessionLogFactory;
         this.agentEventListenerFactory = agentEventListenerFactory;
+        this.compactionEngine = compactionEngine;
     }
 
     @Override
@@ -110,8 +114,9 @@ public class AgentRunFactory implements AgentRunLifecycle {
 
     private AgentRun wireAgent(String agentId, AgentOptions options, String cwd, SessionLog session) {
         Inbox inbox = new Inbox(session, LoggingInboxNotifications.INSTANCE);
+        String sessionId = session.sessionId();
         ToolRegistry toolRegistry = toolCatalog.createRegistry(
-                new AgentToolContext(agentId, cwd, session, userQuestions),
+                new AgentToolContext(agentId, sessionId, cwd, session, userQuestions),
                 sharedToolRegistry
         );
 
@@ -149,7 +154,8 @@ public class AgentRunFactory implements AgentRunLifecycle {
                 toolRegistry,
                 executor,
                 systemPromptAssembler,
-                agentEventListener
+                agentEventListener,
+                compactionEngine
         );
         liveAgents.put(agentId, agent);
         return agent;
