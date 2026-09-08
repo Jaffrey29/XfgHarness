@@ -2,7 +2,7 @@
 
 > 一个基于 **Java 17 + Spring Boot 3.3 + DDD 六边形架构** 的 Agent Harness（智能体运行时基座）——不只是 Chat UI 的后端封装，而是把**模型调用、工具执行、会话事件、任务审批、插件生命周期、终端与工作区、工作流与后台作业**组织成可扩展的一体化运行时，并自带可交互的 Web 控制台。
 
-- **仓库**：<https://github.com/fuzhengwei/deepseek-harness-java>
+- **仓库**：<https://gitcode.net/KnowledgePlanet/deepseek-harness-java>
 - **端口**：`8090`（启动即开箱）
 - **License**：见仓库根目录
 
