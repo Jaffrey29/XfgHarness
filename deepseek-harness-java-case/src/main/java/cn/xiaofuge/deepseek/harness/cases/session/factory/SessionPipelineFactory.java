@@ -57,7 +57,7 @@ public class SessionPipelineFactory
     /**
      * 构建最近会话查询 Pipeline。
      */
-    public CasePipeline<Integer, NoContext, List<ConversationSessionSummaryResponseDTO>> recentSessionsPipeline() {
+    public CasePipeline<SessionListRequestDTO, NoContext, List<ConversationSessionSummaryResponseDTO>> recentSessionsPipeline() {
         return CasePipeline.of("List recent sessions", conversationRecentSessionsNode, () -> NoContext.INSTANCE);
     }
 

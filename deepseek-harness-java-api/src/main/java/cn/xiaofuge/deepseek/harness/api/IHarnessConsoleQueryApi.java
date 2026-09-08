@@ -7,7 +7,7 @@ import java.util.List;
 
 public interface IHarnessConsoleQueryApi {
 
-    Response<List<ConversationSessionSummaryResponseDTO>> listRecentSessions(int limit);
+    Response<List<ConversationSessionSummaryResponseDTO>> listRecentSessions(int limit, int offset);
 
     Response<List<ConversationMessageResponseDTO>> listMessages(String sessionId);
 }

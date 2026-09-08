@@ -1,6 +1,8 @@
 package cn.xiaofuge.deepseek.harness.domain.session.conversation.model.valobj;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Represents one chat-visible conversation message.
@@ -17,6 +19,10 @@ import java.time.Instant;
 public record ConversationMessageVO(
         String role,
         String content,
+        List<Map<String, Object>> blocks,
         Instant occurredAt
 ) {
+    public ConversationMessageVO(String role, String content, Instant occurredAt) {
+        this(role, content, List.of(), occurredAt);
+    }
 }

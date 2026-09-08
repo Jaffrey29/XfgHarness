@@ -15,6 +15,7 @@ import cn.xiaofuge.deepseek.harness.domain.hooks.model.valobj.HookPoint;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 // Domain 层不引入外部日志，由调用方负责记录
@@ -25,6 +26,21 @@ import org.slf4j.LoggerFactory;
  */
 public final class ToolCallExecutor {
 
+    @FunctionalInterface
+    public interface ToolLifecycleListener {
+        void onToolEvent(ToolLifecycleEvent event);
+    }
+
+    public record ToolLifecycleEvent(
+            String phase,
+            String callId,
+            String toolName,
+            String args,
+            String result,
+            String status,
+            Long durationMs
+    ) {}
+
     private static final Logger log = LoggerFactory.getLogger(ToolCallExecutor.class);
     // Domain 层不持有日志器
 
@@ -34,6 +50,7 @@ public final class ToolCallExecutor {
     private final ToolArgumentsParser argumentsParser;
     private volatile IHookService hookService;
     private volatile RuntimeApprovalGate approvalGate = RuntimeApprovalGate.allowAll();
+    private volatile Consumer<ToolLifecycleEvent> lifecycleListener;
 
     /**
      * @param registry    工具注册表
@@ -77,6 +94,10 @@ public final class ToolCallExecutor {
      */
     public void setApprovalGate(RuntimeApprovalGate approvalGate) {
         this.approvalGate = approvalGate == null ? RuntimeApprovalGate.allowAll() : approvalGate;
+    }
+
+    public void setLifecycleListener(Consumer<ToolLifecycleEvent> listener) {
+        this.lifecycleListener = listener;
     }
 
     /**
@@ -472,6 +493,8 @@ public final class ToolCallExecutor {
     private long appendToolCall(long turn, long step, ToolCallBlock block) {
         var event = SessionEventFactory.toolCall(turn, step, block.id(), block.name(), block.arguments());
         session.append(event);
+        notifyLifecycle(new ToolLifecycleEvent(
+                "call", block.id(), block.name(), block.arguments(), null, "running", null));
         return event.seq();
     }
 
@@ -509,6 +532,9 @@ public final class ToolCallExecutor {
 
         var event = SessionEventFactory.toolResult(turn, step, message, errorInfo, meta);
         session.append(event);
+        notifyLifecycle(new ToolLifecycleEvent(
+                "result", block.id(), block.name(), block.arguments(),
+                flattenToolResult(content), isError ? "error" : "success", null));
     }
 
     /**
@@ -522,6 +548,32 @@ public final class ToolCallExecutor {
                 ToolErrorCodes.ABORTED_BEFORE_DISPATCH
         );
         appendToolResult(turn, step, block, result, callSeq);
+    }
+
+    private String flattenToolResult(List<ContentBlock> blocks) {
+        StringBuilder sb = new StringBuilder();
+        for (ContentBlock block : blocks) {
+            if (block instanceof cn.xiaofuge.deepseek.harness.domain.model.valobj.TextBlock text) {
+                if (!sb.isEmpty()) sb.append("\n");
+                sb.append(text.text());
+            } else if (block instanceof cn.xiaofuge.deepseek.harness.domain.model.valobj.ToolResultBlock result) {
+                String nested = flattenToolResult(result.content());
+                if (!nested.isEmpty()) {
+                    if (!sb.isEmpty()) sb.append("\n");
+                    sb.append(nested);
+                }
+            }
+        }
+        return sb.length() > 8192 ? sb.substring(0, 8192) + "...[truncated]" : sb.toString();
+    }
+
+    private void notifyLifecycle(ToolLifecycleEvent event) {
+        Consumer<ToolLifecycleEvent> listener = this.lifecycleListener;
+        if (listener == null) return;
+        try {
+            listener.accept(event);
+        } catch (RuntimeException ignored) {
+        }
     }
 
     // ── 工具方法 ──────────────────────────────────────────────────

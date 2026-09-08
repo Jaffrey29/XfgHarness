@@ -20,7 +20,7 @@ import java.util.List;
  */
 public interface IConversationQueryService {
 
-    List<ConversationSessionSummaryVO> listRecentSessions(int limit);
+    List<ConversationSessionSummaryVO> listRecentSessions(int limit, int offset);
 
     List<ConversationMessageVO> listMessages(String sessionId);
 

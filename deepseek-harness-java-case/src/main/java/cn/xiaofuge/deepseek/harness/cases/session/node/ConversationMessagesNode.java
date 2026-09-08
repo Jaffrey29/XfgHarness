@@ -37,7 +37,7 @@ public class ConversationMessagesNode
         CaseGuard.requireSessionId(sessionId);
         var result = conversationQueryService.listMessages(sessionId).stream()
                 .map(message -> new ConversationMessageResponseDTO(
-                        message.role(), message.content(), message.occurredAt()
+                        message.role(), message.content(), message.blocks(), message.occurredAt()
                 ))
                 .toList();
         log.debug("[Session] 会话消息查询完成，sessionId={} count={}", sessionId, result.size());

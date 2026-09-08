@@ -25,10 +25,18 @@ public interface AgentRun extends Agent {
     void setStreamDeltaSink(java.util.function.Consumer<String> sink);
 
     /**
+     * 绑定流式推理增量接收器。
+     */
+    void setStreamReasoningSink(java.util.function.Consumer<String> sink);
+
+    /**
      * 绑定工具调用事件接收器。
      */
     void setStreamToolCallSink(java.util.function.Consumer<
             cn.xiaofuge.deepseek.harness.domain.model.valobj.ToolCallBlock> sink);
+
+    void setStreamToolEventSink(java.util.function.Consumer<
+            cn.xiaofuge.deepseek.harness.domain.tool.service.ToolCallExecutor.ToolLifecycleEvent> sink);
 
     /**
      * 释放当前运行占用的资源。

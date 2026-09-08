@@ -27,7 +27,7 @@ public class ApprovalQueryService implements IApprovalQueryService {
 
     @Override
     public List<PendingApprovalVO> listPendingApprovals(int limit) {
-        return conversationQueryService.listRecentSessions(limit).stream()
+        return conversationQueryService.listRecentSessions(limit, 0).stream()
                 .filter(session -> HarnessStatusEnumVO.PENDING_APPROVAL.name().equals(session.status()))
                 .map(session -> new PendingApprovalVO(
                         session.sessionId(),

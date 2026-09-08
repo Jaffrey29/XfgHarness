@@ -31,6 +31,7 @@ public interface IAgentUseCase {
     AgentMessageResponseDTO sendMessageStreaming(
             AgentMessageRequestDTO command,
             java.util.function.Consumer<String> deltaSink,
+            java.util.function.Consumer<String> reasoningSink,
             java.util.function.Consumer<AgentToolCallEventResponseDTO> toolCallSink);
 
     /**

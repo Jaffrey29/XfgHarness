@@ -43,6 +43,7 @@ public class AgentMessageFactory
      */
     public CasePipeline<AgentMessageRequestDTO, AgentMessageDynamicContext, AgentMessageResponseDTO> streamingPipeline(
             Consumer<String> deltaSink,
+            Consumer<String> reasoningSink,
             Consumer<AgentToolCallEventResponseDTO> toolCallEventSink
     ) {
         return CasePipeline.of(
@@ -51,6 +52,7 @@ public class AgentMessageFactory
                 () -> {
                     AgentMessageDynamicContext context = new AgentMessageDynamicContext();
                     context.setDeltaSink(deltaSink);
+                    context.setReasoningSink(reasoningSink);
                     context.setToolCallEventSink(toolCallEventSink);
                     return context;
                 }

@@ -9,6 +9,8 @@ import cn.xiaofuge.deepseek.harness.domain.model.valobj.TextBlock;
 import cn.xiaofuge.deepseek.harness.domain.model.valobj.ReasoningBlock;
 import cn.xiaofuge.deepseek.harness.domain.model.entity.MessageSource;
 import cn.xiaofuge.deepseek.harness.domain.model.valobj.ToolResultBlock;
+import cn.xiaofuge.deepseek.harness.domain.model.valobj.ToolCallBlock;
+import cn.xiaofuge.deepseek.harness.domain.model.valobj.ImageBlock;
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionEvent;
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionLog;
 import cn.xiaofuge.deepseek.harness.cases.orchestration.StrategyHandler;
@@ -145,6 +147,37 @@ public class AgentCollectNode extends AbstractAgentMessageNode {
             return "<think>" + reasoning + "</think>";
         }
         return text.toString();
+    }
+
+    private List<Map<String, Object>> extractBlocks(Message message) {
+        List<Map<String, Object>> blocks = new ArrayList<>();
+        for (ContentBlock block : message.content()) {
+            Map<String, Object> model = new LinkedHashMap<>();
+            if (block instanceof TextBlock tb) {
+                model.put("kind", "text");
+                model.put("text", tb.text());
+            } else if (block instanceof ReasoningBlock rb) {
+                model.put("kind", "reasoning");
+                model.put("text", rb.text());
+            } else if (block instanceof ImageBlock image) {
+                model.put("kind", "image");
+                model.put("mimeType", image.attachment().mimeType());
+                model.put("sizeBytes", image.attachment().data().length);
+                model.put("width", image.attachment().width());
+                model.put("height", image.attachment().height());
+            } else if (block instanceof ToolResultBlock result) {
+                model.put("kind", "tool-call");
+                model.put("callId", result.toolCallId());
+                model.put("content", extractToolResultText(List.of(result)));
+            } else if (block instanceof ToolCallBlock call) {
+                model.put("kind", "tool-call");
+                model.put("callId", call.id());
+                model.put("toolName", call.name());
+                model.put("argsRaw", call.arguments());
+            }
+            if (!model.isEmpty()) blocks.add(model);
+        }
+        return blocks;
     }
 
     /**

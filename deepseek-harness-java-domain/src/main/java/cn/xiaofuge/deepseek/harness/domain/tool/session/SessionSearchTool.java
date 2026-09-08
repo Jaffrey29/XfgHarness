@@ -88,7 +88,7 @@ public class SessionSearchTool implements ToolDefinition {
             int limit = m.get("limit") instanceof Number n ? n.intValue() : MAX_SESSIONS_SCANNED;
             limit = Math.max(1, Math.min(limit, 100));
 
-            List<ConversationSessionSummaryVO> sessions = conversations.listRecentSessions(limit);
+            List<ConversationSessionSummaryVO> sessions = conversations.listRecentSessions(limit, 0);
             if (sessions.isEmpty()) {
                 return CompletableFuture.completedFuture(
                         ToolExecutionResult.ok(List.of(new TextBlock("No past sessions found."))));

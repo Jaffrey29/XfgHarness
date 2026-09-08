@@ -2,6 +2,7 @@ package cn.xiaofuge.deepseek.harness.cases.session;
 
 import cn.xiaofuge.deepseek.harness.api.dto.ConversationMessageResponseDTO;
 import cn.xiaofuge.deepseek.harness.api.dto.ConversationSessionSummaryResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.SessionListRequestDTO;
 
 import cn.xiaofuge.deepseek.harness.cases.session.factory.SessionPipelineFactory;
 import java.util.List;
@@ -25,8 +26,8 @@ public class ConversationQueryCaseImpl implements IConversationQueryCase {
      * 编排最近会话查询，将 limit 交给查询 Pipeline。
      */
     @Override
-    public List<ConversationSessionSummaryResponseDTO> listRecentSessions(int limit) {
-        return sessionPipelineFactory.recentSessionsPipeline().execute(limit);
+    public List<ConversationSessionSummaryResponseDTO> listRecentSessions(int limit, int offset) {
+        return sessionPipelineFactory.recentSessionsPipeline().execute(new SessionListRequestDTO(null, offset, limit));
     }
 
     /**

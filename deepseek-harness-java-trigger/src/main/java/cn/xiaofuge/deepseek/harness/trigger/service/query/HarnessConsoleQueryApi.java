@@ -44,8 +44,8 @@ public class HarnessConsoleQueryApi implements IHarnessConsoleQueryApi {
      * 2. 转换为接口响应对象；
      * 3. 返回给前端侧边栏。
      */
-    public Response<List<ConversationSessionSummaryResponseDTO>> listRecentSessions(int limit) {
-        return execute(() -> conversationQueryCase.listRecentSessions(limit));
+    public Response<List<ConversationSessionSummaryResponseDTO>> listRecentSessions(int limit, int offset) {
+        return execute(() -> conversationQueryCase.listRecentSessions(limit, offset));
     }
 
     /**

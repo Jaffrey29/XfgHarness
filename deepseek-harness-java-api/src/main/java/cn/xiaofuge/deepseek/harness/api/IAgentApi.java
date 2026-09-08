@@ -11,6 +11,7 @@ public interface IAgentApi {
     Response<AgentMessageResponseDTO> sendMessageStreaming(
             AgentMessageRequestDTO request,
             java.util.function.Consumer<String> deltaSink,
+            java.util.function.Consumer<String> reasoningSink,
             java.util.function.Consumer<AgentToolCallEventResponseDTO> toolCallSink);
 
     Response<String> getAgentStatus(String agentId);

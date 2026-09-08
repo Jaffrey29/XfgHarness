@@ -45,30 +45,34 @@ public class AgentStreamApi implements IAgentStreamApi {
         log.info("[SSE] 收到流式请求 agentId={} provider={} model={}",
                 request.agentId(), request.provider(), request.model());
         SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
-        emitter.onCompletion(() -> { });
+        java.util.concurrent.atomic.AtomicBoolean emitterClosed =
+                new java.util.concurrent.atomic.AtomicBoolean(false);
+        emitter.onCompletion(() -> emitterClosed.set(true));
         emitter.onTimeout(emitter::complete);
-        emitter.onError(emitter::completeWithError);
+        emitter.onError(error -> emitterClosed.set(true));
 
-        sseExecutor.execute(() -> emitAgentStream(request, emitter));
+        sseExecutor.execute(() -> emitAgentStream(request, emitter, emitterClosed));
         return emitter;
     }
 
-    private void emitAgentStream(AgentMessageRequestDTO request, SseEmitter emitter) {
+    private void emitAgentStream(
+            AgentMessageRequestDTO request,
+            SseEmitter emitter,
+            java.util.concurrent.atomic.AtomicBoolean emitterClosed
+    ) {
         java.util.concurrent.atomic.AtomicInteger chunkIndex =
                 new java.util.concurrent.atomic.AtomicInteger(0);
-        java.util.concurrent.atomic.AtomicBoolean emitterClosed =
-                new java.util.concurrent.atomic.AtomicBoolean(false);
-
         try {
             sendMeta(request, emitter);
             java.util.function.Consumer<String> deltaSink = delta -> sendDelta(
                     emitter, emitterClosed, chunkIndex, delta
             );
+            java.util.function.Consumer<String> reasoningSink = delta -> sendReasoning(emitter, emitterClosed, delta);
             java.util.function.Consumer<AgentToolCallEventResponseDTO> toolCallSink = event ->
                     sendToolCall(emitter, emitterClosed, event);
 
             Response<AgentMessageResponseDTO> wrappedResponse =
-                    agentApi.sendMessageStreaming(request, deltaSink, toolCallSink);
+                    agentApi.sendMessageStreaming(request, deltaSink, reasoningSink, toolCallSink);
             if (wrappedResponse.data() == null) {
                 throw new IllegalStateException(wrappedResponse.info());
             }
@@ -103,6 +107,21 @@ public class AgentStreamApi implements IAgentStreamApi {
         }
     }
 
+    private void sendReasoning(
+            SseEmitter emitter,
+            java.util.concurrent.atomic.AtomicBoolean emitterClosed,
+            String delta
+    ) {
+        if (emitterClosed.get()) return;
+        try {
+            Map<String, Object> reasoningData = new LinkedHashMap<>();
+            reasoningData.put("content", delta);
+            emitter.send(SseEmitter.event().name("reasoning").data(objectMapper.writeValueAsString(reasoningData)));
+        } catch (IOException exception) {
+            emitterClosed.set(true);
+        }
+    }
+
     private void sendToolCall(
             SseEmitter emitter,
             java.util.concurrent.atomic.AtomicBoolean emitterClosed,
@@ -112,14 +131,18 @@ public class AgentStreamApi implements IAgentStreamApi {
             return;
         }
         try {
-            log.info("[SSE] 推送 step_break 事件：toolName={} callId={}", event.toolName(), event.callId());
+            boolean isResult = "result".equals(event.phase());
+            log.info("[SSE] 推送 {} 事件：toolName={} callId={}",
+                    isResult ? "tool_result" : "step_break", event.toolName(), event.callId());
             Map<String, Object> toolCallData = new LinkedHashMap<>();
             toolCallData.put("toolName", event.toolName());
             toolCallData.put("callId", event.callId());
             toolCallData.put("args", event.arguments());
-            toolCallData.put("status", "running");
+            toolCallData.put("status", event.status());
+            if (event.result() != null) toolCallData.put("result", event.result());
+            if (event.durationMs() != null) toolCallData.put("durationMs", event.durationMs());
             emitter.send(SseEmitter.event()
-                    .name("step_break")
+                    .name(isResult ? "tool_result" : "step_break")
                     .data(objectMapper.writeValueAsString(toolCallData)));
         } catch (IOException exception) {
             emitterClosed.set(true);

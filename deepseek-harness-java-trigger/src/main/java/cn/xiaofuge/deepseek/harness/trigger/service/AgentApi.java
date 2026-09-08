@@ -62,10 +62,12 @@ public class AgentApi implements IAgentApi {
     public Response<AgentMessageResponseDTO> sendMessageStreaming(
             AgentMessageRequestDTO request,
             java.util.function.Consumer<String> deltaSink,
+            java.util.function.Consumer<String> reasoningSink,
             java.util.function.Consumer<AgentToolCallEventResponseDTO> toolCallSink) {
         return execute(() -> agentUseCase.sendMessageStreaming(
                     request,
                     deltaSink,
+                    reasoningSink,
                     event -> toolCallSink.accept(new AgentToolCallEventResponseDTO(
                             event.callId(),
                             event.toolName(),

@@ -75,6 +75,8 @@ public class ReactLoopAgent implements AgentRun {
 
     // ── 流式输出接收器（由 SSE 请求按次设置，用于实时推送增量） ──
     private volatile java.util.function.Consumer<String> streamDeltaSink;
+    private volatile java.util.function.Consumer<String> streamReasoningSink;
+    private volatile java.util.function.Consumer<ToolCallExecutor.ToolLifecycleEvent> streamToolEventSink;
     // ── 工具调用事件接收器（用于 SSE 推送 tool_call 事件，让前端分段） ──
     private volatile java.util.function.Consumer<ToolCallBlock> streamToolCallSink;
     private boolean continuationRequested;
@@ -119,6 +121,7 @@ public class ReactLoopAgent implements AgentRun {
         this.events = events != null ? events : new NoopAgentEventListener();
         this.compactionEngine = Objects.requireNonNull(compactionEngine, "compactionEngine");
         this.phase = new Phase.Idle(0);
+        this.toolExecutor.setLifecycleListener(this::onToolLifecycleEvent);
     }
 
     // ── Agent 接口实现 ──────────────────────────────────────────
@@ -192,6 +195,10 @@ public class ReactLoopAgent implements AgentRun {
         this.streamDeltaSink = sink;
     }
 
+    public void setStreamReasoningSink(java.util.function.Consumer<String> sink) {
+        this.streamReasoningSink = sink;
+    }
+
     /**
      * 安装工具调用事件接收器。
      * <p>
@@ -200,6 +207,16 @@ public class ReactLoopAgent implements AgentRun {
      */
     public void setStreamToolCallSink(java.util.function.Consumer<ToolCallBlock> sink) {
         this.streamToolCallSink = sink;
+    }
+
+    public void setStreamToolEventSink(java.util.function.Consumer<ToolCallExecutor.ToolLifecycleEvent> sink) {
+        this.streamToolEventSink = sink;
+    }
+
+    private void onToolLifecycleEvent(ToolCallExecutor.ToolLifecycleEvent event) {
+        java.util.function.Consumer<ToolCallExecutor.ToolLifecycleEvent> sink = streamToolEventSink;
+        if (sink == null) return;
+        try { sink.accept(event); } catch (RuntimeException ignored) {}
     }
 
     /**
@@ -560,6 +577,13 @@ public class ReactLoopAgent implements AgentRun {
                         return;
                     }
                     assembler.push(chunk);
+                    if (chunk instanceof StreamChunk.ReasoningDelta rd) {
+                        chunkEvents.add(SessionEventFactory.assistantChunk(turn, step, rd.text(), "reasoning-delta"));
+                        java.util.function.Consumer<String> sink = streamReasoningSink;
+                        if (sink != null) {
+                            try { sink.accept(rd.text()); } catch (RuntimeException ignored) { }
+                        }
+                    }
                     if (chunk instanceof StreamChunk.TextDelta td) {
                         chunkEvents.add(SessionEventFactory.assistantChunk(turn, step, td.text(), "text-delta"));
                         java.util.function.Consumer<String> sink = streamDeltaSink;

@@ -11,6 +11,6 @@ import java.util.List;
  * <p>数据示例：最近会话传入 {@code limit=20}；消息查询传入 {@code sessionId=BLUE-8090}，返回角色和内容时间线。</p>
  */
 public interface IConversationQueryCase {
-    List<ConversationSessionSummaryResponseDTO> listRecentSessions(int limit);
+    List<ConversationSessionSummaryResponseDTO> listRecentSessions(int limit, int offset);
     List<ConversationMessageResponseDTO> listMessages(String sessionId);
 }

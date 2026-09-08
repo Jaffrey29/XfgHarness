@@ -2,6 +2,7 @@ package cn.xiaofuge.deepseek.harness.cases.agent.factory;
 
 import cn.xiaofuge.deepseek.harness.api.dto.AgentToolCallEventResponseDTO;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.run.AgentRun;
+import cn.xiaofuge.deepseek.harness.domain.tool.service.ToolCallExecutor;
 import cn.xiaofuge.deepseek.harness.domain.model.entity.Message;
 
 import java.util.function.Consumer;
@@ -30,6 +31,7 @@ public class AgentMessageDynamicContext implements AutoCloseable {
     private Message userMessage;
     private MessageIntent intent;
     private Consumer<String> deltaSink;
+    private Consumer<String> reasoningSink;
     private Consumer<AgentToolCallEventResponseDTO> toolCallEventSink;
 
     /**
@@ -69,6 +71,8 @@ public class AgentMessageDynamicContext implements AutoCloseable {
      */
     public void setDeltaSink(Consumer<String> deltaSink) { this.deltaSink = deltaSink; }
 
+    public void setReasoningSink(Consumer<String> reasoningSink) { this.reasoningSink = reasoningSink; }
+
     /**
      * 读取工具调用事件接收器。
      */
@@ -89,10 +93,24 @@ public class AgentMessageDynamicContext implements AutoCloseable {
             return;
         }
         agent.setStreamDeltaSink(deltaSink);
+        agent.setStreamReasoningSink(reasoningSink);
         agent.setStreamToolCallSink(toolCall -> {
             if (toolCallEventSink != null) {
                 toolCallEventSink.accept(new AgentToolCallEventResponseDTO(
                         toolCall.id(), toolCall.name(), toolCall.arguments(), "running"
+                ));
+            }
+        });
+        agent.setStreamToolEventSink(event -> {
+            if (toolCallEventSink != null) {
+                toolCallEventSink.accept(new AgentToolCallEventResponseDTO(
+                        event.callId(),
+                        event.toolName(),
+                        event.args(),
+                        event.status(),
+                        event.phase(),
+                        event.result(),
+                        event.durationMs()
                 ));
             }
         });
@@ -105,9 +123,11 @@ public class AgentMessageDynamicContext implements AutoCloseable {
     public void close() {
         if (agent != null) {
             agent.setStreamDeltaSink(null);
+            agent.setStreamReasoningSink(null);
             agent.setStreamToolCallSink(null);
         }
         deltaSink = null;
+        reasoningSink = null;
         toolCallEventSink = null;
     }
 }

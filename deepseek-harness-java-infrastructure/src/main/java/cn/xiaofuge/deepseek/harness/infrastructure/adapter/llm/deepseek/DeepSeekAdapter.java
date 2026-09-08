@@ -496,6 +496,9 @@ public class DeepSeekAdapter implements LlmAdapter {
      * 解析e Effective Model。
      */
     private String resolveEffectiveModel(String requestedModel) {
+        if (requestedModel != null && !requestedModel.isBlank()) {
+            return requestedModel;
+        }
         List<DirectSeekCatalogModel> discovered = discoverUpstreamModels();
         if (discovered.isEmpty()) {
             return requestedModel;

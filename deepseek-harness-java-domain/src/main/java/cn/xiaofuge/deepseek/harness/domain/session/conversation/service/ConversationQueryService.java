@@ -1,7 +1,11 @@
 package cn.xiaofuge.deepseek.harness.domain.session.conversation.service;
 
 import cn.xiaofuge.deepseek.harness.domain.model.entity.Message;
+import cn.xiaofuge.deepseek.harness.domain.model.entity.MessageSource;
+import cn.xiaofuge.deepseek.harness.domain.model.valobj.ContentBlock;
+import cn.xiaofuge.deepseek.harness.domain.model.valobj.ReasoningBlock;
 import cn.xiaofuge.deepseek.harness.domain.model.valobj.TextBlock;
+import cn.xiaofuge.deepseek.harness.domain.model.valobj.ToolResultBlock;
 import cn.xiaofuge.deepseek.harness.domain.session.IConversationQueryService;
 import cn.xiaofuge.deepseek.harness.domain.session.conversation.model.valobj.ConversationMessageVO;
 import cn.xiaofuge.deepseek.harness.domain.session.conversation.model.valobj.ConversationSessionDetailVO;
@@ -65,19 +69,23 @@ public class ConversationQueryService implements IConversationQueryService {
      * 3. 按创建时间倒序合并去重，装配摘要视图并返回。
      */
     @Override
-    public List<ConversationSessionSummaryVO> listRecentSessions(int limit) {
+    public List<ConversationSessionSummaryVO> listRecentSessions(int limit, int offset) {
         Map<String, ConversationSessionSummaryVO> byId = new LinkedHashMap<>();
+        int fetchLimit = Math.max(offset, 0) + Math.max(limit, 0);
         // 旧链路：任务会话
-        for (HarnessSessionAggregate session : harnessSessionRepository.listRecent(limit)) {
+        for (HarnessSessionAggregate session : harnessSessionRepository.listRecent(fetchLimit)) {
             byId.put(session.getSessionId(), toSummary(session));
         }
         // 新链路：Agent 会话（以 agentPreset 为 agentId 还原侧边栏标识）
-        for (SessionHeader header : sessionEventStore.listHeaders(limit)) {
+        for (SessionHeader header : sessionEventStore.listHeaders(fetchLimit)) {
             byId.computeIfAbsent(header.sessionId(), sid -> toSummaryFromHeader(header));
         }
         List<ConversationSessionSummaryVO> merged = new ArrayList<>(byId.values());
         merged.sort(Comparator.comparing(ConversationSessionSummaryVO::createdAt).reversed());
-        return merged.stream().limit(limit).toList();
+        return merged.stream()
+                .skip(Math.max(offset, 0))
+                .limit(Math.max(limit, 0))
+                .toList();
     }
 
     /**
@@ -92,8 +100,10 @@ public class ConversationQueryService implements IConversationQueryService {
     public List<ConversationMessageVO> listMessages(String sessionId) {
         List<SessionEvent> typed = sessionEventStore.readAll(sessionId);
         if (!typed.isEmpty()) {
+            List<ConversationMessageVO> messages = new ArrayList<>();
+            Map<String, ConversationMessageVO> toolCalls = new LinkedHashMap<>();
             return typed.stream()
-                    .map(this::toMessageFromEvent)
+                    .map(event -> toMessageFromEvent(event, messages, toolCalls))
                     .filter(java.util.Objects::nonNull)
                     .toList();
         }
@@ -264,13 +274,78 @@ public class ConversationQueryService implements IConversationQueryService {
      * 将新事件表的单条事件转换为消息 VO。
      * 只暴露 user/message 与 assistant/message，其余事件返回 null 被过滤。
      */
-    private ConversationMessageVO toMessageFromEvent(SessionEvent event) {
+    private ConversationMessageVO toMessageFromEvent(
+            SessionEvent event,
+            List<ConversationMessageVO> messages,
+            Map<String, ConversationMessageVO> toolCalls
+    ) {
         if (event instanceof SessionEvent.UserMessage um) {
-            return new ConversationMessageVO("user", extractText(um.data().message()), event.time());
+            return new ConversationMessageVO("user", extractText(um.data().message()), extractBlocks(um.data().message()), event.time());
         } else if (event instanceof SessionEvent.AssistantMessage am) {
-            return new ConversationMessageVO("assistant", extractText(am.data().message()), event.time());
+            ConversationMessageVO message = new ConversationMessageVO(
+                    "assistant", extractText(am.data().message()), extractBlocks(am.data().message()), event.time());
+            messages.add(message);
+            return message;
+        } else if (event instanceof SessionEvent.ToolCall tc) {
+            Map<String, Object> model = new LinkedHashMap<>();
+            model.put("kind", "tool-call");
+            model.put("callId", tc.data().callId());
+            model.put("toolName", tc.data().name());
+            model.put("argsRaw", tc.data().arguments());
+            ConversationMessageVO message = new ConversationMessageVO(
+                    "tool", "", List.of(model), event.time());
+            messages.add(message);
+            toolCalls.put(tc.data().callId(), message);
+            return message;
+        } else if (event instanceof SessionEvent.ToolResult tr && tr.data().message() != null) {
+            String callId = null;
+            if (tr.data().message().source() instanceof MessageSource.ToolMessageSource source) {
+                callId = source.callId();
+            }
+            ConversationMessageVO call = callId == null ? null : toolCalls.get(callId);
+            if (call != null) {
+                Map<String, Object> model = new LinkedHashMap<>(call.blocks().get(0));
+                model.put("status", tr.data().error() != null ? "error" : "success");
+                model.put("result", extractToolResultText(tr.data().message().content()));
+            }
         }
         return null;
+    }
+
+    private List<Map<String, Object>> extractBlocks(Message message) {
+        List<Map<String, Object>> blocks = new ArrayList<>();
+        if (message == null) return blocks;
+        for (var block : message.content()) {
+            Map<String, Object> model = new LinkedHashMap<>();
+            if (block instanceof TextBlock tb) {
+                model.put("kind", "text");
+                model.put("text", tb.text());
+                blocks.add(model);
+            } else if (block instanceof ReasoningBlock rb) {
+                model.put("kind", "reasoning");
+                model.put("text", rb.text());
+                blocks.add(model);
+            }
+        }
+        return blocks;
+    }
+
+    private String extractToolResultText(List<ContentBlock> blocks) {
+        StringBuilder sb = new StringBuilder();
+        for (ContentBlock block : blocks) {
+            if (block instanceof ToolResultBlock result) {
+                for (ContentBlock inner : result.content()) {
+                    if (inner instanceof TextBlock tb) {
+                        if (!sb.isEmpty()) sb.append("\n");
+                        sb.append(tb.text());
+                    }
+                }
+            } else if (block instanceof TextBlock tb) {
+                if (!sb.isEmpty()) sb.append("\n");
+                sb.append(tb.text());
+            }
+        }
+        return sb.toString();
     }
 
     /**

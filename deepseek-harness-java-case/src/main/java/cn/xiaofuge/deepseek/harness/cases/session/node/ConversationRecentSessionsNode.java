@@ -4,6 +4,7 @@ import cn.xiaofuge.deepseek.harness.cases.orchestration.AbstractStrategyRouter;
 import cn.xiaofuge.deepseek.harness.cases.orchestration.NoContext;
 import cn.xiaofuge.deepseek.harness.cases.orchestration.StrategyHandler;
 import cn.xiaofuge.deepseek.harness.api.dto.ConversationSessionSummaryResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.SessionListRequestDTO;
 import cn.xiaofuge.deepseek.harness.domain.session.IConversationQueryService;
 import java.util.List;
 import org.slf4j.Logger;
@@ -17,7 +18,7 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class ConversationRecentSessionsNode
-        extends AbstractStrategyRouter<Integer, NoContext, List<ConversationSessionSummaryResponseDTO>> {
+        extends AbstractStrategyRouter<SessionListRequestDTO, NoContext, List<ConversationSessionSummaryResponseDTO>> {
 
     private static final Logger log = LoggerFactory.getLogger(ConversationRecentSessionsNode.class);
 
@@ -31,14 +32,14 @@ public class ConversationRecentSessionsNode
      * 执行当前节点核心逻辑：校验输入、调用领域服务并返回输出。
      */
     @Override
-    protected List<ConversationSessionSummaryResponseDTO> doApply(Integer limit, NoContext context) {
-        var result = conversationQueryService.listRecentSessions(limit).stream()
+    protected List<ConversationSessionSummaryResponseDTO> doApply(SessionListRequestDTO query, NoContext context) {
+        var result = conversationQueryService.listRecentSessions(query.limit(), query.offset()).stream()
                 .map(summary -> new ConversationSessionSummaryResponseDTO(
                         summary.sessionId(), summary.title(), summary.preview(), summary.status(),
                         summary.createdAt(), summary.agentId()
                 ))
                 .toList();
-        log.debug("[Session] 最近会话查询完成，limit={} count={}", limit, result.size());
+        log.debug("[Session] 最近会话查询完成，limit={} offset={} count={}", query.limit(), query.offset(), result.size());
         return result;
     }
 
@@ -46,8 +47,8 @@ public class ConversationRecentSessionsNode
      * 返回下一执行节点；单节点链路返回默认终止处理。
      */
     @Override
-    public StrategyHandler<Integer, NoContext, List<ConversationSessionSummaryResponseDTO>> getNext(
-            Integer limit, NoContext context) {
+    public StrategyHandler<SessionListRequestDTO, NoContext, List<ConversationSessionSummaryResponseDTO>> getNext(
+            SessionListRequestDTO query, NoContext context) {
         return defaultStrategyHandler;
     }
 }

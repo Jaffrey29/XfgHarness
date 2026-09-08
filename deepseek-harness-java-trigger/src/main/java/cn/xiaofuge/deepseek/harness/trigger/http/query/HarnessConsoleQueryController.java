@@ -39,8 +39,10 @@ public class HarnessConsoleQueryController {
      * 获取Mapping。
      */
     @GetMapping("/sessions")
-    public Response<List<ConversationSessionSummaryResponseDTO>> listRecentSessions(@RequestParam(name = "limit", defaultValue = "50") int limit) {
-        return harnessConsoleQueryApi.listRecentSessions(limit);
+    public Response<List<ConversationSessionSummaryResponseDTO>> listRecentSessions(
+            @RequestParam(name = "limit", defaultValue = "20") int limit,
+            @RequestParam(name = "offset", defaultValue = "0") int offset) {
+        return harnessConsoleQueryApi.listRecentSessions(limit, offset);
     }
 
     /**

@@ -158,7 +158,9 @@ const state = {
   currentSessionId: null,
   theme: localStorage.getItem('theme') || 'light',
   sidebarCollapsed: JSON.parse(localStorage.getItem('sidebarCollapsed') || 'false'),
-  sidebarShowAllSessions: JSON.parse(localStorage.getItem('sidebarShowAllSessions') || 'false'),
+  sidebarSessionLimit: 10,
+  hasMoreSessions: true,
+  loadingMoreSessions: false,
   workspaces: JSON.parse(localStorage.getItem('workspaces') || '[]'),
   currentWorkspace: localStorage.getItem('currentWorkspace') || '',
   modelSettings: [],
@@ -177,6 +179,7 @@ const state = {
   trajDesc: true,
   // v11: 会话历史
   sessionHistory: [],
+  sessionHistoryLimit: 20,
   // v11: 斜杠命令
   slashCommands: [
     { name: '/help', desc: '显示帮助信息', icon: '❓' },
@@ -287,8 +290,11 @@ function saveSessionsToStorage() {
           return {
             role: m.role,
             content: typeof m.content === 'string' ? m.content : '',
+            blocks: m.blocks,
+            reasoning: m.reasoning,
             time: m.time,
             toolName: m.toolName,
+            callId: m.callId,
             args: m.args,
             result: m.result,
             status: m.status,
@@ -488,6 +494,14 @@ function renderSidebar() {
   const filterBtn = el('button', { class: 'workspace-action-btn', title: '设置', onclick: openSettingsModal });
   filterBtn.appendChild(icon('sliders'));
   wsToolbar.appendChild(filterBtn);
+  const clearBtn = el('button', {
+    class: 'workspace-action-btn danger',
+    title: '清空对话',
+    disabled: state.sessions.length === 0 ? 'disabled' : null,
+    onclick: confirmClearSessions
+  });
+  clearBtn.appendChild(icon('trash'));
+  wsToolbar.appendChild(clearBtn);
   expandSection.appendChild(wsToolbar);
 
   // Unified workspace + session list
@@ -502,29 +516,17 @@ function renderSidebar() {
     if (wsSessions.length === 0) {
       group.appendChild(el('div', { class: 'ws-session-empty' }, '暂无对话'));
     } else {
-      const showAll = state.sidebarShowAllSessions;
-      const display = showAll ? wsSessions : wsSessions.slice(0, 5);
+      const display = wsSessions.slice(0, state.sidebarSessionLimit);
       for (const sess of display) {
-        const item = el('button', {
-          class: 'session-item' + (sess.agentId === state.currentSessionId ? ' active' : ''),
-          onclick: function() { selectSession(sess.agentId); }
-        });
-        const row = el('div', { class: 'session-item-row' });
-        row.appendChild(el('div', { class: 'session-item-title' }, sess.title || sess.lastMessage || sess.displayName || '新会话'));
-        row.appendChild(el('span', { class: 'session-item-time' }, formatSessionAge(sess.createdAt)));
-        item.appendChild(row);
-        group.appendChild(item);
+        group.appendChild(renderSessionItem(sess));
       }
-      const hidden = wsSessions.length - 5;
-      if (hidden > 0 && !showAll) {
+      const hidden = wsSessions.length - state.sidebarSessionLimit;
+      if (hidden > 0 || state.hasMoreSessions) {
         group.appendChild(el('button', {
           class: 'session-expand-btn',
-          onclick: function() {
-            state.sidebarShowAllSessions = !state.sidebarShowAllSessions;
-            localStorage.setItem('sidebarShowAllSessions', JSON.stringify(state.sidebarShowAllSessions));
-            render();
-          }
-        }, '展开其余 ' + hidden + ' 个会话'));
+          disabled: state.loadingMoreSessions ? 'disabled' : null,
+          onclick: loadMoreSessions
+        }, state.loadingMoreSessions ? '加载中…' : '加载更多'));
       }
     }
     return group;
@@ -582,17 +584,16 @@ function renderSidebar() {
     if (allSessions.length === 0) {
       sessionList.appendChild(el('div', { class: 'empty' }, '暂无对话'));
     } else {
-      const display = state.sidebarShowAllSessions ? allSessions : allSessions.slice(0, 5);
+      const display = allSessions.slice(0, state.sidebarSessionLimit);
       for (const sess of display) {
-        const item = el('button', {
-          class: 'session-item' + (sess.agentId === state.currentSessionId ? ' active' : ''),
-          onclick: function() { selectSession(sess.agentId); }
-        });
-        const row = el('div', { class: 'session-item-row' });
-        row.appendChild(el('div', { class: 'session-item-title' }, sess.title || sess.lastMessage || sess.displayName || '新会话'));
-        row.appendChild(el('span', { class: 'session-item-time' }, formatSessionAge(sess.createdAt)));
-        item.appendChild(row);
-        sessionList.appendChild(item);
+        sessionList.appendChild(renderSessionItem(sess));
+      }
+      if (allSessions.length > state.sidebarSessionLimit || state.hasMoreSessions) {
+        sessionList.appendChild(el('button', {
+          class: 'session-expand-btn',
+          disabled: state.loadingMoreSessions ? 'disabled' : null,
+          onclick: loadMoreSessions
+        }, state.loadingMoreSessions ? '加载中…' : '加载更多'));
       }
     }
   } else {
@@ -618,6 +619,172 @@ function renderSidebar() {
 
   sidebar.appendChild(expandSection);
   return sidebar;
+}
+
+function renderSessionItem(sess) {
+  const item = el('div', {
+    class: 'session-item' + (sess.agentId === state.currentSessionId ? ' active' : ''),
+    role: 'button',
+    tabindex: '0',
+    onclick: function() { selectSession(sess.agentId); },
+    onkeydown: function(e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectSession(sess.agentId); }
+    }
+  });
+  const row = el('div', { class: 'session-item-row' });
+  row.appendChild(el('div', {
+    class: 'session-item-title',
+    title: sess.title || sess.lastMessage || sess.displayName || '新会话'
+  }, sess.title || sess.lastMessage || sess.displayName || '新会话'));
+  row.appendChild(el('span', { class: 'session-item-time' }, formatSessionAge(sess.createdAt)));
+  const actions = el('div', { class: 'session-item-actions' });
+  actions.appendChild(el('button', {
+    class: 'session-item-menu-btn',
+    title: '会话操作',
+    'aria-label': '会话操作',
+    onclick: function(e) {
+      e.stopPropagation();
+      showSessionMenu(e, sess);
+    }
+  }, el('span', { class: 'session-item-dots' })));
+  row.appendChild(actions);
+  item.appendChild(row);
+  return item;
+}
+
+function showSessionMenu(event, sess) {
+  closeSessionMenu();
+  const menu = el('div', { class: 'session-context-menu' });
+  menu.appendChild(el('button', { class: 'session-context-item', onclick: function() {
+    closeSessionMenu();
+    renameSession(sess);
+  } }, '✎ 重命名'));
+  menu.appendChild(el('button', { class: 'session-context-item danger', onclick: function() {
+    closeSessionMenu();
+    confirmDeleteSession(sess);
+  } }, '🗑 删除'));
+  document.body.appendChild(menu);
+  const item = event.currentTarget;
+  const rect = item.getBoundingClientRect();
+  const width = menu.offsetWidth || 152;
+  const left = Math.max(8, Math.min(window.innerWidth - width - 8, rect.right - width));
+  const top = Math.min(window.innerHeight - menu.offsetHeight - 8, rect.bottom + 6);
+  menu.style.left = left + 'px';
+  menu.style.top = top + 'px';
+  setTimeout(function() {
+    document.addEventListener('click', closeSessionMenu, { once: true });
+  }, 0);
+}
+
+function closeSessionMenu() {
+  const menu = $('.session-context-menu');
+  if (menu) menu.remove();
+}
+
+function renameSession(sess) {
+  const existing = $('.session-rename-modal');
+  if (existing) existing.remove();
+  const overlay = el('div', { class: 'modal-overlay session-rename-modal', onclick: function(e) { if (e.target === overlay) overlay.remove(); } });
+  const modal = el('div', { class: 'modal', style: 'width:380px' });
+  const header = el('div', { class: 'modal-header' });
+  header.appendChild(el('div', { class: 'modal-title' }, '重命名对话'));
+  header.appendChild(el('button', { class: 'modal-close', onclick: function() { overlay.remove(); } }, '×'));
+  modal.appendChild(header);
+  const body = el('div', { class: 'modal-body' });
+  const input = el('input', {
+    class: 'form-input',
+    value: sess.title || sess.displayName || '',
+    placeholder: '输入对话名称',
+    autocomplete: 'off'
+  });
+  body.appendChild(input);
+  modal.appendChild(body);
+  const footer = el('div', { class: 'modal-footer' });
+  footer.appendChild(el('button', { class: 'btn btn-secondary', onclick: function() { overlay.remove(); } }, '取消'));
+  footer.appendChild(el('button', { class: 'btn btn-primary', onclick: function() {
+    const value = input.value.trim();
+    if (!value) { showToast('名称不能为空'); return; }
+    sess.title = value;
+    sess.displayName = value;
+    saveSessionsToStorage();
+    overlay.remove();
+    render();
+    showToast('对话已重命名');
+  } }, '保存'));
+  modal.appendChild(footer);
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+  input.focus();
+  input.select();
+  input.onkeydown = function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); footer.querySelector('.btn-primary').click(); }
+    if (e.key === 'Escape') overlay.remove();
+  };
+}
+
+function confirmDeleteSession(sess) {
+  const existing = $('.session-delete-modal');
+  if (existing) existing.remove();
+  const overlay = el('div', { class: 'modal-overlay session-delete-modal', onclick: function(e) { if (e.target === overlay) overlay.remove(); } });
+  const modal = el('div', { class: 'modal', style: 'width:380px' });
+  const header = el('div', { class: 'modal-header' });
+  header.appendChild(el('div', { class: 'modal-title' }, '删除对话'));
+  header.appendChild(el('button', { class: 'modal-close', onclick: function() { overlay.remove(); } }, '×'));
+  modal.appendChild(header);
+  const body = el('div', { class: 'modal-body' });
+  const label = sess.title || sess.displayName || '该对话';
+  body.appendChild(el('div', { style: 'font-size:14px;line-height:22px;' }, '确定删除「' + label + '」？仅从当前界面列表移除。'));
+  modal.appendChild(body);
+  const footer = el('div', { class: 'modal-footer' });
+  footer.appendChild(el('button', { class: 'btn btn-secondary', onclick: function() { overlay.remove(); } }, '取消'));
+  footer.appendChild(el('button', { class: 'btn btn-danger', onclick: function() {
+    state.sessions = state.sessions.filter(function(item) { return item.agentId !== sess.agentId; });
+    if (state.currentSessionId === sess.agentId) {
+      state.currentSessionId = state.sessions[0] ? state.sessions[0].agentId : null;
+    }
+    saveSessionsToStorage();
+    overlay.remove();
+    render();
+    showToast('对话已删除');
+  } }, '删除'));
+  modal.appendChild(footer);
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+}
+
+function confirmClearSessions() {
+  if (state.sessions.length === 0) return;
+  const existing = $('.session-clear-modal');
+  if (existing) existing.remove();
+  const overlay = el('div', { class: 'modal-overlay session-clear-modal', onclick: function(e) { if (e.target === overlay) overlay.remove(); } });
+  const modal = el('div', { class: 'modal', style: 'width:380px' });
+  const header = el('div', { class: 'modal-header' });
+  header.appendChild(el('div', { class: 'modal-title' }, '清空对话'));
+  header.appendChild(el('button', { class: 'modal-close', onclick: function() { overlay.remove(); } }, '×'));
+  modal.appendChild(header);
+  const body = el('div', { class: 'modal-body' });
+  body.appendChild(el('div', { style: 'font-size:14px;line-height:22px;' }, '确定清空对话列表？所有对话仅从当前界面移除。'));
+  modal.appendChild(body);
+  const footer = el('div', { class: 'modal-footer' });
+  footer.appendChild(el('button', { class: 'btn btn-secondary', onclick: function() { overlay.remove(); } }, '取消'));
+  footer.appendChild(el('button', { class: 'btn btn-danger', onclick: function() {
+    for (const sess of state.sessions) {
+      if (!sess.sending && !sess.streaming) continue;
+      stopWaitTimer(sess);
+      sess.sending = false;
+      sess.streaming = false;
+      if (sess.abortController) sess.abortController.abort();
+    }
+    state.sessions = [];
+    state.currentSessionId = null;
+    saveSessionsToStorage();
+    overlay.remove();
+    render();
+    showToast('对话已清空');
+  } }, '清空'));
+  modal.appendChild(footer);
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
 }
 
 function toggleSidebar() {
@@ -794,6 +961,12 @@ function renderMain() {
   if (sess && sess.messages.length > 0) {
     headerSub.appendChild(el('span', { class: 'main-header-model' }, state.currentModel || DEFAULT_MODEL));
   }
+  if (sess && sess.currentStage) {
+    headerSub.appendChild(el('span', { class: 'process-stage', id: 'process-stage' },
+      el('span', { class: 'process-stage-dot' }),
+      sess.currentStage
+    ));
+  }
   titleWrap.appendChild(headerSub);
   header.appendChild(titleWrap);
 
@@ -816,11 +989,6 @@ function renderMain() {
 
   header.appendChild(headerRight);
   main.appendChild(header);
-
-  // v11: 审批通知
-  if (state.pendingApprovals.length > 0) {
-    main.appendChild(renderApprovalBanner());
-  }
 
   // Messages or Welcome
   if (state.activeMainTab === 'trajectory' && sess) {
@@ -872,6 +1040,9 @@ function renderMain() {
   }
 
   // Composer
+  if (state.pendingApprovals.length > 0) {
+    main.appendChild(renderApprovalBanner());
+  }
   main.appendChild(renderComposer(sess));
 
   return main;
@@ -955,19 +1126,24 @@ function renderMessage(m) {
   }
 
   const contentEl = el('div', { class: 'msg-content' });
-  if (m.streaming && !m.content) {
+  if (m.streaming && !m.content && !m.reasoning) {
     // 简洁等待指示器
     const waitContainer = el('div', { class: 'waiting-indicator' });
-    waitContainer.appendChild(el('span', { class: 'waiting-dots' }, '·  ·  ·'));
+    const dotsEl = el('span', { class: 'waiting-dots' });
+    for (let i = 0; i < 3; i++) {
+      dotsEl.appendChild(el('span', { class: 'waiting-dot', style: `animation-delay:${(i * 0.16).toFixed(2)}s` }));
+    }
+    waitContainer.appendChild(dotsEl);
     const sess = getCurrentSession();
-    const elapsed = sess && sess.waitStartTime ? ((Date.now() - sess.waitStartTime) / 1000).toFixed(1) : '0.0';
-    waitContainer.appendChild(el('span', { class: 'waiting-text', id: 'wait-text' }, '正在思考… ' + elapsed + 's'));
+    const elapsed = sess && sess.waitStartTime ? formatElapsedDuration((Date.now() - sess.waitStartTime) / 1000) : '0.0s';
+    waitContainer.appendChild(el('span', { class: 'waiting-text', id: 'wait-text' }, '正在思考… ' + elapsed));
     contentEl.appendChild(waitContainer);
   } else if (m.streaming) {
-    contentEl.textContent = m.content || '';
+    startStreamReveal(m);
+    contentEl.innerHTML = renderAssistantContent(visibleAssistantMessage(m, m._revealLength), true);
     contentEl.appendChild(el('span', { class: 'streaming-cursor' }, '▋'));
   } else {
-    contentEl.innerHTML = parseMessageContent(m.content, false, m.role === 'user');
+    contentEl.innerHTML = renderAssistantContent(m, false);
   }
   bubble.appendChild(contentEl);
 
@@ -1020,29 +1196,104 @@ function renderMessage(m) {
 // P0: 工具调用可视化
 // ═══════════════════════════════════════════
 function renderToolCall(m) {
-  const card = el('div', { class: 'tool-call' + (m.expanded ? ' expanded' : '') });
-  const header = el('div', { class: 'tool-call-header', onclick: function() { m.expanded = !m.expanded; card.classList.toggle('expanded'); } });
-  const icon = m.status === 'error' ? '❌' : m.status === 'success' ? '✅' : '⏳';
-  header.appendChild(el('span', { class: 'tool-call-icon' }, icon));
-  header.appendChild(el('span', { class: 'tool-call-name' }, m.toolName || 'unknown'));
-  header.appendChild(el('span', { class: 'tool-call-status ' + (m.status || 'running') }, m.status || 'running'));
+  const args = normalizeToolArgs(m.args || m.argsRaw);
+  const model = toolRowModel(m.toolName || 'unknown', args, m.result, m.status || 'running');
+  const card = el('div', { class: 'tool-call', 'data-tool': m.toolName || 'unknown', 'data-state': model.state });
+  if (m.expanded) card.classList.add('expanded');
+  const header = el('div', {
+    class: 'tool-call-header',
+    role: 'button', tabindex: '0',
+    onclick: function() { m.expanded = !m.expanded; card.classList.toggle('expanded'); },
+    onkeydown: function(e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); header.click(); } }
+  });
+  header.appendChild(el('span', { class: 'tool-call-icon' }, model.icon));
+  header.appendChild(el('span', { class: 'tool-call-name' }, model.title));
+  header.appendChild(el('span', { class: 'tool-call-dot', 'aria-hidden': 'true' }));
+  header.appendChild(el('span', { class: 'tool-call-summary' }, model.summary));
   header.appendChild(el('span', { class: 'tool-call-chevron' }, '▸'));
   card.appendChild(header);
 
   const body = el('div', { class: 'tool-call-body' });
-  if (m.args) {
-    body.appendChild(el('div', { class: 'tool-call-section-label' }, '参数'));
-    body.appendChild(el('pre', { class: 'tool-call-json' }, JSON.stringify(m.args, null, 2)));
+  if (model.body !== null) {
+    const inputSection = el('div', { class: 'tool-call-io' });
+    inputSection.appendChild(el('div', { class: 'tool-call-section-label' }, 'IN'));
+    inputSection.appendChild(el('pre', { class: 'tool-call-json' }, model.body));
+    body.appendChild(inputSection);
   }
-  if (m.result) {
-    body.appendChild(el('div', { class: 'tool-call-section-label' }, '结果'));
-    body.appendChild(el('pre', { class: 'tool-call-json' }, typeof m.result === 'string' ? m.result : JSON.stringify(m.result, null, 2)));
+  if (model.output !== null) {
+    const outputSection = el('div', { class: 'tool-call-io' });
+    outputSection.appendChild(el('div', { class: 'tool-call-section-label' }, 'OUT'));
+    outputSection.appendChild(el('pre', { class: 'tool-call-json tool-call-output' }, model.output));
+    body.appendChild(outputSection);
   }
   if (m.duration) {
     body.appendChild(el('div', { class: 'tool-call-duration' }, '耗时 ' + m.duration));
   }
   card.appendChild(body);
   return card;
+}
+
+function normalizeToolArgs(args) {
+  if (typeof args !== 'string' || !args) return args || {};
+  try { return JSON.parse(args); } catch (e) { return args; }
+}
+
+function toolRowModel(toolName, args, result, status) {
+  const lower = String(toolName).toLowerCase();
+  const variant = ['bash', 'pwsh'].some(function(name) { return lower.includes(name); }) ? 'bash'
+    : ['read', 'cat', 'open'].some(function(name) { return lower.includes(name); }) ? 'read'
+    : ['search', 'grep', 'glob', 'web_search'].some(function(name) { return lower.includes(name); }) ? 'search'
+    : ['write', 'edit'].some(function(name) { return lower.includes(name); }) ? 'edit'
+    : ['run_code', 'execute'].some(function(name) { return lower.includes(name); }) ? 'code' : 'others';
+  const titles = { bash: 'Bash', read: 'Read', search: 'Search', edit: 'Edit', code: 'Code', others: 'Tool call' };
+  const summaryKeys = {
+    bash: ['description', 'command'],
+    read: ['path', 'file_path', 'url'],
+    search: ['query', 'pattern', 'url'],
+    edit: ['path', 'file_path'],
+    code: ['description'],
+    others: []
+  };
+  const argsObject = (args && typeof args === 'object') ? args : {};
+  let summary = '';
+  for (const key of summaryKeys[variant] || []) {
+    if (typeof argsObject[key] === 'string' && argsObject[key]) { summary = firstTextLine(argsObject[key]); break; }
+  }
+  if (!summary) {
+    summary = Object.values(argsObject).find(function(value) { return typeof value === 'string' && value; }) || '';
+  }
+  if (!summary) summary = (args && typeof args === 'object') ? JSON.stringify(args) : String(args || toolName);
+  const output = result == null ? null : (typeof result === 'string' ? result : JSON.stringify(result, null, 2));
+  const state = status === 'error' ? 'error' : status === 'success' ? 'ok' : 'running';
+  return {
+    title: titles[variant] || 'Tool call',
+    icon: state === 'error' ? '⚠' : state === 'ok' ? '✓' : '⏳',
+    summary: state === 'error' && output ? firstTextLine(output) : firstTextLine(summary),
+    body: args == null ? null : ((args && typeof args === 'object') ? JSON.stringify(args, null, 2) : String(args)),
+    output: output,
+    state: state
+  };
+}
+
+function firstTextLine(text) {
+  const value = String(text || '');
+  const newline = value.indexOf('\n');
+  return newline === -1 ? value : value.slice(0, newline);
+}
+
+function formatElapsedDuration(seconds) {
+  const value = Number(seconds) || 0;
+  if (value < 60) return value.toFixed(1) + 's';
+  const totalSeconds = Math.floor(value);
+  const minutes = Math.floor(totalSeconds / 60);
+  const remainingSeconds = totalSeconds % 60;
+  return minutes + '分' + String(remainingSeconds).padStart(2, '0') + '秒';
+}
+
+function latestTextLine(text) {
+  const value = String(text || '').trimEnd();
+  const newline = value.lastIndexOf('\n');
+  return newline === -1 ? value : value.slice(newline + 1);
 }
 
 // ═══════════════════════════════════════════
@@ -1411,6 +1662,7 @@ async function loadHistoryMessages(sess) {
           return {
             role: m.role,
             content: m.content || '',
+            blocks: m.blocks,
             time: formatTime(m.occurredAt || new Date().toISOString()),
             streaming: false,
             meta: m.role === 'assistant' ? {
@@ -2144,6 +2396,115 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+function renderAssistantContent(message, streaming) {
+  if (Array.isArray(message.blocks) && message.blocks.length > 0) {
+    return message.blocks.map(function(block) {
+      if (block.kind === 'reasoning' && block.text) {
+        return '<details class="think-block"><summary class="think-block-header">'
+          + '<span class="think-block-icon">🧠</span> Think'
+          + '<span class="think-block-sep" aria-hidden="true"></span>'
+          + '<span class="think-block-summary">' + escapeHtml(firstTextLine(block.text)) + '</span>'
+          + '<span class="think-block-toggle">▸</span></summary>'
+          + '<div class="think-block-body">' + escapeHtml(block.text) + '</div></details>';
+      }
+      if (block.kind === 'text') return parseMessageContent(block.text, streaming, false);
+      return '';
+    }).join('');
+  }
+  if (message.reasoning) {
+    return '<details class="think-block streaming"'
+      + (streaming ? '' : ' open')
+      + '><summary class="think-block-header"><span class="think-block-icon">🧠</span> Think'
+      + '<span class="think-block-sep" aria-hidden="true"></span>'
+      + '<span class="think-block-summary">' + escapeHtml(latestTextLine(message.reasoning)) + '</span>'
+      + '<span class="think-block-toggle">▸</span></summary>'
+      + '<div class="think-block-body">' + escapeHtml(message.reasoning) + '</div></details>';
+  }
+  return parseMessageContent(message.content || '', streaming, message.role === 'user');
+}
+
+function streamTextLength(message) {
+  if (Array.isArray(message.blocks) && message.blocks.length > 0) {
+    return message.blocks
+      .filter(block => block.kind === 'text')
+      .reduce((total, block) => total + (block.text || '').length, 0);
+  }
+  return (message.content || '').length;
+}
+
+function visibleAssistantMessage(message, limit) {
+  if (limit == null) return message;
+  if (Array.isArray(message.blocks) && message.blocks.length > 0) {
+    let remaining = limit;
+    const blocks = message.blocks.map(block => {
+      if (block.kind !== 'text') return block;
+      const text = block.text || '';
+      const visible = text.slice(0, Math.max(0, remaining));
+      remaining -= text.length;
+      return { ...block, text: visible };
+    });
+    return { ...message, blocks };
+  }
+  return { ...message, content: (message.content || '').slice(0, Math.max(0, limit)) };
+}
+
+function startStreamReveal(message) {
+  message._targetLength = streamTextLength(message);
+  if (message._revealLength == null) message._revealLength = 0;
+  if (message._revealTimer) return;
+  message._revealTimer = setInterval(function() {
+    if (message._revealLength < message._targetLength) {
+      const pending = message._targetLength - message._revealLength;
+      const step = Math.max(4, Math.ceil(Math.max(pending / 16, message._targetLength / 320)));
+      message._revealLength = Math.min(message._targetLength, message._revealLength + step);
+      paintStreamingMessage(message);
+    } else if (!message.streaming) {
+      stopStreamReveal(message);
+      render();
+    }
+  }, 24);
+}
+
+function stopStreamReveal(message) {
+  if (message._revealTimer) {
+    clearInterval(message._revealTimer);
+    message._revealTimer = null;
+  }
+  message._revealLength = message._targetLength || streamTextLength(message);
+}
+
+function waitForStreamReveal(message) {
+  return new Promise(function(resolve) {
+    if (!message || (message._revealLength || 0) >= (message._targetLength || 0)) {
+      resolve();
+      return;
+    }
+    const poll = setInterval(function() {
+      if ((message._revealLength || 0) >= (message._targetLength || 0)) {
+        clearInterval(poll);
+        resolve();
+      }
+    }, 24);
+  });
+}
+
+function paintStreamingMessage(message) {
+  const msgs = $('.messages-inner');
+  if (!msgs) return;
+  const msgEls = msgs.querySelectorAll('.msg.assistant');
+  const lastEl = msgEls[msgEls.length - 1];
+  if (!lastEl) return;
+  const contentEl = lastEl.querySelector('.msg-content');
+  if (!contentEl) return;
+  const html = renderAssistantContent(visibleAssistantMessage(message, message._revealLength), true);
+  if (paintStreamingMessage._lastHtml === html) return;
+  paintStreamingMessage._lastHtml = html;
+  contentEl.innerHTML = html;
+  contentEl.appendChild(el('span', { class: 'streaming-cursor' }, '▋'));
+  const messagesContainer = $('.messages');
+  if (messagesContainer) messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
 // 将未闭合的 `**` 加粗标记转义为字面量，避免裸露显示。
 // 思路：marked 只在 `**` 成对闭合时渲染粗体；孤立（奇数）的 `**` 会原样显示。
 // 这里统计未转义 `**` 出现次数，把多余的（导致无法配对的）替换为 `\*\*`。
@@ -2154,7 +2515,7 @@ function neutralizeUnclosedBold(text) {
   const codeSpans = [];
   let stripped = text.replace(/(`{3}[\s\S]*?`{3}|`[^`\n]*`)/g, function(m) {
     codeSpans.push(m);
-    return ' CODE' + (codeSpans.length - 1) + ' ';
+    return '\u0000CODE' + (codeSpans.length - 1) + '\u0000';
   });
   const matches = stripped.match(/\*\*/g);
   if (!matches || matches.length % 2 === 0) return text; // 成对，正常
@@ -2164,7 +2525,7 @@ function neutralizeUnclosedBold(text) {
     stripped = stripped.slice(0, idx) + '\\*\\*' + stripped.slice(idx + 2);
   }
   // 还原代码段
-  stripped = stripped.replace(/ CODE(\d+) /g, function(_, i) { return codeSpans[+i]; });
+  stripped = stripped.replace(/\u0000CODE(\d+)\u0000/g, function(_, i) { return codeSpans[+i]; });
   return stripped;
 }
 
@@ -2199,6 +2560,48 @@ function renderStatsBar(sess) {
 function renderComposer(sess) {
   const composer = el('div', { class: 'composer' });
   const inner = el('div', { class: 'composer-inner' });
+  const approvalModes = [
+    {
+      value: 'REQUEST_APPROVAL',
+      label: '请求审批',
+      desc: '工具执行前会请求审批，敏感操作需要手动允许。',
+    },
+    {
+      value: 'AUTO_APPROVE',
+      label: '帮我审批',
+      desc: '自动允许普通工具调用，请确认当前会话可信任。',
+    },
+    {
+      value: 'FULL_OPEN',
+      label: '完全开放',
+      desc: '将允许读写、命令与网络等全部操作。',
+    },
+  ];
+  const currentApprovalMode = (sess && sess.approvalMode) || 'REQUEST_APPROVAL';
+  const currentApprovalModeInfo = approvalModes.find(function(mode) {
+    return mode.value === currentApprovalMode;
+  }) || approvalModes[0];
+
+  const approvalInline = el('div', {
+    class: 'composer-approval-selector',
+    title: '允许本地对话授权 · ' + currentApprovalModeInfo.desc
+  });
+  const approvalSelect = el('select', {
+    'aria-label': '审批模式',
+    onchange: function(e) {
+      if (!sess) return;
+      sess.approvalMode = e.target.value;
+      const modeInfo = approvalModes.find(function(mode) { return mode.value === sess.approvalMode; });
+      approvalInline.title = modeInfo ? modeInfo.desc : '';
+    }
+  });
+  approvalModes.forEach(function(mode) {
+    approvalSelect.appendChild(el('option', {
+      value: mode.value,
+      selected: mode.value === currentApprovalMode
+    }, mode.label));
+  });
+  approvalInline.appendChild(approvalSelect);
 
   const box = el('div', { class: 'composer-box' });
 
@@ -2255,25 +2658,7 @@ function renderComposer(sess) {
     document.body.removeChild(fileInput);
   }, title: '添加图片' }, '+');
   left.appendChild(attachBtn);
-
-  const approvalModes = [
-    { value: 'REQUEST_APPROVAL', label: '请求审批' },
-    { value: 'AUTO_APPROVE', label: '帮我审批' },
-    { value: 'FULL_OPEN', label: '完全开放' },
-  ];
-  const approvalSelector = el('div', { class: 'composer-approval-selector', title: '运行审批模式' });
-  approvalSelector.appendChild(el('span', null, '🛡️'));
-  const approvalSelect = el('select', {
-    onchange: function(e) { if (sess) sess.approvalMode = e.target.value; }
-  });
-  approvalModes.forEach(function(mode) {
-    approvalSelect.appendChild(el('option', {
-      value: mode.value,
-      selected: mode.value === ((sess && sess.approvalMode) || 'REQUEST_APPROVAL')
-    }, mode.label));
-  });
-  approvalSelector.appendChild(approvalSelect);
-  left.appendChild(approvalSelector);
+  left.appendChild(approvalInline);
 
   toolbar.appendChild(left);
 
@@ -2946,12 +3331,11 @@ function startWaitTimer(sess) {
   sess.waitTimer = setInterval(function() {
     const el = $('#wait-text');
     if (el && sess.waitStartTime) {
-      const elapsed = ((Date.now() - sess.waitStartTime) / 1000).toFixed(1);
-      if (parseFloat(elapsed) > 15) {
-        el.textContent = '正在思考… ' + elapsed + 's（模型响应较慢，请稍候）';
-      } else {
-        el.textContent = '正在思考… ' + elapsed + 's';
-      }
+      const elapsedSeconds = (Date.now() - sess.waitStartTime) / 1000;
+      const elapsed = formatElapsedDuration(elapsedSeconds);
+      el.textContent = elapsedSeconds > 15
+        ? '正在思考… ' + elapsed + '（模型响应较慢，请稍候）'
+        : '正在思考… ' + elapsed;
     }
   }, 100);
 }
@@ -3029,11 +3413,13 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
             const data = JSON.parse(dataStr);
 
             if (eventType === 'meta') {
+              sess.currentStage = '连接模型';
               // v28: 轨迹日志 — 记录请求参数
               trajPush(sess, 'system', '请求: model=' + (state.currentModel || DEFAULT_MODEL) + ', agentId=' + (data.agentId || sess.agentId) + (state.currentWorkspace ? ', workspace=' + state.currentWorkspace : ''), {});
             } else if (eventType === 'chunk') {
               receivedChunks = true;
               stopWaitTimer(sess);
+              sess.currentStage = '生成回复';
               if (firstChunkTime === null) firstChunkTime = Date.now();
               var deltaText = data.content || '';
               // 向后兼容旧的字符串标记方式（\u0001TOOL_CALL:xxx\u0001）
@@ -3046,15 +3432,38 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
               } else {
                 fullContent += deltaText;
                 assistantMsg.content = fullContent;
+                if (assistantMsg.blocks && assistantMsg.blocks.length > 0) {
+                  var textBlock = assistantMsg.blocks[assistantMsg.blocks.length - 1];
+                  if (textBlock.kind !== 'text') {
+                    textBlock = { kind: 'text', text: '' };
+                    assistantMsg.blocks.push(textBlock);
+                  }
+                  textBlock.text = fullContent;
+                }
                 if (state.currentSessionId === sess.agentId) {
                   updateStreamingMessage(assistantMsg);
                 }
               }
+            } else if (eventType === 'reasoning') {
+              receivedChunks = true;
+              stopWaitTimer(sess);
+              sess.currentStage = '思考中';
+              const reasoningText = data.content || '';
+              assistantMsg.reasoning = (assistantMsg.reasoning || '') + reasoningText;
+              if (!assistantMsg.blocks) assistantMsg.blocks = [];
+              var reasoningBlock = assistantMsg.blocks[assistantMsg.blocks.length - 1];
+              if (!reasoningBlock || reasoningBlock.kind !== 'reasoning') {
+                reasoningBlock = { kind: 'reasoning', text: '' };
+                assistantMsg.blocks.push(reasoningBlock);
+              }
+              reasoningBlock.text = assistantMsg.reasoning;
+              if (state.currentSessionId === sess.agentId) updateStreamingMessage(assistantMsg);
             } else if (eventType === 'step_break') {
               // 工具调用事件（独立 SSE 事件）。
               // 完成当前 assistant 消息 → 插入工具卡片 → 创建新的 streaming 消息
               receivedChunks = true;
               stopWaitTimer(sess);
+              sess.currentStage = '执行工具 · ' + (data.toolName || 'unknown');
               if (firstChunkTime === null) firstChunkTime = Date.now();
               // v29: 轨迹 — 记录刚结束的中间 assistant 步骤文本
               if (fullContent) {
@@ -3086,9 +3495,27 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
               updateStreamingMessage._lastHtml = null;
               updateStreamingMessage._lastTime = null;
               if (state.currentSessionId === sess.agentId) render();
+            } else if (eventType === 'tool_result') {
+              receivedChunks = true;
+              stopWaitTimer(sess);
+              const toolMsg = sess.messages.find(function(m) {
+                return m.role === 'tool' && (m.callId || '') === (data.callId || '');
+              });
+              if (toolMsg) {
+                toolMsg.expanded = false;
+                toolMsg.result = data.result;
+                toolMsg.status = data.status || 'success';
+                toolMsg.duration = data.durationMs != null
+                  ? (data.durationMs / 1000).toFixed(1) + 's'
+                  : toolMsg.duration;
+              }
+              sess.currentStage = (data.status === 'error' ? '工具失败 · ' : '工具完成 · ')
+                + (data.toolName || 'unknown');
+              if (state.currentSessionId === sess.agentId) render();
             } else if (eventType === 'done') {
               receivedChunks = true;
               stopWaitTimer(sess);
+              sess.currentStage = null;
               // done 事件：优先用 extractAssistantTextFromDone 提取，若为空则保留 chunk 累积的内容
               const extracted = extractAssistantTextFromDone(data);
               if (extracted) fullContent = extracted;
@@ -3115,6 +3542,7 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
               const firstToken = firstChunkTime ? firstChunkTime - startTime : 0;
 
               assistantMsg.streaming = false;
+              stopStreamReveal(assistantMsg);
               assistantMsg.meta = {
                 time: new Date().toISOString(),
                 duration: (duration / 1000).toFixed(1) + 's',
@@ -3186,9 +3614,10 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
                     }
                     assistantCount++;
                     var isLast = di === data.messages.length - 1;
-                    rebuilt.push({
+                    var assistantModel = {
                       role: 'assistant',
                       content: aText,
+                      blocks: dm.blocks,
                       streaming: false,
                       // 每个 step 用自己的 meta：只把最后一条设完整 meta，
                       // 其他条至少有 time 字段保证渲染可见。
@@ -3199,7 +3628,11 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
                         tokens: estimateTokens(aText),
                       },
                       time: formatTime(new Date().toISOString()),
-                    });
+                    };
+                    if (!Array.isArray(assistantModel.blocks) || assistantModel.blocks.length === 0) {
+                      assistantModel.blocks = aText ? [{ kind: 'text', text: aText }] : [];
+                    }
+                    rebuilt.push(assistantModel);
                   } else if (dm.role === 'tool') {
                     rebuilt.push({
                       role: 'tool',
@@ -3223,6 +3656,7 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
                 sess.messages = rebuilt;
               } else {
                 assistantMsg.streaming = false;
+                stopStreamReveal(assistantMsg);
               }
 
               if (state.currentSessionId === sess.agentId) {
@@ -3322,6 +3756,7 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
       stopWaitTimer(sess);
       const endTime = Date.now();
       assistantMsg.streaming = false;
+      await waitForStreamReveal(assistantMsg);
       assistantMsg.meta = {
         time: new Date().toISOString(),
         duration: ((endTime - startTime) / 1000).toFixed(1) + 's',
@@ -3348,6 +3783,7 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
         return sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime, fullContent, retryCount + 1);
       }
       assistantMsg.streaming = false;
+      await waitForStreamReveal(assistantMsg);
       assistantMsg.meta = {
         time: new Date().toISOString(),
         duration: ((Date.now() - startTime) / 1000).toFixed(1) + 's',
@@ -3364,6 +3800,7 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
         sess.messages = sess.messages.filter(function(m) { return m !== assistantMsg; });
       } else {
         assistantMsg.streaming = false;
+        await waitForStreamReveal(assistantMsg);
       }
     }
     sess.sending = false;
@@ -3499,36 +3936,7 @@ function sleep(ms) { return new Promise(function(resolve) { setTimeout(resolve, 
 
 // ── 流式更新 ───────────────────────────────
 function updateStreamingMessage(msg) {
-  const msgs = $('.messages-inner');
-  if (!msgs) return;
-  const msgEls = msgs.querySelectorAll('.msg.assistant');
-  const lastEl = msgEls[msgEls.length - 1];
-  if (!lastEl) return;
-  const bubble = lastEl.querySelector('.msg-bubble');
-  if (!bubble) return;
-  const contentEl = bubble.querySelector('.msg-content');
-  if (contentEl) {
-    const now = Date.now();
-    if (!updateStreamingMessage._lastTime || now - updateStreamingMessage._lastTime > 60) {
-      updateStreamingMessage._lastTime = now;
-      // P1: 只在内容实际变化时更新 DOM，避免闪烁
-      const newText = msg.content || '';
-      if (updateStreamingMessage._lastHtml !== newText) {
-        updateStreamingMessage._lastHtml = newText;
-        // P2: 流式阶段也走 markdown 渲染，避免 ** / ` / 列表符 以纯文本形式露出。
-        // 注意 streaming=true 时 parseMessageContent 对 <50 字符的极短内容仍走 textContent 兜底，
-        // 避免 marked 在 markdown 标记未完成时（如 `**foo` 还没闭合）闪烁。
-        try {
-          contentEl.innerHTML = parseMessageContent(newText, true, false);
-        } catch (e) {
-          contentEl.textContent = newText;
-        }
-        contentEl.appendChild(el('span', { class: 'streaming-cursor' }, '▋'));
-      }
-    }
-  }
-  const messagesContainer = $('.messages');
-  if (messagesContainer) messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  startStreamReveal(msg);
 }
 
 function extractAssistantTextFromDone(data) {
@@ -3638,18 +4046,37 @@ async function loadPlugins() {
 // v11: 加载审批列表
 async function loadPendingApprovals() {
   try {
-    const data = await apiRequest(APPROVAL_API + '/runtime/pending');
+      const data = await apiRequest(APPROVAL_API + '/runtime/pending');
       state.pendingApprovals = Array.isArray(data) ? data : [];
+      const current = getCurrentSession();
+      const pending = state.pendingApprovals.find(function(item) {
+        return current && (item.sessionId || '') === (current.sessionId || current.agentId);
+      });
+      if (current) {
+        current.currentStage = pending
+          ? '等待审批 · ' + (pending.toolName || 'unknown')
+          : current.currentStage;
+      }
+      if (pending && current && state.currentSessionId === current.agentId) render();
   } catch (e) { /* ignore */ }
 }
 
 // v11: 加载会话历史 — P1: 恢复会话列表
 async function loadSessionHistory() {
   try {
-    const data = await apiRequest(CONSOLE_API + '/sessions');
-      state.sessionHistory = Array.isArray(data) ? data : [];
+    const limit = state.sessionHistoryLimit || 20;
+    const offset = state.sessionHistory.length;
+    const data = await apiRequest(CONSOLE_API + '/sessions?limit=' + limit + '&offset=' + offset);
+      const page = Array.isArray(data) ? data : [];
+      const known = new Set(state.sessionHistory.map(function(item) {
+        return item.sessionId || item.agentId;
+      }));
+      state.sessionHistory = state.sessionHistory.concat(page.filter(function(item) {
+        return !known.has(item.sessionId || item.agentId);
+      }));
+      state.hasMoreSessions = page.length === limit;
       // P1: 将历史会话恢复到 state.sessions 中
-      for (const hist of state.sessionHistory) {
+      for (const hist of page) {
         // 避免重复添加已存在的会话
         const existing = state.sessions.find(s => s.agentId === hist.agentId || s.agentId === hist.sessionId);
         if (!existing) {
@@ -3669,11 +4096,24 @@ async function loadSessionHistory() {
   } catch (e) { /* ignore */ }
 }
 
+async function loadMoreSessions() {
+  if (state.loadingMoreSessions) return;
+  state.loadingMoreSessions = true;
+  state.sidebarSessionLimit += 10;
+  render();
+  if (state.hasMoreSessions) {
+    await loadSessionHistory();
+  }
+  state.loadingMoreSessions = false;
+  render();
+}
+
 // ── 初始化 ─────────────────────────────────
 // 全局键盘快捷键
 document.addEventListener('keydown', function(e) {
   // Esc 关闭模态框
   if (e.key === 'Escape') {
+    closeSessionMenu();
     const overlay = $('.modal-overlay');
     if (overlay) { overlay.remove(); return; }
     const slash = $('#slash-suggestions');
