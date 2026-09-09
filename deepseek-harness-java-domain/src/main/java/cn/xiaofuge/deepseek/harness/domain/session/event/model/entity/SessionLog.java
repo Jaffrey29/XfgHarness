@@ -84,21 +84,27 @@ public class SessionLog {
      * @return 携带正确 seq 的已追加事件
      */
     public synchronized SessionEvent append(SessionEvent event) {
-        SessionEvent withSeq = reassignSeq(event, nextSeq);
-        events.add(withSeq);
-        nextSeq++;
-        return withSeq;
+        return appendInternal(event);
     }
 
     /**
      * 批量追加事件，并按顺序分配序列号。
+     * <p>注意：内部走 {@link #appendInternal} 而非 {@link #append}，避免子类覆写 append
+     * 后批量追加触发重复副作用（如持久化镜像被写入两次）。</p>
      */
     public synchronized List<SessionEvent> appendBatch(List<SessionEvent> batch) {
         List<SessionEvent> result = new ArrayList<>(batch.size());
         for (SessionEvent e : batch) {
-            result.add(append(e));
+            result.add(appendInternal(e));
         }
         return result;
+    }
+
+    private SessionEvent appendInternal(SessionEvent event) {
+        SessionEvent withSeq = reassignSeq(event, nextSeq);
+        events.add(withSeq);
+        nextSeq++;
+        return withSeq;
     }
 
     /**

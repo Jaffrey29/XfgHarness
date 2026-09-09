@@ -3534,7 +3534,7 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
               if (fullContent) assistantMsg.content = fullContent;
               const finishTime = Date.now();
               const finishDuration = finishTime - startTime;
-              const finishFirstToken = firstChunkTime ? finishTime - startTime : 0;
+              const finishFirstToken = firstChunkTime ? firstChunkTime - startTime : 0;
               assistantMsg.meta = {
                 time: new Date().toISOString(),
                 duration: (finishDuration / 1000).toFixed(1) + 's',

@@ -182,7 +182,8 @@ public class InMemoryLlmRuntimePort implements ILlmRuntimePort {
     }
     /**
      * 对流式模型调用执行重试。
-     * <p>流程：发起流式请求 → 捕获可重试错误 → 按退避策略重建流。</p>
+     * <p>流程：发起流式请求 → chunk 实时桥接转发给下游 → 仅在未吐出任何内容时发生可重试错误才按退避策略重建流。</p>
+     * <p>注意：一旦已向下方转发过任何内容 chunk，失败后不再重试（重试会产生重复内容），直接透传错误终态。</p>
      */
     private Flow.Publisher<StreamChunk> retryingStream(
             LlmAdapter adapter,
@@ -213,11 +214,13 @@ public class InMemoryLlmRuntimePort implements ILlmRuntimePort {
 
         while (true) {
             attempt.incrementAndGet();
-            AttemptResult result = awaitAttempt(adapter.stream(options));
+            // 桥接式实时转发：内容 chunk 立即透传给下游，只截留终态 Finish 块用于重试判定
+            AttemptOutcome outcome = forwardAttempt(adapter.stream(options), wrapper);
 
-            if (result.completed() && isRetryable(result.failure(), policy)) {
+            // 仅在「尚未吐出任何内容」时发生可重试错误，才安全重建流
+            if (outcome.completed() && !outcome.forwardedAny() && isRetryable(outcome.failure(), policy)) {
                 if (attempt.get() > attemptCount) {
-                    LlmFailure exhausted = withRetryCount(result.failure(), attempt.get() - 1);
+                    LlmFailure exhausted = withRetryCount(outcome.failure(), attempt.get() - 1);
                     wrapper.submit(new StreamChunk.Finish(new FinishReason.Error(exhausted)));
                     wrapper.close();
                     return;
@@ -228,19 +231,22 @@ public class InMemoryLlmRuntimePort implements ILlmRuntimePort {
                 wrapper.submit(new StreamChunk.Retry(
                         attempt.get(),
                         maxAttempts,
-                        result.failure() == null ? "model request failed" : result.failure().message()
+                        outcome.failure() == null ? "model request failed" : outcome.failure().message()
                 ));
-                if (!sleep(retryDelayMs(policy, attempt.get(), result.failure()))) {
+                if (!sleep(retryDelayMs(policy, attempt.get(), outcome.failure()))) {
                     wrapper.close();
                     return;
                 }
                 continue;
             }
 
-            result.chunks().forEach(wrapper::submit);
-            if (result.error() != null) {
-                log.error("LLM stream error for provider={}", options.provider(), result.error());
-                wrapper.closeExceptionally(result.error());
+            // 终态：补发被截留的 Finish 块（若有），然后关闭流
+            if (outcome.finishChunk() != null) {
+                wrapper.submit(outcome.finishChunk());
+            }
+            if (outcome.error() != null) {
+                log.error("LLM stream error for provider={}", options.provider(), outcome.error());
+                wrapper.closeExceptionally(outcome.error());
             } else {
                 wrapper.close();
             }
@@ -249,16 +255,23 @@ public class InMemoryLlmRuntimePort implements ILlmRuntimePort {
     }
 
     /**
-     * 处理await Attempt。
-     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
-     * @param publisher publisher参数。
-     * @return 方法执行结果。
+     * 执行单次流式尝试，桥接式实时转发。
+     * <p>流程：订阅适配器流 → 内容 chunk 立即转发给 wrapper → 终态 Finish 块截留 → 等待流结束。</p>
+     * <p>截留 Finish 的原因：若本次尝试在未吐出任何内容时以可重试错误结束，
+     * 该错误结束块不应发给下游，由重试逻辑决定后续动作。</p>
+     *
+     * @param publisher 适配器流
+     * @param wrapper 对外发布的包装流
+     * @return 单次尝试结果
      */
-    private AttemptResult awaitAttempt(Flow.Publisher<StreamChunk> publisher) {
+    private AttemptOutcome forwardAttempt(
+            Flow.Publisher<StreamChunk> publisher,
+            SubmissionPublisher<StreamChunk> wrapper
+    ) {
         java.util.concurrent.CountDownLatch done = new java.util.concurrent.CountDownLatch(1);
-        java.util.List<StreamChunk> chunks = java.util.Collections.synchronizedList(new ArrayList<>());
+        java.util.concurrent.atomic.AtomicBoolean forwardedAny = new java.util.concurrent.atomic.AtomicBoolean();
         java.util.concurrent.atomic.AtomicReference<Throwable> error = new java.util.concurrent.atomic.AtomicReference<>();
-        java.util.concurrent.atomic.AtomicReference<FinishReason> finish = new java.util.concurrent.atomic.AtomicReference<>();
+        java.util.concurrent.atomic.AtomicReference<StreamChunk.Finish> finishChunk = new java.util.concurrent.atomic.AtomicReference<>();
 
         publisher.subscribe(new Flow.Subscriber<>() {
             @Override public void onSubscribe(Flow.Subscription subscription) {
@@ -266,10 +279,13 @@ public class InMemoryLlmRuntimePort implements ILlmRuntimePort {
             }
 
             @Override public void onNext(StreamChunk item) {
-                chunks.add(item);
-                if (item instanceof StreamChunk.Finish finishChunk) {
-                    finish.set(finishChunk.reason());
+                if (item instanceof StreamChunk.Finish terminal) {
+                    // 截留终态块，待重试判定后再决定是否补发
+                    finishChunk.set(terminal);
+                    return;
                 }
+                forwardedAny.set(true);
+                wrapper.submit(item);
             }
             /**
              * on Error。
@@ -285,6 +301,7 @@ public class InMemoryLlmRuntimePort implements ILlmRuntimePort {
             /**
              * on Complete。
              * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
+             * @return 方法执行结果。
              */
 
 
@@ -299,11 +316,12 @@ public class InMemoryLlmRuntimePort implements ILlmRuntimePort {
             Thread.currentThread().interrupt();
             error.set(exception);
         }
-        FinishReason terminalFinish = finish.get();
+        StreamChunk.Finish terminal = finishChunk.get();
+        FinishReason terminalFinish = terminal == null ? null : terminal.reason();
         LlmFailure failure = terminalFinish instanceof FinishReason.Error errorFinish
                 ? errorFinish.failure()
                 : null;
-        return new AttemptResult(chunks, error.get(), failure, terminalFinish != null);
+        return new AttemptOutcome(forwardedAny.get(), error.get(), failure, terminalFinish != null, terminal);
     }
 
     /**
@@ -374,12 +392,19 @@ public class InMemoryLlmRuntimePort implements ILlmRuntimePort {
     }
 
     /**
-     * AttemptResult 是基础设施适配器，负责外部资源与领域端口对接。
+     * 单次流式尝试的结果。
+     *
+     * @param forwardedAny 是否已向下游转发过内容 chunk（已转发则不可安全重试）
+     * @param error 流式过程中的异常
+     * @param failure 终态 Finish 中携带的失败信息
+     * @param completed 是否收到了终态 Finish 块
+     * @param finishChunk 被截留的终态 Finish 块（不重试时需补发给下游）
      */
-    private record AttemptResult(
-            List<StreamChunk> chunks,
+    private record AttemptOutcome(
+            boolean forwardedAny,
             Throwable error,
             LlmFailure failure,
-            boolean completed
+            boolean completed,
+            StreamChunk.Finish finishChunk
     ) {}
 }

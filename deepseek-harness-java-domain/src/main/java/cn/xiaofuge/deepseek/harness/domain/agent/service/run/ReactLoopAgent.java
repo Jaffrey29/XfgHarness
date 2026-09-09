@@ -515,9 +515,14 @@ public class ReactLoopAgent implements AgentRun {
         long stepStart = System.currentTimeMillis();
         try {
             // 1. 组装系统提示词
+            long assembleStart = System.currentTimeMillis();
             SystemPromptAssembler.PromptAssembly assembly = systemPromptAssembler
                     .assemble(id, options, cwd, resolveToolSchemas())
                     .join();
+            long assembleMs = System.currentTimeMillis() - assembleStart;
+            if (assembleMs > 500) {
+                log.info("[step] Agent={} Turn#{} Step#{} 系统提示词组装耗时={}ms", id, turn, step, assembleMs);
+            }
 
             // 2. 构建请求参数
             GenerateOptions generateOptions = buildRequest(assembly, turn, step);
@@ -630,9 +635,9 @@ public class ReactLoopAgent implements AgentRun {
                 }
             }
 
-            // 将 chunk 事件追加到 session log
-            for (SessionEvent chunkEvent : chunkEvents) {
-                session.append(chunkEvent);
+            // 将 chunk 事件批量追加到 session log（避免逐条同步 JDBC 写入放大延迟）
+            if (!chunkEvents.isEmpty()) {
+                session.appendBatch(chunkEvents);
             }
 
             if (aborted.get()) {
