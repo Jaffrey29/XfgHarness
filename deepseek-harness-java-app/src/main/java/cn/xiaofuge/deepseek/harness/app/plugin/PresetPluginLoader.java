@@ -6,10 +6,12 @@ import cn.xiaofuge.deepseek.harness.api.dto.InstallPluginRequestDTO;
 import cn.xiaofuge.deepseek.harness.api.dto.RunPluginRequestDTO;
 import cn.xiaofuge.deepseek.harness.api.dto.RunPluginResponseDTO;
 import cn.xiaofuge.deepseek.harness.domain.plugin.IPluginRegistryService;
+import cn.xiaofuge.deepseek.harness.domain.plugin.registry.adapter.repository.IHarnessPluginRepository;
 import cn.xiaofuge.deepseek.harness.domain.plugin.registry.model.entity.HarnessPluginEntity;
 import cn.xiaofuge.deepseek.harness.domain.plugin.registry.model.valobj.PluginInstallStatusEnumVO;
 import cn.xiaofuge.deepseek.harness.infrastructure.config.HarnessExtensionsProperties;
 import java.util.Optional;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationRunner;
@@ -35,6 +37,7 @@ public class PresetPluginLoader implements ApplicationRunner {
     private final IInstallHarnessPluginCase installCase;
     private final IRunHarnessPluginCase runCase;
     private final IPluginRegistryService pluginRegistryService;
+    private final IHarnessPluginRepository pluginRepository;
 
     /**
      * 初始化预置插件加载器。
@@ -44,12 +47,14 @@ public class PresetPluginLoader implements ApplicationRunner {
             HarnessExtensionsProperties properties,
             IInstallHarnessPluginCase installCase,
             IRunHarnessPluginCase runCase,
-            IPluginRegistryService pluginRegistryService
+            IPluginRegistryService pluginRegistryService,
+            IHarnessPluginRepository pluginRepository
     ) {
         this.properties = properties;
         this.installCase = installCase;
         this.runCase = runCase;
         this.pluginRegistryService = pluginRegistryService;
+        this.pluginRepository = pluginRepository;
     }
 
     /**
@@ -57,6 +62,12 @@ public class PresetPluginLoader implements ApplicationRunner {
      */
     @Override
     public void run(org.springframework.boot.ApplicationArguments args) {
+        Set<String> presetPluginIds = properties.getPlugins().getPreset() == null
+                ? Set.of()
+                : properties.getPlugins().getPreset().stream()
+                        .map(HarnessExtensionsProperties.PresetPlugin::getPluginId)
+                        .collect(java.util.stream.Collectors.toSet());
+        restoreActivePlugins(presetPluginIds);
         if (properties.getPlugins().getPreset() == null || properties.getPlugins().getPreset().isEmpty()) {
             return;
         }
@@ -103,5 +114,34 @@ public class PresetPluginLoader implements ApplicationRunner {
         } else {
             log.warn("Preset plugin '{}' failed to restore: {}", preset.getPluginId(), result.message());
         }
+    }
+
+    /**
+     * 恢复登记状态为 ACTIVE 但运行时未运行的插件。
+     * <p>插件登记状态与进程内运行状态是两个概念；宿主重启后进程状态自然丢失。
+     * 这里按登记状态恢复，保证已安装的商城插件在重启后仍会注册工具和提示词。
+     *
+     * @param presetPluginIds 预置插件 ID，这些插件由下方 preset 流程处理。
+     */
+    private void restoreActivePlugins(Set<String> presetPluginIds) {
+        pluginRepository.listAll().stream()
+                .filter(plugin -> plugin.getStatus() == PluginInstallStatusEnumVO.ACTIVE)
+                .filter(plugin -> !presetPluginIds.contains(plugin.getPluginId()))
+                .forEach(plugin -> {
+                    try {
+                        RunPluginResponseDTO result = runCase.execute(
+                                new RunPluginRequestDTO(plugin.getPluginId()));
+                        if (result.running()) {
+                            log.info("Active plugin '{}' restored: {}",
+                                    plugin.getPluginId(), result.message());
+                        } else {
+                            log.warn("Active plugin '{}' failed to restore: {}",
+                                    plugin.getPluginId(), result.message());
+                        }
+                    } catch (Exception e) {
+                        log.warn("Active plugin '{}' restore skipped: {}",
+                                plugin.getPluginId(), e.getMessage());
+                    }
+                });
     }
 }

@@ -96,6 +96,13 @@ public class JavaPluginRuntimeManager {
     public synchronized JavaPluginStartResult start(String pluginId, Path jarPath) {
         RunningJavaPlugin existing = runningPlugins.get(pluginId);
         if (existing != null) {
+            try {
+                existing.context().close();
+            } catch (Exception e) {
+                log.warn("[plugin] Agent={} stale registration rollback failed: {}", pluginId, e.getMessage(), e);
+            }
+            runningPlugins.remove(pluginId);
+            hookRegistry.unregisterAll(pluginId);
             return new JavaPluginStartResult(pluginId, true, "java plugin already running",
                     existing.manifest.name(), existing.manifest.version(), existing.startedAt);
         }

@@ -52,6 +52,16 @@ CREATE TABLE IF NOT EXISTS harness_plugin_runtime_binding (
     CONSTRAINT fk_harness_plugin_runtime_binding_plugin FOREIGN KEY (plugin_id) REFERENCES harness_plugin_installation(plugin_id)
 );
 
+CREATE TABLE IF NOT EXISTS harness_plugin_config (
+    plugin_id VARCHAR(128) NOT NULL,
+    config_key VARCHAR(128) NOT NULL,
+    config_value TEXT NULL,
+    config_layer VARCHAR(32) NOT NULL,
+    updated_at TIMESTAMP(3) NOT NULL,
+    PRIMARY KEY (plugin_id, config_key, config_layer),
+    CONSTRAINT fk_harness_plugin_config_plugin FOREIGN KEY (plugin_id) REFERENCES harness_plugin_installation(plugin_id)
+);
+
 CREATE TABLE IF NOT EXISTS harness_model_setting (
     profile_code VARCHAR(64) PRIMARY KEY,
     provider_code VARCHAR(64) NOT NULL,

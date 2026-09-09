@@ -6,7 +6,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import org.springframework.stereotype.Component;
 
 /**
  * 基于内存的插件配置存储实现。
@@ -14,7 +13,6 @@ import org.springframework.stereotype.Component;
  * 该实现适合单实例运行时；重启后运行时覆盖值会丢失，持久化需要替换适配器实现。
  * <p>数据示例：defaults.region="cn"，overrides.region="eu"，getAll 返回 region=eu。
  */
-@Component
 public final class InMemoryPluginConfigStore implements PluginConfigStore {
 
     private final Map<String, Map<String, String>> overrides = new ConcurrentHashMap<>();

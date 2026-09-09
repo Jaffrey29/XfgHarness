@@ -169,6 +169,8 @@ const state = {
   activeMainTab: 'chat',
   activeSettingsTab: 'models',
   plugins: [],
+  pluginConfigs: {},
+  selectedPluginId: null,
   // v11: 审批队列
   pendingApprovals: [],
   // v11: 侧边面板
@@ -412,7 +414,7 @@ function toggleTheme() {
 function render() {
   const root = $('#app') || document.body;
   root.innerHTML = '';
-  root.appendChild(renderLayout());
+  root.appendChild(state.activeMainTab === 'settings' ? renderSettingsPage() : renderLayout());
 }
 
 function renderLayout() {
@@ -447,7 +449,7 @@ function renderSidebar() {
   wsRound.appendChild(icon('folder'));
   wsRound.appendChild(el('span', { class: 'c-tooltip' }, workspaceName));
   collapsedBar.appendChild(wsRound);
-  const settingsRound = el('button', { class: 'c-btn', onclick: openSettingsModal, title: '设置' });
+  const settingsRound = el('button', { class: 'c-btn', onclick: function() { openSettingsPage(); }, title: '设置' });
   settingsRound.appendChild(icon('settings'));
   settingsRound.appendChild(el('span', { class: 'c-tooltip' }, '设置'));
   collapsedBar.appendChild(settingsRound);
@@ -491,7 +493,7 @@ function renderSidebar() {
   });
   pickBtn.appendChild(icon('search'));
   wsToolbar.appendChild(pickBtn);
-  const filterBtn = el('button', { class: 'workspace-action-btn', title: '设置', onclick: openSettingsModal });
+  const filterBtn = el('button', { class: 'workspace-action-btn', title: '设置', onclick: function() { openSettingsPage(); } });
   filterBtn.appendChild(icon('sliders'));
   wsToolbar.appendChild(filterBtn);
   const clearBtn = el('button', {
@@ -611,7 +613,7 @@ function renderSidebar() {
   expandSection.appendChild(sessionList);
 
   const footer = el('div', { class: 'sidebar-footer' });
-  const settingsBtn = el('button', { class: 'sidebar-settings-link', onclick: openSettingsModal, title: '设置' });
+  const settingsBtn = el('button', { class: 'sidebar-settings-link', onclick: function() { openSettingsPage(); }, title: '设置' });
   settingsBtn.appendChild(icon('settings', 'sidebar-settings-icon'));
   settingsBtn.appendChild(el('span', null, '设置'));
   footer.appendChild(settingsBtn);
@@ -2780,92 +2782,106 @@ function renderContextUsageRing(sess) {
   return wrap;
 }
 
-// ── 设置弹窗 ───────────────────────────────
-function openSettingsModal() {
-  const existing = $('.modal-overlay');
-  if (existing) existing.remove();
+// ── 设置工作台 ─────────────────────────────
+function openSettingsPage() {
+  if (arguments.length > 0 && typeof arguments[0] === 'string') state.activeSettingsTab = arguments[0];
+  state.activeMainTab = 'settings';
+  state.activeSettingsTab = state.activeSettingsTab || 'models';
+  render();
+}
 
-  const overlay = el('div', { class: 'modal-overlay', onclick: function(e) { if (e.target === overlay) overlay.remove(); } });
-  const modal = el('div', { class: 'modal' });
-
-  const header = el('div', { class: 'modal-header' });
-  header.appendChild(el('div', { class: 'modal-title' }, '设置'));
-  const tabs = el('div', { class: 'modal-tabs' });
+function renderSettingsPage() {
+  const page = el('div', { class: 'settings-app' });
+  const nav = el('aside', { class: 'settings-nav' });
+  const brand = el('div', { class: 'settings-brand' });
+  brand.appendChild(icon('brand', 'settings-brand-icon'));
+  brand.appendChild(el('div', null, el('span', { class: 'settings-brand-name' }, 'Harness'),
+    el('span', { class: 'settings-brand-caption' }, '设置')));
+  nav.appendChild(brand);
+  const navGroups = el('div', { class: 'settings-nav-groups' });
   const tabConfigs = [
-    { id: 'models', label: '模型' },
-    { id: 'plugins', label: '插件' },
-    { id: 'presets', label: '预设' },
-    { id: 'permissions', label: '权限' },
+    { id: 'models', label: '模型配置', desc: '接入、默认模型与 API' },
+    { id: 'plugins', label: '插件管理', desc: '安装、启停与参数配置' },
+    { id: 'presets', label: '预设', desc: '会话默认行为' },
+    { id: 'permissions', label: '权限', desc: '工具审批边界' },
   ];
-  for (const t of tabConfigs) {
-    tabs.appendChild(el('button', {
-      class: 'modal-tab' + (state.activeSettingsTab === t.id ? ' active' : ''),
-      onclick: function() { state.activeSettingsTab = t.id; openSettingsModal(); }
-    }, t.label));
+  for (const item of tabConfigs) {
+    const active = state.activeSettingsTab === item.id;
+    navGroups.appendChild(el('button', {
+      class: 'settings-nav-item' + (active ? ' active' : ''),
+      onclick: function() { openSettingsPage(item.id); }
+    },
+      el('span', { class: 'settings-nav-label' }, item.label),
+      el('span', { class: 'settings-nav-desc' }, item.desc)
+    ));
   }
-  header.appendChild(tabs);
-  header.appendChild(el('button', { class: 'modal-close', onclick: function() { overlay.remove(); } }, '×'));
-  modal.appendChild(header);
+  nav.appendChild(navGroups);
+  const navFooter = el('div', { class: 'settings-nav-footer' });
+  navFooter.appendChild(el('button', { class: 'settings-app-return', onclick: function() { state.activeMainTab = 'chat'; render(); } },
+    '← 返回应用'));
+  nav.appendChild(navFooter);
 
-  const body = el('div', { class: 'modal-body' });
-  const footer = el('div', { class: 'modal-footer' });
-  footer.appendChild(el('button', { class: 'btn btn-secondary', onclick: function() { overlay.remove(); } }, '关闭'));
-
+  const main = el('main', { class: 'settings-main' });
+  const topbar = el('header', { class: 'settings-topbar' });
+  const current = tabConfigs.find(function(item) { return item.id === state.activeSettingsTab; }) || tabConfigs[0];
+  topbar.appendChild(el('div', null,
+    el('h1', { class: 'settings-page-title' }, current.label),
+    el('p', { class: 'settings-page-subtitle' }, current.desc)
+  ));
+  topbar.appendChild(el('div', { class: 'settings-topbar-actions' },
+    el('button', { class: 'btn btn-secondary', onclick: function() { state.activeMainTab = 'chat'; render(); } }, '返回应用')
+  ));
+  main.appendChild(topbar);
+  const body = el('section', { class: 'settings-body' });
   switch (state.activeSettingsTab) {
-    case 'models': renderModelSettings(body, footer); break;
-    case 'plugins': renderPluginSettings(body, footer); break;
-    case 'presets': renderPresetSettings(body, footer); break;
-    case 'permissions': renderPermissionSettings(body, footer); break;
+    case 'models': renderModelSettings(body, null); break;
+    case 'plugins': renderPluginSettings(body, null); break;
+    case 'presets': renderPresetSettings(body, null); break;
+    case 'permissions': renderPermissionSettings(body, null); break;
   }
-
-  modal.appendChild(body);
-  modal.appendChild(footer);
-  overlay.appendChild(modal);
-  document.body.appendChild(overlay);
+  main.appendChild(body);
+  page.appendChild(nav);
+  page.appendChild(main);
+  return page;
 }
 
 function renderModelSettings(body, footer) {
   const syncState = { discovered: [] };
+  const formPanel = el('section', { class: 'settings-panel' });
+  formPanel.appendChild(el('div', { class: 'settings-panel-head' },
+    el('div', null,
+      el('h2', { class: 'settings-panel-title' }, '接入模型'),
+      el('p', { class: 'settings-panel-desc' }, '支持 OpenAI 兼容地址；先同步模型，或手动输入编码。')),
+    el('span', { class: 'settings-pill' }, 'OpenAI Compatible')
+  ));
 
-  const addSection = el('div', { class: 'model-sync-section' });
-  addSection.appendChild(el('div', { class: 'settings-section-header' },
-    el('span', { class: 'settings-section-title' }, '添加模型')));
-
-  const form = el('div', { class: 'model-card' });
-  const row1 = el('div', { class: 'form-row' });
-  row1.appendChild(wrapInput('profileCode', 'Profile', '如 web / headless'));
+  const form = el('div', { class: 'settings-form-grid' });
+  form.appendChild(wrapInput('profileCode', 'Profile', '如 web / headless'));
   const providerGroup = wrapInput('providerCode', 'Provider', 'deepseek');
   providerGroup.querySelector('input').value = 'deepseek';
-  row1.appendChild(providerGroup);
-  form.appendChild(row1);
+  form.appendChild(providerGroup);
+  form.appendChild(wrapInput('baseUrl', 'Base URL', 'http://127.0.0.1:8777/v1'));
+  form.appendChild(wrapInput('apiKeyRef', 'API Key', 'sk-…'));
 
-  const row2 = el('div', { class: 'form-row' });
-  row2.appendChild(wrapInput('baseUrl', 'Base URL', 'http://127.0.0.1:8777/v1'));
-  row2.appendChild(wrapInput('apiKeyRef', 'API Key', 'sk-…'));
-  form.appendChild(row2);
-
-  const row3 = el('div', { class: 'form-row' });
-  const modelGroup = el('div', { class: 'form-group', style: 'flex:1' });
+  const modelGroup = el('div', { class: 'form-group' });
   modelGroup.appendChild(el('label', { class: 'form-label' }, '模型'));
-  const modelSelect = el('select', { class: 'form-input model-sync-select' },
+  const modelSelect = el('select', { class: 'form-input' },
     el('option', { value: '' }, '— 请先同步或手动输入 —'));
-  const modelInput = el('input', { class: 'form-input model-sync-input', placeholder: '或手动输入模型编码', style: 'display:none;margin-top:6px' });
+  const modelInput = el('input', { class: 'form-input', placeholder: '或手动输入模型编码', style: 'display:none;margin-top:8px' });
   modelGroup.appendChild(modelSelect);
   modelGroup.appendChild(modelInput);
-  row3.appendChild(modelGroup);
+  form.appendChild(modelGroup);
+  formPanel.appendChild(form);
 
-  const actionCol = el('div', { class: 'model-sync-actions' });
-  const syncBtn = el('button', { class: 'btn btn-secondary model-sync-btn', title: '从上游同步可用模型' }, '⟳ 同步');
-  const toggleInputBtn = el('button', { class: 'btn btn-secondary model-sync-btn', title: '切换手动输入' }, '⌨');
-  actionCol.appendChild(syncBtn);
-  actionCol.appendChild(toggleInputBtn);
-  row3.appendChild(actionCol);
-  form.appendChild(row3);
-
-  const addBtn = el('button', { class: 'btn btn-primary', style: 'margin-top:8px;width:100%' }, '添加模型');
-  form.appendChild(addBtn);
-  addSection.appendChild(form);
-  body.appendChild(addSection);
+  const actions = el('div', { class: 'settings-panel-actions' });
+  const syncBtn = el('button', { class: 'btn btn-secondary', title: '从上游同步可用模型' }, '⟳ 同步模型');
+  const toggleInputBtn = el('button', { class: 'btn btn-secondary', title: '切换手动输入' }, '⌨ 手动输入');
+  const addBtn = el('button', { class: 'btn btn-primary' }, '添加模型');
+  actions.appendChild(syncBtn);
+  actions.appendChild(toggleInputBtn);
+  actions.appendChild(addBtn);
+  formPanel.appendChild(actions);
+  body.appendChild(formPanel);
 
   syncBtn.onclick = async function() {
     const baseUrl = form.querySelector('[data-key="baseUrl"]').value.trim();
@@ -2931,26 +2947,33 @@ function renderModelSettings(body, footer) {
     }
   };
 
-  const listHeader = el('div', { class: 'settings-section-header', style: 'margin-top:16px' });
-  listHeader.appendChild(el('span', { class: 'settings-section-title' }, '已配置模型'));
-  listHeader.appendChild(el('span', { class: 'settings-section-count' }, String(state.modelSettings.length)));
+  const listHeader = el('div', { class: 'settings-list-header' });
+  listHeader.appendChild(el('div', null,
+    el('h2', { class: 'settings-panel-title' }, '已配置模型'),
+    el('p', { class: 'settings-panel-desc' }, 'Profile 是运行时选择模型的主键。')));
+  listHeader.appendChild(el('span', { class: 'settings-count' }, String(state.modelSettings.length)));
   body.appendChild(listHeader);
 
+  const modelGrid = el('div', { class: 'settings-cards' });
   for (const ms of state.modelSettings) {
-    body.appendChild(renderEditableModelCard(ms, syncState));
+    modelGrid.appendChild(renderEditableModelCard(ms, syncState));
   }
+  if (!state.modelSettings.length) modelGrid.appendChild(el('div', { class: 'empty' }, '还没有模型配置'));
+  body.appendChild(modelGrid);
 }
 
 function renderEditableModelCard(ms, syncState) {
   const card = el('div', { class: 'model-card' + (ms.enabled === false ? ' model-card-disabled' : '') });
 
-  const top = el('div', { style: 'display:flex;justify-content:space-between;align-items:center' });
-  const info = el('div', { style: 'display:flex;align-items:center;gap:6px' });
-  info.appendChild(el('span', { class: 'model-badge-tag' + (ms.enabled === false ? ' disabled' : '') }, ms.modelCode || ms.providerCode));
-  info.appendChild(el('span', { style: 'font-size:11px;color:var(--text-muted)' }, ms.profileCode));
+  const top = el('div', { class: 'settings-card-top' });
+  const info = el('div', { class: 'settings-card-info' });
+  info.appendChild(el('div', { class: 'settings-card-title' }, ms.modelCode || ms.providerCode));
+  info.appendChild(el('div', { class: 'settings-card-sub' }, 'Profile · ' + ms.profileCode));
   top.appendChild(info);
+  top.appendChild(el('span', { class: 'model-badge-tag' + (ms.enabled === false ? ' disabled' : '') },
+    ms.enabled === false ? '已停用' : '启用中'));
 
-  const actions = el('div', { style: 'display:flex;gap:4px' });
+  const actions = el('div', { class: 'settings-card-actions' });
   const toggleBtn = iconBtn(ms.enabled !== false ? '⏸' : '▶', ms.enabled !== false ? '禁用' : '启用', async function() {
     try {
       await apiRequest(SETTINGS_API, {
@@ -2969,31 +2992,37 @@ function renderEditableModelCard(ms, syncState) {
       showToast(ms.enabled !== false ? '已禁用' : '已启用');
     } catch (e) { showToast('操作失败: ' + e.message); }
   });
-  const editBtn = iconBtn('✎', '编辑', function() { toggleEdit(card); });
-  const deleteBtn = iconBtn('🗑', '删除', async function() {
+  const editBtn = el('button', { class: 'btn btn-secondary btn-sm' }, '编辑');
+  editBtn.onclick = function() { toggleEdit(card); };
+  const deleteBtn = el('button', { class: 'btn btn-secondary btn-sm' }, '删除');
+  deleteBtn.onclick = async function() {
     try {
       await apiRequest(SETTINGS_API + '/' + encodeURIComponent(ms.profileCode || 'default'), { method: 'DELETE' });
       await refreshModelSettingsUI();
       showToast('已删除');
     } catch (e) { showToast('删除失败: ' + e.message); }
-  });
+  };
   actions.appendChild(toggleBtn);
   actions.appendChild(editBtn);
   actions.appendChild(deleteBtn);
-  top.appendChild(actions);
+  const meta = el('div', { class: 'settings-card-meta' });
+  meta.appendChild(el('div', null, el('span', { class: 'settings-meta-label' }, 'Base URL'),
+    el('span', { class: 'settings-meta-value' }, ms.baseUrl || '—')));
+  meta.appendChild(el('div', null, el('span', { class: 'settings-meta-label' }, 'API Key'),
+    el('span', { class: 'settings-meta-value' }, ms.apiKeyRef ? '已配置' : '未配置')));
   card.appendChild(top);
+  card.appendChild(meta);
+  card.appendChild(actions);
 
   const editForm = el('div', { class: 'model-edit-form', style: 'display:none' });
-  const er1 = el('div', { class: 'form-row' });
-  er1.appendChild(wrapEditInput('modelCode', '模型', ms.modelCode || ''));
-  er1.appendChild(wrapEditInput('providerCode', 'Provider', ms.providerCode || ''));
-  editForm.appendChild(er1);
-  const er2 = el('div', { class: 'form-row' });
-  er2.appendChild(wrapEditInput('baseUrl', 'Base URL', ms.baseUrl || ''));
-  er2.appendChild(wrapEditInput('apiKeyRef', 'API Key', ms.apiKeyRef || ''));
-  editForm.appendChild(er2);
+  const editGrid = el('div', { class: 'settings-form-grid' });
+  editGrid.appendChild(wrapEditInput('modelCode', '模型', ms.modelCode || ''));
+  editGrid.appendChild(wrapEditInput('providerCode', 'Provider', ms.providerCode || ''));
+  editGrid.appendChild(wrapEditInput('baseUrl', 'Base URL', ms.baseUrl || ''));
+  editGrid.appendChild(wrapEditInput('apiKeyRef', 'API Key', ms.apiKeyRef || ''));
+  editForm.appendChild(editGrid);
 
-  const saveBtn = el('button', { class: 'btn btn-primary', style: 'margin-top:6px;width:100%' }, '保存修改');
+  const saveBtn = el('button', { class: 'btn btn-primary', style: 'margin-top:12px' }, '保存修改');
   saveBtn.onclick = async function() {
     const inputs = editForm.querySelectorAll('input[data-key]');
     const updated = {};
@@ -3022,7 +3051,9 @@ function renderEditableModelCard(ms, syncState) {
       saveBtn.disabled = false;
     }
   };
-  editForm.appendChild(saveBtn);
+  const editActions = el('div', { class: 'settings-panel-actions' });
+  editActions.appendChild(saveBtn);
+  editForm.appendChild(editActions);
   card.appendChild(editForm);
 
   return card;
@@ -3051,47 +3082,384 @@ function wrapInput(key, label, placeholder) {
 
 // ── 插件管理 ───────────────────────────────
 function renderPluginSettings(body, footer) {
-  const list = state.plugins || [];
-  const header = el('div', { class: 'settings-section-header' });
-  header.appendChild(el('span', { class: 'settings-section-title' }, '已安装插件'));
-  header.appendChild(el('span', { class: 'settings-section-count' }, String(list.length)));
-  body.appendChild(header);
+  const query = (state.pluginSearch || '').trim().toLowerCase();
+  const all = (state.plugins || []).filter(function(plugin) {
+    return plugin.status !== 'UNINSTALLED';
+  });
+  const list = query ? all.filter(function(plugin) {
+    return [plugin.pluginId, plugin.displayName, plugin.runtimeType, plugin.status]
+      .some(function(value) { return String(value || '').toLowerCase().includes(query); });
+  }) : all;
+
+  const summary = el('div', { class: 'settings-metrics' });
+  const metrics = [
+    ['已安装', list.length],
+    ['运行中', list.filter(function(plugin) { return plugin.status === 'ACTIVE'; }).length],
+    ['已停用', list.filter(function(plugin) { return plugin.status === 'DISABLED'; }).length],
+    ['失败', list.filter(function(plugin) { return plugin.status === 'FAILED'; }).length],
+  ];
+  for (const [label, value] of metrics) {
+    summary.appendChild(el('div', { class: 'settings-metric' },
+      el('span', { class: 'settings-metric-label' }, label),
+      el('span', { class: 'settings-metric-value' }, String(value))
+    ));
+  }
+  body.appendChild(summary);
+
+  renderPluginInstall(body);
+
+  const listPanel = el('section', { class: 'settings-panel' });
+  const header = el('div', { class: 'settings-list-header' });
+  header.appendChild(el('div', null,
+    el('h2', { class: 'settings-panel-title' }, '已安装插件'),
+    el('p', { class: 'settings-panel-desc' }, '点击“配置”维护键值参数。')));
+  header.appendChild(el('span', { class: 'settings-count' }, String(list.length)));
+  const search = el('input', {
+    class: 'settings-search',
+    placeholder: '搜索插件名称、ID 或状态',
+    value: state.pluginSearch || ''
+  });
+  search.oninput = function() { state.pluginSearch = search.value; };
+  search.onchange = render;
+  header.appendChild(search);
+  listPanel.appendChild(header);
   if (list.length === 0) {
-    body.appendChild(el('div', { class: 'empty' }, '暂无插件'));
+    listPanel.appendChild(el('div', { class: 'empty' }, query ? '没有匹配的插件' : '暂无插件'));
   }
-  for (const p of list) {
-    body.appendChild(renderPluginCard(p));
+  const pluginGrid = el('div', { class: 'settings-cards' });
+  for (const plugin of list) {
+    pluginGrid.appendChild(renderPluginCard(plugin));
   }
+  listPanel.appendChild(pluginGrid);
+  body.appendChild(listPanel);
+  const selected = list.find(function(plugin) { return plugin.pluginId === state.selectedPluginId; });
+  if (selected) body.appendChild(renderPluginConfigEditor(selected));
+}
+
+function renderPluginInstall(body) {
+  const panel = el('section', { class: 'settings-panel' });
+  panel.appendChild(el('div', { class: 'settings-panel-head' },
+    el('div', null,
+      el('h2', { class: 'settings-panel-title' }, '安装插件'),
+      el('p', { class: 'settings-panel-desc' }, '选择本地 JAR 自动识别，或粘贴 Maven 依赖让系统定位插件。')),
+    el('span', { class: 'settings-pill' }, 'Auto Analyze')
+  ));
+
+  const modeTabs = el('div', { class: 'settings-mode-tabs' });
+  const modes = [
+    { id: 'jar', label: '选择 JAR' },
+    { id: 'maven', label: 'POM 配置' },
+  ];
+  modes.forEach(function(mode) {
+    modeTabs.appendChild(el('button', {
+      class: 'settings-mode-tab' + ((state.pluginInstallMode || 'jar') === mode.id ? ' active' : ''),
+      onclick: function() { state.pluginInstallMode = mode.id; render(); }
+    }, mode.label));
+  });
+  panel.appendChild(modeTabs);
+
+  const mode = state.pluginInstallMode || 'jar';
+  if (mode === 'jar') {
+    const drop = el('label', { class: 'settings-drop' });
+    const input = el('input', { type: 'file', accept: '.jar', style: 'display:none' });
+    const dropText = el('div', { class: 'settings-drop-text' },
+      el('strong', null, '点击选择 JAR 包'),
+      el('span', null, '系统会读取 META-INF/plugin.yaml，自动整理插件信息'));
+    drop.appendChild(input);
+    drop.appendChild(dropText);
+    panel.appendChild(drop);
+    input.onchange = async function() {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      state.pluginCandidate = null;
+      state.pluginAnalyzeMessage = '分析中…';
+      render();
+      try {
+        const response = await fetch(PLUGIN_API + '/analyze-jar', { method: 'POST', body: (() => { const form = new FormData(); form.append('file', file); return form; })() });
+        const payload = await response.json();
+        if (!response.ok || payload.code !== '00000') throw new Error(payload.info || ('HTTP ' + response.status));
+        state.pluginCandidate = payload.data;
+        state.pluginAnalyzeMessage = null;
+      } catch (e) {
+        state.pluginCandidate = null;
+        state.pluginAnalyzeMessage = e.message;
+      }
+      render();
+    };
+  } else {
+    const textarea = el('textarea', {
+      class: 'settings-textarea',
+      placeholder: '<dependency>\n  <groupId>com.example</groupId>\n  <artifactId>example-plugin</artifactId>\n  <version>1.0.0</version>\n</dependency>'
+    });
+    textarea.value = state.pluginPomXml || '';
+    textarea.oninput = function() { state.pluginPomXml = textarea.value; };
+    panel.appendChild(textarea);
+    const actions = el('div', { class: 'settings-panel-actions' });
+    const analyzeBtn = el('button', { class: 'btn btn-secondary' }, '分析 POM');
+    analyzeBtn.onclick = async function() {
+      analyzeBtn.textContent = '分析中…';
+      analyzeBtn.disabled = true;
+      try {
+        const data = await apiRequest(PLUGIN_API + '/analyze-maven', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pomXml: textarea.value })
+        });
+        state.pluginCandidates = Array.isArray(data) ? data : [];
+        const valid = state.pluginCandidates.find(function(candidate) { return candidate.valid; });
+        state.pluginCandidate = valid || null;
+      } catch (e) {
+        showToast('POM 分析失败: ' + e.message);
+      } finally {
+        analyzeBtn.textContent = '分析 POM';
+        analyzeBtn.disabled = false;
+        render();
+      }
+    };
+    actions.appendChild(analyzeBtn);
+    panel.appendChild(actions);
+  }
+
+  const selectedCandidate = state.pluginCandidate;
+  const candidates = state.pluginCandidates || [];
+  if (candidates.length > 1) {
+    const candidateList = el('div', { class: 'settings-candidate-list' });
+    candidates.forEach(function(candidate, index) {
+      candidateList.appendChild(renderCandidateCard(candidate, function() {
+        state.pluginCandidate = candidate.valid ? candidate : null;
+        state.selectedCandidateIndex = index;
+        render();
+      }));
+    });
+    panel.appendChild(candidateList);
+  } else if (selectedCandidate || state.pluginAnalyzeMessage) {
+    panel.appendChild(renderCandidateCard(selectedCandidate, null, state.pluginAnalyzeMessage));
+  }
+
+  if (selectedCandidate && selectedCandidate.valid) {
+    const installActions = el('div', { class: 'settings-panel-actions' });
+    const installBtn = el('button', { class: 'btn btn-primary' }, '安装并启用');
+    installBtn.onclick = async function() {
+      installBtn.textContent = '安装中…';
+      installBtn.disabled = true;
+      try {
+        await apiRequest(PLUGIN_API + '/install', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pluginId: selectedCandidate.pluginId,
+            displayName: selectedCandidate.displayName,
+            pluginVersion: selectedCandidate.pluginVersion,
+            runtimeType: selectedCandidate.runtimeType,
+            sourcePath: selectedCandidate.sourcePath,
+            entrypoint: selectedCandidate.entrypoint
+          })
+        });
+        await apiRequest(PLUGIN_API + '/activate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pluginId: selectedCandidate.pluginId })
+        });
+        state.installedPluginId = selectedCandidate.pluginId;
+        state.pluginCandidate = null;
+        state.pluginCandidates = [];
+        await loadPlugins();
+        render();
+        showToast('插件已安装并启用');
+      } catch (e) {
+        showToast('安装失败: ' + e.message);
+      } finally {
+        installBtn.textContent = '安装并启用';
+        installBtn.disabled = false;
+      }
+    };
+    installActions.appendChild(installBtn);
+    panel.appendChild(installActions);
+  }
+
+  body.appendChild(panel);
+  body.appendChild(renderPluginUsageGuide(state.installedPluginId));
+}
+
+function renderCandidateCard(candidate, onClick, message) {
+  const valid = Boolean(candidate && candidate.valid);
+  const card = el('div', { class: 'candidate-card' + (valid ? ' valid' : ' invalid') + (onClick ? ' clickable' : '') });
+  if (onClick) card.onclick = onClick;
+  card.appendChild(el('div', { class: 'candidate-head' },
+    el('div', null,
+      el('div', { class: 'candidate-title' }, candidate ? (candidate.displayName || candidate.artifactId || '未识别') : '自动识别'),
+      el('div', { class: 'candidate-sub' }, candidate ? [candidate.pluginId, candidate.pluginVersion, candidate.sourcePath].filter(Boolean).join(' · ') : '—')
+    ),
+    el('span', { class: 'candidate-tag ' + (valid ? 'ok' : 'bad') }, valid ? '插件' : '无效')
+  ));
+  if (candidate && valid) {
+    card.appendChild(el('div', { class: 'candidate-meta' },
+      el('div', null, el('span', { class: 'candidate-label' }, '入口'),
+        el('span', null, candidate.entrypoint || 'Java SPI 自动发现')),
+      el('div', null, el('span', { class: 'candidate-label' }, '作者'),
+        el('span', null, candidate.author || '—')),
+      el('div', null, el('span', { class: 'candidate-label' }, '说明'),
+        el('span', null, candidate.description || '—'))
+    ));
+  } else {
+    card.appendChild(el('div', { class: 'candidate-message' }, message || (candidate && candidate.message) || '请选择有效的插件文件'));
+  }
+  return card;
+}
+
+function renderPluginUsageGuide(installedPluginId) {
+  const panel = el('section', { class: 'settings-panel usage-panel' });
+  panel.appendChild(el('div', { class: 'settings-panel-head' },
+    el('div', null,
+      el('h2', { class: 'settings-panel-title' }, '安装后如何使用'),
+      el('p', { class: 'settings-panel-desc' }, '插件会作为 Agent 工具自动注册，无需手动编写调用代码。'))
+  ));
+  const lines = installedPluginId
+    ? [
+        '插件 ' + installedPluginId + ' 已激活。',
+        '工具注册名格式：plugin__' + installedPluginId + '__<toolName>。',
+        '在对话中直接描述目标，例如“查一下北京天气”，Agent 会自动选择插件工具。',
+        '需要运行参数时，回到插件卡片点“配置”。',
+      ]
+    : [
+        '插件激活后，能力说明会进入 Agent 系统提示词。',
+        '每个工具注册为 plugin__<插件ID>__<toolName>。',
+        '对话中直接描述目标即可；Agent 会自动选择匹配工具。',
+        '插件参数通过卡片上的“配置”维护。',
+      ];
+  panel.appendChild(el('ul', { class: 'usage-list' }, lines.map(function(line) { return el('li', null, line); })));
+  return panel;
 }
 
 function renderPluginCard(p) {
-  const card = el('div', { class: 'plugin-card' });
-  const avatar = el('div', { class: 'plugin-avatar ' + pluginStatusClass(p.status) },
-    (p.displayName || p.pluginId || '?').trim().charAt(0).toUpperCase());
-  const meta = el('div', { class: 'plugin-meta' });
-  meta.appendChild(el('div', { class: 'plugin-name' }, p.displayName || p.pluginId));
-  const subParts = [p.pluginId, p.pluginVersion && ('v' + p.pluginVersion), p.runtimeType].filter(Boolean);
-  meta.appendChild(el('div', { class: 'plugin-sub' }, subParts.join(' · ') || ' '));
-  const right = el('div', { class: 'plugin-right' });
-  right.appendChild(el('span', { class: 'plugin-status-tag ' + pluginStatusClass(p.status) }, pluginStatusLabel(p.status)));
-  const actions = el('div', { class: 'plugin-actions' });
+  const card = el('div', { class: 'plugin-card settings-plugin-card' + (p.pluginId === state.selectedPluginId ? ' selected' : '') });
+  const top = el('div', { class: 'settings-card-top' });
+  const info = el('div', { class: 'settings-card-info' });
+  info.appendChild(el('div', { class: 'settings-card-title' }, p.displayName || p.pluginId));
+  const subParts = [p.pluginId, p.pluginVersion && ('v' + p.pluginVersion)].filter(Boolean);
+  info.appendChild(el('div', { class: 'settings-card-sub' }, subParts.join(' · ') || ' '));
+  top.appendChild(info);
+  top.appendChild(el('div', { class: 'settings-card-badges' },
+    el('span', { class: 'plugin-status-tag ' + pluginStatusClass(p.status) }, pluginStatusLabel(p.status)),
+    el('span', { class: 'plugin-runtime-tag' }, p.runtimeType || '—')
+  ));
+
+  const actions = el('div', { class: 'settings-card-actions' });
+  const configBtn = el('button', { class: 'btn btn-secondary btn-sm' }, '配置');
+  configBtn.onclick = function(event) { event.stopPropagation(); selectPlugin(p.pluginId); };
+  actions.appendChild(configBtn);
   if (p.status === 'ACTIVE' || p.status === 'REGISTERED') {
-    actions.appendChild(iconBtn('⏸', '禁用', async function() {
-      try { await apiRequest(PLUGIN_API + '/' + p.pluginId + '/disable', { method: 'POST' }); await loadPlugins(); openSettingsModal(); } catch (e) { showToast('操作失败'); }
-    }));
+    const disableBtn = el('button', { class: 'btn btn-secondary btn-sm' }, '停用');
+    disableBtn.onclick = async function(event) {
+      event.stopPropagation();
+      try {
+        await apiRequest(PLUGIN_API + '/' + p.pluginId + '/disable', { method: 'POST' });
+        await loadPlugins(); render(); showToast('已停用');
+      } catch (e) { showToast('操作失败: ' + e.message); }
+    };
+    actions.appendChild(disableBtn);
   } else if (p.status === 'DISABLED' || p.status === 'FAILED') {
-    actions.appendChild(iconBtn('▶', '启用', async function() {
-      try { await apiRequest(PLUGIN_API + '/' + p.pluginId + '/enable', { method: 'POST' }); await loadPlugins(); openSettingsModal(); } catch (e) { showToast('操作失败'); }
-    }));
+    const enableBtn = el('button', { class: 'btn btn-secondary btn-sm' }, '启用');
+    enableBtn.onclick = async function(event) {
+      event.stopPropagation();
+      try {
+        await apiRequest(PLUGIN_API + '/activate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pluginId: p.pluginId })
+        });
+        await loadPlugins(); render(); showToast('已启用');
+      } catch (e) { showToast('操作失败: ' + e.message); }
+    };
+    actions.appendChild(enableBtn);
   }
-  actions.appendChild(iconBtn('🗑', '卸载', async function() {
-    try { await apiRequest(PLUGIN_API + '/' + p.pluginId + '/uninstall', { method: 'POST' }); await loadPlugins(); openSettingsModal(); showToast('已卸载'); } catch (e) { showToast('卸载失败'); }
-  }));
-  right.appendChild(actions);
-  card.appendChild(avatar);
-  card.appendChild(meta);
-  card.appendChild(right);
+  const uninstallBtn = el('button', { class: 'btn btn-danger btn-sm' }, '卸载');
+  uninstallBtn.onclick = async function(event) {
+    event.stopPropagation();
+    try {
+      await apiRequest(PLUGIN_API + '/' + p.pluginId + '/uninstall', { method: 'POST' });
+      if (state.selectedPluginId === p.pluginId) state.selectedPluginId = null;
+      await loadPlugins(); render(); showToast('已卸载');
+    } catch (e) { showToast('卸载失败: ' + e.message); }
+  };
+  actions.appendChild(uninstallBtn);
+
+  card.appendChild(top);
+  card.appendChild(el('div', { class: 'settings-card-meta' },
+    el('div', null, el('span', { class: 'settings-meta-label' }, '包路径'),
+      el('span', { class: 'settings-meta-value' }, p.sourcePath || '—')),
+    el('div', null, el('span', { class: 'settings-meta-label' }, '入口'),
+      el('span', { class: 'settings-meta-value' }, p.entrypoint || '—'))
+  ));
+  card.appendChild(actions);
   return card;
+}
+
+function selectPlugin(pluginId) {
+  state.selectedPluginId = pluginId;
+  loadPluginConfig(pluginId).then(render);
+}
+
+function renderPluginConfigEditor(plugin) {
+  const pluginId = plugin.pluginId;
+  const configs = state.pluginConfigs[pluginId];
+  const panel = el('section', { class: 'settings-panel plugin-config-panel' });
+  panel.appendChild(el('div', { class: 'settings-panel-head' },
+    el('div', null,
+      el('h2', { class: 'settings-panel-title' }, '插件配置 · ' + (plugin.displayName || pluginId)),
+      el('p', { class: 'settings-panel-desc' }, '键值参数会注入插件 configure(context)，保存后可用。')),
+    el('button', { class: 'btn btn-secondary btn-sm', onclick: function() { state.selectedPluginId = null; render(); } }, '收起')
+  ));
+
+  if (!Array.isArray(configs)) {
+    panel.appendChild(el('div', { class: 'empty' }, '配置加载中…'));
+    return panel;
+  }
+  const rows = el('div', { class: 'plugin-config-rows' });
+  if (configs.length === 0) rows.appendChild(el('div', { class: 'empty' }, '暂无配置，点击“添加配置”。'));
+  configs.forEach(function(item, index) {
+    const row = el('div', { class: 'plugin-config-row' });
+    const keyInput = el('input', { class: 'form-input', placeholder: 'key', value: item.key || '' });
+    const valueInput = el('input', { class: 'form-input', placeholder: 'value', value: item.value || '' });
+    keyInput.oninput = function() { item.key = keyInput.value; };
+    valueInput.oninput = function() { item.value = valueInput.value; };
+    row.appendChild(keyInput);
+    row.appendChild(valueInput);
+    const removeBtn = el('button', { class: 'btn btn-danger btn-sm' }, '删除');
+    removeBtn.onclick = function() { configs.splice(index, 1); render(); };
+    row.appendChild(removeBtn);
+    rows.appendChild(row);
+  });
+  panel.appendChild(rows);
+
+  const actions = el('div', { class: 'settings-panel-actions' });
+  const addBtn = el('button', { class: 'btn btn-secondary' }, '添加配置');
+  addBtn.onclick = function() { configs.push({ key: '', value: '' }); render(); };
+  const saveBtn = el('button', { class: 'btn btn-primary' }, '保存配置');
+  saveBtn.onclick = async function() {
+    const payload = configs.filter(function(item) { return item.key && item.key.trim(); });
+    saveBtn.textContent = '保存中…';
+    saveBtn.disabled = true;
+    try {
+      await apiRequest(PLUGIN_API + '/' + encodeURIComponent(pluginId) + '/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ configs: payload })
+      });
+      await loadPluginConfig(pluginId);
+      render();
+      showToast('配置已保存');
+    } catch (e) {
+      showToast('配置保存失败: ' + e.message);
+    } finally {
+      saveBtn.textContent = '保存配置';
+      saveBtn.disabled = false;
+    }
+  };
+  actions.appendChild(addBtn);
+  actions.appendChild(saveBtn);
+  panel.appendChild(actions);
+  return panel;
 }
 
 function iconBtn(glyph, title, handler) {
@@ -4062,8 +4430,7 @@ async function loadModelSettings() {
 
 async function refreshModelSettingsUI() {
   await Promise.all([loadModelSettings(), loadAvailableModels()]);
-  render();
-  openSettingsModal();
+  openSettingsPage();
 }
 
 function getAvailableModelCodes() {
@@ -4101,6 +4468,16 @@ async function loadPlugins() {
     const data = await apiRequest(PLUGIN_API);
       state.plugins = Array.isArray(data) ? data : [];
   } catch (e) { /* ignore */ }
+}
+
+async function loadPluginConfig(pluginId) {
+  try {
+    const data = await apiRequest(PLUGIN_API + '/' + encodeURIComponent(pluginId) + '/config');
+    state.pluginConfigs[pluginId] = Array.isArray(data) ? data : [];
+  } catch (e) {
+    state.pluginConfigs[pluginId] = [];
+    showToast('读取插件配置失败');
+  }
 }
 
 // v11: 加载审批列表
