@@ -19,6 +19,8 @@ import cn.xiaofuge.deepseek.harness.domain.agent.service.subagent.SpawnInProcess
 import cn.xiaofuge.deepseek.harness.domain.goal.IGoalCommandService;
 import cn.xiaofuge.deepseek.harness.domain.goal.IGoalQueryService;
 import cn.xiaofuge.deepseek.harness.domain.jobs.IJobRegistryService;
+import cn.xiaofuge.deepseek.harness.domain.plugin.IPluginRuntimeService;
+import cn.xiaofuge.deepseek.harness.domain.plugin.registry.adapter.repository.IHarnessPluginRepository;
 import cn.xiaofuge.deepseek.harness.domain.lsp.ILspService;
 import cn.xiaofuge.deepseek.harness.domain.schedule.IScheduleService;
 import cn.xiaofuge.deepseek.harness.domain.session.IConversationQueryService;
@@ -184,7 +186,9 @@ public class AgentRunBeanConfig {
             cn.xiaofuge.deepseek.harness.domain.skill.ISkillService skillService,
             ObjectMapper objectMapper,
             ObjectProvider<ISessionEventStore> sessionEventStoreProvider,
-            CompactionEngine compactionEngine
+            CompactionEngine compactionEngine,
+            IHarnessPluginRepository pluginRepository,
+            IPluginRuntimeService pluginRuntimeService
     ) {
         ISessionEventStore sessionEventStore = sessionEventStoreProvider.getIfAvailable();
         AgentRunFactory.SessionLogFactory sessionLogFactory = header -> sessionEventStore == null
@@ -208,7 +212,9 @@ public class AgentRunBeanConfig {
                 scheduleService,
                 lspService,
                 conversationQueryService,
-                terminalPort
+                terminalPort,
+                pluginRepository,
+                pluginRuntimeService
         );
 
         return new AgentRunFactory(

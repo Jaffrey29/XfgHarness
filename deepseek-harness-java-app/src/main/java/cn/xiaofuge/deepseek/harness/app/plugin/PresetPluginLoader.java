@@ -6,6 +6,7 @@ import cn.xiaofuge.deepseek.harness.api.dto.InstallPluginRequestDTO;
 import cn.xiaofuge.deepseek.harness.api.dto.RunPluginRequestDTO;
 import cn.xiaofuge.deepseek.harness.api.dto.RunPluginResponseDTO;
 import cn.xiaofuge.deepseek.harness.domain.plugin.IPluginRegistryService;
+import cn.xiaofuge.deepseek.harness.domain.plugin.IPluginRuntimeService;
 import cn.xiaofuge.deepseek.harness.domain.plugin.registry.adapter.repository.IHarnessPluginRepository;
 import cn.xiaofuge.deepseek.harness.domain.plugin.registry.model.entity.HarnessPluginEntity;
 import cn.xiaofuge.deepseek.harness.domain.plugin.registry.model.valobj.PluginInstallStatusEnumVO;
@@ -38,6 +39,7 @@ public class PresetPluginLoader implements ApplicationRunner {
     private final IRunHarnessPluginCase runCase;
     private final IPluginRegistryService pluginRegistryService;
     private final IHarnessPluginRepository pluginRepository;
+    private final IPluginRuntimeService pluginRuntimeService;
 
     /**
      * 初始化预置插件加载器。
@@ -48,13 +50,15 @@ public class PresetPluginLoader implements ApplicationRunner {
             IInstallHarnessPluginCase installCase,
             IRunHarnessPluginCase runCase,
             IPluginRegistryService pluginRegistryService,
-            IHarnessPluginRepository pluginRepository
+            IHarnessPluginRepository pluginRepository,
+            IPluginRuntimeService pluginRuntimeService
     ) {
         this.properties = properties;
         this.installCase = installCase;
         this.runCase = runCase;
         this.pluginRegistryService = pluginRegistryService;
         this.pluginRepository = pluginRepository;
+        this.pluginRuntimeService = pluginRuntimeService;
     }
 
     /**
@@ -67,7 +71,7 @@ public class PresetPluginLoader implements ApplicationRunner {
                 : properties.getPlugins().getPreset().stream()
                         .map(HarnessExtensionsProperties.PresetPlugin::getPluginId)
                         .collect(java.util.stream.Collectors.toSet());
-        restoreActivePlugins(presetPluginIds);
+        reconcilePersistedPlugins(presetPluginIds);
         if (properties.getPlugins().getPreset() == null || properties.getPlugins().getPreset().isEmpty()) {
             return;
         }
@@ -117,18 +121,31 @@ public class PresetPluginLoader implements ApplicationRunner {
     }
 
     /**
-     * 恢复登记状态为 ACTIVE 但运行时未运行的插件。
+     * 对账插件登记状态和运行时状态。
      * <p>插件登记状态与进程内运行状态是两个概念；宿主重启后进程状态自然丢失。
-     * 这里按登记状态恢复，保证已安装的商城插件在重启后仍会注册工具和提示词。
+     * 运行时状态优先于登记状态：已运行但登记为 FAILED 的插件会被纠正；已登记 ACTIVE
+     * 但运行时缺失的插件会被重新拉起，保证重启后仍会注册工具和提示词。
      *
      * @param presetPluginIds 预置插件 ID，这些插件由下方 preset 流程处理。
      */
-    private void restoreActivePlugins(Set<String> presetPluginIds) {
+    private void reconcilePersistedPlugins(Set<String> presetPluginIds) {
         pluginRepository.listAll().stream()
-                .filter(plugin -> plugin.getStatus() == PluginInstallStatusEnumVO.ACTIVE)
                 .filter(plugin -> !presetPluginIds.contains(plugin.getPluginId()))
                 .forEach(plugin -> {
                     try {
+                        if (pluginRuntimeService.status(plugin.getPluginId()).running()) {
+                            if (plugin.getStatus() != PluginInstallStatusEnumVO.ACTIVE) {
+                                plugin.activate();
+                                pluginRepository.save(plugin);
+                                log.info("Plugin '{}' reconciled to ACTIVE from runtime state",
+                                        plugin.getPluginId());
+                            }
+                            return;
+                        }
+                        if (plugin.getStatus() == PluginInstallStatusEnumVO.DISABLED
+                                || plugin.getStatus() == PluginInstallStatusEnumVO.UNINSTALLED) {
+                            return;
+                        }
                         RunPluginResponseDTO result = runCase.execute(
                                 new RunPluginRequestDTO(plugin.getPluginId()));
                         if (result.running()) {

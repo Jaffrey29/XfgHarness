@@ -35,12 +35,15 @@ import cn.xiaofuge.deepseek.harness.domain.tool.schedule.ScheduleTools;
 import cn.xiaofuge.deepseek.harness.domain.tool.session.SessionSearchTool;
 import cn.xiaofuge.deepseek.harness.domain.tool.shell.IShellExecutor;
 import cn.xiaofuge.deepseek.harness.domain.tool.shell.ShellExecuteTool;
+import cn.xiaofuge.deepseek.harness.domain.tool.plugin.PluginStatusTool;
 import cn.xiaofuge.deepseek.harness.domain.tool.terminal.TerminalTools;
 import cn.xiaofuge.deepseek.harness.domain.tool.web.WebFetchTool;
 import cn.xiaofuge.deepseek.harness.domain.tool.web.WebSearchTool;
 import cn.xiaofuge.deepseek.harness.domain.tool.web.adapter.port.IWebPort;
 import cn.xiaofuge.deepseek.harness.domain.skill.ISkillService;
 import cn.xiaofuge.deepseek.harness.domain.tool.skill.SkillTool;
+import cn.xiaofuge.deepseek.harness.domain.plugin.IPluginRuntimeService;
+import cn.xiaofuge.deepseek.harness.domain.plugin.registry.adapter.repository.IHarnessPluginRepository;
 
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -60,6 +63,8 @@ public final class AgentToolCatalog {
     private final ILspService lspService;
     private final IConversationQueryService conversationQueryService;
     private final cn.xiaofuge.deepseek.harness.domain.terminal.adapter.port.ITerminalPort terminalPort;
+    private final IHarnessPluginRepository pluginRepository;
+    private final IPluginRuntimeService pluginRuntimeService;
 
     public AgentToolCatalog(
             IShellExecutor shellExecutor,
@@ -75,7 +80,9 @@ public final class AgentToolCatalog {
             IScheduleService scheduleService,
             ILspService lspService,
             IConversationQueryService conversationQueryService,
-            cn.xiaofuge.deepseek.harness.domain.terminal.adapter.port.ITerminalPort terminalPort
+            cn.xiaofuge.deepseek.harness.domain.terminal.adapter.port.ITerminalPort terminalPort,
+            IHarnessPluginRepository pluginRepository,
+            IPluginRuntimeService pluginRuntimeService
     ) {
         this.shellExecutor = shellExecutor;
         this.fsPort = fsPort;
@@ -91,6 +98,8 @@ public final class AgentToolCatalog {
         this.lspService = lspService;
         this.conversationQueryService = conversationQueryService;
         this.terminalPort = terminalPort;
+        this.pluginRepository = pluginRepository;
+        this.pluginRuntimeService = pluginRuntimeService;
     }
 
     public ToolRegistry createRegistry(AgentToolContext context, ToolRegistry sharedRegistry) {
@@ -109,6 +118,7 @@ public final class AgentToolCatalog {
         localRegistry.register(new FsGrepTool(fsPort));
         localRegistry.register(new FsReadImageTool(fsPort));
         localRegistry.register(new FsEditTool(fsPort));
+        localRegistry.register(new PluginStatusTool(pluginRepository, pluginRuntimeService));
         localRegistry.register(new WebSearchTool(webPort));
         localRegistry.register(new WebFetchTool(webPort));
         if (lspService != null) {

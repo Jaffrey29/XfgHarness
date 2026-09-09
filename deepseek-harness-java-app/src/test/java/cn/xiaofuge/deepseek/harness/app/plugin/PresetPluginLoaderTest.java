@@ -8,6 +8,7 @@ import cn.xiaofuge.deepseek.harness.api.dto.RunPluginResponseDTO;
 import cn.xiaofuge.deepseek.harness.cases.plugin.IInstallHarnessPluginCase;
 import cn.xiaofuge.deepseek.harness.cases.plugin.IRunHarnessPluginCase;
 import cn.xiaofuge.deepseek.harness.domain.plugin.IPluginRegistryService;
+import cn.xiaofuge.deepseek.harness.domain.plugin.IPluginRuntimeService;
 import cn.xiaofuge.deepseek.harness.domain.plugin.registry.adapter.repository.IHarnessPluginRepository;
 import cn.xiaofuge.deepseek.harness.domain.plugin.registry.model.entity.HarnessPluginEntity;
 import cn.xiaofuge.deepseek.harness.domain.plugin.registry.model.valobj.PluginInstallModeEnumVO;
@@ -46,7 +47,8 @@ class PresetPluginLoaderTest {
                 fixture.installCase,
                 fixture.runCase,
                 fixture.registryService,
-                fixture.repository
+                fixture.repository,
+                fixture.runtimeService
         );
 
         loader.run(null);
@@ -75,12 +77,73 @@ class PresetPluginLoaderTest {
                 fixture.installCase,
                 fixture.runCase,
                 fixture.registryService,
-                fixture.repository
+                fixture.repository,
+                fixture.runtimeService
         );
 
         loader.run(null);
 
         assertEquals(List.of("sample-tools"), runPluginIds);
+    }
+
+    @Test
+    void reconcilesFailedRegistryStatusFromRunningPlugin() {
+        HarnessPluginEntity failedPlugin = new HarnessPluginEntity(
+                "mall-weekend-assistant",
+                "2D Weekend Mall Assistant",
+                "1.0.0-SNAPSHOT",
+                PluginRuntimeTypeEnumVO.JAVA_NATIVE,
+                PluginInstallModeEnumVO.NATIVE,
+                "/plugins/mall-weekend-assistant.jar",
+                "mall-weekend-assistant.jar",
+                PluginInstallStatusEnumVO.FAILED,
+                Instant.now()
+        );
+        Fixture fixture = new Fixture(List.of(failedPlugin), new ArrayList<>());
+        fixture.runtimeStatus.put("mall-weekend-assistant", true);
+        PresetPluginLoader loader = new PresetPluginLoader(
+                fixture.properties,
+                fixture.installCase,
+                fixture.runCase,
+                fixture.registryService,
+                fixture.repository,
+                fixture.runtimeService
+        );
+
+        loader.run(null);
+
+        assertEquals(
+                PluginInstallStatusEnumVO.ACTIVE,
+                fixture.repository.findByPluginId("mall-weekend-assistant").orElseThrow().getStatus());
+    }
+
+    @Test
+    void retriesPersistedFailedPluginAfterHostRestart() {
+        HarnessPluginEntity failedPlugin = new HarnessPluginEntity(
+                "mall-weekend-assistant",
+                "2D Weekend Mall Assistant",
+                "1.0.0-SNAPSHOT",
+                PluginRuntimeTypeEnumVO.JAVA_NATIVE,
+                PluginInstallModeEnumVO.NATIVE,
+                "/plugins/mall-weekend-assistant.jar",
+                "mall-weekend-assistant.jar",
+                PluginInstallStatusEnumVO.FAILED,
+                Instant.now()
+        );
+        List<String> runPluginIds = new ArrayList<>();
+        Fixture fixture = new Fixture(List.of(failedPlugin), runPluginIds);
+        PresetPluginLoader loader = new PresetPluginLoader(
+                fixture.properties,
+                fixture.installCase,
+                fixture.runCase,
+                fixture.registryService,
+                fixture.repository,
+                fixture.runtimeService
+        );
+
+        loader.run(null);
+
+        assertEquals(List.of("mall-weekend-assistant"), runPluginIds);
     }
 
     private HarnessExtensionsProperties.PresetPlugin preset(String pluginId) {
@@ -104,6 +167,8 @@ class PresetPluginLoaderTest {
         private final IRunHarnessPluginCase runCase;
         private final IPluginRegistryService registryService;
         private final IHarnessPluginRepository repository;
+        private final Map<String, Boolean> runtimeStatus = new HashMap<>();
+        private final IPluginRuntimeService runtimeService;
 
         private Fixture(List<HarnessPluginEntity> plugins, List<String> runPluginIds) {
             this.plugins = plugins;
@@ -155,6 +220,23 @@ class PresetPluginLoaderTest {
                 }
                 @Override public void deleteByPluginId(String pluginId) {
                     pluginMap.remove(pluginId);
+                }
+            };
+            this.runtimeService = new IPluginRuntimeService() {
+                @Override public cn.xiaofuge.deepseek.harness.domain.plugin.runtime.model.valobj.PluginRunResultVO start(
+                        cn.xiaofuge.deepseek.harness.domain.plugin.registry.model.entity.HarnessPluginEntity plugin,
+                        cn.xiaofuge.deepseek.harness.domain.plugin.bridge.model.valobj.PluginBridgePlanVO plan) {
+                    throw new AssertionError("runtime should not start plugins in this fixture");
+                }
+
+                @Override public cn.xiaofuge.deepseek.harness.domain.plugin.runtime.model.valobj.PluginProcessStatusVO status(String pluginId) {
+                    boolean running = runtimeStatus.getOrDefault(pluginId, false);
+                    return new cn.xiaofuge.deepseek.harness.domain.plugin.runtime.model.valobj.PluginProcessStatusVO(
+                            pluginId, 0L, running, "java", null, Instant.now(), running ? "running" : "not running");
+                }
+
+                @Override public cn.xiaofuge.deepseek.harness.domain.plugin.runtime.model.valobj.PluginProcessStatusVO stop(String pluginId) {
+                    throw new AssertionError("runtime should not stop plugins in this fixture");
                 }
             };
         }
