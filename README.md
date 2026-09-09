@@ -22,6 +22,7 @@
   - [2.5 启动方式三：Docker Compose](#25-启动方式三docker-compose)
   - [2.6 打开 Web 控制台](#26-打开-web-控制台)
   - [2.7 用 curl 发第一条消息](#27-用-curl-发第一条消息)
+  - [2.8 安装 2D Weekend Mall 插件](#28-安装-2d-weekend-mall-插件)
 - [3. 整体架构设计](#3-整体架构设计)
   - [3.1 总体架构图](#31-总体架构图)
   - [3.2 依赖方向与核心约束](#32-依赖方向与核心约束)
@@ -154,7 +155,19 @@ java -jar deepseek-harness-java-app/target/deepseek-harness-java-app-1.0.0-SNAPS
 
 ### 2.4 启动方式二：MySQL（默认 profile）
 
-默认 `application.yml` 面向外部 MySQL（默认连 `127.0.0.1:3306/deepseek_harness_java`）。通过环境变量覆盖连接信息：
+#### 导入 MySQL 库表
+
+推荐直接导入仓库内的 MySQL 8 dump，它包含 12 张 Harness 表：
+
+```bash
+mysql -u root -p < docs/dev-ops/mysql/sql/deepseek_harness_java.sql
+```
+
+脚本会创建并切换到 `deepseek_harness_java`。如果使用已有数据库实例，也可在启动时让 Spring SQL 初始化自动创建 `schema.sql`；导入完整 dump 适合需要拿到与开发环境一致的表结构，或手动管理库表的场景。
+
+#### 配置并启动
+
+默认 `application.yml` 面向外部 MySQL。通过环境变量覆盖连接信息，数据库名必须与导入的库名一致：
 
 ```bash
 export SPRING_DATASOURCE_URL='jdbc:mysql://127.0.0.1:3306/deepseek_harness_java?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true'
@@ -165,7 +178,37 @@ export DEEPSEEK_API_KEY='your-model-api-key'
 java -jar deepseek-harness-java-app/target/deepseek-harness-java-app-1.0.0-SNAPSHOT.jar
 ```
 
-应用启动时自动执行 `deepseek-harness-java-app/src/main/resources/schema.sql`（幂等），确保 12 张核心表存在。
+如果导入的是仓库 dump，应用启动时仍会执行 `deepseek-harness-java-app/src/main/resources/schema.sql`；其中的 `CREATE TABLE IF NOT EXISTS` 不会清空已有数据。
+
+#### 启动后更新 API / LLM 配置
+
+数据库导入完成后，需要把模型服务配置保存到 Harness，而不是只依赖启动参数。打开 Web 控制台的 **设置 → 模型**：
+
+| 字段 | 推荐值 |
+| --- | --- |
+| Profile | `deepseek` |
+| Provider | `deepseek` |
+| 模型 | 你的模型名，例如 `glm-5.3-flash` |
+| Base URL | OpenAI 兼容接口，通常以 `/v1` 结尾 |
+| API Key | 模型网关或供应商密钥 |
+| Enabled | 开启 |
+
+`profileCode=deepseek` 是 Agent 的全局默认配置。保存后，数据库配置优先生效；只有该记录不存在或未启用时，才会回退到 `DEEPSEEK_*` 环境变量和 `harness.yml` 文件兜底。
+
+也可以调用 API 保存：
+
+```bash
+curl -X POST http://localhost:8090/api/harness/settings/models \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "profileCode": "deepseek",
+    "providerCode": "deepseek",
+    "modelCode": "glm-5.3-flash",
+    "baseUrl": "http://127.0.0.1:8777/v1",
+    "apiKeyRef": "your-model-api-key",
+    "enabled": true
+  }'
+```
 
 ### 2.5 启动方式三：Docker Compose
 
@@ -214,6 +257,64 @@ curl -N -X POST http://localhost:8090/api/agent/stream \
 ```
 
 如果配置了 `harness.auth.api-keys`，需额外携带 `-H 'X-API-Key: your-api-key'` 或 `-H 'Authorization: Bearer your-api-key'`。
+
+### 2.8 安装 2D Weekend Mall 插件
+
+`2d-weekend-mall` 的商城服务可以独立运行；但商城页面里的 **AI 客服** 依赖先在 Harness 中导入 `mall-weekend-assistant` 插件。没有插件时，Harness 中不存在商城订单、商品和物流查询工具。
+
+```bash
+cd /Users/fuzhengwei/DevOps/2d-weekend-mall
+mvn clean package -DskipTests
+
+# 先启动商城，端口 18080
+mvn -pl mall-app spring-boot:run
+
+# 再在另一个终端启动 Harness，端口 8090
+cd /Users/fuzhengwei/DevOps/deepseek-harness-java
+java -jar deepseek-harness-java-app/target/deepseek-harness-java-app-1.0.0-SNAPSHOT.jar
+```
+
+打开 Harness 控制台的 **设置 → 插件**，选择：
+
+```text
+/Users/fuzhengwei/DevOps/2d-weekend-mall/mall-agent-plugin/target/mall-agent-plugin-1.0.0-SNAPSHOT.jar
+```
+
+控制台会解析 `META-INF/plugin.yaml`，确认后安装并启动插件。
+
+也可以用 API 安装、激活和运行：
+
+```bash
+curl -X POST http://localhost:8090/api/harness/plugins/install \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "pluginId": "mall-weekend-assistant",
+    "displayName": "2D Weekend Mall Assistant",
+    "pluginVersion": "1.0.0-SNAPSHOT",
+    "runtimeType": "JAVA_NATIVE",
+    "sourcePath": "/Users/fuzhengwei/DevOps/2d-weekend-mall/mall-agent-plugin/target/mall-agent-plugin-1.0.0-SNAPSHOT.jar",
+    "entrypoint": "mall-agent-plugin-1.0.0-SNAPSHOT.jar"
+  }'
+
+curl -X POST http://localhost:8090/api/harness/plugins/activate \
+  -H 'Content-Type: application/json' \
+  -d '{"pluginId":"mall-weekend-assistant"}'
+
+curl -X POST http://localhost:8090/api/harness/plugins/run \
+  -H 'Content-Type: application/json' \
+  -d '{"pluginId":"mall-weekend-assistant"}'
+```
+
+插件启动成功后，Agent 可用工具包括 `plugin__mall-weekend-assistant__search_products`、`plugin__mall-weekend-assistant__get_product`、`plugin__mall-weekend-assistant__query_orders`、`plugin__mall-weekend-assistant__get_order` 和 `plugin__mall-weekend-assistant__query_logistics`。
+
+最后在插件卡片点击 **配置**，保存两组键值：
+
+| Key | Value |
+| --- | --- |
+| `mall.base-url` | `http://127.0.0.1:18080` |
+| `mall.service-token` | 与商城 `MALL_SERVICE_TOKEN` / `mall.security.service-token` 一致 |
+
+保存配置后，建议停用并重新启用插件，确保 `configure(context)` 读取到最新值。然后在商城页面右上角打开 AI 客服即可通过 Harness 完成对话和工具调用。
 
 ---
 
