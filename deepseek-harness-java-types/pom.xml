@@ -7,7 +7,7 @@
     <parent>
         <groupId>cn.xiaofuge</groupId>
         <artifactId>deepseek-harness-java</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
+        <version>0.1.5</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -16,6 +16,38 @@
 
     <name>deepseek-harness-java-types</name>
     <description>插件开发契约包：SPI 接口、抽象基类、工具/内容值对象。外部插件工程只需依赖此包即可开发。</description>
+    <url>https://github.com/fuzhengwei/deepseek-harness-java</url>
+
+    <scm>
+        <connection>scm:git:https://github.com/fuzhengwei/deepseek-harness-java.git</connection>
+        <developerConnection>scm:git:git@github.com:fuzhengwei/deepseek-harness-java.git</developerConnection>
+        <tag>HEAD</tag>
+        <url>https://github.com/fuzhengwei/deepseek-harness-java</url>
+    </scm>
+
+    <licenses>
+        <license>
+            <name>The Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>ossrh</id>
+            <name>fuzhengwei</name>
+            <email>184172133@qq.com</email>
+            <url>https://github.com/fuzhengwei</url>
+            <organization>deepseek-harness-java</organization>
+            <organizationUrl>https://github.com/fuzhengwei/deepseek-harness-java</organizationUrl>
+            <roles>
+                <role>Project Manager</role>
+                <role>Developer</role>
+            </roles>
+            <timezone>Asia/Shanghai</timezone>
+        </developer>
+    </developers>
 
     <dependencies>
         <dependency>
@@ -23,4 +55,108 @@
             <artifactId>slf4j-api</artifactId>
         </dependency>
     </dependencies>
+
+    <!--<build>
+        <plugins>
+            &lt;!&ndash; 发布到 Maven 中央仓库（Central Portal） &ndash;&gt;
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>0.4.0</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <publishingServerId>ossrh</publishingServerId>
+                    <tokenAuth>true</tokenAuth>
+                    <autoPublish>true</autoPublish>
+                    &lt;!&ndash; 仅发布 types 模块时跳过父 POM（-N），父 POM 通过 flatten 内联 &ndash;&gt;
+                    <skipPublishing>${maven.deploy.skip}</skipPublishing>
+                </configuration>
+            </plugin>
+
+            &lt;!&ndash; 扁平化 POM：将父 POM 的 properties/dependencyManagement 解析内联，使 types 可独立发布 &ndash;&gt;
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+                <version>1.6.0</version>
+                <configuration>
+                    <updatePomFile>true</updatePomFile>
+                    <flattenMode>ossrh</flattenMode>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>flatten</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>flatten</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>flatten.clean</id>
+                        <phase>clean</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            &lt;!&ndash; 源码包 &ndash;&gt;
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>2.2.1</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            &lt;!&ndash; javadoc 包 &ndash;&gt;
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.6.3</version>
+                <configuration>
+                    <charset>UTF-8</charset>
+                    <encoding>UTF-8</encoding>
+                    <docencoding>UTF-8</docencoding>
+                    <additionalJOption>-Xdoclint:none</additionalJOption>
+                    <failOnError>false</failOnError>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            &lt;!&ndash; GPG 签名 &ndash;&gt;
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <version>1.6</version>
+                <configuration>
+                    &lt;!&ndash; 指定用于签名的 GPG 密钥名称 &ndash;&gt;
+                    <keyname>ossrh</keyname>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>sign</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>-->
 </project>

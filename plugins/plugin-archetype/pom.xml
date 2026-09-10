@@ -6,7 +6,7 @@
 
     <groupId>cn.xiaofuge</groupId>
     <artifactId>deepseek-harness-plugin-archetype</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>0.1.5</version>
     <packaging>maven-archetype</packaging>
 
     <name>deepseek-harness-plugin-archetype</name>

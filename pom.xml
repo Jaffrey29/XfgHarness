@@ -5,7 +5,7 @@
 
     <groupId>cn.xiaofuge</groupId>
     <artifactId>deepseek-harness-java</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>0.1.5</version>
     <packaging>pom</packaging>
 
     <name>deepseek-harness-java</name>
@@ -64,5 +64,20 @@
                 </plugin>
             </plugins>
         </pluginManagement>
+
+        <plugins>
+            <!-- 版本管理插件：统一升级/回退全工程（含子模块）版本号 -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>versions-maven-plugin</artifactId>
+                <version>2.16.2</version>
+                <configuration>
+                    <!-- 各模块版本与父工程保持一致 -->
+                    <processAllModules>true</processAllModules>
+                    <!-- 不产生 pom.xml.versionsBackup 备份文件 -->
+                    <generateBackupPoms>false</generateBackupPoms>
+                </configuration>
+            </plugin>
+        </plugins>
     </build>
 </project>
