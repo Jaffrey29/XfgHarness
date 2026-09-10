@@ -59,6 +59,7 @@ public class PluginRegistryService implements IPluginRegistryService {
             String entrypoint
     ) {
         requireText(pluginId, "pluginId");
+        requirePluginId(pluginId);
         requireText(displayName, "displayName");
         requireText(pluginVersion, "pluginVersion");
         requireText(runtimeType, "runtimeType");
@@ -177,6 +178,16 @@ public class PluginRegistryService implements IPluginRegistryService {
     private void requireText(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(fieldName + " must not be blank");
+        }
+    }
+
+    /**
+     * 插件 ID 会参与注册工具名与安装目录路径，必须限制为安全字符集。
+     */
+    private void requirePluginId(String pluginId) {
+        if (!pluginId.matches("[A-Za-z0-9][A-Za-z0-9._-]*")) {
+            throw new IllegalArgumentException(
+                    "pluginId must start with a letter or digit and contain only letters, digits, dot, underscore or dash");
         }
     }
 }

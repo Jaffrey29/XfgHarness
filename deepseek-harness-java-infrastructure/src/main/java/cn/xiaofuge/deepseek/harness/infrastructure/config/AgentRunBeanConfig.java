@@ -120,7 +120,7 @@ public class AgentRunBeanConfig {
                 ## 格式
                 - 使用 Markdown 格式化输出。
                 - 长回答用标题和列表组织结构。
-                - 思考过程用 <thead> 包裹。
+                - 不要在正文中输出内部推理过程或 <think> 之类的标签，只输出最终回答。
                 """;
         var assembler = new ScopedSystemPromptAssembler(identity, persona, List.of());
         assembler.registerContext(new ScopedSystemPromptAssembler.PromptContext(

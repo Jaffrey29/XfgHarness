@@ -1385,6 +1385,7 @@ a:hover { text-decoration: underline; }
   font-size: 13px;
 }
 .slash-cmd-item:hover { background: var(--dsw-alias-interactive-bg-hover); }
+.slash-cmd-item.active { background: var(--dsw-alias-interactive-bg-hover); }
 .slash-cmd-icon { font-size: 14px; flex: none; }
 .slash-cmd-info { flex: 1; min-width: 0; }
 .slash-cmd-name { font-weight: 500; color: var(--dsw-alias-label-primary); }

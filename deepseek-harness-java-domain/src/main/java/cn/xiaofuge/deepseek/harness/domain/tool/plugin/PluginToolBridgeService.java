@@ -74,9 +74,15 @@ public class PluginToolBridgeService {
                 toolNames.add(toolDef.name());
             }
 
+            List<String> previousToolNames = pluginToolNames.putIfAbsent(pluginId, List.copyOf(toolNames));
+            if (previousToolNames != null) {
+                for (Runnable disposer : disposers) {
+                    disposer.run();
+                }
+                return previousToolNames;
+            }
             pluginDisposers.put(pluginId, disposers);
-            pluginToolNames.put(pluginId, List.copyOf(toolNames));
-            registerPromptSection(pluginId, descriptors);
+            registerPromptSection(pluginId, descriptors, toolNames);
             return toolNames;
 
         } catch (Exception e) {
@@ -132,16 +138,23 @@ public class PluginToolBridgeService {
      */
     private void registerPromptSection(
             String pluginId,
-            List<IPluginToolBridge.PluginToolDescriptor> descriptors
+            List<IPluginToolBridge.PluginToolDescriptor> descriptors,
+            List<String> registeredToolNames
     ) {
         if (!(promptAssembler instanceof ScopedSystemPromptAssembler scoped) || descriptors.isEmpty()) {
             return;
         }
         StringJoiner lines = new StringJoiner("\n");
-        for (var descriptor : descriptors) {
-            lines.add("- " + descriptor.name() + ": "
-                    + (descriptor.description() == null || descriptor.description().isBlank()
-                            ? "no description" : descriptor.description()));
+        for (int i = 0; i < descriptors.size(); i++) {
+            var descriptor = descriptors.get(i);
+            // 提示词中必须使用注册后的完整工具名（plugin__<pluginId>__<tool>），
+            // 与 function calling schema 中的名字保持一致，避免模型按未加前缀的名字调用失败。
+            String toolName = i < registeredToolNames.size()
+                    ? registeredToolNames.get(i)
+                    : descriptor.name();
+            lines.add("- " + toolName + ": "
+            + sanitizePromptText(descriptor.description() == null || descriptor.description().isBlank()
+                    ? "no description" : descriptor.description()));
         }
         String text = "## Plugin capabilities: " + pluginId + "\n"
                 + "These plugin tools are available in the tool schema. "
@@ -170,5 +183,12 @@ public class PluginToolBridgeService {
      */
     private String promptSectionName(String pluginId) {
         return "plugin:" + pluginId + ":capabilities";
+    }
+
+    /**
+     * 清理插件贡献的描述文本，防止换行伪装成提示词结构注入系统提示词。
+     */
+    private String sanitizePromptText(String value) {
+        return value.replaceAll("[\\r\\n\\t]+", " ").trim();
     }
 }

@@ -1438,6 +1438,126 @@ function hideSlashSuggestions() {
   if (existing) existing.remove();
 }
 
+// ═══════════════════════════════════════════
+// @ 插件提及
+// ═══════════════════════════════════════════
+state.mentionState = { items: [], activeIndex: -1 };
+
+function activeMentionPlugins() {
+  return state.plugins.filter(function(plugin) {
+    return !plugin.status || plugin.status === 'ACTIVE';
+  });
+}
+
+function handlePluginMention(input, cursorPos) {
+  const text = input.value.slice(0, cursorPos);
+  const match = text.match(/(?:^|\s)@([A-Za-z0-9._-]*)$/);
+  if (!match) {
+    hidePluginMentionSuggestions();
+    return;
+  }
+
+  const partial = match[1].toLowerCase();
+  const items = activeMentionPlugins().filter(function(plugin) {
+    const id = (plugin.pluginId || '').toLowerCase();
+    const name = (plugin.displayName || '').toLowerCase();
+    return id.includes(partial) || name.includes(partial);
+  }).slice(0, 8);
+
+  if (items.length === 0) {
+    hidePluginMentionSuggestions();
+    return;
+  }
+  showPluginMentionSuggestions(input, items);
+}
+
+function showPluginMentionSuggestions(input, items) {
+  hidePluginMentionSuggestions();
+  state.mentionState.items = items;
+  state.mentionState.activeIndex = 0;
+
+  const container = el('div', { class: 'slash-command-suggestions', id: 'plugin-mention-suggestions' });
+  items.forEach(function(plugin, index) {
+    const item = el('button', {
+      type: 'button',
+      class: 'slash-cmd-item' + (index === 0 ? ' active' : ''),
+      onclick: function() {
+        applyPluginMention(input, plugin.pluginId);
+      }
+    });
+    item.appendChild(el('span', { class: 'slash-cmd-icon' }, '🧩'));
+    item.appendChild(el('div', { class: 'slash-cmd-info' },
+      el('div', { class: 'slash-cmd-name' }, '@' + plugin.pluginId),
+      el('div', { class: 'slash-cmd-desc' }, plugin.displayName || plugin.pluginId)
+    ));
+    container.appendChild(item);
+  });
+
+  const rect = input.getBoundingClientRect();
+  container.style.position = 'fixed';
+  container.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
+  container.style.left = rect.left + 'px';
+  container.style.width = Math.max(rect.width, 260) + 'px';
+  document.body.appendChild(container);
+}
+
+function hidePluginMentionSuggestions() {
+  const existing = $('#plugin-mention-suggestions');
+  if (existing) existing.remove();
+  state.mentionState.items = [];
+  state.mentionState.activeIndex = -1;
+}
+
+function handleMentionKeys(input, event) {
+  const container = $('#plugin-mention-suggestions');
+  if (!container || state.mentionState.items.length === 0) return false;
+
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault();
+    const count = state.mentionState.items.length;
+    state.mentionState.activeIndex = event.key === 'ArrowDown'
+      ? (state.mentionState.activeIndex + 1) % count
+      : (state.mentionState.activeIndex - 1 + count) % count;
+    Array.from(container.children).forEach(function(item, index) {
+      item.classList.toggle('active', index === state.mentionState.activeIndex);
+    });
+    return true;
+  }
+  if ((event.key === 'Enter' || event.key === 'Tab') && state.mentionState.activeIndex >= 0) {
+    event.preventDefault();
+    applyPluginMention(input, state.mentionState.items[state.mentionState.activeIndex].pluginId);
+    return true;
+  }
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    hidePluginMentionSuggestions();
+    return true;
+  }
+  return false;
+}
+
+function hasActivePluginMention() {
+  return !!$('#plugin-mention-suggestions');
+}
+
+function applyPluginMention(input, pluginId) {
+  const cursorPos = input.selectionStart || input.value.length;
+  const before = input.value.slice(0, cursorPos);
+  const match = before.match(/@([A-Za-z0-9._-]*)$/);
+  if (!match) {
+    hidePluginMentionSuggestions();
+    return;
+  }
+  const start = cursorPos - match[0].length;
+  const insertion = '@' + pluginId + ' ';
+  input.value = input.value.slice(0, start) + insertion + input.value.slice(cursorPos);
+  const caret = start + insertion.length;
+  input.focus();
+  input.setSelectionRange(caret, caret);
+  autoResize({ target: input });
+  hidePluginMentionSuggestions();
+}
+
 async function executeSlashCommand(text, sess) {
   const parts = text.split(/\s+/);
   const cmd = parts[0].toLowerCase();
@@ -2640,16 +2760,26 @@ function renderComposer(sess) {
     id: 'composer-input',
     placeholder: '给智能体发送消息',
     rows: '1',
-    oninput: autoResize,
+    oninput: function(e) {
+      autoResize(e);
+      handlePluginMention(this, this.selectionStart);
+    },
     onkeydown: function(e) {
+      if (handleMentionKeys(this, e)) return;
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && e.keyCode !== 229) {
         e.preventDefault();
         sendMessage();
       }
     },
     onkeyup: function(e) {
+      if (hasActivePluginMention() && ['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape'].includes(e.key)) {
+        return;
+      }
       if (e.key === '/' || /[a-z]/i.test(e.key)) {
         handleSlashCommand(this, this.selectionStart);
+      }
+      if (e.key === '@' || /[A-Za-z0-9._-]/i.test(e.key) || e.key === 'Backspace') {
+        handlePluginMention(this, this.selectionStart);
       }
     },
     onpaste: function(e) { handleFilePaste(e, sess); },

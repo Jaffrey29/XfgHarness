@@ -76,6 +76,10 @@ if [[ -z "$PLUGIN_ID" ]]; then echo "Error: Cannot determine plugin ID."; exit 1
 if [[ -z "$DISPLAY_NAME" ]]; then DISPLAY_NAME="$PLUGIN_ID"; fi
 if [[ -z "$PLUGIN_VERSION" ]]; then PLUGIN_VERSION="1.0.0"; fi
 
+json_escape() {
+  printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | awk '{printf "%s\\n", $0}' | sed -e 's/\\n$//'
+}
+
 echo "▸ Plugin:    $PLUGIN_ID v$PLUGIN_VERSION"
 echo "▸ Name:      $DISPLAY_NAME"
 echo "▸ JAR:       $JAR"
@@ -85,7 +89,8 @@ echo ""
 # Install
 echo "→ Installing..."
 INSTALL_PAYLOAD=$(printf '{"pluginId":"%s","displayName":"%s","pluginVersion":"%s","runtimeType":"JAVA_NATIVE","sourcePath":"%s","entrypoint":"%s"}' \
-  "$PLUGIN_ID" "$DISPLAY_NAME" "$PLUGIN_VERSION" "$JAR" "$ENTRYPOINT")
+  "$(json_escape "$PLUGIN_ID")" "$(json_escape "$DISPLAY_NAME")" "$(json_escape "$PLUGIN_VERSION")" \
+  "$(json_escape "$JAR")" "$(json_escape "$ENTRYPOINT")")
 
 INSTALL_RESPONSE=$(curl -sS -X POST "$HOST/api/harness/plugins/install" \
   -H "Content-Type: application/json" \

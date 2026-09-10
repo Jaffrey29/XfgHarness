@@ -36,6 +36,7 @@ public class AgentDispatchNode extends AbstractAgentMessageNode {
     // 提取消息中的绝对路径：遇到空白和常见中英文标点即停止，避免把后续说明文字吞进路径。
     private static final Pattern ABSOLUTE_PATH = Pattern.compile("(/[^\s，。,；;：:\"'“”‘’（）()！？!?、<>]+)");
     private static final Pattern DIRECTORY_QUESTION = Pattern.compile("(?i)(目录|项目|文件夹|仓库|里面有什么|有哪些|包含什么|列表|list|what's in|what is in)");
+    private static final Pattern PLUGIN_MENTION = Pattern.compile("(?<=^|\\s)@([A-Za-z0-9][A-Za-z0-9._-]*)");
 
     @Autowired
     @Qualifier("agentMessageCollectNode")
@@ -51,6 +52,7 @@ public class AgentDispatchNode extends AbstractAgentMessageNode {
                                            AgentMessageDynamicContext ctx) throws Exception {
         var intent = ctx.getIntent();
         String messageText = prepareMessageText(request.message(), intent);
+        messageText = appendPluginMentionInstruction(messageText);
         List<ContentBlock> blocks = new java.util.ArrayList<>();
         blocks.add(new TextBlock(messageText));
         appendImageBlocks(request, blocks);
@@ -145,6 +147,28 @@ public class AgentDispatchNode extends AbstractAgentMessageNode {
     }
 
     /**
+     * 把 @插件 提及转换为模型可见的优先级指令，便于对话中显式验证指定插件。
+     */
+    static String appendPluginMentionInstruction(String messageText) {
+        if (messageText == null || messageText.isBlank()) {
+            return messageText;
+        }
+        Matcher matcher = PLUGIN_MENTION.matcher(messageText);
+        java.util.LinkedHashSet<String> mentions = new java.util.LinkedHashSet<>();
+        while (matcher.find()) {
+            mentions.add(matcher.group(1));
+        }
+        if (mentions.isEmpty()) {
+            return messageText;
+        }
+        return messageText
+                + "\n\n[插件提及] 用户明确指定了以下插件："
+                + String.join(", ", mentions)
+                + "。优先在对应 plugin__<插件ID>__<工具名> 工具中选择；"
+                + "其他插件工具只有在被指定或确实更匹配时才使用。";
+    }
+
+    /**
      * 为目录类任务生成精确的工具指令。
      * <p>只有文本同时命中目录关键词和绝对路径时才返回提示；否则返回 null，
      * 交由通用的任务执行指令处理。
@@ -159,6 +183,15 @@ public class AgentDispatchNode extends AbstractAgentMessageNode {
             return null;
         }
         String directory = matcher.group(1);
+        // 路径必须真实存在且是目录才改写为 ls 指令——否则像 "SELECT/SHOW/DESC"
+        // 这类文本片段会被误当成目录路径，把用户消息改写得面目全非。
+        try {
+            if (!java.nio.file.Files.isDirectory(java.nio.file.Path.of(directory))) {
+                return null;
+            }
+        } catch (Exception e) {
+            return null;
+        }
         return "你需要列出这个目录的一级子目录和文件。推荐用 `shell_execute` 工具执行 `ls -la \"" + directory + "\"` 获取完整列表，\n"
                 + "或者用 `find \"" + directory + "\" -maxdepth 1 -type d` 只列目录。\n"
                 + "拿到真实结果后，用 Markdown 列表展示所有一级项目，不要遗漏、不要模糊化。\n\n"
