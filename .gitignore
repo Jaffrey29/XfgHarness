@@ -52,3 +52,4 @@ node_modules/
 # ---- 开发路线图（本地，不入库）----
 DEVELOPMENT_ROADMAP.md
 /plugins/runtime-logs/dsh-demo-plugin.log
+/plugins/dsh-java-mysql-plugin.jar
