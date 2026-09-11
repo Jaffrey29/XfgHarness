@@ -113,7 +113,9 @@ a { color: inherit; text-decoration: none; }
   min-height: 70px;
 }
 
-.brand { display: flex; align-items: center; gap: 11px; flex: 0 0 auto; }
+.brand { display: flex; align-items: center; gap: 11px; flex: 0 0 auto; text-decoration: none; color: inherit; border-radius: 12px; transition: opacity .2s ease, transform .2s ease; }
+
+.brand:hover { opacity: .82; transform: translateY(-1px); }
 
 .brand-mark {
   width: 38px;
@@ -300,6 +302,12 @@ a { color: inherit; text-decoration: none; }
 }
 
 .hero-stats dd { margin: 3px 0 0; color: var(--muted); font-size: .78rem; }
+
+.hero-stats .stat-unit {
+  font-size: .9rem;
+  margin-left: 1px;
+  -webkit-text-fill-color: var(--muted);
+}
 
 /* Hero 右侧：分层架构图卡片（呼应文档教程首页） */
 .hero-arch {
@@ -957,6 +965,206 @@ a { color: inherit; text-decoration: none; }
 .terminal pre .accent { color: #a78bfa; }
 
 /* ============================================================
+   Quickstart（一键使用 / 插件安装）
+   ============================================================ */
+.quickstart-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.quick-card { display: flex; flex-direction: column; }
+
+.quick-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.quick-card-head h3 {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin: 0;
+  font-size: 1.04rem;
+}
+
+.quick-card-head h3 .step-no { width: 28px; height: 28px; border-radius: 9px; font-size: .8rem; }
+
+.copy-btn {
+  flex: 0 0 auto;
+  padding: 6px 15px;
+  border-radius: 999px;
+  border: 1px solid var(--line-2);
+  background: var(--bg-soft);
+  color: var(--text-2);
+  font-size: .78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .2s ease;
+}
+
+.copy-btn:hover {
+  color: var(--blue);
+  border-color: rgba(79, 70, 229, .45);
+  box-shadow: 0 4px 14px rgba(79, 70, 229, .12);
+}
+
+.quick-card > p { margin: 0 0 12px; color: var(--text-2); font-size: .9rem; }
+
+.quick-card > p code,
+.quick-tip code {
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: rgba(79, 70, 229, .08);
+  color: var(--blue);
+  font-family: var(--mono);
+  font-size: .86em;
+}
+
+.codebox {
+  position: relative;
+  border-radius: 13px;
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, .16);
+}
+
+.codebox pre {
+  margin: 0;
+  padding: 18px 20px;
+  overflow-x: auto;
+  color: #cbd5e1;
+  font-family: var(--mono);
+  font-size: .78rem;
+  line-height: 1.75;
+}
+
+.quick-tip {
+  margin: 14px 0 0;
+  font-size: .84rem;
+  color: var(--muted);
+}
+
+.quickstart-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 13px;
+  margin-top: 36px;
+}
+
+/* ============================================================
+   Deploy 详情页（deploy.html）
+   ============================================================ */
+.step-block { display: grid; gap: 14px; }
+
+.step-item {
+  display: flex;
+  gap: 18px;
+  padding: 22px 24px;
+  border-radius: 15px;
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+  transition: border-color .22s ease, box-shadow .22s ease;
+}
+
+.step-item:hover { border-color: rgba(79, 70, 229, .3); box-shadow: var(--shadow-md); }
+
+.step-item > .step-no { flex: 0 0 auto; margin-top: 2px; }
+
+.step-item h3 { margin: 0 0 6px; font-size: 1.02rem; }
+.step-item p { margin: 0; color: var(--text-2); font-size: .9rem; }
+.step-item .codebox { margin-top: 12px; }
+
+.env-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+
+.env-table th, .env-table td {
+  padding: 11px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  color: var(--text-2);
+}
+
+.env-table th { color: var(--text); font-weight: 700; background: var(--bg-soft); }
+.env-table tr:first-child th:first-child { border-top-left-radius: 12px; }
+.env-table tr:first-child th:last-child { border-top-right-radius: 12px; }
+
+.env-table td code {
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: rgba(79, 70, 229, .08);
+  color: var(--blue);
+  font-family: var(--mono);
+  font-size: .85em;
+}
+
+.callout-note {
+  padding: 18px 22px;
+  border-radius: 14px;
+  background: rgba(245, 158, 11, .07);
+  border: 1px solid rgba(245, 158, 11, .3);
+  border-left: 3px solid var(--amber);
+  color: var(--text-2);
+  font-size: .9rem;
+}
+
+.callout-note strong { color: var(--text); }
+
+.callout-note code {
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: rgba(79, 70, 229, .08);
+  color: var(--blue);
+  font-family: var(--mono);
+  font-size: .86em;
+}
+
+.callout-info {
+  padding: 18px 22px;
+  border-radius: 14px;
+  background: rgba(14, 165, 233, .06);
+  border: 1px solid rgba(14, 165, 233, .3);
+  border-left: 3px solid var(--sky);
+  color: var(--text-2);
+  font-size: .9rem;
+}
+
+.callout-info strong { color: var(--text); }
+.callout-info code {
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: rgba(79, 70, 229, .08);
+  color: var(--blue);
+  font-family: var(--mono);
+  font-size: .86em;
+}
+
+.faq-item {
+  padding: 20px 24px;
+  border-radius: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+}
+
+.faq-item + .faq-item { margin-top: 12px; }
+
+.faq-item h3 { margin: 0 0 8px; font-size: .98rem; }
+.faq-item p { margin: 0; color: var(--text-2); font-size: .88rem; }
+.faq-item code {
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: rgba(79, 70, 229, .08);
+  color: var(--blue);
+  font-family: var(--mono);
+  font-size: .85em;
+}
+
+/* ============================================================
    Deploy
    ============================================================ */
 .deploy-grid {
@@ -1251,6 +1459,7 @@ a { color: inherit; text-decoration: none; }
   .feature-grid, .deploy-grid { grid-template-columns: repeat(2, 1fr); }
   .plugin-flow { grid-template-columns: repeat(2, 1fr); }
   .plugin-topic-panel { gap: 30px; }
+  .quickstart-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 740px) {

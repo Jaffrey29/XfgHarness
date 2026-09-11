@@ -19,7 +19,7 @@
 
   <header class="site-header" id="top">
     <div class="container-wide header-inner">
-      <a class="brand" href="#top">
+      <a class="brand" href="/index.html" title="回到首页">
         <span class="brand-mark"><img src="assets/images/whale-logo.png" alt="小傅哥小鲸鱼 Logo"></span>
         <span class="brand-text">
           <strong>DSH Java</strong>
@@ -28,28 +28,30 @@
       </a>
       <nav class="site-nav" aria-label="主导航">
         <a href="#runtime">运行时</a>
-        <a href="#architecture">架构</a>
+        <a href="/architecture.html">架构</a>
         <a href="#screens">界面</a>
         <a href="#cases">案例</a>
         <a href="#plugins">插件社区</a>
-        <a href="/document/index.html">实战教程</a>
+        <a href="/deploy.html">部署详解</a>
         <a href="/docs.html">体验教程</a>
+        <a href="/document/index.html" target="_blank" rel="noopener">学习教程</a>
       </nav>
       <div class="header-actions">
         <a class="btn btn-sm" href="https://github.com/topics/dsh-plugin-java" target="_blank" rel="noreferrer">插件社区</a>
-        <a class="btn btn-primary btn-sm" href="#deploy">快速开始</a>
+        <a class="btn btn-primary btn-sm" href="#quickstart">快速开始</a>
         <button class="menu-button" type="button" aria-expanded="false" aria-controls="mobileNav">菜单</button>
       </div>
     </div>
     <div class="container">
       <div class="mobile-nav" id="mobileNav">
         <a href="#runtime">运行时</a>
-        <a href="#architecture">架构</a>
+        <a href="/architecture.html">架构</a>
         <a href="#screens">界面</a>
         <a href="#cases">案例</a>
         <a href="#plugins">插件社区</a>
-        <a href="/document/index.html">实战教程</a>
+        <a href="/deploy.html">部署详解</a>
         <a href="/docs.html">体验教程</a>
+        <a href="/document/index.html" target="_blank" rel="noopener">学习教程</a>
       </div>
     </div>
   </header>
@@ -73,10 +75,10 @@
             <a class="btn btn-ghost btn-lg" href="/runtime.html">探索运行时 →</a>
           </div>
           <dl class="hero-stats reveal">
-            <div><dt>8090</dt><dd>启动即用端口</dd></div>
-            <div><dt>19</dt><dd>REST Controller</dd></div>
-            <div><dt>27</dt><dd>限界上下文</dd></div>
-            <div><dt>3</dt><dd>插件扩展模式</dd></div>
+            <div><dt>1</dt><dd>条命令启动完整运行时</dd></div>
+            <div><dt>3</dt><dd>插件模式 · Java / Node / MCP</dd></div>
+            <div><dt>50<span class="stat-unit">步</span></dt><dd>单 Turn ReAct 循环上限</dd></div>
+            <div><dt>100<span class="stat-unit">%</span></dt><dd>会话事件可回放审计</dd></div>
           </dl>
         </div>
 
@@ -180,8 +182,58 @@
       </div>
     </section>
 
+    <!-- Quickstart：一键使用 / 插件安装 -->
+    <section class="section section-soft" id="quickstart">
+      <div class="container">
+        <div class="section-head center reveal">
+          <span class="section-tag">Quickstart</span>
+          <h2>两条命令，跑起来</h2>
+          <p>「一键使用」单容器拉起 Harness 运行时；「插件安装」用标准部署包一键启动 Harness + MySQL 后台 + 商城，并预置两个插件。复制脚本即可开始。</p>
+        </div>
+        <div class="quickstart-grid">
+          <article class="card quick-card reveal">
+            <div class="quick-card-head">
+              <h3><span class="step-no">1</span>一键使用 · 启动运行时</h3>
+              <button class="copy-btn" type="button" data-copy-target="code-onekey">复制脚本</button>
+            </div>
+            <p>单容器最小体验，打开 <code>http://localhost:8090</code> 即可进入控制台。</p>
+            <div class="codebox">
+              <pre><code id="code-onekey">docker run -d \
+  --name dsh-java-web \
+  -p 8090:8090 \
+  -e DEEPSEEK_API_KEY='your-model-api-key' \
+  registry.cn-hangzhou.aliyuncs.com/xfg-studio/deepseek-harness-java:0.1.5</code></pre>
+            </div>
+            <p class="quick-tip">需要持久化数据、插件与配套案例时，请使用右侧标准部署包。</p>
+          </article>
+          <article class="card quick-card reveal">
+            <div class="quick-card-head">
+              <h3><span class="step-no">2</span>插件安装 · 标准部署包</h3>
+              <button class="copy-btn" type="button" data-copy-target="code-deploy">复制脚本</button>
+            </div>
+            <p>Compose 一键拉起三个服务，并安装/激活 dsh-java-mysql 与商城两个预置插件。</p>
+            <div class="codebox">
+              <pre><code id="code-deploy">git clone https://github.com/fuzhengwei/dsh-java-deploy.git
+cd dsh-java-deploy
+
+cp .env.example .env
+# 修改 MALL_SERVICE_TOKEN、DEEPSEEK_BASE_URL、DEEPSEEK_API_KEY
+
+docker compose up -d
+./scripts/install-plugins.sh</code></pre>
+            </div>
+            <p class="quick-tip">部署包已内置插件 JAR，无需先构建业务源码。</p>
+          </article>
+        </div>
+        <div class="quickstart-actions reveal">
+          <a class="btn btn-primary" href="/deploy.html">查看部署详解（含 MySQL 库表导入）</a>
+          <a class="btn btn-ghost" href="https://github.com/fuzhengwei/dsh-java-deploy" target="_blank" rel="noreferrer">前往 GitHub 下载 dsh-java-deploy ↗</a>
+        </div>
+      </div>
+    </section>
+
     <!-- Runtime -->
-    <section class="section section-soft" id="runtime">
+    <section class="section" id="runtime">
       <div class="container">
         <div class="section-head center reveal">
           <span class="section-tag">Runtime</span>
@@ -199,44 +251,6 @@
         <div style="text-align:center;" class="reveal">
           <a class="more-link" href="/runtime.html">查看运行时详细设计</a>
         </div>
-      </div>
-    </section>
-
-    <!-- Architecture -->
-    <section class="section" id="architecture">
-      <div class="container">
-        <div class="section-head reveal">
-          <span class="section-tag">Architecture</span>
-          <h2>实现机制与依赖约束</h2>
-          <p>多 Maven 模块按单向依赖组织：App → Trigger → API/Case → Domain ← Infrastructure；插件只依赖轻量 Types SPI 契约。</p>
-        </div>
-        <div class="architecture-grid">
-          <div class="flow-board reveal" aria-label="请求处理链路">
-            <div class="flow-row">
-              <div class="flow-node input-node">浏览器 / curl</div>
-              <div class="flow-arrow"></div>
-              <div class="flow-node">Trigger<br><small>Controller · API Key</small></div>
-              <div class="flow-arrow"></div>
-              <div class="flow-node">API<br><small>Facade · DTO</small></div>
-              <div class="flow-arrow"></div>
-              <div class="flow-node">Case<br><small>用例编排 · 策略树</small></div>
-            </div>
-            <div class="flow-row">
-              <div class="flow-node domain-node">Domain<br><small>Agent · Session · Task · Tool · Plugin · Runtime</small></div>
-              <div class="flow-arrow"></div>
-              <div class="flow-node">Ports<br><small>仓库 · LLM · 执行环境</small></div>
-              <div class="flow-arrow"></div>
-              <div class="flow-node output-node">Infrastructure<br><small>MySQL/H2 · LLM · Shell · MCP</small></div>
-            </div>
-          </div>
-          <div class="mechanism-list">
-            <article class="reveal"><span>01</span><div><h3>对话主线</h3><p>HTTP/SSE 进入 Trigger，经 Facade 到用例编排，再由 Agent 会话聚合维护消息、运行状态和工具调用事件。</p></div></article>
-            <article class="reveal"><span>02</span><div><h3>任务主线</h3><p>任务提交后经过权限评估、队列、审批、执行与结果回写；目标、计划、待办和工作流围绕任务上下文协作。</p></div></article>
-            <article class="reveal"><span>03</span><div><h3>事件溯源</h3><p>Session Event Log 记录用户输入、模型输出、工具调用与审批状态，可用于回放、审计与轨迹分析。</p></div></article>
-            <article class="reveal"><span>04</span><div><h3>插件加载</h3><p>META-INF/plugin.yaml 描述插件，SPI loader 创建运行实例；工具注册进 ToolRegistry 后才会暴露给 Agent。</p></div></article>
-          </div>
-        </div>
-        <a class="more-link reveal" href="/architecture.html">查看架构机制详解</a>
       </div>
     </section>
 
@@ -318,10 +332,10 @@
           <div class="docs-entry-copy">
             <span class="section-tag">Documentation</span>
             <h2>想深入源码与实现？</h2>
-            <p>配套 18 章实战教程与上手指引，从十分钟跑起来，到 ReAct 循环、事件溯源、插件机制、MCP 与审批治理。</p>
+            <p>配套 18 章学习教程与上手指引，从十分钟跑起来，到 ReAct 循环、事件溯源、插件机制、MCP 与审批治理。</p>
           </div>
           <div class="docs-entry-actions">
-            <a class="btn btn-primary" href="/document/index.html">实战教程（18 章）</a>
+            <a class="btn btn-primary" href="/document/index.html" target="_blank" rel="noopener">学习教程（18 章）</a>
             <a class="btn btn-ghost" href="/docs.html">体验教程</a>
           </div>
         </div>
@@ -385,7 +399,7 @@
         <div class="section-head center reveal">
           <span class="section-tag">Deploy</span>
           <h2>最简便的部署与体验路径</h2>
-          <p>单容器适合最小体验；标准部署包一键拉起 Harness、MySQL 后台、商城，并预置两个插件。教程地址：<a class="inline-link" href="https://github.com/fuzhengwei/dsh-java-deploy" target="_blank" rel="noreferrer">github.com/fuzhengwei/dsh-java-deploy</a></p>
+          <p>单容器适合最小体验；标准部署包一键拉起 Harness、MySQL 后台、商城，并预置两个插件。详细步骤与 MySQL 库表导入见 <a class="inline-link" href="/deploy.html">部署详解页</a>，部署包下载：<a class="inline-link" href="https://github.com/fuzhengwei/dsh-java-deploy" target="_blank" rel="noreferrer">github.com/fuzhengwei/dsh-java-deploy</a></p>
         </div>
         <div class="deploy-grid">
           <div class="card deploy-card reveal">
@@ -459,11 +473,13 @@ http://127.0.0.1:18080   # 商城</code></pre>
         <a href="#cases">使用案例</a>
         <a href="#plugins">社区插件</a>
         <a href="#deploy">部署体验</a>
+        <a href="/deploy.html">部署详解</a>
       </nav>
       <nav aria-label="资源导航">
         <h4>资源</h4>
         <a href="/docs.html">体验教程</a>
-        <a href="/document/index.html">实战教程</a>
+        <a href="/document/index.html" target="_blank" rel="noopener">学习教程</a>
+        <a href="/deploy.html">部署详解</a>
         <a href="https://github.com/topics/dsh-plugin-java" target="_blank" rel="noreferrer">社区插件</a>
         <a href="https://github.com/fuzhengwei/dsh-java-deploy" target="_blank" rel="noreferrer">部署教程</a>
         <a href="https://gitcode.net/KnowledgePlanet/deepseek-harness-java" target="_blank" rel="noreferrer">源码入口</a>

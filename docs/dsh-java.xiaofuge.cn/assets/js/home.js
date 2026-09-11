@@ -55,6 +55,30 @@ if (spotlight && !reduceMotion && window.matchMedia('(pointer: fine)').matches) 
   }, { passive: true });
 }
 
+/* ---- 一键复制脚本按钮 ---- */
+document.querySelectorAll('.copy-btn').forEach((btn) => {
+  btn.addEventListener('click', async () => {
+    const targetId = btn.getAttribute('data-copy-target');
+    const target = targetId ? document.getElementById(targetId) : null;
+    if (!target) return;
+    const text = target.innerText || target.textContent || '';
+    const original = btn.textContent;
+    try {
+      await navigator.clipboard.writeText(text);
+      btn.textContent = '已复制 ✓';
+    } catch (err) {
+      // 剪贴板 API 不可用（非 HTTPS / 老浏览器）时退化为选中文本
+      const range = document.createRange();
+      range.selectNodeContents(target);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      btn.textContent = '请手动复制';
+    }
+    setTimeout(() => { btn.textContent = original; }, 1800);
+  });
+});
+
 /* ---- 滚动渐入动画（带轻错落延迟） ---- */
 const revealTargets = document.querySelectorAll('.reveal');
 
