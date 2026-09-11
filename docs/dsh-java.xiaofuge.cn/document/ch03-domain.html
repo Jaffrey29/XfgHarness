@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>第3章 领域设计：事件风暴与 27 个限界上下文 | DeepSeek Harness Java 实战教程</title>
+  <meta name="description" content="用&quot;事件发生的时间线&quot;还原系统该有的样子">
+  <link rel="canonical" href="https://fuzhengwei.github.io/deepseek-harness-java/docs/html/ch03-domain.html">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+  <link rel="stylesheet" href="css/book.css?v=20260911-1">
+  <link rel="stylesheet" href="css/site.css?v=20260911-1">
+  <link rel="stylesheet" href="css/flowchart.css?v=20260911-1">
+</head>
+<body data-chapter="ch03">
+  <div class="reading-progress" id="readingProgress"></div>
+  <div class="app-layout chat-collapsed">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <a class="brand-lockup" href="index.html" title="回到首页">
+          <span class="brand-tile">📚</span>
+          <span class="brand-meta"><span class="brand-name">Harness 教程</span><span class="brand-sub">Java 实战 · 18 页</span></span>
+        </a>
+        <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
+      </div>
+      <div class="sidebar-progress">
+        <div class="progress-head"><span class="progress-label">学习进度</span><span class="progress-num" id="progressText">0/18 章</span></div>
+        <div class="progress-bar"><div class="progress-bar-fill" style="width: 0%"></div></div>
+        <div class="progress-caption" id="progressCaption">Lv.1 · 尚未开始</div>
+      </div>
+      <nav class="sidebar-nav" id="sidebarNav"><div class="nav-group" data-section="序章" style="--part:var(--section-序章)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🎬</span><span class="nav-section-title">序章</span><span class="nav-section-count">00</span></div><a class="nav-item" data-chapter="ch00" href="ch00-intro.html"><span class="nav-num">00</span><span class="nav-title">教程导读：这本书怎么读</span></a></div><div class="nav-group" data-section="第一篇：快速上手" style="--part:var(--section-快速上手)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🚀</span><span class="nav-section-title">第一篇：快速上手</span><span class="nav-section-count">01</span></div><a class="nav-item" data-chapter="ch01" href="ch01-quickstart.html"><span class="nav-num">01</span><span class="nav-title">十分钟跑起来：构建、启动与第一次对话</span></a></div><div class="nav-group" data-section="第二篇：架构设计" style="--part:var(--section-架构设计)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🏗️</span><span class="nav-section-title">第二篇：架构设计</span><span class="nav-section-count">02</span></div><a class="nav-item" data-chapter="ch02" href="ch02-architecture.html"><span class="nav-num">02</span><span class="nav-title">六边形架构：模块划分与依赖方向</span></a><a class="nav-item active" data-chapter="ch03" href="ch03-domain.html"><span class="nav-num">03</span><span class="nav-title">领域设计：事件风暴与 27 个限界上下文</span></a></div><div class="nav-group" data-section="第三篇：核心机制" style="--part:var(--section-核心机制)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🧠</span><span class="nav-section-title">第三篇：核心机制</span><span class="nav-section-count">04</span></div><a class="nav-item" data-chapter="ch04" href="ch04-react-loop.html"><span class="nav-num">04</span><span class="nav-title">ReactLoopAgent：ReAct 循环引擎</span></a><a class="nav-item" data-chapter="ch05" href="ch05-session-event.html"><span class="nav-num">05</span><span class="nav-title">会话与事件溯源：SessionLog 的秘密</span></a><a class="nav-item" data-chapter="ch06" href="ch06-intent-strategy.html"><span class="nav-num">06</span><span class="nav-title">意图识别与策略树：消息如何流转</span></a><a class="nav-item" data-chapter="ch07" href="ch07-sse-protocol.html"><span class="nav-num">07</span><span class="nav-title">SSE 流式协议：推理、工具卡片与会话终态</span></a></div><div class="nav-group" data-section="第四篇：工具与扩展" style="--part:var(--section-工具与扩展)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🛠️</span><span class="nav-section-title">第四篇：工具与扩展</span><span class="nav-section-count">08</span></div><a class="nav-item" data-chapter="ch08" href="ch08-tools.html"><span class="nav-num">08</span><span class="nav-title">工具系统：ToolCallExecutor 与 Hook 链</span></a><a class="nav-item" data-chapter="ch09" href="ch09-plugin.html"><span class="nav-num">09</span><span class="nav-title">插件开发实战：Java 与 Node 双模式</span></a><a class="nav-item" data-chapter="ch10" href="ch10-mcp.html"><span class="nav-num">10</span><span class="nav-title">MCP 集成：连接外部工具生态</span></a></div><div class="nav-group" data-section="第五篇：治理" style="--part:var(--section-治理)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🛡️</span><span class="nav-section-title">第五篇：治理</span><span class="nav-section-count">11</span></div><a class="nav-item" data-chapter="ch11" href="ch11-governance.html"><span class="nav-num">11</span><span class="nav-title">任务、审批与治理：安全执行的边界</span></a></div><div class="nav-group" data-section="第六篇：部署与生产化" style="--part:var(--section-部署与生产化)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">⚙️</span><span class="nav-section-title">第六篇：部署与生产化</span><span class="nav-section-count">12</span></div><a class="nav-item" data-chapter="ch12" href="ch12-deployment.html"><span class="nav-num">12</span><span class="nav-title">部署与生产化：从本地到上线</span></a><a class="nav-item" data-chapter="ch13" href="ch13-epilogue.html"><span class="nav-num">13</span><span class="nav-title">边界与进阶路线：从 Demo 到产品</span></a></div><div class="nav-group" data-section="工程全景" style="--part:var(--color-accent)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🧰</span><span class="nav-section-title">工程全景</span><span class="nav-section-count">14</span></div><a class="nav-item" data-chapter="ch14" href="ch14-engineering.html"><span class="nav-num">14</span><span class="nav-title">工程全景：API、控制台、数据与测试</span></a><a class="nav-item" data-chapter="ch15" href="ch15-workflow-subagent.html"><span class="nav-num">15</span><span class="nav-title">工作流与子代理：从单 Agent 到协同执行</span></a><a class="nav-item" data-chapter="ch16" href="ch16-platform-capabilities.html"><span class="nav-num">16</span><span class="nav-title">目标、计划、技能与定时任务：长程上下文治理</span></a></div><div class="nav-group" data-section="版本演进" style="--part:var(--color-accent)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">📦</span><span class="nav-section-title">版本演进</span><span class="nav-section-count">17</span></div><a class="nav-item" data-chapter="ch17" href="ch17-release-notes.html"><span class="nav-num">17</span><span class="nav-title">版本演进：v0.1.3 到 v0.1.5 交付实录</span></a></div></nav>
+    </aside>
+    <main class="content-area">
+      <div class="content-header">
+        <div class="breadcrumb">
+          <a class="crumb-home" href="index.html" aria-label="回到首页">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 9.7V20a1 1 0 0 0 1 1h4v-5h3v5h4a1 1 0 0 0 1-1V9.7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>首页</span>
+          </a>
+          <span class="crumb-sep">›</span>
+          <span class="crumb-sec"><span class="crumb-sec-emoji">🏗️</span><span>第二篇：架构设计</span></span>
+        </div>
+        <div class="nav-buttons">
+          <a class="nav-btn prev" href="ch02-architecture.html">← 上一章</a>
+          <a class="nav-btn next" href="ch04-react-loop.html">下一章 →</a>
+        </div>
+      </div>
+      <div class="content-body" id="contentBody"><div class="chapter-head"><div class="chapter-eyebrow">🏗️ 第二篇：架构设计</div><h1 class="chapter-title">第3章 领域设计：事件风暴与 27 个限界上下文</h1>
+<p class="chapter-subtitle">用"事件发生的时间线"还原系统该有的样子</p>
+
+<h2 class="section-heading" id="sec-1">3.1 本章导读</h2>
+
+<p>第2章给了你模块地图，但 <code>domain</code> 模块内部还有 27 个一级子包（限界上下文）。为什么是 27 个？边界画在哪？本章不罗列结论，而是带你<strong>重走一遍设计过程</strong>——用事件风暴（Event Storming）的方法，从业务事件出发推导领域边界。读完你会理解：DDD 不是"分包美学"，而是让代码结构映射业务结构。</p>
+
+<h2 class="section-heading" id="sec-2">3.2 事件风暴：从事件倒推设计</h2>
+
+<p>事件风暴的核心动作：<strong>先不管代码，只问"这个系统里会发生哪些事？"</strong>把每件事写成橙色便签（领域事件），再往前找触发它的命令（蓝色），往后找做出反应的读模型（绿色），中间是聚合（黄色）和策略（紫色）。</p>
+
+<p>以"用户发一条消息"为例，沿着时间线问下去：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"cmd","label":"命令(蓝)\nPOST /api/agent/stream\n发送消息","type":"start"},{"id":"evt1","label":"事件(橙)\nUserMessage 已写入","type":"process"},{"id":"pol","label":"策略(紫)\n意图识别\nCHAT/CODE/TASK","type":"process"},{"id":"evt2","label":"事件(橙)\nTurnStart 已开启","type":"process"},{"id":"evt3","label":"事件(橙)\nAssistantChunk 已追加","type":"process"},{"id":"evt4","label":"事件(橙)\nToolCall 已记录","type":"process"},{"id":"read","label":"读模型(绿)\nSSE chunk/工具卡片\n控制台回放","type":"end"}],"edges":[{"from":"cmd","to":"evt1"},{"from":"evt1","to":"pol"},{"from":"pol","to":"evt2"},{"from":"evt2","to":"evt3"},{"from":"evt3","to":"evt4"},{"from":"evt4","to":"read"}]}'></div>
+
+<p>注意：我们全程没提任何类名，只描述了"发生什么"。事件风暴的价值就是<strong>延迟技术决策</strong>——先把业务流想清楚，再决定代码怎么写。</p>
+
+<h2 class="section-heading" id="sec-3">3.3 27 个限界上下文的全景</h2>
+
+<p>把所有事件便签摆在一起，按"哪些事件天然围绕同一个核心对象变化"聚类，就得到了限界上下文。本项目的 27 个可归为六个能力面：</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">能力面</th><th style="text-align:left;">限界上下文</th><th style="text-align:left;">核心对象</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Agent 执行核心</strong></td><td><code>agent</code>, <code>llm</code>, <code>session</code></td><td><code>ReactLoopAgent</code>、<code>Phase</code>、<code>ILlmRuntimePort</code>、<code>HarnessSessionAggregate</code>、<code>SessionLog</code></td></tr>
+      <tr><td><strong>任务与目标</strong></td><td><code>task</code>, <code>goal</code>, <code>plan</code>, <code>todo</code>, <code>workflow</code>, <code>schedule</code>, <code>jobs</code></td><td><code>HarnessTaskEntity</code>、<code>GoalAggregate</code>、<code>WorkflowRun</code></td></tr>
+      <tr><td><strong>工具与插件</strong></td><td><code>tool</code>, <code>plugin</code>, <code>typert</code>, <code>sdk</code></td><td><code>ToolRegistry</code>、<code>ToolCallExecutor</code>、<code>RuntimeApprovalGate</code></td></tr>
+      <tr><td><strong>运行时与环境</strong></td><td><code>runtime</code>, <code>credentials</code>, <code>coderuntime</code>, <code>terminal</code>, <code>lsp</code>, <code>sandbox</code>, <code>e2b</code>, <code>acp</code></td><td><code>ModelSetting</code>、<code>Profile</code>、各类端口</td></tr>
+      <tr><td><strong>治理与存储</strong></td><td><code>guard</code>, <code>hooks</code>, <code>storage</code></td><td>超时策略、Hook 引擎、KV 存储</td></tr>
+      <tr><td><strong>共享与技能</strong></td><td><code>shared</code>, <code>skill</code></td><td><code>HarnessStatusEnumVO</code> 等跨域枚举</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">💡 为什么拆这么细？</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">比如 <code>sandbox</code>（本地路径边界）和 <code>e2b</code>（远程沙箱）是两个上下文——它们解决同一类问题但实现策略完全不同，未来可能独立演进。限界上下文的拆分原则：<strong>变化的原因不同，就应该分开</strong>。</p>
+</div>
+
+<h2 class="section-heading" id="sec-4">3.4 深入解剖：task 域的五子域</h2>
+
+<p>不是所有上下文都同样复杂。以治理最关键的 <code>task</code> 域为例，它内部又按职责拆成了五个子域：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"sub","label":"submission\n提交参数校验\nTaskSubmissionVO","type":"start"},{"id":"perm","label":"permission\n权限矩阵评估\nIPermissionMatrixPort","type":"process"},{"id":"appr","label":"approval\n审批决策\nApprovalPolicyService","type":"decision"},{"id":"queue","label":"queue\n任务队列持久化\nIHarnessTaskQueueRepository","type":"process"},{"id":"exec","label":"execution\n会话执行\nHarnessExecutionService","type":"end"}],"edges":[{"from":"sub","to":"perm"},{"from":"perm","to":"appr"},{"from":"appr","to":"queue"},{"from":"queue","to":"exec"}]}'></div>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">子域</th><th style="text-align:left;">职责</th><th style="text-align:left;">关键对象</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>submission</code></td><td>提交参数校验与过滤</td><td><code>TaskSubmissionVO</code></td></tr>
+      <tr><td><code>permission</code></td><td>权限矩阵评估（工具 × Profile）</td><td><code>PermissionAssessmentVO</code>、<code>IPermissionMatrixPort</code></td></tr>
+      <tr><td><code>approval</code></td><td>审批决策与审批命令</td><td><code>ApprovalDecisionVO</code>、<code>ApprovalPolicyService</code></td></tr>
+      <tr><td><code>queue</code></td><td>任务队列持久化</td><td><code>IHarnessTaskQueueRepository</code></td></tr>
+      <tr><td><code>execution</code></td><td>会话执行</td><td><code>HarnessExecutionService</code>、<code>IModelExecutionPort</code></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>这个拆分让"权限规则变化"只影响 <code>permission</code>，"审批流程变化"只影响 <code>approval</code>——第11章会完整走通这条链路。</p>
+
+<h2 class="section-heading" id="sec-5">3.5 深入解剖：plugin 域的三边界</h2>
+
+<p>插件域按"生命周期阶段"拆成三条边界：</p>
+
+<div class="compare-grid">
+  <div class="card" style="border-left: 3px solid var(--color-info);">
+    <div class="card-title">Registry（登记处）</div>
+    <p style="font-size: 13px; color: var(--color-text-secondary);"><code>PluginRegistryService</code>：安装、元数据管理、启停状态。回答"系统里有哪些插件"。</p>
+  </div>
+  <div class="card" style="border-left: 3px solid var(--color-accent);">
+    <div class="card-title">Bridge（翻译官）</div>
+    <p style="font-size: 13px; color: var(--color-text-secondary);"><code>PluginBridgeService</code>：识别包型（JAVA_NATIVE / DSH_NODE_BRIDGE / CODEX / CORDIS），生成绑定计划。回答"这个插件该怎么运行"。</p>
+  </div>
+  <div class="card" style="border-left: 3px solid var(--color-success);">
+    <div class="card-title">Runtime（执行官）</div>
+    <p style="font-size: 13px; color: var(--color-text-secondary);"><code>PluginRuntimeService</code>：启动、停止、查询实例。回答"插件现在跑得怎么样"。</p>
+  </div>
+</div>
+
+<h2 class="section-heading" id="sec-6">3.6 核心聚合：领域的锚点</h2>
+
+<p>每个限界上下文都有一个"锚点"——聚合根，它是外部访问该上下文的唯一入口：</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">聚合</th><th style="text-align:left;">聚合根</th><th style="text-align:left;">关键不变量</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Agent</td><td><code>ReactLoopAgent</code>（聚合根服务）</td><td>单 turn ≤ 50 步；取消必须协作式中断；持有 SessionLog/Inbox/工具注册表</td></tr>
+      <tr><td>会话</td><td><code>HarnessSessionAggregate</code></td><td>事件只追加不修改（WAL）；SurfaceOp 投影必须幂等</td></tr>
+      <tr><td>任务</td><td><code>HarnessTaskEntity</code></td><td>状态机单向流转：CREATED → PENDING_APPROVAL → QUEUED → RUNNING → COMPLETED/FAILED</td></tr>
+      <tr><td>目标</td><td><code>GoalAggregate</code></td><td>GoalSnapshotVO 版本单调递增</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>聚合根的价值在于<strong>保护不变量</strong>。比如任务状态机，任何地方想把任务从 PENDING_APPROVAL 直接改成 RUNNING，都必须经过聚合根的方法——而聚合根会拒绝（执行入口对 PENDING_APPROVAL 直接抛异常兜底）。这就是 DDD 的防御性设计。</p>
+
+<h2 class="section-heading" id="sec-7">3.7 两条业务主线的交汇</h2>
+
+<p>回看整个领域设计，所有上下文最终服务于两条主线：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"chat","label":"对话主线\n会话 → ReAct循环 → 工具执行 → 插件扩展\n(交互式，人实时参与)","type":"process"},{"id":"task","label":"任务主线\n提交 → 权限/审批 → 排队 → 执行\n(异步，可先批准后执行)","type":"process"},{"id":"runtime","label":"运行时领域（横向支撑）\n模型 Profile · 工具目录","type":"decision"},{"id":"storage","label":"事件落库\n控制台回放 · 审计","type":"end"}],"edges":[{"from":"runtime","to":"chat"},{"from":"runtime","to":"task"},{"from":"chat","to":"storage"},{"from":"task","to":"chat","label":"执行阶段复用 Agent 链路"},{"from":"task","to":"storage"}]}'></div>
+
+<div class="card" style="border-left: 3px solid var(--color-success);">
+  <div class="card-title">💡 关键设计：复用而非重复</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">任务主线的"执行"阶段并没有另起炉灶，而是<strong>复用对话主线的 Agent 链路</strong>——审批通过后，<code>HarnessExecutionService.executeSession</code> 驱动的是同一个 <code>ReactLoopAgent</code>。这意味着对话和任务共享同一套工具、同一套事件记录、同一套 SSE 推送。</p>
+</div>
+
+<h2 class="section-heading" id="sec-8">3.8 课程补充：从 6 组到 37 个能力点的逐模块地图</h2>
+
+<p>3.3 节的六能力面把 27 个一级包"收拢"了，但工程接手时真正要回答的问题往往是<strong>点状的</strong>："审批的评估逻辑在哪个包？""MCP 工具的名字前缀怎么生成？""ask_user_question 归哪个域管？"本节给出一张 37 个能力点（一级包 + 带点号子包）的逐模块地图，作为后续各章的"总索引"——每个能力点标注它所属章节，便于按需跳读。</p>
+
+<h3 class="sub-heading">3.8.1 Agent 执行核心（4 个能力点）</h3>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">能力点</th><th style="text-align:left;">一句话职责</th><th style="text-align:left;">关键类</th><th style="text-align:left;">详见章节</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>agent</code></td><td>Agent 执行引擎：对话循环、消息编排、系统提示词组装、审批与中断</td><td><code>ReactLoopAgent</code>、<code>AgentFactory</code>、<code>Phase</code></td><td>第4章</td></tr>
+      <tr><td><code>agent.ask</code></td><td>面向用户的提问/确认交互（弹窗式问题、选项回答）</td><td>ask 工具族 + <code>ask_user_question</code></td><td>第8、11章</td></tr>
+      <tr><td><code>agent.compaction</code></td><td>上下文压缩：裁剪、归纳、控制上下文长度</td><td><code>BasicCompactionEngine</code>（保留最近 1/4，其余 LLM 总结）</td><td>第5章</td></tr>
+      <tr><td><code>agent.subagent</code></td><td>子 Agent 注册、创建与启动</td><td><code>SubagentTool</code>（.join() 阻塞语义）</td><td>第15章</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">3.8.2 任务、目标与规划（7 个能力点）</h3>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">能力点</th><th style="text-align:left;">一句话职责</th><th style="text-align:left;">关键类</th><th style="text-align:left;">详见章节</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>task</code>（五子域）</td><td>任务提交→权限→审批→排队→执行全链路</td><td><code>PermissionPolicyService</code>、<code>ApprovalPolicyService</code>、<code>HarnessExecutionService</code></td><td>第11章</td></tr>
+      <tr><td><code>goal</code></td><td>目标定义与流转，<code>GoalState</code> 状态落库</td><td><code>GoalAggregate</code>、<code>GoalSnapshotVO</code></td><td>第16章</td></tr>
+      <tr><td><code>plan</code></td><td>规划模式：计划状态切换、退出规划模式</td><td>plan 策略节点</td><td>第16章</td></tr>
+      <tr><td><code>todo</code></td><td>待办写入与结果返回</td><td>todo 工具族</td><td>第16章</td></tr>
+      <tr><td><code>workflow</code></td><td>多步骤流程编排、推进与状态管理</td><td><code>WorkflowService</code>（SSE 只推终态）</td><td>第15章</td></tr>
+      <tr><td><code>schedule</code></td><td>定时/延时任务调度</td><td><code>ScheduleService</code>（⚠️ drive() 无调用方，仓储 InMemory 重启即丢）</td><td>第16章</td></tr>
+      <tr><td><code>jobs</code></td><td>后台作业调度与执行管理</td><td><code>JobRegistryService</code>（newCachedThreadPool 无界）</td><td>第15章</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">3.8.3 LLM 与工具运行时（6 个能力点）</h3>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">能力点</th><th style="text-align:left;">一句话职责</th><th style="text-align:left;">关键类</th><th style="text-align:left;">详见章节</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>llm</code></td><td>LLM 抽象与策略：ContentBlock/StreamChunk（sealed）、流式端口</td><td><code>ILlmRuntimePort.stream()</code> 返回 <code>Flow.Publisher</code></td><td>第4、5章</td></tr>
+      <tr><td><code>runtime.model</code></td><td>模型路由与提供方配置管理</td><td>model_setting 表 + 模型路由</td><td>第12章</td></tr>
+      <tr><td><code>runtime.setting</code></td><td>模型配置的查询与命令修改</td><td><code>/api/harness/settings/models</code></td><td>第12章</td></tr>
+      <tr><td><code>runtime.tool</code></td><td>工具目录与工具选择/解析</td><td>ToolCatalog + 参数解析器</td><td>第8章</td></tr>
+      <tr><td><code>runtime.profile</code></td><td>执行画像/运行模式（headless/web 等）</td><td>Profile 策略（web profile 整体需审批）</td><td>第11章</td></tr>
+      <tr><td><code>tool</code>（12 工具族）</td><td>工具定义、注册、调用与执行核心</td><td><code>ToolRegistry</code>、<code>ToolCallExecutor</code>、<code>MatrixRuntimeApprovalGate</code></td><td>第8章</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">3.8.4 插件体系（4 个能力点）</h3>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">能力点</th><th style="text-align:left;">一句话职责</th><th style="text-align:left;">关键类</th><th style="text-align:left;">详见章节</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>plugin</code></td><td>插件体系总入口</td><td>三段式：Registry / Bridge / Runtime</td><td>第9章</td></tr>
+      <tr><td><code>plugin.registry</code></td><td>安装、元数据、安装计划与结果、启停</td><td><code>PluginRegistryService</code></td><td>第9章</td></tr>
+      <tr><td><code>plugin.bridge</code></td><td>识别接入方式并生成绑定计划</td><td><code>JAVA_NATIVE / DSH_NODE_BRIDGE / DSH_PACKAGE / CODEX / CORDIS</code></td><td>第9章</td></tr>
+      <tr><td><code>plugin.runtime</code></td><td>运行时执行管理：Java 进程内 URLClassLoader 隔离；Node sidecar JSON-RPC</td><td><code>PluginRuntimeService</code></td><td>第9章</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">3.8.5 治理与平台能力（16 个能力点）</h3>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">能力点</th><th style="text-align:left;">一句话职责</th><th style="text-align:left;">关键类 / 现状</th><th style="text-align:left;">详见章节</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>guard</code></td><td>运行守卫：限制危险操作、重复调用提醒、超时校验</td><td>超时 + 重复调用提醒</td><td>第8章</td></tr>
+      <tr><td><code>hooks</code></td><td>生命周期 Hook（PRE/POST_TOOL_USE 等）</td><td><code>IHookService</code>、CLAUDE_CODE 方言</td><td>第8章</td></tr>
+      <tr><td><code>coderuntime</code></td><td>代码执行运行时支持</td><td>运行环境端口</td><td>第16章</td></tr>
+      <tr><td><code>e2b</code></td><td>远程沙箱集成（⚠️ 目前仅 StubE2B* 桩实现）</td><td><code>StubE2B*</code></td><td>第13章</td></tr>
+      <tr><td><code>credentials</code></td><td>凭据管理与访问认证数据</td><td>凭据存储</td><td>第12章</td></tr>
+      <tr><td><code>lsp</code></td><td>语言服务：代码定位、hover、引用查询</td><td>lsp 工具族</td><td>第16章</td></tr>
+      <tr><td><code>sandbox</code></td><td>本地沙箱策略（WORKSPACE_WRITE 限制 cwd）</td><td><code>SandboxPolicyService</code></td><td>第11章</td></tr>
+      <tr><td><code>terminal</code></td><td>终端交互：命令发送、读取、会话快照</td><td><code>/api/harness/terminal</code></td><td>第14章</td></tr>
+      <tr><td><code>storage</code></td><td>存储抽象：KV、快照、持久化</td><td>storage 端口</td><td>第5章</td></tr>
+      <tr><td><code>typert</code></td><td>类型注册/远程类型协议</td><td>结果包装协议</td><td>第9章</td></tr>
+      <tr><td><code>skill</code></td><td>技能系统：定义、选择、调用策略与提供方适配</td><td>skill 工具族</td><td>第16章</td></tr>
+      <tr><td><code>session</code>（4 子域）</td><td>会话管理：registry / event / log / conversation</td><td><code>SessionLog</code>（内存 WAL）、<code>SessionEventFactory</code></td><td>第5章</td></tr>
+      <tr><td><code>shared</code></td><td>策略路由基础设施：<code>AbstractStrategyRouter</code>（doApply + getNext 责任链）</td><td>Agent 链/提交链共用</td><td>第6章</td></tr>
+      <tr><td><code>acp</code></td><td>ACP 协议封装（代理/协作通信接口）</td><td><code>AcpServerService</code></td><td>第15章</td></tr>
+      <tr><td><code>sdk</code></td><td>对外 SDK 统一调用入口</td><td>sdk 层</td><td>第15章</td></tr>
+      <tr><td><code>mcp</code></td><td>MCP Server 接入（stdio JSON-RPC 2.0）</td><td><code>StdioMcpClient</code>、<code>McpToolAdapter</code>（工具名 <code>mcp__&lt;server&gt;__&lt;tool&gt;</code>）</td><td>第10章</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-info);">
+  <div class="card-title">📖 与姊妹文档的分工</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">上表是"每个模块是什么、在哪个章节讲"。更细的三份 Markdown 姊妹文档：<code>docs/md/domain-design.md</code>（叙事：为什么这么分）、<code>docs/md/domain-case-deep-dive.md</code>（深挖：策略树与 ReactLoopAgent 状态机）、<code>docs/md/domain-modules-reference.md</code>（字典：逐模块速查）。HTML 课程各章则把这三者<strong>融进源码讲解</strong>。</p>
+</div>
+
+<h2 class="section-heading" id="sec-9">3.9 小结与下一章预告</h2>
+
+<div class="summary-box">
+  <p><strong>本章要点</strong>：事件风暴用"发生了什么"倒推领域边界；27 个上下文按变化原因聚类成六大能力面；task 域五子域、plugin 域三边界是"复杂上下文内部再拆分"的范例；聚合根保护不变量（如任务状态机单向流转）；对话与任务两条主线在执行阶段汇合。</p>
+  <p style="margin-bottom:0;"><strong>下一章</strong>：地图已经完整。接下来我们钻进最核心的心脏——<code>ReactLoopAgent</code>，看 ReAct 循环如何一步步驱动模型"思考-行动-观察"，以及取消、续写、状态机这些工程细节如何处理。</p>
+</div></div></div>
+      <nav class="page-nav"><a class="page-nav-card prev" href="ch02-architecture.html"><span class="page-nav-label">← 上一章</span><span class="page-nav-title">六边形架构：模块划分与依赖方向</span></a><a class="page-nav-card next" href="ch04-react-loop.html"><span class="page-nav-label">→ 下一章</span><span class="page-nav-title">ReactLoopAgent：ReAct 循环引擎</span></a></nav>
+      <button class="back-to-top" id="backToTop" title="回到顶部" aria-label="回到顶部">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3.5L4 12h5v8h6v-8h5z"/></svg>
+      </button>
+    </main>
+    <aside class="toc-panel" id="tocPanel">
+      <div class="toc-header">
+        <h3 class="toc-title"><span class="toc-title-icon">📋</span>本章目录</h3>
+        <span class="toc-count">9 节</span>
+      </div>
+      <nav class="toc-nav" id="tocNav"><a class="toc-item" href="#sec-1" data-target="sec-1"><span class="toc-num">3.1</span><span class="toc-text">本章导读</span></a><a class="toc-item" href="#sec-2" data-target="sec-2"><span class="toc-num">3.2</span><span class="toc-text">事件风暴：从事件倒推设计</span></a><a class="toc-item" href="#sec-3" data-target="sec-3"><span class="toc-num">3.3</span><span class="toc-text">27 个限界上下文的全景</span></a><a class="toc-item" href="#sec-4" data-target="sec-4"><span class="toc-num">3.4</span><span class="toc-text">深入解剖：task 域的五子域</span></a><a class="toc-item" href="#sec-5" data-target="sec-5"><span class="toc-num">3.5</span><span class="toc-text">深入解剖：plugin 域的三边界</span></a><a class="toc-item" href="#sec-6" data-target="sec-6"><span class="toc-num">3.6</span><span class="toc-text">核心聚合：领域的锚点</span></a><a class="toc-item" href="#sec-7" data-target="sec-7"><span class="toc-num">3.7</span><span class="toc-text">两条业务主线的交汇</span></a><a class="toc-item" href="#sec-8" data-target="sec-8"><span class="toc-num">3.8</span><span class="toc-text">课程补充：从 6 组到 37 个能力点的逐模块地图</span></a><a class="toc-item" href="#sec-9" data-target="sec-9"><span class="toc-num">3.9</span><span class="toc-text">小结与下一章预告</span></a></nav>
+      <div class="toc-footer"><a class="toc-github" href="https://gitcode.net/KnowledgePlanet/deepseek-harness-java" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>查看源码</a></div>
+    </aside>
+    <aside class="right-toolbar">
+      <a class="toolbar-btn toolbar-btn-github" href="https://gitcode.net/KnowledgePlanet/deepseek-harness-java" target="_blank" rel="noopener" title="查看源码" aria-label="查看源码">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+      </a>
+    </aside>
+  </div>
+  <script src="js/highlight.js?v=20260911-1"></script>
+  <script src="js/progress.js?v=20260911-1"></script>
+  <script src="js/flowchart.js?v=20260911-1"></script>
+  <script src="js/quiz.js?v=20260911-1"></script>
+  <script src="js/main.js?v=20260911-1"></script>
+  <script>
+    window.addEventListener('scroll', () => {
+      const h = document.documentElement;
+      const pct = h.scrollTop / (h.scrollHeight - h.clientHeight) * 100;
+      const bar = document.getElementById('readingProgress');
+      if (bar) bar.style.width = (pct || 0) + '%';
+    });
+  </script>
+</body>
+</html>

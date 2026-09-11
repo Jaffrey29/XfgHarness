@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DSH Java · 一切皆可插件的 Java Agent 运行时</title>
+  <meta name="description" content="DSH Java（dsh-java）以「一切皆可插件」为设计思想的 Java Agent 运行时：ReAct 循环、ClassLoader 动态插拔、任务审批、事件溯源与 Web 控制台。">
+  <meta name="author" content="小傅哥">
+  <link rel="icon" href="assets/images/whale-logo.png" type="image/png">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="DSH Java · 一切皆可插件的 Java Agent 运行时">
+  <meta property="og:site_name" content="DSH Java by 小傅哥">
+  <meta property="og:description" content="一切皆可插件的 Java Agent 运行时：ReAct 循环、ClassLoader 动态插拔、任务审批、事件溯源与 Web 控制台。">
+  <meta property="og:image" content="assets/images/harness-chat.png">
+  <link rel="stylesheet" href="assets/css/home.css">
+</head>
+<body>
+  <div class="ambient" aria-hidden="true"></div>
+
+  <header class="site-header" id="top">
+    <div class="container-wide header-inner">
+      <a class="brand" href="#top">
+        <span class="brand-mark"><img src="assets/images/whale-logo.png" alt="小傅哥小鲸鱼 Logo"></span>
+        <span class="brand-text">
+          <strong>DSH Java</strong>
+          <small>Java Agent Harness</small>
+        </span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="#runtime">运行时</a>
+        <a href="#architecture">架构</a>
+        <a href="#screens">界面</a>
+        <a href="#cases">案例</a>
+        <a href="#plugins">插件社区</a>
+        <a href="/document/index.html">实战教程</a>
+        <a href="/docs.html">体验教程</a>
+      </nav>
+      <div class="header-actions">
+        <a class="btn btn-sm" href="https://github.com/topics/dsh-plugin-java" target="_blank" rel="noreferrer">插件社区</a>
+        <a class="btn btn-primary btn-sm" href="#deploy">快速开始</a>
+        <button class="menu-button" type="button" aria-expanded="false" aria-controls="mobileNav">菜单</button>
+      </div>
+    </div>
+    <div class="container">
+      <div class="mobile-nav" id="mobileNav">
+        <a href="#runtime">运行时</a>
+        <a href="#architecture">架构</a>
+        <a href="#screens">界面</a>
+        <a href="#cases">案例</a>
+        <a href="#plugins">插件社区</a>
+        <a href="/document/index.html">实战教程</a>
+        <a href="/docs.html">体验教程</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- Hero -->
+    <section class="hero">
+      <div class="container-wide hero-grid">
+        <div class="hero-copy">
+          <div class="hero-brandline reveal">
+            <span class="status-dot"></span>
+            DSH JAVA · 小傅哥出品 · JAVA 17 · SPRING BOOT 3.3
+          </div>
+          <h1 class="reveal">DSH Java<br><span class="gradient-text">一切皆可插件的 Agent 运行时</span></h1>
+          <p class="hero-lede reveal">
+            以「一切皆可插件」为设计思想：ReAct 循环、工具系统、审批治理与事件溯源构成运行时内核；能力边界由插件无限扩展——Java Native 基于 ClassLoader 隔离加载、动态插拔，Node Bridge 与 MCP 生态即装即用。
+          </p>
+          <div class="hero-actions reveal">
+            <a class="btn btn-primary btn-lg" href="#deploy">一键启动体验</a>
+            <a class="btn btn-ghost btn-lg" href="/runtime.html">探索运行时 →</a>
+          </div>
+          <dl class="hero-stats reveal">
+            <div><dt>8090</dt><dd>启动即用端口</dd></div>
+            <div><dt>19</dt><dd>REST Controller</dd></div>
+            <div><dt>27</dt><dd>限界上下文</dd></div>
+            <div><dt>3</dt><dd>插件扩展模式</dd></div>
+          </dl>
+        </div>
+
+        <!-- 右侧：Harness 分层架构图 -->
+        <div class="hero-arch reveal">
+          <div class="hero-arch-caption">Harness 六层架构 · DDD 六边形</div>
+          <svg viewBox="0 0 460 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Harness 六层架构示意">
+            <defs>
+              <linearGradient id="lgPurple" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#a5b4fc"/><stop offset="100%" stop-color="#6366f1"/>
+              </linearGradient>
+              <linearGradient id="lgBlue" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#7dd3fc"/><stop offset="100%" stop-color="#0ea5e9"/>
+              </linearGradient>
+              <linearGradient id="lgAmber" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#fcd34d"/><stop offset="100%" stop-color="#f59e0b"/>
+              </linearGradient>
+              <linearGradient id="lgPink" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#f9a8d4"/><stop offset="100%" stop-color="#ec4899"/>
+              </linearGradient>
+              <linearGradient id="lgSlate" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#cbd5e1"/><stop offset="100%" stop-color="#64748b"/>
+              </linearGradient>
+              <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="6" in="SourceAlpha"/>
+                <feOffset dy="4"/>
+                <feComponentTransfer><feFuncA type="linear" slope="0.16"/></feComponentTransfer>
+                <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+              <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/>
+              </marker>
+            </defs>
+
+            <!-- 背景柔光圆 -->
+            <circle cx="80" cy="60" r="60" fill="url(#lgPurple)" opacity="0.10"/>
+            <circle cx="400" cy="300" r="70" fill="url(#lgBlue)" opacity="0.10"/>
+
+            <!-- ① Trigger -->
+            <g filter="url(#softShadow)">
+              <rect x="150" y="20" width="160" height="44" rx="10" fill="white" stroke="#cbd5e1" stroke-width="1"/>
+              <rect x="150" y="20" width="4" height="44" rx="2" fill="url(#lgPurple)"/>
+              <text x="180" y="40" font-size="13" font-weight="700" fill="#0f172a">Trigger</text>
+              <text x="180" y="56" font-size="10.5" fill="#64748b">REST + SSE 控制台</text>
+            </g>
+            <text x="80" y="48" font-size="10.5" font-weight="700" fill="#64748b">①</text>
+
+            <!-- ② API/Case -->
+            <g filter="url(#softShadow)">
+              <rect x="150" y="84" width="160" height="44" rx="10" fill="white" stroke="#cbd5e1" stroke-width="1"/>
+              <rect x="150" y="84" width="4" height="44" rx="2" fill="url(#lgBlue)"/>
+              <text x="180" y="104" font-size="13" font-weight="700" fill="#0f172a">API / Case</text>
+              <text x="180" y="120" font-size="10.5" fill="#64748b">CQRS + 责任链策略</text>
+            </g>
+            <text x="80" y="112" font-size="10.5" font-weight="700" fill="#64748b">②</text>
+
+            <!-- ③ Domain 核心 -->
+            <g filter="url(#softShadow)">
+              <rect x="130" y="148" width="200" height="50" rx="12" fill="url(#lgPurple)" opacity="0.95"/>
+              <text x="230" y="170" font-size="14" font-weight="800" fill="white" text-anchor="middle">Domain（核心）</text>
+              <text x="230" y="187" font-size="11" fill="rgba(255,255,255,0.85)" text-anchor="middle">ReactLoopAgent · SessionLog</text>
+            </g>
+            <text x="78" y="178" font-size="10.5" font-weight="700" fill="#64748b">③</text>
+
+            <!-- ④ Types SPI -->
+            <g filter="url(#softShadow)">
+              <rect x="150" y="216" width="160" height="44" rx="10" fill="white" stroke="#cbd5e1" stroke-width="1"/>
+              <rect x="150" y="216" width="4" height="44" rx="2" fill="url(#lgAmber)"/>
+              <text x="180" y="236" font-size="13" font-weight="700" fill="#0f172a">Types (SPI)</text>
+              <text x="180" y="252" font-size="10.5" fill="#64748b">端口与可插拔接口</text>
+            </g>
+            <text x="78" y="244" font-size="10.5" font-weight="700" fill="#64748b">④</text>
+
+            <!-- ⑤ Plugins -->
+            <g filter="url(#softShadow)">
+              <rect x="60" y="288" width="160" height="44" rx="10" fill="white" stroke="#cbd5e1" stroke-width="1"/>
+              <rect x="60" y="288" width="4" height="44" rx="2" fill="url(#lgPink)"/>
+              <text x="90" y="308" font-size="13" font-weight="700" fill="#0f172a">Plugins</text>
+              <text x="90" y="324" font-size="10.5" fill="#64748b">Java JAR · Node Sidecar · MCP</text>
+            </g>
+            <text x="40" y="316" font-size="10.5" font-weight="700" fill="#64748b">⑤</text>
+
+            <!-- ⑥ Infrastructure -->
+            <g filter="url(#softShadow)">
+              <rect x="240" y="288" width="160" height="44" rx="10" fill="white" stroke="#cbd5e1" stroke-width="1"/>
+              <rect x="240" y="288" width="4" height="44" rx="2" fill="url(#lgSlate)"/>
+              <text x="270" y="308" font-size="13" font-weight="700" fill="#0f172a">Infrastructure</text>
+              <text x="270" y="324" font-size="10.5" fill="#64748b">MyBatis · LLM · Shell</text>
+            </g>
+            <text x="416" y="316" font-size="10.5" font-weight="700" fill="#64748b">⑥</text>
+
+            <!-- 箭头连线 -->
+            <line x1="230" y1="64"  x2="230" y2="80"  stroke="#94a3b8" stroke-width="1.4" marker-end="url(#ah)"/>
+            <line x1="230" y1="128" x2="230" y2="144" stroke="#94a3b8" stroke-width="1.4" marker-end="url(#ah)"/>
+            <line x1="230" y1="198" x2="230" y2="212" stroke="#94a3b8" stroke-width="1.4" marker-end="url(#ah)"/>
+            <line x1="200" y1="260" x2="160" y2="284" stroke="#94a3b8" stroke-width="1.4" marker-end="url(#ah)"/>
+            <line x1="260" y1="260" x2="300" y2="284" stroke="#94a3b8" stroke-width="1.4" marker-end="url(#ah)"/>
+          </svg>
+          <div class="hero-arch-note">依赖方向永远指向 <code>Domain</code> 核心 · 插件只依赖轻量 <code>Types</code> 契约</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Runtime -->
+    <section class="section section-soft" id="runtime">
+      <div class="container">
+        <div class="section-head center reveal">
+          <span class="section-tag">Runtime</span>
+          <h2>单实例可运行，扩展即插即用</h2>
+          <p>面向本地智能体工作台、企业内部扩展平台与任务自动化系统。当前定位是单实例运行时，而非分布式多租户 SaaS。</p>
+        </div>
+        <div class="feature-grid">
+          <article class="card reveal"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></span><h3>ReAct 循环</h3><p>ReactLoopAgent 驱动模型输出、工具调用、结果回填与续步，单 turn 上限 50 步。</p></article>
+          <article class="card reveal"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18v3h3l6.3-6.3a4 4 0 0 0 5.4-5.4l-2.7 2.7-2-2 2.7-2.7z"/></svg></span><h3>真实工具系统</h3><p>内置文件、Shell、Web 搜索/抓取和用户提问工具；统一 ToolCallExecutor，并支持 PRE/POST Hook。</p></article>
+          <article class="card reveal"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m18 0V5a2 2 0 0 0-2-2h-4m0 18h4a2 2 0 0 0 2-2v-4M3 15v4a2 2 0 0 0 2 2h4"/></svg></span><h3>双模式插件</h3><p>Java Native 使用 URLClassLoader 隔离，Node Bridge 使用 sidecar JSON-RPC，另支持 MCP stdio 工具。</p></article>
+          <article class="card reveal"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-3.6 8-10V5l-8-3-8 3v7c0 6.4 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></span><h3>权限与审批</h3><p>提交期权限矩阵评估，高风险 Shell、写文件、插件和子进程默认进入人工审批。</p></article>
+          <article class="card reveal"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg></span><h3>事件溯源</h3><p>会话、任务、目标、审批与模型设置落库；默认 MySQL，standalone profile 可切换 H2 文件库。</p></article>
+          <article class="card reveal"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8m-4-3v3"/></svg></span><h3>原生控制台</h3><p>原生 JS 实现，本地化 Markdown、代码高亮与 XSS 净化，无前端构建链。</p></article>
+        </div>
+        <div style="text-align:center;" class="reveal">
+          <a class="more-link" href="/runtime.html">查看运行时详细设计</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Architecture -->
+    <section class="section" id="architecture">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="section-tag">Architecture</span>
+          <h2>实现机制与依赖约束</h2>
+          <p>多 Maven 模块按单向依赖组织：App → Trigger → API/Case → Domain ← Infrastructure；插件只依赖轻量 Types SPI 契约。</p>
+        </div>
+        <div class="architecture-grid">
+          <div class="flow-board reveal" aria-label="请求处理链路">
+            <div class="flow-row">
+              <div class="flow-node input-node">浏览器 / curl</div>
+              <div class="flow-arrow"></div>
+              <div class="flow-node">Trigger<br><small>Controller · API Key</small></div>
+              <div class="flow-arrow"></div>
+              <div class="flow-node">API<br><small>Facade · DTO</small></div>
+              <div class="flow-arrow"></div>
+              <div class="flow-node">Case<br><small>用例编排 · 策略树</small></div>
+            </div>
+            <div class="flow-row">
+              <div class="flow-node domain-node">Domain<br><small>Agent · Session · Task · Tool · Plugin · Runtime</small></div>
+              <div class="flow-arrow"></div>
+              <div class="flow-node">Ports<br><small>仓库 · LLM · 执行环境</small></div>
+              <div class="flow-arrow"></div>
+              <div class="flow-node output-node">Infrastructure<br><small>MySQL/H2 · LLM · Shell · MCP</small></div>
+            </div>
+          </div>
+          <div class="mechanism-list">
+            <article class="reveal"><span>01</span><div><h3>对话主线</h3><p>HTTP/SSE 进入 Trigger，经 Facade 到用例编排，再由 Agent 会话聚合维护消息、运行状态和工具调用事件。</p></div></article>
+            <article class="reveal"><span>02</span><div><h3>任务主线</h3><p>任务提交后经过权限评估、队列、审批、执行与结果回写；目标、计划、待办和工作流围绕任务上下文协作。</p></div></article>
+            <article class="reveal"><span>03</span><div><h3>事件溯源</h3><p>Session Event Log 记录用户输入、模型输出、工具调用与审批状态，可用于回放、审计与轨迹分析。</p></div></article>
+            <article class="reveal"><span>04</span><div><h3>插件加载</h3><p>META-INF/plugin.yaml 描述插件，SPI loader 创建运行实例；工具注册进 ToolRegistry 后才会暴露给 Agent。</p></div></article>
+          </div>
+        </div>
+        <a class="more-link reveal" href="/architecture.html">查看架构机制详解</a>
+      </div>
+    </section>
+
+    <!-- Screens -->
+    <section class="section section-soft" id="screens">
+      <div class="container">
+        <div class="section-head center reveal">
+          <span class="section-tag">Console</span>
+          <h2>真实界面，开箱即用</h2>
+          <p>打开控制台即可管理会话、工作区、模型、插件与审批，不需要额外构建前端。</p>
+        </div>
+        <div class="screen-showcase">
+          <figure class="screen-main reveal">
+            <div class="browser-bar"><span></span><span></span><span></span><em>localhost:8090 · 对话</em></div>
+            <img src="assets/images/harness-chat.png" alt="dsh-java Web 控制台对话界面" loading="lazy">
+          </figure>
+          <div class="screen-thumbs">
+            <figure class="browser-frame reveal">
+              <div class="browser-bar"><span></span><span></span><span></span><em>插件会话</em></div>
+              <img src="assets/images/harness-session.png" alt="dsh-java 插件工具会话界面" loading="lazy">
+              <figcaption>插件工具 · MySQL 只读诊断会话</figcaption>
+            </figure>
+            <figure class="browser-frame reveal">
+              <div class="browser-bar"><span></span><span></span><span></span><em>轨迹</em></div>
+              <img src="assets/images/harness-trajectory.png" alt="dsh-java 轨迹视图界面" loading="lazy">
+              <figcaption>轨迹视图 · 会话事件回放与审计</figcaption>
+            </figure>
+            <figure class="browser-frame reveal">
+              <div class="browser-bar"><span></span><span></span><span></span><em>MySQL Studio</em></div>
+              <img src="assets/images/mysql-studio.png" alt="dsh-java-mysql AI 数据库助手界面" loading="lazy">
+              <figcaption>MySQL Studio · AI 数据库助手</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Cases -->
+    <section class="section" id="cases">
+      <div class="container">
+        <div class="section-head center reveal">
+          <span class="section-tag">Use Cases</span>
+          <h2>两个已验证的接入案例</h2>
+          <p>它们不是演示草图，而是可以直接构建、安装插件并跑通工具调用的项目。</p>
+        </div>
+        <div class="case-grid">
+          <article class="card case-card reveal">
+            <div class="case-badge">DATABASE</div>
+            <h3>dsh-java-mysql</h3>
+            <p>MySQL 管理后台 + AI 数据库助手。连接配置、表浏览、只读查询、执行计划、性能快照和 SQL 风险审计都可在本地闭环。</p>
+            <ul>
+              <li>AI 链路全程只读，不提供写 SQL 工具</li>
+              <li>注册 5 个 MySQL 查询与审计工具</li>
+              <li>默认 15 秒超时，最多返回 500 行</li>
+              <li>写操作必须控制台人工确认</li>
+            </ul>
+            <a class="case-link" href="https://github.com/fuzhengwei/dsh-java-mysql" target="_blank" rel="noreferrer">查看 GitHub 仓库 →</a>
+          </article>
+          <article class="card case-card reveal">
+            <div class="case-badge">MALL</div>
+            <h3>2D Weekend Mall</h3>
+            <p>PC 虚拟商城与智能客服插件。商品搜索、购物车、下单、支付、订单和物流跟踪在浏览器闭环，客服能力由 Harness 插件提供。</p>
+            <ul>
+              <li>Spring Boot 提供商城 REST API</li>
+              <li>注册商品、订单、物流查询插件工具</li>
+              <li>通过服务凭证隔离用户订单查询</li>
+              <li>POST_TOOL_USE 发出客服审计事件</li>
+            </ul>
+            <a class="case-link" href="https://github.com/fuzhengwei/2d-weekend-mall" target="_blank" rel="noreferrer">查看 GitHub 仓库 →</a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- Docs Entry -->
+    <section class="section section-soft" id="docs">
+      <div class="container">
+        <div class="docs-entry reveal">
+          <div class="docs-entry-copy">
+            <span class="section-tag">Documentation</span>
+            <h2>想深入源码与实现？</h2>
+            <p>配套 18 章实战教程与上手指引，从十分钟跑起来，到 ReAct 循环、事件溯源、插件机制、MCP 与审批治理。</p>
+          </div>
+          <div class="docs-entry-actions">
+            <a class="btn btn-primary" href="/document/index.html">实战教程（18 章）</a>
+            <a class="btn btn-ghost" href="/docs.html">体验教程</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Community Plugins -->
+    <section class="section" id="plugins">
+      <div class="container">
+        <div class="section-head center reveal">
+          <span class="section-tag">Community Plugins</span>
+          <h2>开发插件，发布到社区</h2>
+          <p>DSH Java 的能力边界由插件决定。为自己开发插件，或发布到 GitHub 与社区共享——只需一个标签，就会被社区收录。</p>
+        </div>
+        <div class="plugin-flow">
+          <article class="plugin-step reveal">
+            <div class="step-track"><span class="step-no">1</span><i class="step-line"></i></div>
+            <h3>开发插件</h3>
+            <p>实现 SPI 契约并注册工具，支持 Java Native、Node Bridge 与 MCP stdio 三种模式。</p>
+          </article>
+          <article class="plugin-step reveal">
+            <div class="step-track"><span class="step-no">2</span><i class="step-line"></i></div>
+            <h3>本地验证</h3>
+            <p>打包 JAR 后通过 <code>/api/harness/plugins/install</code> 安装激活，在控制台跑通工具调用。</p>
+          </article>
+          <article class="plugin-step reveal">
+            <div class="step-track"><span class="step-no">3</span><i class="step-line"></i></div>
+            <h3>发布到 GitHub</h3>
+            <p>把插件源码推送到公开仓库，写好 README 与安装说明。</p>
+          </article>
+          <article class="plugin-step reveal">
+            <div class="step-track"><span class="step-no">4</span><i class="step-line is-last"></i></div>
+            <h3>添加收录标签</h3>
+            <p>给仓库添加 <code>dsh-plugin-java</code> 标签（topic），即会被社区插件列表自动收录。</p>
+          </article>
+        </div>
+        <div class="plugin-topic-panel reveal">
+          <div>
+            <span class="topic-chip"># dsh-plugin-java</span>
+            <h3 style="margin-top:20px;">一个标签，进入社区插件生态</h3>
+            <p>GitHub topic 是社区插件的统一收录入口。任何人为仓库添加 <code>dsh-plugin-java</code> 标签后，插件就会出现在社区主题页，被其他开发者发现、安装和使用。</p>
+            <div class="plugin-topic-actions">
+              <a class="btn btn-primary" href="https://github.com/topics/dsh-plugin-java" target="_blank" rel="noreferrer">浏览社区插件</a>
+              <a class="btn" href="/docs.html#plugins">插件开发教程</a>
+            </div>
+          </div>
+          <div class="terminal">
+            <div class="terminal-bar"><span></span><span></span><span></span><em>add-topic</em></div>
+            <pre><code><span class="cmt"># 方式一：仓库主页 About → Topics 添加 dsh-plugin-java</span>
+
+<span class="cmt"># 方式二：GitHub CLI 一行搞定</span>
+<span class="cmd">gh repo edit</span> --add-topic <span class="accent">dsh-plugin-java</span></code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Deploy -->
+    <section class="section section-soft" id="deploy">
+      <div class="container">
+        <div class="section-head center reveal">
+          <span class="section-tag">Deploy</span>
+          <h2>最简便的部署与体验路径</h2>
+          <p>单容器适合最小体验；标准部署包一键拉起 Harness、MySQL 后台、商城，并预置两个插件。教程地址：<a class="inline-link" href="https://github.com/fuzhengwei/dsh-java-deploy" target="_blank" rel="noreferrer">github.com/fuzhengwei/dsh-java-deploy</a></p>
+        </div>
+        <div class="deploy-grid">
+          <div class="card deploy-card reveal">
+            <h3><span class="step-no">1</span>启动 Harness</h3>
+            <pre><code>docker run -d \
+  --name dsh-java-web \
+  -p 8090:8090 \
+  registry.cn-hangzhou.aliyuncs.com/xfg-studio/deepseek-harness-java:0.1.5</code></pre>
+            <p>适合最快体验。若需要持久化数据、插件与工作区，请使用标准部署包。</p>
+          </div>
+          <div class="card deploy-card reveal">
+            <h3><span class="step-no">2</span>标准部署包</h3>
+            <pre><code>git clone https://github.com/fuzhengwei/dsh-java-deploy.git
+cd dsh-java-deploy
+
+cp .env.example .env
+# 修改 MALL_SERVICE_TOKEN、
+# DEEPSEEK_BASE_URL、DEEPSEEK_API_KEY
+
+docker compose up -d
+./scripts/install-plugins.sh</code></pre>
+            <p>启动 Harness、MySQL 后台和商城，并安装/激活预置插件。</p>
+          </div>
+          <div class="card deploy-card reveal">
+            <h3><span class="step-no">3</span>验证服务</h3>
+            <pre><code>curl http://127.0.0.1:8090/api/harness/plugins
+
+http://127.0.0.1:8090    # Harness
+http://127.0.0.1:8091    # MySQL 后台
+http://127.0.0.1:18080   # 商城</code></pre>
+            <p>能看到 dsh-java-mysql-plugin 和 mall-weekend-assistant 即代表插件链路安装成功。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA / Community -->
+    <section class="section" id="community">
+      <div class="container">
+        <div class="cta-panel reveal">
+          <span class="section-tag" style="justify-content:center;display:inline-flex;">Community</span>
+          <h2>小傅哥社群 · 学习教程与辅助使用</h2>
+          <p>deepseek-harness-java 源码目前通过社群提供。社群包含学习教程、插件开发实践、部署答疑和使用辅助，帮助你更快完成企业内落地。</p>
+          <div class="cta-actions">
+            <a class="btn btn-primary btn-lg" href="https://gitcode.net/KnowledgePlanet/deepseek-harness-java" target="_blank" rel="noreferrer">源码入口</a>
+            <a class="btn btn-ghost btn-lg" href="/docs.html">先看教程</a>
+            <a class="btn btn-ghost btn-lg" href="https://github.com/fuzhengwei/dsh-java-deploy" target="_blank" rel="noreferrer">部署教程</a>
+          </div>
+          <div class="cta-sources">
+            <a href="https://github.com/fuzhengwei/2d-weekend-mall" target="_blank" rel="noreferrer">github.com/fuzhengwei/2d-weekend-mall</a>
+            <a href="https://github.com/fuzhengwei/dsh-java-mysql" target="_blank" rel="noreferrer">github.com/fuzhengwei/dsh-java-mysql</a>
+            <a href="https://github.com/topics/dsh-plugin-java" target="_blank" rel="noreferrer">github.com/topics/dsh-plugin-java</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div>
+        <a class="brand footer-brand" href="#top"><span class="brand-mark"><img src="assets/images/whale-logo.png" alt="小傅哥小鲸鱼 Logo"></span><strong>DSH Java</strong></a>
+        <p>可治理、可扩展、可审计的 Java Agent Harness 运行时基座。</p>
+      </div>
+      <nav aria-label="页脚导航">
+        <h4>项目</h4>
+        <a href="#runtime">运行时能力</a>
+        <a href="/runtime.html">运行时详解</a>
+        <a href="/architecture.html">架构机制详解</a>
+        <a href="#cases">使用案例</a>
+        <a href="#plugins">社区插件</a>
+        <a href="#deploy">部署体验</a>
+      </nav>
+      <nav aria-label="资源导航">
+        <h4>资源</h4>
+        <a href="/docs.html">体验教程</a>
+        <a href="/document/index.html">实战教程</a>
+        <a href="https://github.com/topics/dsh-plugin-java" target="_blank" rel="noreferrer">社区插件</a>
+        <a href="https://github.com/fuzhengwei/dsh-java-deploy" target="_blank" rel="noreferrer">部署教程</a>
+        <a href="https://gitcode.net/KnowledgePlanet/deepseek-harness-java" target="_blank" rel="noreferrer">源码入口</a>
+      </nav>
+    </div>
+    <div class="footer-bottom container">
+      <p>© 2026 DSH Java · Powered by Java Agent Harness</p>
+      <p class="credit">作者：小傅哥 · 感谢并致敬 DeepSeek Harness 的开源设计思想。</p>
+    </div>
+  </footer>
+
+  <script src="assets/js/home.js" defer></script>
+</body>
+</html>

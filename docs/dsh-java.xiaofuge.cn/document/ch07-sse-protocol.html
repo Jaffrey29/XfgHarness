@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>第7章 SSE 流式协议：推理、工具卡片与会话终态 | DeepSeek Harness Java 实战教程</title>
+  <meta name="description" content="从后端事件到前端气泡——一次流式对话的完整旅程">
+  <link rel="canonical" href="https://fuzhengwei.github.io/deepseek-harness-java/docs/html/ch07-sse-protocol.html">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+  <link rel="stylesheet" href="css/book.css?v=20260911-1">
+  <link rel="stylesheet" href="css/site.css?v=20260911-1">
+  <link rel="stylesheet" href="css/flowchart.css?v=20260911-1">
+</head>
+<body data-chapter="ch07">
+  <div class="reading-progress" id="readingProgress"></div>
+  <div class="app-layout chat-collapsed">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <a class="brand-lockup" href="index.html" title="回到首页">
+          <span class="brand-tile">📚</span>
+          <span class="brand-meta"><span class="brand-name">Harness 教程</span><span class="brand-sub">Java 实战 · 18 页</span></span>
+        </a>
+        <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
+      </div>
+      <div class="sidebar-progress">
+        <div class="progress-head"><span class="progress-label">学习进度</span><span class="progress-num" id="progressText">0/18 章</span></div>
+        <div class="progress-bar"><div class="progress-bar-fill" style="width: 0%"></div></div>
+        <div class="progress-caption" id="progressCaption">Lv.1 · 尚未开始</div>
+      </div>
+      <nav class="sidebar-nav" id="sidebarNav"><div class="nav-group" data-section="序章" style="--part:var(--section-序章)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🎬</span><span class="nav-section-title">序章</span><span class="nav-section-count">00</span></div><a class="nav-item" data-chapter="ch00" href="ch00-intro.html"><span class="nav-num">00</span><span class="nav-title">教程导读：这本书怎么读</span></a></div><div class="nav-group" data-section="第一篇：快速上手" style="--part:var(--section-快速上手)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🚀</span><span class="nav-section-title">第一篇：快速上手</span><span class="nav-section-count">01</span></div><a class="nav-item" data-chapter="ch01" href="ch01-quickstart.html"><span class="nav-num">01</span><span class="nav-title">十分钟跑起来：构建、启动与第一次对话</span></a></div><div class="nav-group" data-section="第二篇：架构设计" style="--part:var(--section-架构设计)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🏗️</span><span class="nav-section-title">第二篇：架构设计</span><span class="nav-section-count">02</span></div><a class="nav-item" data-chapter="ch02" href="ch02-architecture.html"><span class="nav-num">02</span><span class="nav-title">六边形架构：模块划分与依赖方向</span></a><a class="nav-item" data-chapter="ch03" href="ch03-domain.html"><span class="nav-num">03</span><span class="nav-title">领域设计：事件风暴与 27 个限界上下文</span></a></div><div class="nav-group" data-section="第三篇：核心机制" style="--part:var(--section-核心机制)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🧠</span><span class="nav-section-title">第三篇：核心机制</span><span class="nav-section-count">04</span></div><a class="nav-item" data-chapter="ch04" href="ch04-react-loop.html"><span class="nav-num">04</span><span class="nav-title">ReactLoopAgent：ReAct 循环引擎</span></a><a class="nav-item" data-chapter="ch05" href="ch05-session-event.html"><span class="nav-num">05</span><span class="nav-title">会话与事件溯源：SessionLog 的秘密</span></a><a class="nav-item" data-chapter="ch06" href="ch06-intent-strategy.html"><span class="nav-num">06</span><span class="nav-title">意图识别与策略树：消息如何流转</span></a><a class="nav-item active" data-chapter="ch07" href="ch07-sse-protocol.html"><span class="nav-num">07</span><span class="nav-title">SSE 流式协议：推理、工具卡片与会话终态</span></a></div><div class="nav-group" data-section="第四篇：工具与扩展" style="--part:var(--section-工具与扩展)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🛠️</span><span class="nav-section-title">第四篇：工具与扩展</span><span class="nav-section-count">08</span></div><a class="nav-item" data-chapter="ch08" href="ch08-tools.html"><span class="nav-num">08</span><span class="nav-title">工具系统：ToolCallExecutor 与 Hook 链</span></a><a class="nav-item" data-chapter="ch09" href="ch09-plugin.html"><span class="nav-num">09</span><span class="nav-title">插件开发实战：Java 与 Node 双模式</span></a><a class="nav-item" data-chapter="ch10" href="ch10-mcp.html"><span class="nav-num">10</span><span class="nav-title">MCP 集成：连接外部工具生态</span></a></div><div class="nav-group" data-section="第五篇：治理" style="--part:var(--section-治理)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🛡️</span><span class="nav-section-title">第五篇：治理</span><span class="nav-section-count">11</span></div><a class="nav-item" data-chapter="ch11" href="ch11-governance.html"><span class="nav-num">11</span><span class="nav-title">任务、审批与治理：安全执行的边界</span></a></div><div class="nav-group" data-section="第六篇：部署与生产化" style="--part:var(--section-部署与生产化)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">⚙️</span><span class="nav-section-title">第六篇：部署与生产化</span><span class="nav-section-count">12</span></div><a class="nav-item" data-chapter="ch12" href="ch12-deployment.html"><span class="nav-num">12</span><span class="nav-title">部署与生产化：从本地到上线</span></a><a class="nav-item" data-chapter="ch13" href="ch13-epilogue.html"><span class="nav-num">13</span><span class="nav-title">边界与进阶路线：从 Demo 到产品</span></a></div><div class="nav-group" data-section="工程全景" style="--part:var(--color-accent)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🧰</span><span class="nav-section-title">工程全景</span><span class="nav-section-count">14</span></div><a class="nav-item" data-chapter="ch14" href="ch14-engineering.html"><span class="nav-num">14</span><span class="nav-title">工程全景：API、控制台、数据与测试</span></a><a class="nav-item" data-chapter="ch15" href="ch15-workflow-subagent.html"><span class="nav-num">15</span><span class="nav-title">工作流与子代理：从单 Agent 到协同执行</span></a><a class="nav-item" data-chapter="ch16" href="ch16-platform-capabilities.html"><span class="nav-num">16</span><span class="nav-title">目标、计划、技能与定时任务：长程上下文治理</span></a></div><div class="nav-group" data-section="版本演进" style="--part:var(--color-accent)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">📦</span><span class="nav-section-title">版本演进</span><span class="nav-section-count">17</span></div><a class="nav-item" data-chapter="ch17" href="ch17-release-notes.html"><span class="nav-num">17</span><span class="nav-title">版本演进：v0.1.3 到 v0.1.5 交付实录</span></a></div></nav>
+    </aside>
+    <main class="content-area">
+      <div class="content-header">
+        <div class="breadcrumb">
+          <a class="crumb-home" href="index.html" aria-label="回到首页">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 9.7V20a1 1 0 0 0 1 1h4v-5h3v5h4a1 1 0 0 0 1-1V9.7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>首页</span>
+          </a>
+          <span class="crumb-sep">›</span>
+          <span class="crumb-sec"><span class="crumb-sec-emoji">🧠</span><span>第三篇：核心机制</span></span>
+        </div>
+        <div class="nav-buttons">
+          <a class="nav-btn prev" href="ch06-intent-strategy.html">← 上一章</a>
+          <a class="nav-btn next" href="ch08-tools.html">下一章 →</a>
+        </div>
+      </div>
+      <div class="content-body" id="contentBody"><div class="chapter-head"><div class="chapter-eyebrow">🧠 第三篇：核心机制</div><h1 class="chapter-title">第7章 SSE 流式协议：meta / chunk / step_break / done</h1>
+<p class="chapter-subtitle">从后端事件到前端气泡——一次流式对话的完整旅程</p>
+
+<h2 class="section-heading" id="sec-1">7.1 本章导读</h2>
+
+<p>前面几章都在后端打转。本章我们把视角拉到浏览器：模型逐字输出的文字、工具调用的卡片、最终的完整消息——它们如何通过 SSE（Server-Sent Events）从 <code>ReactLoopAgent</code> 一路流到你的眼前？这个协议看似简单，但本项目在"多步工具调用"场景下踩过三个连环 Bug（文本乱码、工具卡不更新、气泡覆盖），本章会完整复盘。</p>
+
+<h2 class="section-heading" id="sec-2">7.2 为什么是 SSE 而不是 WebSocket</h2>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">对比项</th><th style="text-align:left;">SSE</th><th style="text-align:left;">WebSocket</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>方向</td><td>单向（服务端 → 客户端）</td><td>双向</td></tr>
+      <tr><td>协议</td><td>纯 HTTP，天然过代理/防火墙</td><td>需协议升级（ws://）</td></tr>
+      <tr><td>重连</td><td>浏览器自动重连（EventSource）</td><td>需自己实现</td></tr>
+      <tr><td>本场景适配</td><td>✅ 对话流就是单向推送</td><td>双向能力用不上</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>Agent 对话是典型的"用户发一次、服务端推一串"——单向推送，SSE 是最小可用方案。Spring 端用 <code>SseEmitter</code>，前端用原生 <code>EventSource</code> 或 fetch 流。</p>
+
+<h2 class="section-heading" id="sec-3">7.3 八种事件的完整序列</h2>
+
+<p><code>POST /api/agent/stream</code> 返回的事件流：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"meta","label":"meta\n起始帧：会话/模型/时间信息","type":"start"},{"id":"reasoning","label":"reasoning ×N\n推理文本增量","type":"process"},{"id":"chunk1","label":"chunk ×N\n回答文本增量","type":"process"},{"id":"stepbreak","label":"step_break\n工具调用边界\ntoolName/callId/args/status","type":"decision"},{"id":"toolcard","label":"前端动作：\n插入运行中工具卡片","type":"process"},{"id":"toolresult","label":"tool_result\n结果、耗时和状态\n前端更新工具卡片","type":"process"},{"id":"finish","label":"finish\n本轮 Agent 运行结束","type":"process"},{"id":"done","label":"done\n终态 + 全量 messages","type":"end"}],"edges":[{"from":"meta","to":"reasoning"},{"from":"reasoning","to":"chunk1"},{"from":"chunk1","to":"stepbreak","label":"模型要调工具"},{"from":"stepbreak","to":"toolcard"},{"from":"toolcard","to":"toolresult"},{"from":"toolresult","to":"finish"},{"from":"toolresult","to":"stepbreak","label":"还要调工具"},{"from":"chunk1","to":"finish","label":"模型给出最终回答"},{"from":"finish","to":"done"}]}'></div>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">事件</th><th style="text-align:left;">后端来源</th><th style="text-align:left;">前端动作</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>meta</code></td><td>请求开始时推送一帧</td><td>显示会话、模型和起始时间</td></tr>
+      <tr><td><code>reasoning</code></td><td>模型推理文本增量</td><td>在独立推理区域或折叠面板展示</td></tr>
+      <tr><td><code>chunk</code></td><td><code>ReactLoopAgent.streamDeltaSink</code> 每个 TextDelta</td><td>追加到当前 streaming 气泡</td></tr>
+      <tr><td><code>step_break</code></td><td><code>streamToolCallSink</code>（工具调用时）</td><td>完成当前气泡 → 插入工具卡片 → 开新气泡 → 重置 fullContent</td></tr>
+      <tr><td><code>tool_result</code></td><td>工具执行完成帧</td><td>更新工具卡片的结果、耗时和成功/失败状态</td></tr>
+      <tr><td><code>finish</code></td><td>本轮 Agent 运行结束信号</td><td>结束当前运行态，等待 done 落定</td></tr>
+      <tr><td><code>done</code></td><td><code>AgentCollectNode</code> 投影的全量消息</td><td>重建消息列表，恢复工具轨迹与最终状态</td></tr>
+      <tr><td><code>error</code></td><td>任何环节异常</td><td>展示错误并结束流</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="section-heading" id="sec-4">7.4 step_break：为什么必须是独立事件</h2>
+
+<p>这是本协议最关键的设计决策，来自真实踩坑。最初的想法是"在 chunk 文本里混入特殊字符串标记工具边界"，结果在多步工具调用时出了乱码。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-error);">
+  <div class="card-title">🐛 Bug 6：多 step 文本拼接乱码</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">多 step（多个工具调用）场景下，所有 step 的 TextDelta 通过同一个 deltaSink 推送，前端 <code>fullContent += </code> 把不同 step 的文本拼接到<strong>同一个气泡</strong>里——第一段话、工具结果说明、第二段话全混在一起，呈现为乱码。</p>
+</div>
+
+<p>修复方案是<strong>协议化</strong>：把"工具边界"从文本流中抽出来，变成独立的 SSE 事件。完整链路：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"agent","label":"ReactLoopAgent\nstreamToolCallSink.accept(toolCall)","type":"start"},{"id":"usecase","label":"AgentUseCase\n透传 toolCallSink","type":"process"},{"id":"controller","label":"AgentController\n推送独立 step_break 事件\n{toolName, callId, args, status}","type":"process"},{"id":"frontend","label":"前端 eventType === step_break 分支\n完成当前消息 → 插入工具卡片\n新建 streaming 消息 → 重置 fullContent","type":"end"}],"edges":[{"from":"agent","to":"usecase"},{"from":"usecase","to":"controller"},{"from":"controller","to":"frontend"}]}'></div>
+
+<div class="card" style="border-left: 3px solid var(--color-warning);">
+  <div class="card-title">🐛 连环 Bug 10 &amp; 11：step_break 引入后的两个坑</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">独立事件本身对了，但前端实现还有两个细节差点翻车：①step_break 分支创建新 streaming 消息后<strong>忘了 <code>sess.messages.push(assistantMsg)</code></strong>，导致 render() 不为第二轮文本创建气泡，后续 chunk 覆盖到第一轮气泡里；②<code>updateStreamingMessage</code> 的 60ms 节流缓存（<code>_lastHtml</code>）在 render() 重建 DOM 后没重置，缓存与 DOM 状态不一致。修复分别是在 render() 前补 push 和重置缓存。<strong>教训：状态管理的每一步（数据、DOM、缓存）必须在协议切换点同步重置。</strong></p>
+</div>
+
+<h2 class="section-heading" id="sec-5">7.5 done 事件：全量消息的必要性</h2>
+
+<p>为什么流式推送了 chunk，最后还要在 done 里带全量 messages？因为流式过程只覆盖"文本增量"，工具卡片的<strong>最终状态</strong>（成功/失败、完整结果）需要从事件日志重建：</p>
+
+<div class="code-block"><pre>// done 事件携带的 messages 结构（简化）
+{
+  "messages": [
+    { "role": "user", "content": "列出目录文件" },
+    { "role": "assistant", "content": "我先查看一下目录。" },
+    { "role": "tool", "callId": "call_1", "name": "shell_execute",
+      "status": "success", "result": "..." },      // ← 流式阶段只有 status=running
+    { "role": "assistant", "content": "目录下有 3 个文件..." }
+  ]
+}</pre></div>
+
+<p>前端收到 done 后用这份全量消息替换本地状态——这就是第6章说的 <code>AgentCollectNode</code> 必须投影 ToolCall/ToolResult 的原因：<strong>没有它们，done 里就没有 tool 角色消息，前端会把 step_break 阶段创建的工具卡片清掉，卡片永远停在 running</strong>。</p>
+
+<h2 class="section-heading" id="sec-6">7.6 后端事件到 SSE 的映射总览</h2>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">领域事件（SessionEvent）</th><th style="text-align:left;">SSE 事件</th><th style="text-align:left;">说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>—（请求开始）</td><td><code>meta</code></td><td>起始帧，非领域事件</td></tr>
+      <tr><td><code>AssistantChunk</code></td><td><code>chunk</code></td><td>文本增量</td></tr>
+      <tr><td><code>ToolCall</code></td><td><code>step_break</code></td><td>工具调用边界（协议化产物）</td></tr>
+      <tr><td>全部事件的投影</td><td><code>done</code></td><td>AgentCollectNode 从 SessionLog 重建</td></tr>
+      <tr><td><code>TurnEnd(Error)</code></td><td><code>error</code></td><td>错误终态</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">💡 设计哲学：事件日志是唯一真相</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">注意 chunk 和 step_break 是"加速通道"（实时体验），done 才是"对账时刻"（以 SessionLog 投影为准）。即使加速通道丢了几个 chunk，done 的全量消息也能把 UI 拉回正确状态。这就是第5章事件溯源的价值在协议层的体现。</p>
+</div>
+
+<h2 class="section-heading" id="sec-7">7.7 小结与下一章预告</h2>
+
+<div class="summary-box">
+  <p><strong>本章要点</strong>：SSE 单向推送适配对话流；八事件序列 meta→(reasoning|chunk)*→(step_break→tool_result)*→finish→done；step_break 和 tool_result 必须是独立事件而非文本标记（多步工具乱码的教训）；done 携带全量消息用于工具轨迹终态恢复；加速通道 + 对账时刻的双层设计。</p>
+  <p style="margin-bottom:0;"><strong>下一章</strong>：协议通了，接下来看 Agent 的"手"——工具系统。<code>fs_read</code>、<code>shell_execute</code> 这些工具怎么注册？统一执行器怎么做 Hook 和守卫？第8章讲工具系统。</p>
+</div></div></div>
+      <nav class="page-nav"><a class="page-nav-card prev" href="ch06-intent-strategy.html"><span class="page-nav-label">← 上一章</span><span class="page-nav-title">意图识别与策略树：消息如何流转</span></a><a class="page-nav-card next" href="ch08-tools.html"><span class="page-nav-label">→ 下一章</span><span class="page-nav-title">工具系统：ToolCallExecutor 与 Hook 链</span></a></nav>
+      <button class="back-to-top" id="backToTop" title="回到顶部" aria-label="回到顶部">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3.5L4 12h5v8h6v-8h5z"/></svg>
+      </button>
+    </main>
+    <aside class="toc-panel" id="tocPanel">
+      <div class="toc-header">
+        <h3 class="toc-title"><span class="toc-title-icon">📋</span>本章目录</h3>
+        <span class="toc-count">7 节</span>
+      </div>
+      <nav class="toc-nav" id="tocNav"><a class="toc-item" href="#sec-1" data-target="sec-1"><span class="toc-num">7.1</span><span class="toc-text">本章导读</span></a><a class="toc-item" href="#sec-2" data-target="sec-2"><span class="toc-num">7.2</span><span class="toc-text">为什么是 SSE 而不是 WebSocket</span></a><a class="toc-item" href="#sec-3" data-target="sec-3"><span class="toc-num">7.3</span><span class="toc-text">八种事件的完整序列</span></a><a class="toc-item" href="#sec-4" data-target="sec-4"><span class="toc-num">7.4</span><span class="toc-text">step_break：为什么必须是独立事件</span></a><a class="toc-item" href="#sec-5" data-target="sec-5"><span class="toc-num">7.5</span><span class="toc-text">done 事件：全量消息的必要性</span></a><a class="toc-item" href="#sec-6" data-target="sec-6"><span class="toc-num">7.6</span><span class="toc-text">后端事件到 SSE 的映射总览</span></a><a class="toc-item" href="#sec-7" data-target="sec-7"><span class="toc-num">7.7</span><span class="toc-text">小结与下一章预告</span></a></nav>
+      <div class="toc-footer"><a class="toc-github" href="https://gitcode.net/KnowledgePlanet/deepseek-harness-java" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>查看源码</a></div>
+    </aside>
+    <aside class="right-toolbar">
+      <a class="toolbar-btn toolbar-btn-github" href="https://gitcode.net/KnowledgePlanet/deepseek-harness-java" target="_blank" rel="noopener" title="查看源码" aria-label="查看源码">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+      </a>
+    </aside>
+  </div>
+  <script src="js/highlight.js?v=20260911-1"></script>
+  <script src="js/progress.js?v=20260911-1"></script>
+  <script src="js/flowchart.js?v=20260911-1"></script>
+  <script src="js/quiz.js?v=20260911-1"></script>
+  <script src="js/main.js?v=20260911-1"></script>
+  <script>
+    window.addEventListener('scroll', () => {
+      const h = document.documentElement;
+      const pct = h.scrollTop / (h.scrollHeight - h.clientHeight) * 100;
+      const bar = document.getElementById('readingProgress');
+      if (bar) bar.style.width = (pct || 0) + '%';
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>第5章 会话与事件溯源：SessionLog 的秘密 | DeepSeek Harness Java 实战教程</title>
+  <meta name="description" content="为什么说&quot;事件日志就是真相之源&quot;——取消、回放、压缩都建立在它之上">
+  <link rel="canonical" href="https://fuzhengwei.github.io/deepseek-harness-java/docs/html/ch05-session-event.html">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+  <link rel="stylesheet" href="css/book.css?v=20260911-1">
+  <link rel="stylesheet" href="css/site.css?v=20260911-1">
+  <link rel="stylesheet" href="css/flowchart.css?v=20260911-1">
+</head>
+<body data-chapter="ch05">
+  <div class="reading-progress" id="readingProgress"></div>
+  <div class="app-layout chat-collapsed">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <a class="brand-lockup" href="index.html" title="回到首页">
+          <span class="brand-tile">📚</span>
+          <span class="brand-meta"><span class="brand-name">Harness 教程</span><span class="brand-sub">Java 实战 · 18 页</span></span>
+        </a>
+        <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
+      </div>
+      <div class="sidebar-progress">
+        <div class="progress-head"><span class="progress-label">学习进度</span><span class="progress-num" id="progressText">0/18 章</span></div>
+        <div class="progress-bar"><div class="progress-bar-fill" style="width: 0%"></div></div>
+        <div class="progress-caption" id="progressCaption">Lv.1 · 尚未开始</div>
+      </div>
+      <nav class="sidebar-nav" id="sidebarNav"><div class="nav-group" data-section="序章" style="--part:var(--section-序章)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🎬</span><span class="nav-section-title">序章</span><span class="nav-section-count">00</span></div><a class="nav-item" data-chapter="ch00" href="ch00-intro.html"><span class="nav-num">00</span><span class="nav-title">教程导读：这本书怎么读</span></a></div><div class="nav-group" data-section="第一篇：快速上手" style="--part:var(--section-快速上手)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🚀</span><span class="nav-section-title">第一篇：快速上手</span><span class="nav-section-count">01</span></div><a class="nav-item" data-chapter="ch01" href="ch01-quickstart.html"><span class="nav-num">01</span><span class="nav-title">十分钟跑起来：构建、启动与第一次对话</span></a></div><div class="nav-group" data-section="第二篇：架构设计" style="--part:var(--section-架构设计)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🏗️</span><span class="nav-section-title">第二篇：架构设计</span><span class="nav-section-count">02</span></div><a class="nav-item" data-chapter="ch02" href="ch02-architecture.html"><span class="nav-num">02</span><span class="nav-title">六边形架构：模块划分与依赖方向</span></a><a class="nav-item" data-chapter="ch03" href="ch03-domain.html"><span class="nav-num">03</span><span class="nav-title">领域设计：事件风暴与 27 个限界上下文</span></a></div><div class="nav-group" data-section="第三篇：核心机制" style="--part:var(--section-核心机制)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🧠</span><span class="nav-section-title">第三篇：核心机制</span><span class="nav-section-count">04</span></div><a class="nav-item" data-chapter="ch04" href="ch04-react-loop.html"><span class="nav-num">04</span><span class="nav-title">ReactLoopAgent：ReAct 循环引擎</span></a><a class="nav-item active" data-chapter="ch05" href="ch05-session-event.html"><span class="nav-num">05</span><span class="nav-title">会话与事件溯源：SessionLog 的秘密</span></a><a class="nav-item" data-chapter="ch06" href="ch06-intent-strategy.html"><span class="nav-num">06</span><span class="nav-title">意图识别与策略树：消息如何流转</span></a><a class="nav-item" data-chapter="ch07" href="ch07-sse-protocol.html"><span class="nav-num">07</span><span class="nav-title">SSE 流式协议：推理、工具卡片与会话终态</span></a></div><div class="nav-group" data-section="第四篇：工具与扩展" style="--part:var(--section-工具与扩展)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🛠️</span><span class="nav-section-title">第四篇：工具与扩展</span><span class="nav-section-count">08</span></div><a class="nav-item" data-chapter="ch08" href="ch08-tools.html"><span class="nav-num">08</span><span class="nav-title">工具系统：ToolCallExecutor 与 Hook 链</span></a><a class="nav-item" data-chapter="ch09" href="ch09-plugin.html"><span class="nav-num">09</span><span class="nav-title">插件开发实战：Java 与 Node 双模式</span></a><a class="nav-item" data-chapter="ch10" href="ch10-mcp.html"><span class="nav-num">10</span><span class="nav-title">MCP 集成：连接外部工具生态</span></a></div><div class="nav-group" data-section="第五篇：治理" style="--part:var(--section-治理)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🛡️</span><span class="nav-section-title">第五篇：治理</span><span class="nav-section-count">11</span></div><a class="nav-item" data-chapter="ch11" href="ch11-governance.html"><span class="nav-num">11</span><span class="nav-title">任务、审批与治理：安全执行的边界</span></a></div><div class="nav-group" data-section="第六篇：部署与生产化" style="--part:var(--section-部署与生产化)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">⚙️</span><span class="nav-section-title">第六篇：部署与生产化</span><span class="nav-section-count">12</span></div><a class="nav-item" data-chapter="ch12" href="ch12-deployment.html"><span class="nav-num">12</span><span class="nav-title">部署与生产化：从本地到上线</span></a><a class="nav-item" data-chapter="ch13" href="ch13-epilogue.html"><span class="nav-num">13</span><span class="nav-title">边界与进阶路线：从 Demo 到产品</span></a></div><div class="nav-group" data-section="工程全景" style="--part:var(--color-accent)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">🧰</span><span class="nav-section-title">工程全景</span><span class="nav-section-count">14</span></div><a class="nav-item" data-chapter="ch14" href="ch14-engineering.html"><span class="nav-num">14</span><span class="nav-title">工程全景：API、控制台、数据与测试</span></a><a class="nav-item" data-chapter="ch15" href="ch15-workflow-subagent.html"><span class="nav-num">15</span><span class="nav-title">工作流与子代理：从单 Agent 到协同执行</span></a><a class="nav-item" data-chapter="ch16" href="ch16-platform-capabilities.html"><span class="nav-num">16</span><span class="nav-title">目标、计划、技能与定时任务：长程上下文治理</span></a></div><div class="nav-group" data-section="版本演进" style="--part:var(--color-accent)"><div class="nav-section"><span class="nav-section-dot"></span><span class="nav-section-emoji">📦</span><span class="nav-section-title">版本演进</span><span class="nav-section-count">17</span></div><a class="nav-item" data-chapter="ch17" href="ch17-release-notes.html"><span class="nav-num">17</span><span class="nav-title">版本演进：v0.1.3 到 v0.1.5 交付实录</span></a></div></nav>
+    </aside>
+    <main class="content-area">
+      <div class="content-header">
+        <div class="breadcrumb">
+          <a class="crumb-home" href="index.html" aria-label="回到首页">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 9.7V20a1 1 0 0 0 1 1h4v-5h3v5h4a1 1 0 0 0 1-1V9.7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>首页</span>
+          </a>
+          <span class="crumb-sep">›</span>
+          <span class="crumb-sec"><span class="crumb-sec-emoji">🧠</span><span>第三篇：核心机制</span></span>
+        </div>
+        <div class="nav-buttons">
+          <a class="nav-btn prev" href="ch04-react-loop.html">← 上一章</a>
+          <a class="nav-btn next" href="ch06-intent-strategy.html">下一章 →</a>
+        </div>
+      </div>
+      <div class="content-body" id="contentBody"><div class="chapter-head"><div class="chapter-eyebrow">🧠 第三篇：核心机制</div><h1 class="chapter-title">第5章 会话与事件溯源：SessionLog 的秘密</h1>
+<p class="chapter-subtitle">为什么说"事件日志就是真相之源"——取消、回放、压缩都建立在它之上</p>
+
+<h2 class="section-heading" id="sec-1">5.1 本章导读</h2>
+
+<p>上一章里 <code>ReactLoopAgent</code> 反复调用 <code>session.append(...)</code>——TurnStart、StepStart、UserMessage、AssistantChunk、ToolCall、TurnEnd……本章揭开这个 <code>session</code> 的真面目：它不是简单的"聊天记录"，而是一个<strong>事件溯源（Event Sourcing）系统</strong>。理解了它，你就理解了本项目为什么能做到取消不丢数据、历史完整回放、上下文自动压缩。</p>
+
+<h2 class="section-heading" id="sec-2">5.2 什么是事件溯源</h2>
+
+<p>传统系统存"当前状态"，事件溯源存"发生的所有事"。类比银行账户：</p>
+
+<div class="compare-grid">
+  <div class="card" style="border-left: 3px solid var(--color-warning);">
+    <div class="card-title">传统方式：存余额</div>
+    <p style="font-size: 13px; color: var(--color-text-secondary);">账户表只有一行 <code>balance = 100</code>。你怎么变成 100 的？不知道。中间被人改过一次？也不知道。状态即一切，历史不可考。</p>
+  </div>
+  <div class="card" style="border-left: 3px solid var(--color-success);">
+    <div class="card-title">事件溯源：存流水</div>
+    <p style="font-size: 13px; color: var(--color-text-secondary);">存的是 <code>+200, -50, -50</code> 的完整流水。余额 100 是流水"回放"出来的。历史完整、可审计、可回放、可从任意时间点重建状态。</p>
+  </div>
+</div>
+
+<p>对 Agent 会话来说，"流水"就是会话事件日志（Session Event Log）：用户说了什么、模型回了什么、调用了哪个工具、工具返回了什么、什么时候取消的——全部按顺序追加，<strong>只增不改</strong>。</p>
+
+<h2 class="section-heading" id="sec-3">5.3 SessionLog：内存追加式 WAL</h2>
+
+<p><code>SessionLog</code>（📦 <code>domain/session/event/model/entity/SessionLog.java</code>）本质是一个<strong>内存中的追加式写前日志（WAL）</strong>。Agent 运行过程中产生的一切事件都先追加到这里，再由 <code>ISessionEventStore</code> 端口异步落库（MySQL 的 <code>harness_session_event_log</code> 表）。</p>
+
+<p>事件类型是 sealed 接口 <code>SessionEvent</code>，分四大类：</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">类别</th><th style="text-align:left;">事件</th><th style="text-align:left;">作用</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>轮/步边界</td><td><code>TurnStart</code>、<code>TurnEnd(reason)</code>、<code>StepStart</code>、<code>StepEnd</code></td><td>标记 ReAct 循环的结构边界</td></tr>
+      <tr><td>消息</td><td><code>UserMessage</code>、<code>AssistantChunk</code>、<code>AssistantMessage</code></td><td>对话内容（Chunk 是流式增量，Message 是完整组装结果）</td></tr>
+      <tr><td>工具</td><td><code>ToolCall(callId, name, arguments)</code>、<code>ToolResult(callId, ...)</code></td><td>工具调用与结果，用 callId 配对</td></tr>
+      <tr><td>元信息</td><td><code>RequestHeader</code>、<code>RequestContext</code>、<code>TodoWrite</code>、<code>SessionEndSeed</code>、<code>PlanModeChange</code>、<code>AgentInboxSpliced</code></td><td>请求头快照、待办写入、会话结束种子等</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>每个事件有全局递增的 <code>seq</code>（序号），这是回放和投影的顺序依据。</p>
+
+<h2 class="section-heading" id="sec-4">5.4 SurfaceProjector：从事件到界面</h2>
+
+<p>事件日志是"原始流水"，但 UI 要的是"当前应该显示什么"。中间的翻译层是 <code>SurfaceProjector</code>（表面投影器）：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"events","label":"SessionEvent 流\n(seq 递增的原始事件)","type":"start"},{"id":"intent","label":"SurfaceIntent\n每个事件声明自己的投影意图","type":"process"},{"id":"op","label":"SurfaceOp 两种操作\nAppend: 追加新节点\nReplace: 替换已有节点","type":"decision"},{"id":"nodes","label":"SurfaceNode 列表\n(seq + event)\nUI 渲染的最终状态","type":"end"}],"edges":[{"from":"events","to":"intent"},{"from":"intent","to":"op"},{"from":"op","to":"nodes"}]}'></div>
+
+<p>核心代码极简，却撑起整个 UI 渲染：</p>
+
+<div class="code-block"><pre>// SurfaceProjector.project()（简化）
+for (SessionEvent event : events) {
+    SurfaceIntent intent = intentOf(event);
+    if (intent.surfaceOp() instanceof SurfaceOp.Append) {
+        nodes.add(new SurfaceNode(event.seq(), event));
+    } else if (intent.surfaceOp() instanceof SurfaceOp.Replace r) {
+        // 按 r.targetSeq() 找到旧节点替换
+    }
+}</pre></div>
+
+<p>为什么需要 Replace？典型场景：<strong>AssistantChunk 流式追加时，UI 应该更新同一个气泡而不是每来一个 chunk 就加一个气泡</strong>。chunk 事件投影为 Replace（替换上一个未完成的气泡），完整 AssistantMessage 到来时再 Replace 成终态——界面上看到的就是"文字逐字浮现"的效果。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">💡 投影必须幂等</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">同一个事件流，投影多少次结果都应该一样。这条性质让"重新加载会话"和"实时接收事件"走同一套渲染逻辑——历史回放和实时对话在 UI 层完全一致。</p>
+</div>
+
+<h2 class="section-heading" id="sec-5">5.5 BasicCompactionEngine：上下文压缩</h2>
+
+<p>会话长了，把所有事件塞进 LLM 上下文会爆 token。本项目的压缩策略在 <code>BasicCompactionEngine</code>（📦 <code>domain/agent/compaction/</code>）：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"trigger","label":"触发\n上下文 token 估算超预算\n(length/4 粗估)","type":"start"},{"id":"split","label":"切分事件\n最近 1/4: 保留原文\n前 3/4: 待压缩","type":"process"},{"id":"summarize","label":"LLM 总结\n把前 3/4 的事件\n总结成一条摘要消息","type":"process"},{"id":"rebuild","label":"重建上下文\n摘要 + 最近 1/4 原文","type":"end"}],"edges":[{"from":"trigger","to":"split"},{"from":"split","to":"summarize"},{"from":"summarize","to":"rebuild"}]}'></div>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">设计点</th><th style="text-align:left;">选择</th><th style="text-align:left;">权衡</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>保留比例</td><td>最近 1/4 事件原文</td><td>最近的上下文对当前任务最重要，保留原文避免关键细节（如刚读到的文件内容）被总结丢失</td></tr>
+      <tr><td>压缩方式</td><td>LLM 总结</td><td>比硬截断智能，但消耗一次额外 LLM 调用</td></tr>
+      <tr><td>token 估算</td><td><code>length / 4</code> 粗估</td><td>不精确但零成本；context-window 默认 128000，留足余量后粗估够用</td></tr>
+      <tr><td>事件处理</td><td>摘要作为新事件追加</td><td>不删除原始事件——日志仍是完整流水，只是"喂给模型的上下文"变了</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="section-heading" id="sec-6">5.6 事件溯源带来的三个超能力</h2>
+
+<p>回到本章开头的问题——为什么说事件日志是真相之源？因为它同时支撑了三件看似无关的事：</p>
+
+<div class="compare-grid">
+  <div class="card" style="border-left: 3px solid var(--color-info);">
+    <div class="card-title">🔁 完整回放</div>
+    <p style="font-size: 13px; color: var(--color-text-secondary);">控制台"历史会话"功能不需要单独存储——把 <code>harness_session_event_log</code> 的事件读出来重新投影一遍，就能精确重现当时的每一句话、每一次工具调用。</p>
+  </div>
+  <div class="card" style="border-left: 3px solid var(--color-success);">
+    <div class="card-title">✂️ 安全取消</div>
+    <p style="font-size: 13px; color: var(--color-text-secondary);">第4章的协作式取消之所以不丢数据，正因为所有事件先追加到内存 WAL 再落库。即使 turn 中途 abort，已产生的 TurnStart/Chunk/ToolCall 都已安全记录，TurnEnd(Aborted) 补齐结尾。</p>
+  </div>
+  <div class="card" style="border-left: 3px solid var(--color-accent);">
+    <div class="card-title">🔍 可审计</div>
+    <p style="font-size: 13px; color: var(--color-text-secondary);">Agent 什么时候调了 Shell、参数是什么、返回了什么——全部在事件流里。这是审批治理（第11章）和安全审计的技术基础。</p>
+  </div>
+</div>
+
+<h2 class="section-heading" id="sec-7">5.7 课程补充：SurfaceOp.Replace 的两个场景与两条派生路径的口径差异</h2>
+
+<p>本章第 5.4 节讲了 <code>SurfaceOp</code> 的 Append/Replace 两种操作，但只展开了一个场景（流式气泡的逐字浮现）。实际上 <code>Replace</code> 还有另一个关键用途，且系统里<strong>有两条独立的派生路径</strong>在不同的层用不同语义读事件日志——这一节补全这两个细节。</p>
+
+<h3 class="sub-heading">5.8.1 Replace 的第二个关键场景：压缩摘要遮蔽历史</h3>
+
+<p>第 5.5 节说过压缩引擎的策略是"保留最近 1/4 原文、其余 LLM 总结"。那这条总结怎么进事件流？它不追加在末尾——那样会和原文共存，模型会看到两份。正确做法是<strong>用 Replace 把前 3/4 的旧节点"遮蔽"掉</strong>：</p>
+
+<div class="code-block"><pre>// BasicCompactionEngine.compactNow()（简化）
+// 找到待压缩区间的第一个和最后一个 surface seq
+long startSeq = -1, endSeq = -1;
+int msgIdx = 0;
+for (SessionEvent event : events) {
+    if (!event.isSurfaceEvent()) continue;
+    if (msgIdx >= compactEnd) break;  // 越过保留区就停
+    if (event.surfaceIntent().surfaceOp() instanceof SurfaceOp.Append) {
+        if (startSeq < 0) startSeq = event.seq();
+        endSeq = event.seq();
+        msgIdx++;
+    }
+}
+// 追加摘要消息，意图是 Replace [startSeq, endSeq]
+session.append(SessionEventFactory.userMessage(
+    0, 0, summaryMsg,
+    new SurfaceIntent(new SurfaceOp.Replace(startSeq, endSeq), null)
+));</pre></div>
+
+<p>日志里原始事件<strong>全在</strong>（不可篡改是事件溯源纪律），但任何下游投影这批事件时，<code>startSeq..endSeq</code> 区间内的节点都会被这条新摘要替换掉。这就是为什么叫"<strong>遮蔽</strong>"而不是"删除"——历史保留、可审计，但当前视图变化。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-info);">
+  <div class="card-title">💡 Append vs Replace 的本质区别</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);"><strong>Append</strong>：新事件永远追加到对话末尾，模型/UI 看到完整历史。<br><strong>Replace</strong>：新事件遮蔽一段 seq 区间，本质是"重新叙述"那段历史——压缩是"用一句话叙述 N 句话"，流式渲染是"用最新 chunk 叙述上一个 chunk"。两种操作下事件日志都只增不改。</p>
+</div>
+
+<h3 class="sub-heading">5.8.2 两条派生路径：deriveMessages vs extractChatMessages</h3>
+
+<p>同一个 SessionLog 至少有<strong>两个</strong>消费者去"看"事件：</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">路径</th><th style="text-align:left;">入口</th><th style="text-align:left;">消费者</th><th style="text-align:left;">包含 ToolResult？</th><th style="text-align:left;">cache</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>deriveMessages()</code></td><td><code>SessionLog.deriveMessages</code></td><td><code>ReactLoopAgent.buildRequest</code> 喂给 LLM</td><td>✓</td><td>声明了 <code>derivedCache</code> 字段，注释写"until profiling shows hot path"——Java 版每次全量重算</td></tr>
+      <tr><td><code>extractChatMessages()</code></td><td><code>SurfaceProjector.extractChatMessages</code></td><td>UI 聊天面板（不需要看到工具结果细节）</td><td>✗（只保留 user/assistant）</td><td>无（SurfaceProjector 每次 project 也全量）</td></tr>
+      <tr><td><code>AgentCollectNode</code> 投影</td><td>case 层自定义遍历</td><td>SSE done 事件给前端</td><td>✓（按 callId 合并 call + result）</td><td>无</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p><strong>这里有一个真实隐患</strong>（已记在 <code>MEMORY.md</code>）：前两条路径的口径不一致——LLM 看到的消息历史<strong>包含</strong> ToolResult（工具结果是模型推理的依据），UI 聊天面板却<strong>不显示</strong>它们。带来的副作用是：用户看历史时不能直观地"看到模型读了什么文件、跑过什么命令"，只能从 SSE done 事件的 messages 数组里翻 tool 消息。</p>
+
+<p>代码层面的修复思路（目前未做）：要么让 <code>SurfaceProjector.extractChatMessages</code> 可参数化（<code>includeTools=true/false</code>），要么把 UI 的对话视图改成"以折叠卡片展示工具结果"。从设计上看，<code>extractChatMessages</code> 是为"对话"服务的（聊天场景不应被工具噪音淹没），<code>deriveMessages</code> 是为"模型"服务的（必须完整才能继续推理）——两者用途不同、口径不同是正确的，关键是要让调用方知道自己在调哪个。</p>
+
+<h3 class="sub-heading">5.8.3 deriveMessages 的简易投影：Java 版为什么是 O(n²)</h3>
+
+<p>TS 版用增量缓存（按 surface node 索引），每次只在尾部追加新事件时更新缓存。Java 版为了"实现简单"选择了<strong>全量重算</strong>：</p>
+
+<div class="code-block"><pre>// SessionLog.deriveMessages()（简化）
+public synchronized List<Message> deriveMessages() {
+    List<Message> messages = new ArrayList<>();
+    Set<Long> shadowed = new HashSet<>();
+    List<Long> surfaceSeqs = new ArrayList<>();
+
+    for (SessionEvent event : events) {              // O(n) 遍历
+        if (!event.isSurfaceEvent()) continue;
+        SurfaceOp op = event.surfaceIntent()?.surfaceOp();
+        if (op == null) continue;
+
+        if (op instanceof SurfaceOp.Append) {
+            messages.add(projectMessage(event));     // O(1)
+        } else if (op instanceof SurfaceOp.Replace r) {
+            // Replace 的代价：遍历 surfaceSeqs 找出 [r.start, r.end] 内的 seq
+            Iterator<Long> it = surfaceSeqs.iterator();
+            Iterator<Message> mit = messages.iterator();
+            while (it.hasNext()) {                   // O(k)，k = 当前 surface 数
+                long seq = it.next();
+                if (seq >= r.start() && seq <= r.end()) {
+                    it.remove(); mit.next(); mit.remove();
+                } else if (seq > r.end()) break;
+                else mit.next();
+            }
+            messages.add(projectMessage(event));
+        }
+    }
+    return Collections.unmodifiableList(messages);
+}</pre></div>
+
+<p>每个 Replace 都要 O(k) 扫一次当前 surface，Append 也要遍历事件日志判断自己是不是 surface 事件——单次 <code>deriveMessages()</code> 是 O(n) × O(k) ≈ <strong>O(n²)</strong>。短会话（几十条）毫无感觉；长会话（几百条 + 多次压缩）会成为热点。<code>derivedCache</code> 字段已经在类里声明了但<strong>未启用</strong>（Java 注释："The TS version incrementally caches by surface node, but the Java version favors simplicity until profiling shows a hot path"）——这是一个<strong>留作未来优化的空间</strong>。</p>
+
+<div class="card" style="border-left: 3px solid var(--color-warning);">
+  <div class="card-title">⚠️ 优化前先量化</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">会话事件日志的"只增不改"性质让增量缓存非常诱人，但实现要保证：缓存 key 跟事件 seq 同步；多线程下用 <code>synchronized</code> 串行；Replace 区间要正确失效对应节点。不建议在没有 hot path 数据之前就引入——复杂度代价可能比省下的微秒更贵。</p>
+</div>
+
+<h2 class="section-heading" id="sec-8">5.8 小结与下一章预告</h2>
+
+<div class="summary-box">
+  <p><strong>本章要点</strong>：SessionLog 是内存追加式 WAL，事件只增不改；SurfaceProjector 用 Append/Replace 两种操作把事件流投影成 UI 状态（幂等性让历史回放与实时渲染共用一套逻辑）；BasicCompactionEngine 保留最近 1/4 原文、其余 LLM 总结；事件溯源同时支撑回放、安全取消、审计三大能力。</p>
+  <p style="margin-bottom:0;"><strong>下一章</strong>：会话事件从哪来？要回到消息的入口——一条用户消息到达后，系统怎么判断"该闲聊还是该调工具"？多个步骤如何编排成一条链？第6章讲意图识别与策略树。</p>
+</div></div></div>
+      <nav class="page-nav"><a class="page-nav-card prev" href="ch04-react-loop.html"><span class="page-nav-label">← 上一章</span><span class="page-nav-title">ReactLoopAgent：ReAct 循环引擎</span></a><a class="page-nav-card next" href="ch06-intent-strategy.html"><span class="page-nav-label">→ 下一章</span><span class="page-nav-title">意图识别与策略树：消息如何流转</span></a></nav>
+      <button class="back-to-top" id="backToTop" title="回到顶部" aria-label="回到顶部">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3.5L4 12h5v8h6v-8h5z"/></svg>
+      </button>
+    </main>
+    <aside class="toc-panel" id="tocPanel">
+      <div class="toc-header">
+        <h3 class="toc-title"><span class="toc-title-icon">📋</span>本章目录</h3>
+        <span class="toc-count">8 节</span>
+      </div>
+      <nav class="toc-nav" id="tocNav"><a class="toc-item" href="#sec-1" data-target="sec-1"><span class="toc-num">5.1</span><span class="toc-text">本章导读</span></a><a class="toc-item" href="#sec-2" data-target="sec-2"><span class="toc-num">5.2</span><span class="toc-text">什么是事件溯源</span></a><a class="toc-item" href="#sec-3" data-target="sec-3"><span class="toc-num">5.3</span><span class="toc-text">SessionLog：内存追加式 WAL</span></a><a class="toc-item" href="#sec-4" data-target="sec-4"><span class="toc-num">5.4</span><span class="toc-text">SurfaceProjector：从事件到界面</span></a><a class="toc-item" href="#sec-5" data-target="sec-5"><span class="toc-num">5.5</span><span class="toc-text">BasicCompactionEngine：上下文压缩</span></a><a class="toc-item" href="#sec-6" data-target="sec-6"><span class="toc-num">5.6</span><span class="toc-text">事件溯源带来的三个超能力</span></a><a class="toc-item" href="#sec-7" data-target="sec-7"><span class="toc-num">5.7</span><span class="toc-text">课程补充：SurfaceOp.Replace 的两个场景与两条派生路径的口径差异</span></a><a class="toc-item" href="#sec-8" data-target="sec-8"><span class="toc-num">5.8</span><span class="toc-text">小结与下一章预告</span></a></nav>
+      <div class="toc-footer"><a class="toc-github" href="https://gitcode.net/KnowledgePlanet/deepseek-harness-java" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>查看源码</a></div>
+    </aside>
+    <aside class="right-toolbar">
+      <a class="toolbar-btn toolbar-btn-github" href="https://gitcode.net/KnowledgePlanet/deepseek-harness-java" target="_blank" rel="noopener" title="查看源码" aria-label="查看源码">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+      </a>
+    </aside>
+  </div>
+  <script src="js/highlight.js?v=20260911-1"></script>
+  <script src="js/progress.js?v=20260911-1"></script>
+  <script src="js/flowchart.js?v=20260911-1"></script>
+  <script src="js/quiz.js?v=20260911-1"></script>
+  <script src="js/main.js?v=20260911-1"></script>
+  <script>
+    window.addEventListener('scroll', () => {
+      const h = document.documentElement;
+      const pct = h.scrollTop / (h.scrollHeight - h.clientHeight) * 100;
+      const bar = document.getElementById('readingProgress');
+      if (bar) bar.style.width = (pct || 0) + '%';
+    });
+  </script>
+</body>
+</html>

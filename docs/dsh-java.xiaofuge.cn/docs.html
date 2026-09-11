@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>dsh-java 体验教程 · 部署与插件接入</title>
+  <meta name="description" content="dsh-java 快速体验教程：Docker 一键部署、Web 控制台使用、模型配置、插件安装、商城与 MySQL 案例接入、插件发布收录。">
+  <meta name="author" content="小傅哥">
+  <link rel="icon" href="assets/images/whale-logo.png" type="image/png">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="dsh-java 体验教程 · 部署与插件接入">
+  <meta property="og:description" content="Docker 一键部署、Web 控制台使用、模型配置、插件安装与实际案例接入。">
+  <meta property="og:image" content="assets/images/harness-session.png">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+  <div class="page-shell">
+
+    <header class="site-header">
+      <div class="container header-inner">
+        <a class="brand" href="/index.html">
+          <span class="brand-mark"><img src="assets/images/whale-logo.png" alt="小傅哥小鲸鱼 Logo"></span>
+          <span class="brand-text"><strong>dsh-java</strong><small>Java Agent Harness</small></span>
+        </a>
+        <nav class="site-nav" aria-label="主导航">
+          <a href="/index.html#runtime">运行时</a>
+          <a href="/index.html#mechanism">实现机制</a>
+          <a href="/index.html#cases">使用案例</a>
+          <a href="/index.html#plugins">社区插件</a>
+          <a href="/index.html#deploy">部署</a>
+          <a href="/document/index.html">实战教程</a>
+          <a href="/docs.html">体验教程</a>
+        </nav>
+        <div class="header-actions">
+          <a class="btn" href="/index.html">返回首页</a>
+          <button class="menu-button" type="button" aria-expanded="false" aria-controls="mobileNav">菜单</button>
+        </div>
+      </div>
+      <div class="mobile-nav container" id="mobileNav">
+        <a href="/index.html">首页</a>
+        <a href="/index.html#plugins">社区插件</a>
+        <a href="/index.html#deploy">部署</a>
+        <a href="/document/index.html">实战教程</a>
+        <a href="/docs.html">体验教程</a>
+      </div>
+    </header>
+
+    <main>
+      <section class="page-hero">
+        <div class="container">
+          <span class="section-tag">Get Started</span>
+          <h1>最短路径体验<br>完整 Agent 运行时</h1>
+          <p>按这条路径操作，你可以完成启动、模型配置、控制台使用、插件接入、案例验证与插件发布。全程不依赖前端构建链。</p>
+        </div>
+      </section>
+
+      <div class="container docs-layout">
+        <aside class="docs-sidebar">
+          <a href="#quick-start">1. 一键启动</a>
+          <a href="#console">2. 控制台体验</a>
+          <a href="#api">3. API 调用</a>
+          <a href="#mall">4. 商城案例</a>
+          <a href="#mysql">5. MySQL 案例</a>
+          <a href="#plugins">6. 插件开发</a>
+          <a href="#publish">7. 发布与收录</a>
+          <a href="#ops">8. 部署与安全</a>
+          <a href="#faq">9. 常见问题</a>
+        </aside>
+
+        <article class="docs-content">
+
+          <section id="quick-start">
+            <h2>1. 一键启动部署</h2>
+            <p>推荐使用 <a class="inline-link" href="https://github.com/fuzhengwei/dsh-java-deploy" target="_blank" rel="noreferrer">dsh-java-deploy</a> 标准部署包。它统一网络、持久化数据，并预置 <code>dsh-java-mysql</code> 与 <code>2d-weekend-mall</code> 插件：</p>
+            <pre><code>git clone https://github.com/fuzhengwei/dsh-java-deploy.git
+cd dsh-java-deploy
+
+cp .env.example .env
+# 修改 MALL_SERVICE_TOKEN、DEEPSEEK_BASE_URL、DEEPSEEK_API_KEY
+
+docker compose up -d
+./scripts/install-plugins.sh</code></pre>
+            <p>启动后访问：</p>
+            <pre><code>http://127.0.0.1:8090    # Harness Web
+http://127.0.0.1:8091    # DSH MySQL
+http://127.0.0.1:18080   # 2D Weekend Mall</code></pre>
+            <p>验证插件：</p>
+            <pre><code>curl http://127.0.0.1:8090/api/harness/plugins</code></pre>
+            <div class="callout tip"><strong>说明：</strong>部署包已内置插件 JAR，不需要先构建业务源码。如果插件源码更新，先执行仓库里的 <code>scripts/build-plugins.sh</code>。</div>
+            <h3>单容器最小体验</h3>
+            <p>只想快速看界面时，也可以直接运行 Harness 镜像，默认监听 <code>8090</code>：</p>
+            <pre><code>docker run -d \
+  --name dsh-java-web \
+  -p 8090:8090 \
+  registry.cn-hangzhou.aliyuncs.com/xfg-studio/deepseek-harness-java:0.1.5</code></pre>
+            <p>如果要注入模型凭据，重新运行并携带环境变量：</p>
+            <pre><code>docker rm -f dsh-java-web || true
+
+docker run -d \
+  --name dsh-java-web \
+  -p 8090:8090 \
+  -e DEEPSEEK_API_KEY='your-model-api-key' \
+  registry.cn-hangzhou.aliyuncs.com/xfg-studio/deepseek-harness-java:0.1.5</code></pre>
+            <div class="callout tip"><strong>建议：</strong>单容器只适合最小体验；正式使用请回到上面的标准部署包，避免容器之间地址不通和数据不持久化。</div>
+          </section>
+
+          <section id="console">
+            <h2>2. 使用 Web 控制台</h2>
+            <p>启动完成后，在浏览器打开：</p>
+            <pre><code>http://localhost:8090/</code></pre>
+            <ol class="step-list">
+              <li>新建或选择一个工作区，用于隔离文件操作和运行上下文。</li>
+              <li>创建 Agent 会话，左侧可切换、恢复或删除会话。</li>
+              <li>进入模型设置，确认默认 provider、model 与 API Key。</li>
+              <li>发送第一条消息，观察 SSE 流式输出和工具卡片。</li>
+              <li>需要人工确认时，在审批面板批准或拒绝任务。</li>
+              <li>打开插件页面，安装、启用、停用或配置插件。</li>
+            </ol>
+            <p>控制台原生实现了 Markdown 渲染、代码高亮、DOMPurify XSS 净化、历史会话回放、轨迹视图、插件启停与审批处理。</p>
+          </section>
+
+          <section id="api">
+            <h2>3. 用 API 发起第一条消息</h2>
+            <p>阻塞式接口适合脚本测试；SSE 接口适合观察流式行为：</p>
+            <pre><code>curl -X POST http://localhost:8090/api/agent/message \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "agentId": "local-agent",
+    "message": "Hello!",
+    "provider": "deepseek",
+    "model": "gpt-5.5",
+    "maxTokens": 8192,
+    "cwd": "."
+  }'</code></pre>
+            <pre><code>curl -N -X POST http://localhost:8090/api/agent/stream \
+  -H 'Content-Type: application/json' \
+  -d '{"agentId": "local-agent", "message": "介绍这个项目的架构"}'</code></pre>
+            <div class="callout"><strong>注意：</strong>如果配置了 <code>harness.auth.api-keys</code>，请求需额外携带 <code>X-API-Key: your-api-key</code> 或 <code>Authorization: Bearer your-api-key</code>。</div>
+          </section>
+
+          <section id="mall">
+            <h2>4. 接入 2D Weekend Mall</h2>
+            <p>2D Weekend Mall 是一个 PC 虚拟商城，商品、购物车、订单、支付和物流在浏览器闭环。页面右上角的 AI 客服由 Harness 插件提供。</p>
+            <h3>启动商城</h3>
+            <pre><code>git clone https://github.com/fuzhengwei/2d-weekend-mall.git
+cd 2d-weekend-mall
+
+mvn -pl mall-app spring-boot:run</code></pre>
+            <p>打开 <code>http://localhost:18080</code>，默认演示用户是 <code>customer-1</code>。</p>
+            <h3>构建并安装客服插件</h3>
+            <pre><code>mvn package
+
+JAR="$PWD/mall-agent-plugin/target/mall-agent-plugin-1.0.0-SNAPSHOT.jar"
+
+curl -X POST http://localhost:8090/api/harness/plugins/install \
+  -H 'Content-Type: application/json' \
+  -d "{
+    \"pluginId\": \"mall-weekend-assistant\",
+    \"displayName\": \"2D Weekend Mall Assistant\",
+    \"pluginVersion\": \"1.0.0-SNAPSHOT\",
+    \"runtimeType\": \"JAVA_NATIVE\",
+    \"sourcePath\": \"$JAR\",
+    \"entrypoint\": \"mall-agent-plugin-1.0.0-SNAPSHOT.jar\"
+  }"
+
+curl -X POST http://localhost:8090/api/harness/plugins/run \
+  -H 'Content-Type: application/json' \
+  -d '{"pluginId":"mall-weekend-assistant"}'</code></pre>
+            <h3>配置商城凭证</h3>
+            <ul>
+              <li>在 Harness 插件配置中设置 <code>mall.service-token</code>，与商城 <code>mall.security.service-token</code> 一致。</li>
+              <li>建议设置 <code>mall.base-url</code> 为 <code>http://127.0.0.1:18080</code>。</li>
+              <li>保存后停用并重新启用插件，确保重新执行 <code>configure(context)</code>。</li>
+            </ul>
+            <p>安装成功后，Agent 会看到 <code>plugin__mall-weekend-assistant__search_products</code> 等工具，可以搜索商品、查询订单和物流。</p>
+            <a class="btn btn-soft" href="https://github.com/fuzhengwei/2d-weekend-mall" target="_blank" rel="noreferrer">打开商城案例</a>
+          </section>
+
+          <section id="mysql">
+            <h2>5. 接入 dsh-java-mysql</h2>
+            <p>这个案例提供 MySQL 管理后台与 AI 助手。先启动管理后台，再把插件安装进 Harness。</p>
+            <h3>启动管理后台</h3>
+            <pre><code>git clone https://github.com/fuzhengwei/dsh-java-mysql.git
+cd dsh-java-mysql
+
+mvn clean package
+java -jar dsh-java-mysql-app/target/dsh-java-mysql-app-*.jar</code></pre>
+            <p>打开 <code>http://localhost:8091</code>，添加数据库连接后即可浏览表、执行 SQL 和查看 AI 分析。</p>
+            <h3>安装 MySQL 插件</h3>
+            <pre><code>JAR="$PWD/dsh-java-mysql-plugin/target/dsh-java-mysql-plugin-0.1.0-SNAPSHOT.jar"
+
+curl -X POST http://localhost:8090/api/harness/plugins/install \
+  -H 'Content-Type: application/json' \
+  -d "{\"pluginId\":\"dsh-java-mysql-plugin\",\"displayName\":\"DSH MySQL Plugin\",\"pluginVersion\":\"0.1.0\",\"runtimeType\":\"JAVA_NATIVE\",\"sourcePath\":\"$JAR\",\"entrypoint\":\"dsh-java-mysql-plugin-0.1.0-SNAPSHOT.jar\"}"
+
+curl -X POST http://localhost:8090/api/harness/plugins/activate \
+  -H 'Content-Type: application/json' \
+  -d '{"pluginId":"dsh-java-mysql-plugin"}'</code></pre>
+            <table class="tool-table">
+              <thead><tr><th>工具</th><th>能力</th></tr></thead>
+              <tbody>
+                <tr><td>mysql_list_connections</td><td>列出本地已配置连接</td></tr>
+                <tr><td>mysql_read_query</td><td>执行 SELECT、SHOW、DESC 等只读查询</td></tr>
+                <tr><td>mysql_explain_query</td><td>获取 SQL 执行计划</td></tr>
+                <tr><td>mysql_performance_snapshot</td><td>查看性能快照</td></tr>
+                <tr><td>mysql_sql_review</td><td>本地 SQL 风险审计，不连库</td></tr>
+              </tbody>
+            </table>
+            <div class="callout"><strong>安全边界：</strong>AI 链路全程只读，服务端会二次校验 SQL；写操作只能在 SQL 控制台勾选“写操作”并人工确认后执行。</div>
+          </section>
+
+          <section id="plugins">
+            <h2>6. 插件开发教程 · SPI 与 AI Prompt</h2>
+            <p>插件先选择合适的运行模式，再实现 SPI 契约并注册工具。你可以按下面的流程手动实现，也可以直接把 AI 提示词交给 Agent 辅助生成代码。</p>
+            <table class="tool-table">
+              <thead><tr><th>模式</th><th>适用场景</th></tr></thead>
+              <tbody>
+                <tr><td>Java Native</td><td>Java 工具、数据库/业务 API、低延迟进程内调用，使用 URLClassLoader 隔离。</td></tr>
+                <tr><td>Node Bridge</td><td>复用 Node 生态，sidecar 进程以 JSON-RPC 与宿主通信。</td></tr>
+                <tr><td>MCP stdio</td><td>已有 MCP Server 能力接入，适合标准化工具生态。</td></tr>
+              </tbody>
+            </table>
+            <h3>最小 Java 插件结构</h3>
+            <pre><code>your-plugin/
+├── pom.xml
+└── src/main/
+    ├── java/cn/xiaofuge/plugin/
+    │   ├── YourPlugin.java
+    │   └── YourTool.java
+    └── resources/META-INF/
+        ├── plugin.yaml
+        └── services/cn.xiaofuge.deepseek.harness.domain.spi.JavaHarnessPlugin</code></pre>
+            <p>宿主加载后会解析 plugin.yaml，创建插件实例，注册工具并进入生命周期管理；Agent 只能调用注册成功的工具。</p>
+            <h3>AI Prompt 1 · 需求到插件设计</h3>
+            <div class="prompt-card">
+              <div class="prompt-head"><strong>需求拆解</strong><button class="copy-button" type="button">复制</button></div>
+              <pre><code>你是一名 Java Agent 插件架构师。请把下面的需求整理成 deepseek-harness-java Java Native 插件设计文档：
+
+业务需求：【在这里粘贴需求】
+
+输出要求：
+1. 插件 ID、显示名、版本、运行时类型。
+2. 工具清单：工具名、用途、输入参数、返回结构、异常分支。
+3. 每个工具的风险等级：只读 / 写操作 / 高危操作。
+4. 需要外部配置的 key、默认值和校验规则。
+5. 下载/调用边界：允许访问的域名、超时、重试、审计点。
+6. 用表格列出实现文件、职责和依赖方向。</code></pre>
+            </div>
+            <h3>AI Prompt 2 · 生成 Maven + SPI 骨架</h3>
+            <div class="prompt-card">
+              <div class="prompt-head"><strong>骨架生成</strong><button class="copy-button" type="button">复制</button></div>
+              <pre><code>请根据下面的插件设计文档，生成一个可编译的 deepseek-harness-java Java Native 插件骨架：
+
+插件名：【your-plugin】
+基础包名：【cn.xiaofuge.plugin】
+Java 版本：17
+
+输出要求：
+1. pom.xml：不引入 Spring 容器，最小依赖。
+2. plugin.yaml：包含 pluginId、displayName、pluginVersion、runtimeType、entrypoint。
+3. JavaHarnessPlugin SPI 服务声明文件。
+4. YourPlugin 类：初始化、configure、start、stop 生命周期。
+5. YourTool 类：返回 ToolDefinition，实现 execute。
+6. 只输出文件，不要解释。文件路径注释放在每个文件块顶部。</code></pre>
+            </div>
+            <h3>AI Prompt 3 · 生成业务工具实现</h3>
+            <div class="prompt-card">
+              <div class="prompt-head"><strong>工具实现</strong><button class="copy-button" type="button">复制</button></div>
+              <pre><code>请实现 Java Native 插件工具：
+
+工具名：【your_tool】
+功能：【查询业务数据 / 调用业务 API / 读取本地资源】
+输入参数：【参数名、类型、是否必填、校验规则】
+返回要求：【字段、示例、空结果结构】
+异常要求：【超时、认证失败、业务失败】
+
+实现要求：
+1. 不使用 Spring 注解，只依赖 SPI 和标准库。
+2. 输入必须校验，错误信息给 Agent 可读的结构。
+3. 外部 HTTP 请求要设置超时、失败分类和日志脱敏。
+4. 只做指定能力，不额外扩展写操作。
+5. 返回 Java 原生 Map/List/String，避免序列化到 UI 的副作用。</code></pre>
+            </div>
+            <h3>AI Prompt 4 · 打包、安装与验证</h3>
+            <div class="prompt-card">
+              <div class="prompt-head"><strong>安装验证</strong><button class="copy-button" type="button">复制</button></div>
+              <pre><code>请根据当前插件项目生成验证文档：
+
+插件路径：【/absolute/path/to/your-plugin.jar】
+插件 ID：【your-plugin】
+Harness 地址：【http://localhost:8090】
+
+输出要求：
+1. mvn clean package 命令。
+2. /api/harness/plugins/install curl 命令。
+3. 插件启动或激活 curl 命令。
+4. 3 个能证明工具生效的 Agent Prompt。
+5. 3 个应触发错误分支的测试用例。
+6. 安装失败时的日志检查清单。</code></pre>
+            </div>
+            <div class="callout tip"><strong>推荐流程：</strong>先用 Prompt 1 锁定边界，再用 Prompt 2 生成骨架；不要让 AI 直接一次性生成完整业务系统。工具应保持小而清晰，一个工具只做一类动作。</div>
+          </section>
+
+          <section id="publish">
+            <h2>7. 发布插件到社区收录</h2>
+            <p>插件开发完成并本地验证通过后，可以发布到 GitHub 与社区共享。社区通过 GitHub topic 统一收录插件——只要给仓库添加 <code>dsh-plugin-java</code> 标签，就会出现在 <a class="inline-link" href="https://github.com/topics/dsh-plugin-java" target="_blank" rel="noreferrer">github.com/topics/dsh-plugin-java</a> 主题页，被其他开发者发现。</p>
+            <h3>发布步骤</h3>
+            <ol class="step-list">
+              <li>把插件源码推送到一个公开的 GitHub 仓库。</li>
+              <li>完善 README：插件能力、工具清单、安装命令、配置项和截图。</li>
+              <li>建议附上构建好的 JAR（Release 附件或明确的构建命令）。</li>
+              <li>给仓库添加 <code>dsh-plugin-java</code> 标签（topic），等待被社区收录。</li>
+            </ol>
+            <h3>添加收录标签</h3>
+            <p>方式一：打开仓库主页，点击右上角 <strong>About</strong> 区域的设置图标，在 <strong>Topics</strong> 输入框中添加 <code>dsh-plugin-java</code> 并保存。</p>
+            <p>方式二：使用 GitHub CLI 一行完成：</p>
+            <pre><code>gh repo edit --add-topic dsh-plugin-java</code></pre>
+            <div class="callout tip"><strong>命名建议：</strong>仓库名推荐以 <code>dsh-java-</code> 为前缀（如 <code>dsh-java-mysql</code>），README 首屏写清「这是一个 dsh-java 插件」，方便检索与识别。</div>
+            <div class="callout"><strong>质量约定：</strong>被收录的插件应能直接构建或通过 Release 安装；写操作类工具请在 README 明确标注风险等级与所需审批配置。</div>
+            <a class="btn btn-primary" href="https://github.com/topics/dsh-plugin-java" target="_blank" rel="noreferrer">浏览社区插件</a>
+          </section>
+
+          <section id="ops">
+            <h2>8. 持久化部署与安全</h2>
+            <p>长期使用推荐 <a class="inline-link" href="https://github.com/fuzhengwei/dsh-java-deploy" target="_blank" rel="noreferrer">dsh-java-deploy</a>。它用 Compose 管理 Harness、MySQL 后台、商城、网络、数据卷和插件：</p>
+            <pre><code>git clone https://github.com/fuzhengwei/dsh-java-deploy.git
+cd dsh-java-deploy
+
+cp .env.example .env
+# 修改 MALL_SERVICE_TOKEN、DEEPSEEK_BASE_URL、DEEPSEEK_API_KEY
+
+docker compose up -d
+./scripts/install-plugins.sh
+
+docker compose ps</code></pre>
+            <p>部署包已把宿主机 <code>plugins/</code> 挂载到 Harness 容器 <code>/app/plugins-in</code>，所以插件安装脚本会使用容器内路径。</p>
+            <h3>本地构建</h3>
+            <pre><code>git clone https://gitcode.net/KnowledgePlanet/deepseek-harness-java.git
+cd deepseek-harness-java
+
+mvn clean package -DskipTests
+
+java -jar deepseek-harness-java-app/target/deepseek-harness-java-app-1.0.0-SNAPSHOT.jar \
+  --spring.profiles.active=standalone</code></pre>
+            <p><code>standalone</code> profile 使用 H2 文件库，无需 MySQL。默认 profile 需要导入 MySQL 表并配置 <code>SPRING_DATASOURCE_URL</code>、<code>SPRING_DATASOURCE_USERNAME</code>、<code>SPRING_DATASOURCE_PASSWORD</code>。</p>
+            <h3>安全检查</h3>
+            <ul>
+              <li>不要把 API Key 提交进仓库或写入公共镜像。</li>
+              <li>生产环境启用 API Key、HTTPS、访问日志和最小化网络暴露。</li>
+              <li>Shell、写文件、插件和子进程默认属于高风险操作，保留人工审批。</li>
+              <li>公开部署时补充限流、审计、备份与集中观测。</li>
+              <li>当前定位是单实例 Agent 运行时，分布式多租户需自行扩展协调与隔离策略。</li>
+            </ul>
+          </section>
+
+          <section id="faq">
+            <h2>9. 常见问题</h2>
+            <h3>访问 8090 打不开？</h3>
+            <p>先用 <code>docker logs -f dsh-java-web</code> 查看启动日志；确认端口没有被占用，并检查宿主机防火墙或安全组规则。</p>
+            <h3>容器之间 Connection refused？</h3>
+            <p>确认三个服务都使用 <code>dsh-net</code>，并使用 <code>dsh-java-web</code>、<code>dsh-java-mysql</code>、<code>2d-weekend-mall</code> 这类容器名，不要在容器内写 <code>127.0.0.1</code>。</p>
+            <h3>对话没有模型输出？</h3>
+            <p>检查 <code>DEEPSEEK_BASE_URL</code> 和 <code>DEEPSEEK_API_KEY</code>。如果使用私有 OpenAI 兼容网关，地址需包含 <code>/v1</code>。</p>
+            <h3>插件启动后 Agent 看不到工具？</h3>
+            <p>检查 plugin.yaml、SPI 服务声明和 JAR 路径。修改插件配置后应停用并重新启用，让插件重新执行 <code>configure(context)</code>。</p>
+            <h3>发布的插件没有被社区收录？</h3>
+            <p>确认仓库是公开仓库，且 topic 名称完全是 <code>dsh-plugin-java</code>（GitHub topic 只允许小写字母、数字和连字符）。添加后稍等片刻即可在主题页看到。</p>
+            <h3>Mall 插件 401/403？</h3>
+            <p>确认插件配置 <code>mall.service-token</code> 与商城容器 <code>MALL_SERVICE_TOKEN</code> 一致，并检查插件里的 <code>mall.base-url</code>。</p>
+            <div class="docs-footer-nav">
+              <a class="btn" href="/index.html#deploy">返回部署</a>
+              <a class="btn btn-primary" href="https://github.com/fuzhengwei/dsh-java-deploy" target="_blank" rel="noreferrer">打开部署教程</a>
+            </div>
+          </section>
+
+        </article>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-grid">
+        <div>
+          <a class="brand footer-brand" href="/index.html"><span class="brand-mark"><img src="assets/images/whale-logo.png" alt="小傅哥小鲸鱼 Logo"></span><strong>dsh-java</strong></a>
+          <p>可治理、可扩展、可审计的 Java Agent Harness 运行时基座。</p>
+        </div>
+        <nav aria-label="页脚导航">
+          <h4>项目</h4>
+          <a href="/index.html#runtime">运行时能力</a>
+          <a href="/index.html#mechanism">实现机制</a>
+          <a href="/index.html#cases">使用案例</a>
+          <a href="/index.html#plugins">社区插件</a>
+          <a href="/index.html#deploy">部署体验</a>
+        </nav>
+        <nav aria-label="资源导航">
+          <h4>资源</h4>
+          <a href="/docs.html">体验教程</a>
+          <a href="https://github.com/topics/dsh-plugin-java" target="_blank" rel="noreferrer">社区插件</a>
+          <a href="https://github.com/fuzhengwei/dsh-java-deploy" target="_blank" rel="noreferrer">部署教程</a>
+          <a href="https://github.com/fuzhengwei/2d-weekend-mall" target="_blank" rel="noreferrer">2D Weekend Mall</a>
+          <a href="https://github.com/fuzhengwei/dsh-java-mysql" target="_blank" rel="noreferrer">dsh-java-mysql</a>
+        </nav>
+      </div>
+      <div class="footer-bottom container">
+        <p>© 2026 dsh-java · Powered by Java Agent Harness</p>
+        <p class="credit">作者：小傅哥 · 感谢并致敬 DeepSeek Harness 的开源设计思想。</p>
+      </div>
+    </footer>
+
+  </div>
+  <script src="assets/js/main.js" defer></script>
+</body>
+</html>

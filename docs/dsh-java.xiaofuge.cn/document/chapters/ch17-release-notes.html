@@ -1,0 +1,141 @@
+<h1 class="chapter-title">第17章 版本演进：v0.1.3 到 v0.1.5 交付实录</h1>
+<p class="chapter-subtitle">看一个 Agent Harness 如何逐版从「能力可运行」走到「插件链路可信」</p>
+
+<h2 class="section-heading" id="sec-1">17.1 本章导读</h2>
+
+<p>前 16 章讲的是"系统长什么样、为什么这样设计"；本章换一个视角——<strong>看版本</strong>。deepseek-harness-java 在 2026 年 9 月连续交付了 v0.1.3、v0.1.4、v0.1.5 三个版本，每一版都对应第 12-13 章提到的"从 Demo 到产品"路线图上的一段。读这一章，你能看到一个真实开源项目<strong>如何排版本主线、如何控制变更范围、如何验证交付质量</strong>。</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">版本</th><th style="text-align:left;">主线</th><th style="text-align:left;">变更规模</th><th style="text-align:left;">对应章节</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>v0.1.3</code></td><td>统一配置模型、MCP &amp; Skills 扩展、对话 UI 完善</td><td>84 个文件，+3698 / -596 行</td><td>第 9/10/16 章</td></tr>
+      <tr><td><code>v0.1.4</code></td><td>插件工程化：产物识别、配置持久化、状态对账、业务插件落地</td><td>35 个文件，+2528 / -235 行</td><td>第 9 章</td></tr>
+      <tr><td><code>v0.1.5</code></td><td>插件能力完善与安全加固：@提及、接口访问控制、注册校验、注入防护</td><td>10 个文件，+303 / -14 行</td><td>第 9 章 / 本章</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--color-accent);">
+  <div class="card-title">💡 注意变更规模的信号</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary);">v0.1.3 铺能力（3698 行新增），v0.1.4 做工程化（2528 行新增），v0.1.5 只做加固（303 行新增、10 个文件）。版本越到后期，<strong>变更面越收、每个改动越对准具体风险</strong>——这正是"从 Demo 走向产品"的节奏。</p>
+</div>
+
+<h2 class="section-heading" id="sec-2">17.2 v0.1.5：@插件提及与访问控制</h2>
+
+<p>v0.1.5 没有新增插件机制的主干能力，而是把 v0.1.4 交付的插件链路从「可用」推进到「可信」。四个加固点分别落在四个层次：</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"web","label":"Web 控制台\n@插件提及补全\n(候选仅 ACTIVE 插件)","type":"start"},{"id":"trigger","label":"Trigger 层\nPluginApiAuthFilter\n命令接口 Token 鉴权","type":"process"},{"id":"case","label":"Case 层\nAgentDispatchNode\n@提及 → 模型优先级指令","type":"process"},{"id":"domain","label":"Domain 层\nPluginRegistryService (ID 校验)\nPluginToolBridgeService (注册幂等+提示词清洗)","type":"end"}],"edges":[{"from":"web","to":"trigger"},{"from":"trigger","to":"case"},{"from":"case","to":"domain"}]}'></div>
+
+<h3 class="sub-heading">17.2.1 对话侧：@插件提及</h3>
+
+<p>控制台输入框敲 <code>@</code> 唤起插件候选列表（按插件 ID / 显示名模糊匹配，仅展示 <code>ACTIVE</code> 插件，最多 8 条），选中后回填 <code>@&lt;pluginId&gt; </code>。<code>AgentDispatchNode</code> 识别提及后在消息末尾追加 <code>[插件提及]</code> 指令，要求模型优先在对应 <code>plugin__&lt;插件ID&gt;__&lt;工具名&gt;</code> 工具中选择。识别正则为 <code>(?&lt;=^|\s)@([A-Za-z0-9][A-Za-z0-9._-]*)</code>，与 pluginId 字符集一致，邮件地址形态不会误判。</p>
+
+<h3 class="sub-heading">17.2.2 接口侧：PluginApiAuthFilter</h3>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">场景</th><th style="text-align:left;">行为</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>只读请求</td><td><code>GET</code> / <code>HEAD</code> / <code>OPTIONS</code> 直接放行</td></tr>
+      <tr><td>本机调用</td><td>回环地址 <code>127.0.0.1</code> / <code>::1</code> 放行</td></tr>
+      <tr><td>远程命令调用</td><td>必须携带 <code>X-Plugin-Api-Token</code>，与 <code>harness.plugins.api-token</code> 配置一致</td></tr>
+      <tr><td>鉴权失败</td><td><code>401</code> + <code>{"code":"A0300","info":"plugin API token required","data":null}</code></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>设计取舍很明确：读接口开放便于控制台展示，安装/运行/启停/卸载等命令接口远程访问必须带 Token，避免主机暴露后插件被任意安装或停用。</p>
+
+<h3 class="sub-heading">17.2.3 注册侧：三重安全校验</h3>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">加固点</th><th style="text-align:left;">机制</th><th style="text-align:left;">防什么</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>pluginId 字符集</td><td><code>[A-Za-z0-9][A-Za-z0-9._-]*</code> 强制校验，非法 ID 安装期即拒绝</td><td>工具命名规则被破坏、安装目录路径穿越</td></tr>
+      <tr><td>工具注册幂等</td><td><code>putIfAbsent</code> 语义，重复注册释放新资源、返回已有工具名</td><td>插件重复 run 导致工具重复挂载、提示词重复写入</td></tr>
+      <tr><td>提示词清洗</td><td><code>sanitizePromptText</code> 清理换行与控制字符；提示词用注册后完整工具名</td><td>恶意描述通过换行注入系统提示词；模型按裸工具名调用失败</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">17.2.4 配套修正</h3>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">修正</th><th style="text-align:left;">说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>目录识别修复</td><td><code>AgentDispatchNode</code> 命中目录关键词后先用 <code>Files.isDirectory()</code> 确认路径真实存在，避免把 <code>SELECT/SHOW/DESC</code> 等文本误当成目录路径改写用户消息</td></tr>
+      <tr><td>系统提示词修正</td><td>不再要求模型输出思考过程标签（原写法把 <code>&lt;think&gt;</code> 误写成 <code>&lt;thead&gt;</code>），明确只输出最终回答</td></tr>
+      <tr><td>安装脚本加固</td><td><code>install-plugin.sh</code> 对安装请求字段做 JSON 转义，支持含空格和特殊字符的路径与元数据</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="section-heading" id="sec-3">17.3 v0.1.5 验证与兼容</h2>
+
+<p>版本内新增三组定向测试，配合手工回归，保证加固不破坏既有行为：</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">测试 / 验证</th><th style="text-align:left;">覆盖点</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>buildsFsSearchInstructionForDirectoryQuestion</code></td><td>目录改写仅对真实存在的目录生效（<code>@TempDir</code> 验证）</td></tr>
+      <tr><td><code>appendsPluginMentionInstruction</code></td><td><code>@插件</code> 提及正确转换为 <code>[插件提及]</code> 优先级指令</td></tr>
+      <tr><td><code>ignoresEmailLikeTextAsPluginMention</code></td><td>邮件地址不会被误判为插件提及</td></tr>
+      <tr><td>手工回归</td><td>控制台 <code>@</code> 补全交互、远程无 Token 返回 401、非法 pluginId 安装期拒绝、特殊字符路径正常安装</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p><strong>兼容性</strong>：插件 SDK 契约不变（插件仍只依赖 <code>deepseek-harness-java-types</code>），工具命名规则不变，既有合法 pluginId 全部满足新字符集要求，本机调用行为不变。<strong>升级注意</strong>：需要远程管理插件时必须先配置 <code>harness.plugins.api-token</code> 并在调用方携带请求头；历史数据中存在非法字符 pluginId 的，建议卸载后按新规则重装。</p>
+
+<h2 class="section-heading" id="sec-4">17.4 回看 v0.1.3 与 v0.1.4</h2>
+
+<h3 class="sub-heading">17.4.1 v0.1.4：插件机制工程化</h3>
+
+<p>v0.1.4 把插件机制从「SPI 可注册」推进到「产物可识别、配置可持久化、运行状态可对账、业务能力可交付」：</p>
+
+<div class="comparison-table">
+  <table>
+    <thead>
+      <tr><th style="text-align:left;">亮点</th><th style="text-align:left;">说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>产物识别</td><td>JAR 与 Maven 依赖两种产物自动解析为插件候选信息（<code>POST /api/harness/plugins/analyze-jar</code>），减少手工填写</td></tr>
+      <tr><td>配置持久化</td><td>插件键值配置从内存扩展到数据库，分层存储、重启恢复</td></tr>
+      <tr><td>状态可信</td><td>新增 <code>plugin_status</code> 工具，Agent 可查询登记与运行时状态，避免把 FAILED 插件说成可用</td></tr>
+      <tr><td>状态对账</td><td>启动时对比登记状态与运行时状态，自动修复偏差并拉起可恢复插件</td></tr>
+      <tr><td>开发体验</td><td>DSH Java 插件开发 Skill + <code>install-plugin.sh</code> 一键安装脚本</td></tr>
+      <tr><td>业务插件</td><td><code>mall-weekend-assistant</code> 商城客服插件，打通商品、订单、物流工具链路</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="sub-heading">17.4.2 v0.1.3：扩展生态与统一配置</h3>
+
+<p>v0.1.3 的主线是把系统从「能力可运行」推进到「扩展可配置、运行可观测、体验更完整」：应用级与扩展配置收敛到 <code>harness.yml</code>（有效配置查询、启动校验、敏感信息脱敏）；MCP 支持 <code>stdio</code>、<code>sse</code>、<code>streamable-http</code> 三种接入；Skills 支持多目录发现与命名冲突仲裁；SSE 协议补齐推理、工具调用、工具结果与结束事件；会话列表支持分页、重命名、删除与恢复。</p>
+
+<h2 class="section-heading" id="sec-5">17.5 版本主线全景</h2>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"v013","label":"v0.1.3\n能力可运行 → 可配置\n统一配置 · MCP/Skills · 对话 UI","type":"start"},{"id":"v014","label":"v0.1.4\n插件可注册 → 可交付\n产物识别 · 配置持久化 · 状态对账","type":"process"},{"id":"v015","label":"v0.1.5\n插件可用 → 可信\n@提及 · 访问控制 · 注册校验 · 注入防护","type":"process"},{"id":"next","label":"后续方向\n强制路由 · 审计日志\n按插件授权 · 统一 Sanitizer","type":"end"}],"edges":[{"from":"v013","to":"v014"},{"from":"v014","to":"v015"},{"from":"v015","to":"next"}]}'></div>
+
+<p>v0.1.5 留下的已知限制，也正是下一版的候选清单：<code>@插件</code> 提及目前只是优先级引导（可升级为强制路由、锁定工具候选集）；API Token 为单值配置（可扩展为多 Token、按插件粒度授权与轮换）；插件命令接口缺操作审计日志；提示词清洗可沉淀为统一的 <code>Sanitizer</code> 覆盖插件提示词、事件文本等其他外部输入。</p>
+
+<h2 class="section-heading" id="sec-6">17.6 小结</h2>
+
+<div class="summary-box">
+  <p><strong>本章要点</strong>：v0.1.3 铺扩展能力与统一配置，v0.1.4 把插件机制工程化（产物识别、配置持久化、状态对账、业务插件），v0.1.5 做安全加固（@提及、接口 Token、注册校验、提示词清洗）。三个版本的变更规模从 3698 行收敛到 303 行，是典型的「先铺能力、再工程化、后加固」节奏。</p>
+  <p style="margin-bottom:0;"><strong>延伸阅读</strong>：完整的版本开发说明见仓库 <code>docs/md/release-v0.1.3-development-notes.md</code>、<code>release-v0.1.4-development-notes.md</code> 与 <code>release-v0.1.5-development-notes.md</code>；插件开发的完整工程指南见 <code>docs/md/java-plugin-development.md</code>。</p>
+</div>

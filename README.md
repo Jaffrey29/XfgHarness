@@ -1,6 +1,16 @@
-# DeepSeek Harness · Java Edition
+# DeepSeek Harness Java (dsh-java)
 
-> 一个基于 **Java 17 + Spring Boot 3.3 + DDD 六边形架构** 的 Agent Harness（智能体运行时基座）——不只是 Chat UI 的后端封装，而是把**模型调用、工具执行、会话事件、任务审批、插件生命周期、终端与工作区、工作流与后台作业**组织成可扩展的一体化运行时，并自带可交互的 Web 控制台。
+**中文**
+
+DeepSeek Harness Java (dsh-java) 是一个模块化的智能体运行时框架，其中**模型适配器、工具注册表、会话事件日志和 ReAct 代理循环**，都通过统一的端口与插件机制组织，可以按需替换或扩展。项目基于 **Java 17、Spring Boot 3.3 与 DDD 六边形架构**构建：Domain 层定义端口与领域能力，Infrastructure 层提供默认适配器，Java SPI、Node Bridge 和 MCP 插件负责挂载外部能力；插件停止或卸载时，宿主会自动回收其工具、系统提示词和 Hook 等注册项。
+
+该项目目前处于**开发者预览阶段**，接口与插件协议迭代较快，后续版本可能包含不兼容变更。
+
+**English**
+
+DeepSeek Harness Java (dsh-java) is a modular agent runtime framework in which **model adapters, tool registries, session event logs, and the ReAct agent loop** are organized behind unified ports and plugin mechanisms, allowing them to be replaced or extended as needed. Built on **Java 17, Spring Boot 3.3, and a DDD hexagonal architecture**, the Domain layer defines ports and domain capabilities, the Infrastructure layer provides default adapters, and Java SPI, Node Bridge, and MCP plugins mount external capabilities. When a plugin stops or is unloaded, the host automatically revokes its tool, system prompt, and hook registrations.
+
+The project is currently in **developer preview**. Its APIs and plugin protocols are evolving quickly, and future releases may introduce breaking changes.
 
 - **仓库**：<https://gitcode.net/KnowledgePlanet/deepseek-harness-java>
 - **端口**：`8090`（启动即开箱）

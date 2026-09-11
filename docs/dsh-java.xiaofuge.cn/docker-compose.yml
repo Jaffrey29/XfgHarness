@@ -1,0 +1,26 @@
+services:
+  dsh-java-site:
+    build:
+      context: .
+    image: dsh-java-site:latest
+    container_name: dsh-java-site
+    ports:
+      - "8091:80"
+    restart: unless-stopped
+    depends_on:
+      dsh-java-web:
+        condition: service_started
+
+  dsh-java-web:
+    image: registry.cn-hangzhou.aliyuncs.com/xfg-studio/deepseek-harness-java:0.1.5
+    container_name: dsh-java-web
+    ports:
+      - "8090:8090"
+    environment:
+      DEEPSEEK_API_KEY: "${DEEPSEEK_API_KEY:-}"
+    volumes:
+      - ./data:/app/data
+      - ./plugins:/app/plugins
+      - ./.dsh:/root/.dsh
+      - ./workspaces:/app/workspaces
+    restart: unless-stopped

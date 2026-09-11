@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>运行时详解 · DSH Java</title>
+  <meta name="description" content="dsh-java 运行时详细设计：ReAct 循环、统一工具系统、双模式插件、权限审批、事件溯源与原生 Web 控制台。">
+  <link rel="icon" href="assets/images/whale-logo.png" type="image/png">
+  <link rel="stylesheet" href="assets/css/home.css">
+</head>
+<body>
+  <div class="ambient" aria-hidden="true"></div>
+  <div class="spotlight" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="container-wide header-inner">
+      <a class="brand" href="/index.html">
+        <span class="brand-mark"><img src="assets/images/whale-logo.png" alt="小傅哥小鲸鱼 Logo"></span>
+        <span class="brand-text">
+          <strong>DSH Java</strong>
+          <small>Java Agent Harness</small>
+        </span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="/index.html#runtime">运行时</a>
+        <a href="/index.html#architecture">架构</a>
+        <a href="/index.html#screens">界面</a>
+        <a href="/index.html#cases">案例</a>
+        <a href="/index.html#plugins">插件社区</a>
+        <a href="/document/index.html">实战教程</a>
+        <a href="/docs.html">体验教程</a>
+      </nav>
+      <div class="header-actions">
+        <a class="btn btn-sm" href="https://github.com/topics/dsh-plugin-java" target="_blank" rel="noreferrer">插件社区</a>
+        <a class="btn btn-primary btn-sm" href="/index.html#deploy">快速开始</a>
+        <button class="menu-button" type="button" aria-expanded="false" aria-controls="mobileNav">菜单</button>
+      </div>
+    </div>
+    <div class="container">
+      <div class="mobile-nav" id="mobileNav">
+        <a href="/index.html#runtime">运行时</a>
+        <a href="/index.html#architecture">架构</a>
+        <a href="/index.html#screens">界面</a>
+        <a href="/index.html#cases">案例</a>
+        <a href="/index.html#plugins">插件社区</a>
+        <a href="/document/index.html">实战教程</a>
+        <a href="/docs.html">体验教程</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- Sub Hero -->
+    <section class="sub-hero">
+      <div class="hero-beam" aria-hidden="true"></div>
+      <div class="container">
+        <div class="breadcrumb reveal"><a href="/index.html">首页</a><span>/</span><span>运行时详解</span></div>
+        <h1 class="reveal" style="margin:0 auto 22px;max-width:860px;font-size:clamp(2.4rem,5.4vw,4rem);line-height:1.08;letter-spacing:-.045em;">
+          一个进程内的<br><span class="gradient-text" style="background:var(--grad-brand);-webkit-background-clip:text;background-clip:text;color:transparent;">完整 Agent 运行时</span>
+        </h1>
+        <p class="hero-lede reveal">
+          从模型输出到工具执行，从插件加载到人工审批——dsh-java 把智能体运行所需的全部机制收进一个 Spring Boot 进程，单实例即可运行。
+        </p>
+        <div class="toc-nav reveal">
+          <a href="#react">ReAct 循环</a>
+          <a href="#tools">工具系统</a>
+          <a href="#plugin">插件机制</a>
+          <a href="#governance">权限审批</a>
+          <a href="#event">事件溯源</a>
+          <a href="#console">控制台</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ReAct Loop -->
+    <section class="section" id="react" style="padding-top:60px;">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="section-tag">ReAct Loop</span>
+          <h2>ReactLoopAgent：思考与行动交替推进</h2>
+          <p>每一次用户输入都会开启一个 ReAct turn：模型推理 → 发起工具调用 → 执行并回填结果 → 继续推理，直到产出最终答复或触达步数上限。</p>
+        </div>
+        <div class="pipeline reveal" aria-label="ReAct 循环步骤">
+          <div class="pipeline-stage"><strong>用户输入</strong><small>HTTP / SSE 进入会话聚合</small></div>
+          <div class="pipeline-arrow"></div>
+          <div class="pipeline-stage"><strong>模型推理</strong><small>组装消息与可用工具清单</small></div>
+          <div class="pipeline-arrow"></div>
+          <div class="pipeline-stage"><strong>工具调用</strong><small>ToolCallExecutor 统一执行</small></div>
+          <div class="pipeline-arrow"></div>
+          <div class="pipeline-stage"><strong>结果回填</strong><small>观察写入事件日志</small></div>
+          <div class="pipeline-arrow"></div>
+          <div class="pipeline-stage"><strong>续步 / 终止</strong><small>单 turn 上限 50 步</small></div>
+        </div>
+        <div class="detail-grid" style="margin-top:18px;">
+          <article class="card detail-card reveal">
+            <h3>循环控制</h3>
+            <p>循环由领域层驱动，不依赖外部编排框架，行为完全可预测、可测试。</p>
+            <ul class="spec-list">
+              <li>单 turn 上限 <code>50</code> 步，防止失控循环</li>
+              <li>每一步都产生结构化事件，可回放</li>
+              <li>模型异常自动终止并回写失败状态</li>
+            </ul>
+          </article>
+          <article class="card detail-card reveal">
+            <h3>流式输出</h3>
+            <p>基于 SSE 将模型 token、工具调用开始/结束实时推送到控制台。</p>
+            <ul class="spec-list">
+              <li>SSE 协议分事件类型推送，前端增量渲染</li>
+              <li>工具调用与文本输出交错呈现</li>
+              <li>断线后可通过事件日志恢复上下文</li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tools -->
+    <section class="section section-deep" id="tools">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="section-tag">Tool System</span>
+          <h2>统一工具系统：内置真实能力</h2>
+          <p>所有工具——无论内置、插件还是 MCP——都经过同一个 ToolCallExecutor 执行，统一鉴权、统一审计、统一 Hook。</p>
+        </div>
+        <div class="detail-grid">
+          <article class="card detail-card reveal">
+            <span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M13 2v7h7"/></svg></span>
+            <h3>文件工具</h3>
+            <p>在工作区沙箱内读写文件，路径越界直接拒绝。</p>
+            <ul class="spec-list">
+              <li>读文件 / 写文件 / 列目录</li>
+              <li>写操作进入权限矩阵评估</li>
+            </ul>
+          </article>
+          <article class="card detail-card reveal">
+            <span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m4 17 6-6-6-6"/><path d="M12 19h8"/></svg></span>
+            <h3>Shell 工具</h3>
+            <p>在受控环境中执行命令，高风险命令默认要求人工审批。</p>
+            <ul class="spec-list">
+              <li>命令风险分级：只读 / 写 / 危险</li>
+              <li>执行超时与输出截断保护</li>
+            </ul>
+          </article>
+          <article class="card detail-card reveal">
+            <span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span>
+            <h3>Web 工具</h3>
+            <p>搜索与网页抓取，让 Agent 获取实时外部信息。</p>
+            <ul class="spec-list">
+              <li>Web 搜索 + 页面内容抓取</li>
+              <li>抓取结果净化后再注入上下文</li>
+            </ul>
+          </article>
+          <article class="card detail-card reveal">
+            <span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+            <h3>用户提问工具</h3>
+            <p>Agent 可以主动向用户澄清问题，形成双向对话闭环。</p>
+            <ul class="spec-list">
+              <li>AskUserQuestion 挂起循环等待输入</li>
+              <li>用户回答后续步继续执行</li>
+            </ul>
+          </article>
+        </div>
+        <div class="card reveal" style="margin-top:16px;">
+          <h3>PRE / POST Hook 链</h3>
+          <p style="margin-top:8px;">工具执行前后都可挂载 Hook：PRE_HOOK 可拦截、改写或拒绝调用；POST_HOOK 可审计、上报或触发副作用（如商城案例中的客服审计事件）。Hook 按链式执行，是治理与扩展的关键切面。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Plugin -->
+    <section class="section" id="plugin">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="section-tag">Plugin Runtime</span>
+          <h2>三种插件扩展模式</h2>
+          <p>插件只依赖轻量 Types SPI 契约，通过 <code style="color:var(--cyan);font-family:var(--mono);">META-INF/plugin.yaml</code> 描述，SPI loader 创建运行实例，工具注册进 ToolRegistry 后才暴露给 Agent。</p>
+        </div>
+        <div class="deploy-grid">
+          <div class="card deploy-card reveal">
+            <h3><span class="step-no">J</span>Java Native</h3>
+            <p>插件 JAR 通过 URLClassLoader 隔离加载，类空间与宿主分离，避免依赖冲突。性能最好，适合 Java 团队。</p>
+            <ul class="spec-list" style="margin-top:14px;list-style:none;padding:0;display:grid;gap:8px;color:var(--text-2);font-size:.88rem;">
+              <li>▸ URLClassLoader 类隔离</li>
+              <li>▸ 实现 SPI 契约即注册工具</li>
+              <li>▸ 热安装 / 激活 / 停用</li>
+            </ul>
+          </div>
+          <div class="card deploy-card reveal">
+            <h3><span class="step-no">N</span>Node Bridge</h3>
+            <p>Node.js 插件以 sidecar 进程运行，宿主与插件通过 JSON-RPC 通信。适合复用 npm 生态能力。</p>
+            <ul class="spec-list" style="margin-top:14px;list-style:none;padding:0;display:grid;gap:8px;color:var(--text-2);font-size:.88rem;">
+              <li>▸ sidecar 进程隔离</li>
+              <li>▸ JSON-RPC 标准协议</li>
+              <li>▸ 崩溃不影响宿主进程</li>
+            </ul>
+          </div>
+          <div class="card deploy-card reveal">
+            <h3><span class="step-no">M</span>MCP stdio</h3>
+            <p>直接接入任意 MCP Server，把外部工具生态（文件系统、数据库、SaaS 连接器）挂进 Agent。</p>
+            <ul class="spec-list" style="margin-top:14px;list-style:none;padding:0;display:grid;gap:8px;color:var(--text-2);font-size:.88rem;">
+              <li>▸ 标准 MCP stdio 通道</li>
+              <li>▸ 工具自动发现与注册</li>
+              <li>▸ 与内置工具同等治理</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Governance -->
+    <section class="section section-deep" id="governance">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="section-tag">Governance</span>
+          <h2>权限矩阵与人工审批</h2>
+          <p>Agent 的每一步高风险动作都在提交期经过权限矩阵评估；命中风险的调用进入审批队列，由人在控制台确认后才执行。</p>
+        </div>
+        <div class="pipeline reveal" aria-label="审批链路">
+          <div class="pipeline-stage"><strong>工具调用</strong><small>Agent 发起调用请求</small></div>
+          <div class="pipeline-arrow"></div>
+          <div class="pipeline-stage"><strong>权限评估</strong><small>风险矩阵：只读 / 写 / 高危</small></div>
+          <div class="pipeline-arrow"></div>
+          <div class="pipeline-stage"><strong>审批队列</strong><small>高危调用挂起等待</small></div>
+          <div class="pipeline-arrow"></div>
+          <div class="pipeline-stage"><strong>人工确认</strong><small>控制台批准或拒绝</small></div>
+          <div class="pipeline-arrow"></div>
+          <div class="pipeline-stage"><strong>执行回写</strong><small>结果与审批状态落库</small></div>
+        </div>
+        <div class="detail-grid" style="margin-top:18px;">
+          <article class="card detail-card reveal">
+            <h3>默认进入审批的动作</h3>
+            <ul class="spec-list">
+              <li>高风险 Shell 命令（写、删除、网络变更）</li>
+              <li>写文件与覆盖已有文件</li>
+              <li>插件安装、激活与停用</li>
+              <li>子进程启动与外部进程调用</li>
+            </ul>
+          </article>
+          <article class="card detail-card reveal">
+            <h3>治理能力</h3>
+            <ul class="spec-list">
+              <li>审批状态全程入事件日志，可审计</li>
+              <li>拒绝原因回写给 Agent，调整后续计划</li>
+              <li>权限矩阵可按部署环境收紧或放宽</li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- Event Sourcing -->
+    <section class="section" id="event">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="section-tag">Event Sourcing</span>
+          <h2>事件溯源：一切皆可回放</h2>
+          <p>Session Event Log 记录用户输入、模型输出、工具调用与审批状态。会话、任务、目标、审批与模型设置全部落库，支持回放、审计与轨迹分析。</p>
+        </div>
+        <div class="detail-grid">
+          <article class="card detail-card reveal">
+            <h3>记录什么</h3>
+            <ul class="spec-list">
+              <li>用户输入与模型完整输出</li>
+              <li>每次工具调用的参数、结果与耗时</li>
+              <li>审批请求、决策与操作人</li>
+              <li>任务目标、计划、待办的状态流转</li>
+            </ul>
+          </article>
+          <article class="card detail-card reveal">
+            <h3>存储与切换</h3>
+            <ul class="spec-list">
+              <li>默认 <code>MySQL</code>，生产级持久化</li>
+              <li><code>standalone</code> profile 一键切 H2 文件库</li>
+              <li>零外部依赖即可本地完整体验</li>
+            </ul>
+          </article>
+        </div>
+        <figure class="screen-main reveal" style="margin-top:22px;">
+          <div class="browser-bar"><span></span><span></span><span></span><em>localhost:8090 · 轨迹视图</em></div>
+          <img src="assets/images/harness-trajectory.png" alt="dsh-java 轨迹视图：会话事件回放与审计" loading="lazy">
+        </figure>
+      </div>
+    </section>
+
+    <!-- Console -->
+    <section class="section section-deep" id="console">
+      <div class="container">
+        <div class="section-head center reveal">
+          <span class="section-tag">Web Console</span>
+          <h2>原生控制台，无前端构建链</h2>
+          <p>原生 JavaScript 实现，本地化 Markdown 渲染、代码高亮与 XSS 净化。会话、工作区、终端、模型、插件与审批，打开浏览器即可管理。</p>
+        </div>
+        <figure class="screen-main reveal">
+          <div class="browser-bar"><span></span><span></span><span></span><em>localhost:8090 · 对话</em></div>
+          <img src="assets/images/harness-chat.png" alt="dsh-java Web 控制台对话界面" loading="lazy">
+        </figure>
+        <div class="cta-actions" style="margin-top:40px;">
+          <a class="btn btn-primary btn-lg" href="/index.html#deploy">立即部署体验</a>
+          <a class="btn btn-ghost btn-lg" href="/architecture.html">查看架构机制 →</a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div>
+        <a class="brand footer-brand" href="/index.html"><span class="brand-mark"><img src="assets/images/whale-logo.png" alt="小傅哥小鲸鱼 Logo"></span><strong>DSH Java</strong></a>
+        <p>可治理、可扩展、可审计的 Java Agent Harness 运行时基座。</p>
+      </div>
+      <nav aria-label="页脚导航">
+        <h4>项目</h4>
+        <a href="/index.html#runtime">运行时能力</a>
+        <a href="/runtime.html">运行时详解</a>
+        <a href="/architecture.html">架构机制详解</a>
+        <a href="/index.html#cases">使用案例</a>
+        <a href="/index.html#plugins">社区插件</a>
+      </nav>
+      <nav aria-label="资源导航">
+        <h4>资源</h4>
+        <a href="/docs.html">体验教程</a>
+        <a href="/document/index.html">实战教程</a>
+        <a href="https://github.com/topics/dsh-plugin-java" target="_blank" rel="noreferrer">社区插件</a>
+        <a href="https://gitcode.net/KnowledgePlanet/deepseek-harness-java" target="_blank" rel="noreferrer">源码入口</a>
+      </nav>
+    </div>
+    <div class="footer-bottom container">
+      <p>© 2026 DSH Java · Powered by Java Agent Harness</p>
+      <p class="credit">作者：小傅哥 · 感谢并致敬 DeepSeek Harness 的开源设计思想。</p>
+    </div>
+  </footer>
+
+  <script src="assets/js/home.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>架构机制详解 · DSH Java</title>
+  <meta name="description" content="dsh-java 架构机制详解：DDD 六边形架构、7 个 Maven 模块的单向依赖、对话主线、任务主线、事件溯源与插件加载机制。">
+  <link rel="icon" href="assets/images/whale-logo.png" type="image/png">
+  <link rel="stylesheet" href="assets/css/home.css">
+</head>
+<body>
+  <div class="ambient" aria-hidden="true"></div>
+  <div class="spotlight" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="container-wide header-inner">
+      <a class="brand" href="/index.html">
+        <span class="brand-mark"><img src="assets/images/whale-logo.png" alt="小傅哥小鲸鱼 Logo"></span>
+        <span class="brand-text">
+          <strong>DSH Java</strong>
+          <small>Java Agent Harness</small>
+        </span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="/index.html#runtime">运行时</a>
+        <a href="/index.html#architecture">架构</a>
+        <a href="/index.html#screens">界面</a>
+        <a href="/index.html#cases">案例</a>
+        <a href="/index.html#plugins">插件社区</a>
+        <a href="/document/index.html">实战教程</a>
+        <a href="/docs.html">体验教程</a>
+      </nav>
+      <div class="header-actions">
+        <a class="btn btn-sm" href="https://github.com/topics/dsh-plugin-java" target="_blank" rel="noreferrer">插件社区</a>
+        <a class="btn btn-primary btn-sm" href="/index.html#deploy">快速开始</a>
+        <button class="menu-button" type="button" aria-expanded="false" aria-controls="mobileNav">菜单</button>
+      </div>
+    </div>
+    <div class="container">
+      <div class="mobile-nav" id="mobileNav">
+        <a href="/index.html#runtime">运行时</a>
+        <a href="/index.html#architecture">架构</a>
+        <a href="/index.html#screens">界面</a>
+        <a href="/index.html#cases">案例</a>
+        <a href="/index.html#plugins">插件社区</a>
+        <a href="/document/index.html">实战教程</a>
+        <a href="/docs.html">体验教程</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- Sub Hero -->
+    <section class="sub-hero">
+      <div class="hero-beam" aria-hidden="true"></div>
+      <div class="container">
+        <div class="breadcrumb reveal"><a href="/index.html">首页</a><span>/</span><span>架构机制详解</span></div>
+        <h1 class="reveal" style="margin:0 auto 22px;max-width:880px;font-size:clamp(2.4rem,5.4vw,4rem);line-height:1.08;letter-spacing:-.045em;">
+          六边形架构之上的<br><span style="background:var(--grad-brand);-webkit-background-clip:text;background-clip:text;color:transparent;">Agent 工程全景</span>
+        </h1>
+        <p class="hero-lede reveal">
+          7 个 Maven 模块、27 个限界上下文、单向依赖约束——dsh-java 用 DDD 的方式组织一个 Agent 运行时的全部复杂度。
+        </p>
+        <div class="toc-nav reveal">
+          <a href="#layers">分层结构</a>
+          <a href="#dependency">依赖约束</a>
+          <a href="#dialog">对话主线</a>
+          <a href="#task">任务主线</a>
+          <a href="#event">事件溯源</a>
+          <a href="#loader">插件加载</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Layers -->
+    <section class="section" id="layers" style="padding-top:60px;">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="section-tag">Hexagonal Layers</span>
+          <h2>分层结构：请求如何穿过系统</h2>
+          <p>外部请求从 Trigger 进入，经 Facade 与用例编排到达领域层；领域层只依赖端口（Ports），由 Infrastructure 提供真实实现。</p>
+        </div>
+        <div class="flow-board reveal" aria-label="请求处理链路" style="margin-bottom:18px;">
+          <div class="flow-row">
+            <div class="flow-node input-node">浏览器 / curl</div>
+            <div class="flow-arrow"></div>
+            <div class="flow-node">Trigger<br><small>Controller · API Key</small></div>
+            <div class="flow-arrow"></div>
+            <div class="flow-node">API<br><small>Facade · DTO</small></div>
+            <div class="flow-arrow"></div>
+            <div class="flow-node">Case<br><small>用例编排 · 策略树</small></div>
+          </div>
+          <div class="flow-row">
+            <div class="flow-node domain-node">Domain<br><small>Agent · Session · Task · Tool · Plugin · Runtime</small></div>
+            <div class="flow-arrow"></div>
+            <div class="flow-node">Ports<br><small>仓库 · LLM · 执行环境</small></div>
+            <div class="flow-arrow"></div>
+            <div class="flow-node output-node">Infrastructure<br><small>MySQL/H2 · LLM · Shell · MCP</small></div>
+          </div>
+        </div>
+        <div class="layer-stack">
+          <div class="layer-row reveal"><span class="layer-tag">App</span><p>启动装配层：Spring Boot 配置、Bean 组装、Profile 切换（standalone / 标准部署）。</p></div>
+          <div class="layer-row reveal"><span class="layer-tag">Trigger</span><p>入口适配层：19 个 REST Controller、SSE 通道、API Key 鉴权，把外部协议翻译成内部调用。</p></div>
+          <div class="layer-row reveal"><span class="layer-tag">API / Case</span><p>Facade 与 DTO 定义系统对外契约；Case 层用策略树编排用例流程，组合领域能力。</p></div>
+          <div class="layer-row reveal"><span class="layer-tag">Domain</span><p>核心领域：Agent、Session、Task、Tool、Plugin、Runtime 六大聚合，27 个限界上下文，纯领域逻辑无框架依赖。</p></div>
+          <div class="layer-row reveal"><span class="layer-tag">Infrastructure</span><p>端口实现：MySQL/H2 仓库、LLM 客户端、Shell 执行环境、MCP 通道，可整体替换。</p></div>
+          <div class="layer-row reveal"><span class="layer-tag">Types (SPI)</span><p>轻量契约包：插件只依赖它，与宿主内部实现完全解耦。</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Dependency -->
+    <section class="section section-deep" id="dependency">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="section-tag">Dependency Rules</span>
+          <h2>单向依赖：复杂度的护城河</h2>
+          <p>模块依赖方向被严格约束，任何反向依赖都无法通过编译。这让 27 个限界上下文可以独立演进而不互相污染。</p>
+        </div>
+        <div class="pipeline reveal" aria-label="模块依赖方向">
+          <div class="pipeline-stage"><strong>App</strong><small>装配与启动</small></div>
+          <div class="pipeline-arrow"></div>
+          <div class="pipeline-stage"><strong>Trigger</strong><small>协议入口</small></div>
+          <div class="pipeline-arrow"></div>
+          <div class="pipeline-stage"><strong>API / Case</strong><small>契约与编排</small></div>
+          <div class="pipeline-arrow"></div>
+          <div class="pipeline-stage"><strong>Domain</strong><small>核心领域</small></div>
+          <div class="pipeline-arrow"></div>
+          <div class="pipeline-stage"><strong>Infrastructure</strong><small>适配实现（反向依赖 Domain 端口）</small></div>
+        </div>
+        <div class="detail-grid" style="margin-top:18px;">
+          <article class="card detail-card reveal">
+            <h3>约束规则</h3>
+            <ul class="spec-list">
+              <li>依赖方向：<code>App → Trigger → API/Case → Domain ← Infrastructure</code></li>
+              <li>Domain 不 import 任何框架与外部 SDK</li>
+              <li>插件仅依赖 <code>Types</code> SPI 契约包</li>
+            </ul>
+          </article>
+          <article class="card detail-card reveal">
+            <h3>带来的收益</h3>
+            <ul class="spec-list">
+              <li>LLM 客户端、数据库、执行环境均可替换</li>
+              <li>领域逻辑可脱离容器做纯单元测试</li>
+              <li>新能力以插件形式扩展，不改核心代码</li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- Dialog line -->
+    <section class="section" id="dialog">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="section-tag">Line 01 · Dialog</span>
+          <h2>对话主线：从 HTTP 到 Agent 会话聚合</h2>
+          <p>HTTP/SSE 请求进入 Trigger 层，经 Facade 到达用例编排，再由 Agent 会话聚合维护消息历史、运行状态和工具调用事件。</p>
+        </div>
+        <div class="pipeline reveal">
+          <div class="pipeline-stage"><strong>HTTP / SSE</strong><small>对话请求与流式通道</small></div>
+          <div class="pipeline-arrow"></div>
+          <div class="pipeline-stage"><strong>Trigger</strong><small>鉴权 · 参数校验</small></div>
+          <div class="pipeline-arrow"></div>
+          <div class="pipeline-stage"><strong>Facade / Case</strong><small>用例编排 · 策略树</small></div>
+          <div class="pipeline-arrow"></div>
+          <div class="pipeline-stage"><strong>Session 聚合</strong><small>消息 · 状态 · 事件</small></div>
+          <div class="pipeline-arrow"></div>
+          <div class="pipeline-stage"><strong>ReAct 引擎</strong><small>推理与工具循环</small></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Task line -->
+    <section class="section section-deep" id="task">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="section-tag">Line 02 · Task</span>
+          <h2>任务主线：评估、队列、审批、执行</h2>
+          <p>任务提交后经过权限评估进入队列，高风险节点转人工审批，执行结果回写；目标、计划、待办和工作流围绕任务上下文协作。</p>
+        </div>
+        <div class="pipeline reveal">
+          <div class="pipeline-stage"><strong>任务提交</strong><small>目标与上下文组装</small></div>
+          <div class="pipeline-arrow"></div>
+          <div class="pipeline-stage"><strong>权限评估</strong><small>风险矩阵分级</small></div>
+          <div class="pipeline-arrow"></div>
+          <div class="pipeline-stage"><strong>队列调度</strong><small>排队与并发控制</small></div>
+          <div class="pipeline-arrow"></div>
+          <div class="pipeline-stage"><strong>审批节点</strong><small>高危操作人工确认</small></div>
+          <div class="pipeline-arrow"></div>
+          <div class="pipeline-stage"><strong>执行回写</strong><small>结果与状态落库</small></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Event sourcing line -->
+    <section class="section" id="event">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="section-tag">Line 03 · Event Sourcing</span>
+          <h2>事件溯源主线：系统的记忆</h2>
+          <p>Session Event Log 是会话的唯一事实来源。它记录用户输入、模型输出、工具调用与审批状态，支撑回放、审计与轨迹分析三大能力。</p>
+        </div>
+        <div class="deploy-grid">
+          <div class="card deploy-card reveal">
+            <h3><span class="step-no">↺</span>回放</h3>
+            <p>从事件流重建任意时刻的会话状态，复盘 Agent 的每一步决策。</p>
+          </div>
+          <div class="card deploy-card reveal">
+            <h3><span class="step-no">✓</span>审计</h3>
+            <p>谁在何时批准了哪条高危命令、工具拿到了什么参数，全部可查。</p>
+          </div>
+          <div class="card deploy-card reveal">
+            <h3><span class="step-no">⌁</span>轨迹分析</h3>
+            <p>控制台轨迹视图基于事件流渲染，定位低效循环与失败根因。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Plugin loader -->
+    <section class="section section-deep" id="loader">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="section-tag">Line 04 · Plugin Loading</span>
+          <h2>插件加载主线：从 JAR 到可用工具</h2>
+          <p>插件不是装上就能用——它要经过描述解析、实例创建、工具注册三道关卡，才会暴露给 Agent。</p>
+        </div>
+        <div class="pipeline reveal">
+          <div class="pipeline-stage"><strong>plugin.yaml</strong><small>META-INF 描述文件解析</small></div>
+          <div class="pipeline-arrow"></div>
+          <div class="pipeline-stage"><strong>SPI Loader</strong><small>隔离 ClassLoader 创建实例</small></div>
+          <div class="pipeline-arrow"></div>
+          <div class="pipeline-stage"><strong>生命周期</strong><small>安装 → 激活 → 停用 → 卸载</small></div>
+          <div class="pipeline-arrow"></div>
+          <div class="pipeline-stage"><strong>ToolRegistry</strong><small>工具注册进统一注册表</small></div>
+          <div class="pipeline-arrow"></div>
+          <div class="pipeline-stage"><strong>暴露给 Agent</strong><small>进入模型工具清单</small></div>
+        </div>
+        <div class="card reveal" style="margin-top:18px;">
+          <h3>为什么工具必须过 ToolRegistry</h3>
+          <p style="margin-top:8px;">统一注册表是治理的闸口：只有注册过的工具才会进入模型的可用工具清单，也才会被权限矩阵与 Hook 链覆盖。未注册代码即使在进程内，Agent 也触达不到。</p>
+        </div>
+        <div class="cta-actions" style="margin-top:44px;justify-content:center;display:flex;">
+          <a class="btn btn-primary btn-lg" href="/document/ch02-architecture.html">阅读架构章节</a>
+          <a class="btn btn-ghost btn-lg" href="/runtime.html">查看运行时详解 →</a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div>
+        <a class="brand footer-brand" href="/index.html"><span class="brand-mark"><img src="assets/images/whale-logo.png" alt="小傅哥小鲸鱼 Logo"></span><strong>DSH Java</strong></a>
+        <p>可治理、可扩展、可审计的 Java Agent Harness 运行时基座。</p>
+      </div>
+      <nav aria-label="页脚导航">
+        <h4>项目</h4>
+        <a href="/index.html#runtime">运行时能力</a>
+        <a href="/runtime.html">运行时详解</a>
+        <a href="/architecture.html">架构机制详解</a>
+        <a href="/index.html#cases">使用案例</a>
+        <a href="/index.html#plugins">社区插件</a>
+      </nav>
+      <nav aria-label="资源导航">
+        <h4>资源</h4>
+        <a href="/docs.html">体验教程</a>
+        <a href="/document/index.html">实战教程</a>
+        <a href="https://github.com/topics/dsh-plugin-java" target="_blank" rel="noreferrer">社区插件</a>
+        <a href="https://gitcode.net/KnowledgePlanet/deepseek-harness-java" target="_blank" rel="noreferrer">源码入口</a>
+      </nav>
+    </div>
+    <div class="footer-bottom container">
+      <p>© 2026 DSH Java · Powered by Java Agent Harness</p>
+      <p class="credit">作者：小傅哥 · 感谢并致敬 DeepSeek Harness 的开源设计思想。</p>
+    </div>
+  </footer>
+
+  <script src="assets/js/home.js" defer></script>
+</body>
+</html>
