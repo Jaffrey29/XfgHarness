@@ -46,7 +46,9 @@ public class ModelSettingRepository implements IModelSettingRepository {
                 setting.getModelCode(),
                 setting.getBaseUrl(),
                 setting.getApiKeyRef(),
+                setting.getProtocol(),
                 setting.isEnabled(),
+                setting.isActive(),
                 setting.getUpdatedAt()
         ));
     }
@@ -72,6 +74,33 @@ public class ModelSettingRepository implements IModelSettingRepository {
     @Override
     public Optional<ModelSettingEntity> findByProfileCode(String profileCode) {
         return harnessModelSettingDao.findByProfileCode(profileCode).map(this::toEntity);
+    }
+
+    /**
+     * 按 profile + model 定位模型设置。
+     */
+    @Override
+    public Optional<ModelSettingEntity> findByProfileAndModel(String profileCode, String modelCode) {
+        return harnessModelSettingDao.findByProfileAndModel(profileCode, modelCode).map(this::toEntity);
+    }
+
+    /**
+     * 激活指定模型；同事务内先清同 profile 激活标记再置目标行。
+     */
+    @Override
+    @Transactional
+    public boolean activate(String profileCode, String modelCode) {
+        harnessModelSettingDao.clearActiveByProfile(profileCode);
+        return harnessModelSettingDao.activate(profileCode, modelCode, java.time.Instant.now()) > 0;
+    }
+
+    /**
+     * 删除某 profile 下的指定模型。
+     */
+    @Override
+    @Transactional
+    public void deleteByProfileAndModel(String profileCode, String modelCode) {
+        harnessModelSettingDao.deleteByProfileAndModel(profileCode, modelCode);
     }
     /**
      * 删除By Profile Code。
@@ -99,7 +128,9 @@ public class ModelSettingRepository implements IModelSettingRepository {
                 po.modelCode(),
                 po.baseUrl(),
                 po.apiKeyRef(),
+                po.protocol(),
                 po.enabled(),
+                po.active(),
                 po.updatedAt()
         );
     }

@@ -23,12 +23,16 @@ public class ModelSettingEntity {
     private final String modelCode;
     private final String baseUrl;
     private final String apiKeyRef;
+    /** 渠道协议编码：openai / anthropic / ollama；空值按 openai 兼容处理。 */
+    private final String protocol;
     private final boolean enabled;
+    /** 是否为该 profile 当前生效的模型（同 profile 多模型时由用户切换）。 */
+    private final boolean active;
     private final Instant updatedAt;
 
     /**
      * 创建模型设置实体。
-     * <p>用途：承载模型提供方、模型编码、基础地址和启用状态。</p>
+     * <p>用途：承载模型提供方、模型编码、协议类型、基础地址和启用状态。</p>
      */
     public ModelSettingEntity(
             String profileCode,
@@ -36,7 +40,25 @@ public class ModelSettingEntity {
             String modelCode,
             String baseUrl,
             String apiKeyRef,
+            String protocol,
             boolean enabled,
+            Instant updatedAt
+    ) {
+        this(profileCode, providerCode, modelCode, baseUrl, apiKeyRef, protocol, enabled, false, updatedAt);
+    }
+
+    /**
+     * 创建模型设置实体（含激活标记）。
+     */
+    public ModelSettingEntity(
+            String profileCode,
+            String providerCode,
+            String modelCode,
+            String baseUrl,
+            String apiKeyRef,
+            String protocol,
+            boolean enabled,
+            boolean active,
             Instant updatedAt
     ) {
         this.profileCode = Objects.requireNonNull(profileCode, "profileCode");
@@ -44,7 +66,9 @@ public class ModelSettingEntity {
         this.modelCode = Objects.requireNonNull(modelCode, "modelCode");
         this.baseUrl = baseUrl;
         this.apiKeyRef = apiKeyRef;
+        this.protocol = blankToNull(protocol) == null ? "openai" : blankToNull(protocol);
         this.enabled = enabled;
+        this.active = active;
         this.updatedAt = Objects.requireNonNull(updatedAt, "updatedAt");
     }
 
@@ -62,7 +86,24 @@ public class ModelSettingEntity {
             String modelCode,
             String baseUrl,
             String apiKeyRef,
+            String protocol,
             boolean enabled
+    ) {
+        return create(profileCode, providerCode, modelCode, baseUrl, apiKeyRef, protocol, enabled, false);
+    }
+
+    /**
+     * 创建一个新的模型设置实体（含激活标记）。
+     */
+    public static ModelSettingEntity create(
+            String profileCode,
+            String providerCode,
+            String modelCode,
+            String baseUrl,
+            String apiKeyRef,
+            String protocol,
+            boolean enabled,
+            boolean active
     ) {
         return new ModelSettingEntity(
                 requireText(profileCode, "profileCode"),
@@ -70,7 +111,9 @@ public class ModelSettingEntity {
                 requireText(modelCode, "modelCode"),
                 blankToNull(baseUrl),
                 blankToNull(apiKeyRef),
+                blankToNull(protocol),
                 enabled,
+                active,
                 Instant.now()
         );
     }
@@ -80,7 +123,7 @@ public class ModelSettingEntity {
      * <p>
      * 执行流程：
      * 1. 保留原有 profileCode；
-     * 2. 更新提供方、模型和访问参数；
+     * 2. 更新提供方、模型、协议和访问参数；
      * 3. 使用新的更新时间生成新实体。
      */
     public ModelSettingEntity reconfigure(
@@ -88,6 +131,7 @@ public class ModelSettingEntity {
             String modelCode,
             String baseUrl,
             String apiKeyRef,
+            String protocol,
             boolean enabled,
             Instant updatedAt
     ) {
@@ -97,6 +141,7 @@ public class ModelSettingEntity {
                 requireText(modelCode, "modelCode"),
                 blankToNull(baseUrl),
                 blankToNull(apiKeyRef),
+                blankToNull(protocol),
                 enabled,
                 Objects.requireNonNull(updatedAt, "updatedAt")
         );
@@ -124,9 +169,17 @@ public class ModelSettingEntity {
      */
     public String getApiKeyRef() { return apiKeyRef; }
     /**
+     * 获取渠道协议编码；可能为空，空值按 openai 兼容协议处理。
+     */
+    public String getProtocol() { return protocol; }
+    /**
      * 判断Enabled是否成立。
      */
     public boolean isEnabled() { return enabled; }
+    /**
+     * 判断是否为该 profile 当前生效模型。
+     */
+    public boolean isActive() { return active; }
     /**
      * 获取Updated At。
      */

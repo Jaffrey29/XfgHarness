@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
  * <p>执行流程：Spring MVC 就绪 → 监听 ApplicationReadyEvent → 打印控制台地址 →
  * 校验数据库默认模型 → 校验模型 provider 是否已注册适配器。
  *
- * <p>数据示例：数据库存在 profileCode=deepseek、modelCode=glm-5.3-flash、
+ * <p>数据示例：数据库存在 profileCode=default、modelCode=glm-5.3-flash、
  * providerCode=deepseek 的启用记录时，日志会展示该模型和已注册的 provider 列表；
  * 如果没有这条记录，则提示用户通过控制台补齐配置。
  *
@@ -28,7 +28,7 @@ import org.springframework.stereotype.Component;
 public class StartupInfoRunner {
 
     private static final Logger log = LoggerFactory.getLogger(StartupInfoRunner.class);
-    private static final String DEFAULT_MODEL_PROFILE = "deepseek";
+    private static final String DEFAULT_MODEL_PROFILE = "default";
 
     private final IModelSettingQueryService modelSettingQueryService;
     private final ILlmRuntimePort llmRuntimePort;
@@ -47,7 +47,7 @@ public class StartupInfoRunner {
             IModelSettingQueryService modelSettingQueryService,
             ILlmRuntimePort llmRuntimePort,
             @Value("${server.port:8090}") int port,
-            @Value("${harness.llm.deepseek.default-model:gpt-5.5}") String fallbackModel
+            @Value("${harness.llm.deepseek.default-model:${LLM_DEFAULT_MODEL:${DEEPSEEK_DEFAULT_MODEL:gpt-5.5}}}") String fallbackModel
     ) {
         this.modelSettingQueryService = modelSettingQueryService;
         this.llmRuntimePort = llmRuntimePort;

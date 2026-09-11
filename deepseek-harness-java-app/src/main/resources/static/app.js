@@ -13,6 +13,7 @@ const API = '/api/agent';
 const SETTINGS_API = '/api/harness/settings/models';
 const MODEL_CATALOG_API = '/api/harness/runtime/models';
 const MODEL_DISCOVER_API = '/api/harness/settings/models/discover';
+const CHANNEL_PRESETS_API = '/api/harness/channels/presets';
 const DEFAULT_MODEL = 'gpt-5.5';
 const PLUGIN_API = '/api/harness/plugins';
 const CONSOLE_API = '/api/harness/console';
@@ -2976,22 +2977,51 @@ function renderSettingsPage() {
 }
 
 function renderModelSettings(body, footer) {
-  const syncState = { discovered: [] };
+  const syncState = { discovered: [], presets: [] };
   const formPanel = el('section', { class: 'settings-panel' });
   formPanel.appendChild(el('div', { class: 'settings-panel-head' },
     el('div', null,
       el('h2', { class: 'settings-panel-title' }, '接入模型'),
-      el('p', { class: 'settings-panel-desc' }, '支持 OpenAI 兼容地址；先同步模型，或手动输入编码。')),
-    el('span', { class: 'settings-pill' }, 'OpenAI Compatible')
+      el('p', { class: 'settings-panel-desc' }, '选择渠道模板自动填充协议与地址；支持 OpenAI 兼容、Anthropic、Ollama 协议，可先同步模型再保存。')),
+    el('span', { class: 'settings-pill' }, '多协议')
   ));
 
   const form = el('div', { class: 'settings-form-grid' });
-  form.appendChild(wrapInput('profileCode', 'Profile', '如 web / headless'));
+
+  // 渠道模板下拉：选中后自动填充 providerCode / protocol / baseUrl 与推荐模型
+  const presetGroup = el('div', { class: 'form-group' });
+  presetGroup.appendChild(el('label', { class: 'form-label' }, '渠道模板'));
+  const presetSelect = el('select', { class: 'form-input' },
+    el('option', { value: '' }, '— 选择渠道模板快捷填充 —'));
+  presetGroup.appendChild(presetSelect);
+  form.appendChild(presetGroup);
+
+  const profileGroup = el('div', { class: 'form-group' });
+  profileGroup.appendChild(el('label', { class: 'form-label' }, 'Profile'));
+  const profileSelect = el('select', { class: 'form-input' },
+    el('option', { value: 'default' }, '默认（default）'),
+    el('option', { value: 'web' }, 'web（浏览器交互，需人工审批）'),
+    el('option', { value: 'headless' }, 'headless（无头/后台，自动执行）'));
+  profileGroup.appendChild(profileSelect);
+  profileGroup.appendChild(el('p', { class: 'form-hint', style: 'font-size:12px;color:#888;margin-top:4px' },
+    'Profile 是执行入口标识，与模型渠道无关。通常选「默认」即可；需要给特定入口单独配模型时再选 web 或 headless。'));
+  form.appendChild(profileGroup);
+  // Provider 由渠道模板自动填充，不向用户展示；隐藏字段仅作为提交载体
   const providerGroup = wrapInput('providerCode', 'Provider', 'deepseek');
+  providerGroup.style.display = 'none';
   providerGroup.querySelector('input').value = 'deepseek';
   form.appendChild(providerGroup);
   form.appendChild(wrapInput('baseUrl', 'Base URL', 'http://127.0.0.1:8777/v1'));
   form.appendChild(wrapInput('apiKeyRef', 'API Key', 'sk-…'));
+
+  const protocolGroup = el('div', { class: 'form-group' });
+  protocolGroup.appendChild(el('label', { class: 'form-label' }, '协议'));
+  const protocolSelect = el('select', { class: 'form-input' },
+    el('option', { value: 'openai' }, 'OpenAI 兼容'),
+    el('option', { value: 'anthropic' }, 'Anthropic Messages'),
+    el('option', { value: 'ollama' }, 'Ollama 原生'));
+  protocolGroup.appendChild(protocolSelect);
+  form.appendChild(protocolGroup);
 
   const modelGroup = el('div', { class: 'form-group' });
   modelGroup.appendChild(el('label', { class: 'form-label' }, '模型'));
@@ -3002,6 +3032,38 @@ function renderModelSettings(body, footer) {
   modelGroup.appendChild(modelInput);
   form.appendChild(modelGroup);
   formPanel.appendChild(form);
+
+  // 异步加载渠道模板
+  (async function loadPresets() {
+    try {
+      const presets = await apiRequest(CHANNEL_PRESETS_API);
+      syncState.presets = Array.isArray(presets) ? presets : [];
+      presetSelect.innerHTML = '';
+      presetSelect.appendChild(el('option', { value: '' }, '— 选择渠道模板快捷填充 —'));
+      for (const p of syncState.presets) {
+        presetSelect.appendChild(el('option', { value: p.id }, p.displayName + '（' + p.protocol + '）'));
+      }
+    } catch (e) {
+      // 模板加载失败不阻塞手动填写
+    }
+  })();
+
+  presetSelect.onchange = function() {
+    const preset = syncState.presets.find(function(p) { return p.id === presetSelect.value; });
+    if (!preset) return;
+    form.querySelector('[data-key="providerCode"]').value = preset.id;
+    if (preset.baseUrl) form.querySelector('[data-key="baseUrl"]').value = preset.baseUrl;
+    protocolSelect.value = preset.protocol || 'openai';
+    // 预填推荐模型，便于未同步上游时直接选择
+    if (preset.modelSuggestions && preset.modelSuggestions.length) {
+      modelSelect.innerHTML = '';
+      modelSelect.appendChild(el('option', { value: '' }, '— 推荐模型 —'));
+      for (const id of preset.modelSuggestions) {
+        modelSelect.appendChild(el('option', { value: id }, id));
+      }
+    }
+    showToast('已填充 ' + preset.displayName + ' 模板，请补全 API Key');
+  };
 
   const actions = el('div', { class: 'settings-panel-actions' });
   const syncBtn = el('button', { class: 'btn btn-secondary', title: '从上游同步可用模型' }, '⟳ 同步模型');
@@ -3016,6 +3078,7 @@ function renderModelSettings(body, footer) {
   syncBtn.onclick = async function() {
     const baseUrl = form.querySelector('[data-key="baseUrl"]').value.trim();
     const apiKey = form.querySelector('[data-key="apiKeyRef"]').value.trim();
+    const protocol = protocolSelect.value;
     if (!baseUrl) { showToast('请先填写 Base URL'); return; }
     syncBtn.textContent = '同步中…';
     syncBtn.disabled = true;
@@ -3023,7 +3086,7 @@ function renderModelSettings(body, footer) {
       const discovered = await apiRequest(MODEL_DISCOVER_API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ baseUrl, apiKeyRef: apiKey })
+        body: JSON.stringify({ baseUrl, apiKeyRef: apiKey, protocol })
       });
       syncState.discovered = Array.isArray(discovered) ? discovered : [];
       modelSelect.innerHTML = '';
@@ -3036,7 +3099,7 @@ function renderModelSettings(body, footer) {
         showToast('发现 ' + syncState.discovered.length + ' 个模型');
       }
     } catch (e) {
-      showToast('同步失败: ' + e.message);
+      showToast('同步失败（不影响已有模型列表）: ' + e.message);
     } finally {
       syncBtn.textContent = '⟳ 同步';
       syncBtn.disabled = false;
@@ -3051,26 +3114,28 @@ function renderModelSettings(body, footer) {
   };
 
   addBtn.onclick = async function() {
-    const profileCode = form.querySelector('[data-key="profileCode"]').value.trim();
+    const profileCode = profileSelect.value;
     const providerCode = form.querySelector('[data-key="providerCode"]').value.trim();
     const baseUrl = form.querySelector('[data-key="baseUrl"]').value.trim();
     const apiKeyRef = form.querySelector('[data-key="apiKeyRef"]').value.trim();
     const modelCode = modelInput.style.display !== 'none' && modelInput.value.trim()
       ? modelInput.value.trim()
       : modelSelect.value;
-    if (!profileCode || !modelCode) { showToast('Profile 和模型不能为空'); return; }
-    const data = { profileCode, providerCode: providerCode || 'deepseek', modelCode, baseUrl, apiKeyRef, enabled: true };
-    addBtn.textContent = '添加中…';
-    addBtn.disabled = true;
-    try {
-      await apiRequest(SETTINGS_API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-      await refreshModelSettingsUI();
-      showToast('模型添加成功');
-    } catch (e) {
+    if (!modelCode) { showToast('请选择或输入模型'); return; }
+      const data = { profileCode, providerCode: providerCode || 'default', modelCode, baseUrl, apiKeyRef, protocol: protocolSelect.value, enabled: true };
+      addBtn.textContent = '添加中…';
+      addBtn.disabled = true;
+      try {
+        await apiRequest(SETTINGS_API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        await refreshModelSettingsUI();
+        showToast('模型添加成功');
+        addBtn.textContent = '添加模型';
+        addBtn.disabled = false;
+      } catch (e) {
       showToast('添加失败: ' + e.message);
       addBtn.textContent = '添加模型';
       addBtn.disabled = false;
@@ -3080,7 +3145,7 @@ function renderModelSettings(body, footer) {
   const listHeader = el('div', { class: 'settings-list-header' });
   listHeader.appendChild(el('div', null,
     el('h2', { class: 'settings-panel-title' }, '已配置模型'),
-    el('p', { class: 'settings-panel-desc' }, 'Profile 是运行时选择模型的主键。')));
+    el('p', { class: 'settings-panel-desc' }, '同一 Profile 可添加多个模型，点「使用」切换当前生效模型。')));
   listHeader.appendChild(el('span', { class: 'settings-count' }, String(state.modelSettings.length)));
   body.appendChild(listHeader);
 
@@ -3100,10 +3165,30 @@ function renderEditableModelCard(ms, syncState) {
   info.appendChild(el('div', { class: 'settings-card-title' }, ms.modelCode || ms.providerCode));
   info.appendChild(el('div', { class: 'settings-card-sub' }, 'Profile · ' + ms.profileCode));
   top.appendChild(info);
-  top.appendChild(el('span', { class: 'model-badge-tag' + (ms.enabled === false ? ' disabled' : '') },
+  const badges = el('div', { style: 'display:flex;gap:6px;align-items:center' });
+  if (ms.active === true) {
+    badges.appendChild(el('span', { class: 'model-badge-tag' }, '使用中'));
+  }
+  badges.appendChild(el('span', { class: 'model-badge-tag' + (ms.enabled === false ? ' disabled' : '') },
     ms.enabled === false ? '已停用' : '启用中'));
+  top.appendChild(badges);
 
   const actions = el('div', { class: 'settings-card-actions' });
+  if (ms.active !== true) {
+    const activateBtn = el('button', { class: 'btn btn-primary btn-sm' }, '使用');
+    activateBtn.onclick = async function() {
+      try {
+        await apiRequest(SETTINGS_API + '/active', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ profileCode: ms.profileCode, modelCode: ms.modelCode })
+        });
+        await refreshModelSettingsUI();
+        showToast('已切换为当前模型');
+      } catch (e) { showToast('切换失败: ' + e.message); }
+    };
+    actions.appendChild(activateBtn);
+  }
   const toggleBtn = iconBtn(ms.enabled !== false ? '⏸' : '▶', ms.enabled !== false ? '禁用' : '启用', async function() {
     try {
       await apiRequest(SETTINGS_API, {
@@ -3115,6 +3200,7 @@ function renderEditableModelCard(ms, syncState) {
           modelCode: ms.modelCode,
           baseUrl: ms.baseUrl,
           apiKeyRef: ms.apiKeyRef,
+          protocol: ms.protocol || 'openai',
           enabled: ms.enabled === false
         })
       });
@@ -3127,7 +3213,10 @@ function renderEditableModelCard(ms, syncState) {
   const deleteBtn = el('button', { class: 'btn btn-secondary btn-sm' }, '删除');
   deleteBtn.onclick = async function() {
     try {
-      await apiRequest(SETTINGS_API + '/' + encodeURIComponent(ms.profileCode || 'default'), { method: 'DELETE' });
+      await apiRequest(
+        SETTINGS_API + '/' + encodeURIComponent(ms.profileCode || 'default')
+          + '?modelCode=' + encodeURIComponent(ms.modelCode || ''),
+        { method: 'DELETE' });
       await refreshModelSettingsUI();
       showToast('已删除');
     } catch (e) { showToast('删除失败: ' + e.message); }
@@ -3136,6 +3225,8 @@ function renderEditableModelCard(ms, syncState) {
   actions.appendChild(editBtn);
   actions.appendChild(deleteBtn);
   const meta = el('div', { class: 'settings-card-meta' });
+  meta.appendChild(el('div', null, el('span', { class: 'settings-meta-label' }, '协议'),
+    el('span', { class: 'settings-meta-value' }, ms.protocol || 'openai')));
   meta.appendChild(el('div', null, el('span', { class: 'settings-meta-label' }, 'Base URL'),
     el('span', { class: 'settings-meta-value' }, ms.baseUrl || '—')));
   meta.appendChild(el('div', null, el('span', { class: 'settings-meta-label' }, 'API Key'),
@@ -3147,7 +3238,6 @@ function renderEditableModelCard(ms, syncState) {
   const editForm = el('div', { class: 'model-edit-form', style: 'display:none' });
   const editGrid = el('div', { class: 'settings-form-grid' });
   editGrid.appendChild(wrapEditInput('modelCode', '模型', ms.modelCode || ''));
-  editGrid.appendChild(wrapEditInput('providerCode', 'Provider', ms.providerCode || ''));
   editGrid.appendChild(wrapEditInput('baseUrl', 'Base URL', ms.baseUrl || ''));
   editGrid.appendChild(wrapEditInput('apiKeyRef', 'API Key', ms.apiKeyRef || ''));
   editForm.appendChild(editGrid);
@@ -3170,6 +3260,7 @@ function renderEditableModelCard(ms, syncState) {
           modelCode: updated.modelCode,
           baseUrl: updated.baseUrl || ms.baseUrl,
           apiKeyRef: updated.apiKeyRef || ms.apiKeyRef,
+          protocol: ms.protocol || 'openai',
           enabled: ms.enabled !== false
         })
       });

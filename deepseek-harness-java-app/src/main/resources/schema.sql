@@ -63,14 +63,20 @@ CREATE TABLE IF NOT EXISTS harness_plugin_config (
 );
 
 CREATE TABLE IF NOT EXISTS harness_model_setting (
-    profile_code VARCHAR(64) PRIMARY KEY,
+    profile_code VARCHAR(64) NOT NULL,
     provider_code VARCHAR(64) NOT NULL,
     model_code VARCHAR(128) NOT NULL,
     base_url VARCHAR(255) NULL,
     api_key_ref VARCHAR(128) NULL,
+    protocol VARCHAR(32) NOT NULL DEFAULT 'openai',
     enabled BOOLEAN NOT NULL,
-    updated_at TIMESTAMP(3) NOT NULL
+    active BOOLEAN NOT NULL DEFAULT FALSE,
+    updated_at TIMESTAMP(3) NOT NULL,
+    PRIMARY KEY (profile_code, model_code)
 );
+
+-- 渠道协议列 protocol 已由 SchemaMigrationRunner 在启动时幂等补齐（查 information_schema 后再 ALTER），
+-- 兼容 MySQL 与 H2 存量库升级；新建库时上方 CREATE TABLE 已包含该列。
 
 CREATE TABLE IF NOT EXISTS harness_goal_state (
     session_id VARCHAR(64) PRIMARY KEY,

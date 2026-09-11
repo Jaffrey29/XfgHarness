@@ -15,7 +15,9 @@ import java.time.Instant;
  * @param modelCode 模型编码
  * @param baseUrl 提供方基础地址
  * @param apiKeyRef API Key 引用
+ * @param protocol 渠道协议编码（openai / anthropic / ollama），空值按 openai 处理
  * @param enabled 是否启用
+ * @param active 是否为该 profile 当前生效的模型（多模型时由用户切换）
  * @param updatedAt 更新时间
  *
  * @author 小傅哥
@@ -27,7 +29,17 @@ public record ModelSettingVO(
         String modelCode,
         String baseUrl,
         String apiKeyRef,
+        String protocol,
         boolean enabled,
+        boolean active,
         Instant updatedAt
 ) {
+    /**
+     * 兼容旧调用方的紧凑构造（active 默认 false）。
+     */
+    public ModelSettingVO(String profileCode, String providerCode, String modelCode,
+                          String baseUrl, String apiKeyRef, String protocol,
+                          boolean enabled, Instant updatedAt) {
+        this(profileCode, providerCode, modelCode, baseUrl, apiKeyRef, protocol, enabled, false, updatedAt);
+    }
 }

@@ -75,7 +75,7 @@ class AgentModelSettingResolverTest {
     private ModelSettingVO setting(String profileCode, String providerCode, String modelCode,
                                    String baseUrl, String apiKeyRef) {
         return new ModelSettingVO(profileCode, providerCode, modelCode, baseUrl, apiKeyRef,
-                true, Instant.parse("2026-01-01T00:00:00Z"));
+                null, true, Instant.parse("2026-01-01T00:00:00Z"));
     }
 
     private static final class SettingsService implements IModelSettingQueryService {

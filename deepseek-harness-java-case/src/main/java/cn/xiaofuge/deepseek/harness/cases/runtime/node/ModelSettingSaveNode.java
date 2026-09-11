@@ -39,10 +39,10 @@ public class ModelSettingSaveNode
         CaseGuard.requireText(command.profileCode(), "profileCode must not be blank");
         ModelSettingVO setting = modelSettingCommandService.save(
                 command.profileCode(), command.providerCode(), command.modelCode(),
-                command.baseUrl(), command.apiKeyRef(), command.enabled()
+                command.baseUrl(), command.apiKeyRef(), command.protocol(), command.enabled()
         );
-        log.info("[Runtime] 模型配置保存完成，profileCode={} modelCode={} enabled={}",
-                setting.profileCode(), setting.modelCode(), setting.enabled());
+        log.info("[Runtime] 模型配置保存完成，profileCode={} modelCode={} protocol={} enabled={}",
+                setting.profileCode(), setting.modelCode(), setting.protocol(), setting.enabled());
         return toResponse(setting);
     }
 
@@ -61,7 +61,8 @@ public class ModelSettingSaveNode
     private ModelSettingResponseDTO toResponse(ModelSettingVO setting) {
         return new ModelSettingResponseDTO(
                 setting.profileCode(), setting.providerCode(), setting.modelCode(),
-                setting.baseUrl(), setting.apiKeyRef(), setting.enabled(), setting.updatedAt()
+                setting.baseUrl(), setting.apiKeyRef(), setting.protocol(),
+                setting.enabled(), setting.active(), setting.updatedAt()
         );
     }
 }

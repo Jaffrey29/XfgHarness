@@ -488,7 +488,8 @@ public class DeepSeekAdapter implements LlmAdapter {
                 options.sessionId(),
                 options.purpose(),
                 options.baseUrl(),
-                options.apiKey()
+                options.apiKey(),
+                options.protocol()
         );
     }
 

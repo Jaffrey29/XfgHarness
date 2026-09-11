@@ -68,12 +68,17 @@ public class ModelSettingService implements IModelSettingQueryService, IModelSet
      * <p>
      * 执行流程：
      * 1. 构造模型设置实体；
-     * 2. 写入仓储；
-     * 3. 返回保存后的值对象。
+     * 2. 若该 profile 尚无激活行，则本次保存自动置为当前生效模型；
+     * 3. 写入仓储；
+     * 4. 返回保存后的值对象。
      */
     @Override
-    public ModelSettingVO save(String profileCode, String providerCode, String modelCode, String baseUrl, String apiKeyRef, boolean enabled) {
-        ModelSettingEntity entity = ModelSettingEntity.create(profileCode, providerCode, modelCode, baseUrl, apiKeyRef, enabled);
+    public ModelSettingVO save(String profileCode, String providerCode, String modelCode,
+                               String baseUrl, String apiKeyRef, String protocol, boolean enabled) {
+        boolean hasActive = modelSettingRepository.queryAll().stream()
+                .anyMatch(e -> e.getProfileCode().equals(profileCode) && e.isActive());
+        ModelSettingEntity entity = ModelSettingEntity.create(
+                profileCode, providerCode, modelCode, baseUrl, apiKeyRef, protocol, enabled, !hasActive);
         modelSettingRepository.save(entity);
         return toValue(entity);
     }
@@ -92,6 +97,46 @@ public class ModelSettingService implements IModelSettingQueryService, IModelSet
     }
 
     /**
+     * 删除某 profile 下的指定模型。
+     * <p>
+     * 执行流程：
+     * 1. 记录被删行是否为当前生效模型；
+     * 2. 删除该行；
+     * 3. 若删除的是生效模型且该 profile 还有剩余配置，自动激活剩余的第一条。
+     */
+    @Override
+    public void deleteByProfileAndModel(String profileCode, String modelCode) {
+        boolean wasActive = modelSettingRepository.findByProfileAndModel(profileCode, modelCode)
+                .map(ModelSettingEntity::isActive)
+                .orElse(false);
+        modelSettingRepository.deleteByProfileAndModel(profileCode, modelCode);
+        if (!wasActive) {
+            return;
+        }
+        modelSettingRepository.queryAll().stream()
+                .filter(e -> e.getProfileCode().equals(profileCode))
+                .findFirst()
+                .ifPresent(next -> modelSettingRepository.activate(profileCode, next.getModelCode()));
+    }
+
+    /**
+     * 切换某 profile 的当前生效模型。
+     * <p>
+     * 执行流程：
+     * 1. 校验目标配置存在；
+     * 2. 调用仓储完成激活（同事务先清同 profile 激活标记）；
+     * 3. 返回激活后的值对象。
+     */
+    @Override
+    public ModelSettingVO activate(String profileCode, String modelCode) {
+        ModelSettingEntity target = modelSettingRepository.findByProfileAndModel(profileCode, modelCode)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "model setting not found: profile=" + profileCode + ", model=" + modelCode));
+        modelSettingRepository.activate(profileCode, modelCode);
+        return toValue(target);
+    }
+
+    /**
      * 将实体转换为值对象。
      * <p>
      * 执行流程：
@@ -106,7 +151,9 @@ public class ModelSettingService implements IModelSettingQueryService, IModelSet
                 entity.getModelCode(),
                 entity.getBaseUrl(),
                 entity.getApiKeyRef(),
+                entity.getProtocol(),
                 entity.isEnabled(),
+                entity.isActive(),
                 entity.getUpdatedAt()
         );
     }

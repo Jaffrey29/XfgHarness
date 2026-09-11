@@ -36,6 +36,41 @@ public class InMemoryLlmRuntimePort implements ILlmRuntimePort {
     private final Map<String, LlmAdapter> adapters = new ConcurrentHashMap<>();
 
     /**
+     * 兜底适配器工厂：为未显式注册的 provider 按请求协议动态创建适配器。
+     * 为 null 时未注册 provider 直接路由失败（保持旧行为）。
+     */
+    private volatile java.util.function.Function<String, LlmAdapter> fallbackFactory;
+
+    /**
+     * 处理fallback Factory。
+     * 流程：设置兜底工厂 → 未注册 provider 请求时按协议动态创建适配器。
+     *
+     * @param fallbackFactory 兜底适配器工厂
+     */
+    public void setFallbackFactory(java.util.function.Function<String, LlmAdapter> fallbackFactory) {
+        this.fallbackFactory = fallbackFactory;
+    }
+
+    @Override
+    public boolean hasAdapter(String provider) {
+        return adapters.containsKey(provider);
+    }
+
+    /**
+     * 解析 provider 对应适配器；未注册时尝试经兜底工厂按协议动态创建并缓存。
+     */
+    private LlmAdapter resolveAdapter(String provider) {
+        LlmAdapter adapter = adapters.get(provider);
+        if (adapter == null && fallbackFactory != null) {
+            adapter = adapters.computeIfAbsent(provider, p -> {
+                log.info("Provider '{}' 未显式注册适配器，使用协议路由适配器兜底", p);
+                return fallbackFactory.apply(p);
+            });
+        }
+        return adapter;
+    }
+
+    /**
      * 注册模型 Provider 对应的 LLM 适配器。
      * <p>流程：接收 provider 编码和适配器实例 → 写入内存路由表 → 记录注册成功日志。
      * <p>示例：注册 provider=deepseek 后，请求 provider=deepseek 会路由到 DeepSeek 适配器。
@@ -127,7 +162,7 @@ public class InMemoryLlmRuntimePort implements ILlmRuntimePort {
      */
     @Override
     public Flow.Publisher<StreamChunk> stream(GenerateOptions options) {
-        LlmAdapter adapter = adapters.get(options.provider());
+        LlmAdapter adapter = resolveAdapter(options.provider());
         if (adapter == null) {
             log.error("模型路由失败：provider='{}' 未注册适配器，可用 providers={}。"
                             + "请检查 Web 控制台模型设置中的 providerCode。",

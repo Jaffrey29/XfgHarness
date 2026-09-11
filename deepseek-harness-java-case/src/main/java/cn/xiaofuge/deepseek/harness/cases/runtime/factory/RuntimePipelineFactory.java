@@ -3,9 +3,12 @@ package cn.xiaofuge.deepseek.harness.cases.runtime.factory;
 import cn.xiaofuge.deepseek.harness.cases.orchestration.CasePipeline;
 import cn.xiaofuge.deepseek.harness.cases.orchestration.CasePipelineFactory;
 import cn.xiaofuge.deepseek.harness.cases.orchestration.NoContext;
+import cn.xiaofuge.deepseek.harness.api.dto.ActivateModelSettingRequestDTO;
 import cn.xiaofuge.deepseek.harness.api.dto.AvailableModelResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.DeleteModelSettingRequestDTO;
 import cn.xiaofuge.deepseek.harness.api.dto.ModelSettingResponseDTO;
 import cn.xiaofuge.deepseek.harness.api.dto.SaveModelSettingRequestDTO;
+import cn.xiaofuge.deepseek.harness.cases.runtime.node.ModelSettingActivateNode;
 import cn.xiaofuge.deepseek.harness.cases.runtime.node.ModelSettingDeleteNode;
 import cn.xiaofuge.deepseek.harness.cases.runtime.node.ModelSettingListAvailableModelsNode;
 import cn.xiaofuge.deepseek.harness.cases.runtime.node.ModelSettingListSettingsNode;
@@ -25,17 +28,20 @@ public class RuntimePipelineFactory
 
     private final ModelSettingSaveNode modelSettingSaveNode;
     private final ModelSettingDeleteNode modelSettingDeleteNode;
+    private final ModelSettingActivateNode modelSettingActivateNode;
     private final ModelSettingListSettingsNode modelSettingListSettingsNode;
     private final ModelSettingListAvailableModelsNode modelSettingListAvailableModelsNode;
 
     public RuntimePipelineFactory(
             ModelSettingSaveNode modelSettingSaveNode,
             ModelSettingDeleteNode modelSettingDeleteNode,
+            ModelSettingActivateNode modelSettingActivateNode,
             ModelSettingListSettingsNode modelSettingListSettingsNode,
             ModelSettingListAvailableModelsNode modelSettingListAvailableModelsNode
     ) {
         this.modelSettingSaveNode = modelSettingSaveNode;
         this.modelSettingDeleteNode = modelSettingDeleteNode;
+        this.modelSettingActivateNode = modelSettingActivateNode;
         this.modelSettingListSettingsNode = modelSettingListSettingsNode;
         this.modelSettingListAvailableModelsNode = modelSettingListAvailableModelsNode;
     }
@@ -50,8 +56,15 @@ public class RuntimePipelineFactory
     /**
      * 构建删除模型设置的 Pipeline。
      */
-    public CasePipeline<String, NoContext, Void> deletePipeline() {
+    public CasePipeline<DeleteModelSettingRequestDTO, NoContext, Void> deletePipeline() {
         return CasePipeline.of("Delete model setting", modelSettingDeleteNode, () -> NoContext.INSTANCE);
+    }
+
+    /**
+     * 构建激活模型设置的 Pipeline。
+     */
+    public CasePipeline<ActivateModelSettingRequestDTO, NoContext, ModelSettingResponseDTO> activatePipeline() {
+        return CasePipeline.of("Activate model setting", modelSettingActivateNode, () -> NoContext.INSTANCE);
     }
 
     /**

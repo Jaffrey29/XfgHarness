@@ -145,7 +145,7 @@ deepseek-harness-java-app/target/deepseek-harness-java-app-1.0.0-SNAPSHOT.jar
 适合本机快速体验和演示，无需安装 MySQL——使用内嵌 H2 文件库：
 
 ```bash
-export DEEPSEEK_API_KEY='your-model-api-key'
+export LLM_API_KEY='your-model-api-key'
 
 java -jar deepseek-harness-java-app/target/deepseek-harness-java-app-1.0.0-SNAPSHOT.jar \
   --spring.profiles.active=standalone
@@ -159,7 +159,7 @@ H2 数据文件默认写入 `./data/deepseek-harness-java.mv.db`。
 java -jar deepseek-harness-java-app/target/deepseek-harness-java-app-1.0.0-SNAPSHOT.jar \
   --spring.profiles.active=standalone \
   --harness.llm.deepseek.base-url='http://127.0.0.1:8777/v1' \
-  --harness.llm.deepseek.api-key="$DEEPSEEK_API_KEY" \
+  --harness.llm.deepseek.api-key="$LLM_API_KEY" \
   --harness.llm.deepseek.default-model='gpt-5.5'
 ```
 
@@ -183,7 +183,7 @@ mysql -u root -p < docs/dev-ops/mysql/sql/deepseek_harness_java.sql
 export SPRING_DATASOURCE_URL='jdbc:mysql://127.0.0.1:3306/deepseek_harness_java?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true'
 export SPRING_DATASOURCE_USERNAME='root'
 export SPRING_DATASOURCE_PASSWORD='your-db-password'
-export DEEPSEEK_API_KEY='your-model-api-key'
+export LLM_API_KEY='your-model-api-key'
 
 java -jar deepseek-harness-java-app/target/deepseek-harness-java-app-1.0.0-SNAPSHOT.jar
 ```
@@ -194,16 +194,21 @@ java -jar deepseek-harness-java-app/target/deepseek-harness-java-app-1.0.0-SNAPS
 
 数据库导入完成后，需要把模型服务配置保存到 Harness，而不是只依赖启动参数。打开 Web 控制台的 **设置 → 模型**：
 
-| 字段 | 推荐值 |
+1. 从 **渠道模板** 下拉选择供应商（OpenAI / DeepSeek / 通义千问 / 智谱 GLM / 豆包 / Kimi / Anthropic Claude / Ollama / 自定义…），自动填充协议与默认地址；
+2. 补全 API Key，点击 **⟳ 同步模型** 从上游拉取可用模型列表（按协议自动选择 `/models` 或 `/api/tags`，失败不会清空已保存配置）；
+3. 选择模型并保存。
+
+| 字段 | 说明 |
 | --- | --- |
-| Profile | `deepseek` |
-| Provider | `deepseek` |
-| 模型 | 你的模型名，例如 `glm-5.3-flash` |
-| Base URL | OpenAI 兼容接口，通常以 `/v1` 结尾 |
-| API Key | 模型网关或供应商密钥 |
+| Profile | 运行时选择模型的主键，如 `default` / `web` / `headless` |
+| Provider | 渠道标识，任意编码均可（模板之外的 provider 会按其协议动态路由） |
+| 协议 | `openai`（OpenAI 兼容，默认）/ `anthropic`（Messages 协议）/ `ollama`（原生） |
+| 模型 | 模型编码，可用同步按钮从上游拉取后下拉选择 |
+| Base URL | 渠道基础地址 |
+| API Key | 渠道密钥（Ollama 本地可留空） |
 | Enabled | 开启 |
 
-`profileCode=deepseek` 是 Agent 的全局默认配置。保存后，数据库配置优先生效；只有该记录不存在或未启用时，才会回退到 `DEEPSEEK_*` 环境变量和 `harness.yml` 文件兜底。
+`profileCode=default` 是 Agent 的全局默认配置。保存后，数据库配置优先生效；只有该记录不存在或未启用时，才会回退到 `LLM_*` 环境变量和 `harness.yml` 文件兜底。
 
 也可以调用 API 保存：
 
@@ -211,23 +216,32 @@ java -jar deepseek-harness-java-app/target/deepseek-harness-java-app-1.0.0-SNAPS
 curl -X POST http://localhost:8090/api/harness/settings/models \
   -H 'Content-Type: application/json' \
   -d '{
-    "profileCode": "deepseek",
+    "profileCode": "default",
     "providerCode": "deepseek",
     "modelCode": "glm-5.3-flash",
     "baseUrl": "http://127.0.0.1:8777/v1",
     "apiKeyRef": "your-model-api-key",
+    "protocol": "openai",
     "enabled": true
   }'
 ```
 
+渠道相关 API：
+
+| 接口 | 说明 |
+| --- | --- |
+| `GET /api/harness/channels/presets` | 查询内置渠道模板（协议、默认地址、推荐模型），只读不落库 |
+| `POST /api/harness/settings/models` | 保存模型渠道配置（含 `protocol` 字段，缺省按 `openai`） |
+| `POST /api/harness/settings/models/discover` | 同步上游模型列表，请求体：`{ "baseUrl", "apiKeyRef", "protocol" }` |
+
 ### 2.5 启动方式三：Docker Compose
 
 ```bash
-export DEEPSEEK_API_KEY='your-model-api-key'
+export LLM_API_KEY='your-model-api-key'
 docker compose up --build -d
 ```
 
-Compose 配置：暴露 `8090:8090`；默认 `standalone` Profile；挂载 `./data`、`./plugins`、`./.dsh`、`./workspaces`；通过 `DEEPSEEK_API_KEY` / `OPENAI_API_KEY` 注入模型凭据。
+Compose 配置：暴露 `8090:8090`；默认 `standalone` Profile；挂载 `./data`、`./plugins`、`./.dsh`、`./workspaces`；通过 `LLM_API_KEY` / `OPENAI_API_KEY` 注入模型凭据。
 
 ### 2.6 打开 Web 控制台
 
@@ -1113,7 +1127,7 @@ flowchart TD
 | `server.port` | HTTP 端口 | 默认 `8090` |
 | `spring.datasource.*` | JDBC 数据源 | 默认 MySQL；standalone profile 用 H2 |
 | `harness.llm.deepseek.base-url` | 模型 API 地址兜底 | 支持 OpenAI 兼容 Chat Completions；数据库无对应设置时生效 |
-| `harness.llm.deepseek.api-key` | 模型 API Key 兜底 | **务必用环境变量注入**（`${DEEPSEEK_API_KEY}`），不要硬编码提交 |
+| `harness.llm.deepseek.api-key` | 模型 API Key 兜底 | **务必用环境变量注入**（`${LLM_API_KEY}`），不要硬编码提交 |
 | `harness.llm.deepseek.default-model` | 默认模型种子 | 例如 `gpt-5.5`；数据库已有默认设置时不覆盖 |
 | `harness.llm.deepseek.context-window` | 上下文窗口 | 默认 `128000` |
 | `harness.auth.api-keys` | 宿主 API Key 列表 | 多个 Key 用英文逗号分隔；**为空则本地放行** |

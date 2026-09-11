@@ -24,6 +24,16 @@ public interface ILlmRuntimePort {
 
     void unregisterAdapter(String provider);
 
+    /**
+     * 判断 provider 是否已注册适配器。
+     *
+     * @param provider 模型提供方编码
+     * @return 已注册返回 true
+     */
+    default boolean hasAdapter(String provider) {
+        return false;
+    }
+
     java.util.List<LlmAdapter.LlmProviderInfo> listProviders();
 
     java.util.List<LlmAdapter.LlmModelInfo> listModels(String provider);

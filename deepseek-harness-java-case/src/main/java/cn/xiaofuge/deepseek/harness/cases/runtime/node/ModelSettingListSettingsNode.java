@@ -52,7 +52,8 @@ public class ModelSettingListSettingsNode
     private ModelSettingResponseDTO toResponse(ModelSettingVO setting) {
         return new ModelSettingResponseDTO(
                 setting.profileCode(), setting.providerCode(), setting.modelCode(),
-                setting.baseUrl(), setting.apiKeyRef(), setting.enabled(), setting.updatedAt()
+                setting.baseUrl(), setting.apiKeyRef(), setting.protocol(),
+                setting.enabled(), setting.active(), setting.updatedAt()
         );
     }
 }

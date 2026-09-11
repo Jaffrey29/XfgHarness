@@ -19,7 +19,7 @@ public class AgentModelSettingResolver {
 
     private static final Logger log = LoggerFactory.getLogger(AgentModelSettingResolver.class);
 
-    private static final String DEFAULT_MODEL_PROFILE = "deepseek";
+    private static final String DEFAULT_MODEL_PROFILE = "default";
     private static final String DEFAULT_PROVIDER = "deepseek";
     private static final Integer DEFAULT_MAX_TOKENS = 8192;
 
@@ -28,7 +28,7 @@ public class AgentModelSettingResolver {
 
     public AgentModelSettingResolver(
             IModelSettingQueryService modelSettingQueryService,
-            @Value("${harness.llm.deepseek.default-model:gpt-5.5}") String fallbackModel
+            @Value("${harness.llm.deepseek.default-model:${LLM_DEFAULT_MODEL:${DEEPSEEK_DEFAULT_MODEL:gpt-5.5}}}") String fallbackModel
     ) {
         this.modelSettingQueryService = modelSettingQueryService;
         this.fallbackModel = fallbackModel;

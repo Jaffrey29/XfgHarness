@@ -1,6 +1,8 @@
 package cn.xiaofuge.deepseek.harness.infrastructure.config;
 
 import cn.xiaofuge.deepseek.harness.domain.llm.model.valobj.LlmErrorCodes;
+import cn.xiaofuge.deepseek.harness.domain.channel.model.valobj.ChannelPreset;
+import cn.xiaofuge.deepseek.harness.domain.channel.model.valobj.ChannelPresets;
 import cn.xiaofuge.deepseek.harness.domain.terminal.adapter.port.ITerminalPort;
 import cn.xiaofuge.deepseek.harness.domain.sandbox.ISandboxPolicyService;
 import cn.xiaofuge.deepseek.harness.domain.llm.adapter.LlmAdapter;
@@ -12,6 +14,7 @@ import cn.xiaofuge.deepseek.harness.domain.tool.web.adapter.port.IWebPort;
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.fs.LocalFsService;
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.fs.SandboxedFsService;
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.llm.InMemoryLlmRuntimePort;
+import cn.xiaofuge.deepseek.harness.infrastructure.adapter.llm.LlmAdapterFactory;
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.llm.openai.OpenAiCompatibleAdapter;
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.llm.deepseek.DeepSeekAdapter;
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.llm.deepseek.DeepSeekAdapterOptions;
@@ -99,23 +102,33 @@ public class HarnessApplicationConfig {
 
 
     @Bean
-    public ILlmRuntimePort llmRuntimePort(List<LlmAdapter> adapterList) {
+    public ILlmRuntimePort llmRuntimePort(List<LlmAdapter> adapterList, LlmAdapterFactory llmAdapterFactory) {
         InMemoryLlmRuntimePort runtime = new InMemoryLlmRuntimePort();
         for (LlmAdapter adapter : adapterList) {
             String providerId = adapter.providerId();
             runtime.registerAdapter(providerId, adapter);
         }
+        // 按渠道模板注册表补齐协议路由适配器：任何模板 provider（qwen/zhipu/doubao/anthropic/ollama…）
+        // 与 custom 都无需单独写 Bean，运行时按模型设置中的 protocol 动态分派。
+        for (ChannelPreset preset : ChannelPresets.all()) {
+            if (!runtime.hasAdapter(preset.id())) {
+                runtime.registerAdapter(preset.id(), llmAdapterFactory.create(preset.id()));
+            }
+        }
+        // 兜底：用户在控制台填写了模板之外的 providerCode 时，按其 protocol 动态路由，
+        // 不再需要为每个新渠道注册 Bean（对应 WaLiAPI get_adaptor 的 default 分支）。
+        runtime.setFallbackFactory(llmAdapterFactory::create);
         return runtime;
     }
 
     @Bean
     public DeepSeekAdapter deepSeekAdapter(
             ObjectMapper objectMapper,
-            @Value("${harness.llm.deepseek.base-url:http://127.0.0.1:8777/v1}") String baseUrl,
-            @Value("${harness.llm.deepseek.api-key:sk-local}") String apiKey,
+            @Value("${harness.llm.deepseek.base-url:${LLM_BASE_URL:${DEEPSEEK_BASE_URL:http://127.0.0.1:8777/v1}}}") String baseUrl,
+            @Value("${harness.llm.deepseek.api-key:${LLM_API_KEY:${DEEPSEEK_API_KEY:sk-local}}}") String apiKey,
             @Value("${harness.llm.deepseek.max-tokens:8192}") int maxTokens,
             @Value("${harness.llm.deepseek.context-window:128000}") int contextWindow,
-            @Value("${harness.llm.deepseek.default-model:deepseek}") String defaultModel
+            @Value("${harness.llm.deepseek.default-model:${LLM_DEFAULT_MODEL:${DEEPSEEK_DEFAULT_MODEL:deepseek}}}") String defaultModel
     ) {
         var models = List.of(
                 new DirectSeekCatalogModel(defaultModel, defaultModel, null, contextWindow, maxTokens)

@@ -50,6 +50,36 @@ public interface IModelSettingRepository {
     Optional<ModelSettingEntity> findByProfileCode(String profileCode);
 
     /**
+     * 按画像编码与模型编码查询模型设置。
+     * <p>
+     * 执行流程：
+     * 1. 根据 profileCode + modelCode 定位记录；
+     * 2. 转换为领域实体；
+     * 3. 返回可选结果。
+     */
+    Optional<ModelSettingEntity> findByProfileAndModel(String profileCode, String modelCode);
+
+    /**
+     * 将指定模型置为该 profile 当前生效项（同 profile 其他行取消激活）。
+     * <p>
+     * 执行流程：
+     * 1. 清除该 profile 下所有行的激活标记；
+     * 2. 激活目标行；
+     * 3. 返回是否存在目标行。
+     */
+    boolean activate(String profileCode, String modelCode);
+
+    /**
+     * 删除某 profile 下的指定模型。
+     * <p>
+     * 执行流程：
+     * 1. 读取 profileCode + modelCode；
+     * 2. 删除持久化记录；
+     * 3. 返回删除结果。
+     */
+    void deleteByProfileAndModel(String profileCode, String modelCode);
+
+    /**
      * 按画像编码删除模型设置。
      * <p>
      * 执行流程：

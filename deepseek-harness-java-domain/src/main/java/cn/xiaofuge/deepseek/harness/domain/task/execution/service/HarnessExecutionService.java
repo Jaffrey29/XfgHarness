@@ -128,7 +128,8 @@ public class HarnessExecutionService implements IHarnessExecutionService {
                 session.getSessionId(),
                 null,
                 setting.baseUrl(),
-                setting.apiKeyRef()
+                setting.apiKeyRef(),
+                setting.protocol()
         );
     }
 

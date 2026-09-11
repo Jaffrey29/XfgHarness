@@ -1,5 +1,7 @@
 package cn.xiaofuge.deepseek.harness.cases.runtime;
 
+import cn.xiaofuge.deepseek.harness.api.dto.ActivateModelSettingRequestDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.DeleteModelSettingRequestDTO;
 import cn.xiaofuge.deepseek.harness.api.dto.SaveModelSettingRequestDTO;
 import cn.xiaofuge.deepseek.harness.api.dto.ModelSettingResponseDTO;
 import cn.xiaofuge.deepseek.harness.cases.runtime.factory.RuntimePipelineFactory;
@@ -7,9 +9,9 @@ import org.springframework.stereotype.Service;
 
 /**
  * 模型设置写操作编排实现。
- * <p>流程：将保存/删除请求交给对应 Pipeline → 执行领域命令节点 → 保存返回 DTO，删除无返回。</p>
+ * <p>流程：将保存/删除/激活请求交给对应 Pipeline → 执行领域命令节点 → 保存与激活返回 DTO，删除无返回。</p>
  * <p>数据示例：保存 {@code profileCode=default} 后返回 {@code enabled=true}；
- * 删除 {@code profileCode=default} 后配置从仓储移除。</p>
+ * 激活 {@code profileCode=default, modelCode=glm-5.3-flash} 后该模型成为当前生效配置。</p>
  */
 @Service
 public class ModelSettingCommandCaseImpl implements IModelSettingCommandCase {
@@ -28,10 +30,19 @@ public class ModelSettingCommandCaseImpl implements IModelSettingCommandCase {
     }
 
     /**
-     * 编排删除操作，将目标标识交给对应 Pipeline 执行。
+     * 编排删除操作，将删除命令交给对应 Pipeline 执行。
      */
     @Override
-    public void delete(String profileCode) {
-        runtimePipelineFactory.deletePipeline().execute(profileCode);
+    public void delete(DeleteModelSettingRequestDTO command) {
+        runtimePipelineFactory.deletePipeline().execute(command);
+    }
+
+    /**
+     * 编排激活操作，将切换命令交给对应 Pipeline 执行。
+     */
+    @Override
+    public ModelSettingResponseDTO activate(ActivateModelSettingRequestDTO command) {
+        return runtimePipelineFactory.activatePipeline().execute(command);
     }
 }
+

@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * 启动时按需初始化默认模型配置。
- * <p>application.yml 中的模型只作为首次启动的种子数据；数据库中已存在 deepseek 画像配置时，
+ * <p>application.yml 中的模型只作为首次启动的种子数据；数据库中已存在 default 画像配置时，
  * 运行时以数据库为准，避免重启覆盖控制台保存的模型设置。
  * <p>调用流程：Spring Boot 启动 → 加载模型/插件预设 → 注册运行时组件。</p>
  * <p>示例：启动器同步默认模型并装载预置插件。</p>
@@ -22,6 +22,8 @@ import org.springframework.stereotype.Component;
 public class ModelSyncRunner implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(ModelSyncRunner.class);
+
+    private static final String DEFAULT_PROFILE = "default";
 
     private final IModelSettingQueryService queryService;
     private final IModelSettingCommandService commandService;
@@ -43,8 +45,8 @@ public class ModelSyncRunner implements ApplicationRunner {
     public ModelSyncRunner(
             IModelSettingQueryService queryService,
             IModelSettingCommandService commandService,
-            @Value("${harness.llm.deepseek.default-model:glm-5.3-flash}") String defaultModel,
-            @Value("${harness.llm.deepseek.base-url:http://127.0.0.1:8777/v1}") String baseUrl,
+            @Value("${harness.llm.deepseek.default-model:${LLM_DEFAULT_MODEL:${DEEPSEEK_DEFAULT_MODEL:glm-5.3-flash}}}") String defaultModel,
+            @Value("${harness.llm.deepseek.base-url:${LLM_BASE_URL:${DEEPSEEK_BASE_URL:http://127.0.0.1:8777/v1}}}") String baseUrl,
             ApplicationContext applicationContext
     ) {
         this.queryService = queryService;
@@ -66,12 +68,12 @@ public class ModelSyncRunner implements ApplicationRunner {
      */
     public void run(ApplicationArguments args) {
         try {
-            var existing = queryService.findByProfileCode("deepseek");
+            var existing = queryService.findByProfileCode(DEFAULT_PROFILE);
             if (existing.isPresent()) {
                 return;
             }
-            commandService.save("deepseek", "deepseek", defaultModel, baseUrl, "", true);
-            log.info("Model bootstrap: seeded default model '{}'", defaultModel);
+            commandService.save(DEFAULT_PROFILE, "deepseek", defaultModel, baseUrl, "", "openai", true);
+            log.info("Model bootstrap: seeded default model '{}' for profile '{}'", defaultModel, DEFAULT_PROFILE);
         } catch (Exception e) {
             log.error("Model sync failed: {}", e.getMessage(), e);
         }

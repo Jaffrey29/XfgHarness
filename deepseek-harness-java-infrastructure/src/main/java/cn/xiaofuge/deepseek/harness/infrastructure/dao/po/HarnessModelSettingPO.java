@@ -16,7 +16,9 @@ public record HarnessModelSettingPO(
         String modelCode,
         String baseUrl,
         String apiKeyRef,
+        String protocol,
         boolean enabled,
+        boolean active,
         Instant updatedAt
 ) {
 }

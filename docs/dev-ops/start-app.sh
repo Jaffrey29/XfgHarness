@@ -8,13 +8,13 @@ set -euo pipefail
 #   ./start-app.sh
 #
 # 可选环境变量：
-#   DEEPSEEK_API_KEY=你的key ./start-app.sh
+#   LLM_API_KEY=你的key ./start-app.sh
 
 APP_NAME="deepseek-harness-java"
 IMAGE="registry.cn-hangzhou.aliyuncs.com/xfg-studio/deepseek-harness-java:0.1.1"
 NETWORK_NAME="my-network"
 SERVER_PORT="8090"
-DEEPSEEK_API_KEY="${DEEPSEEK_API_KEY:-sk-local}"
+LLM_API_KEY="${LLM_API_KEY:-${DEEPSEEK_API_KEY:-sk-local}}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${SCRIPT_DIR}"
@@ -40,7 +40,7 @@ docker run -d \
   -p "${SERVER_PORT}:${SERVER_PORT}" \
   -e TZ=PRC \
   -e SERVER_PORT="${SERVER_PORT}" \
-  -e DEEPSEEK_API_KEY="${DEEPSEEK_API_KEY}" \
+  -e LLM_API_KEY="${LLM_API_KEY}" \
   -e HARNESS_LLM_DEEPSEEK_BASE_URL="https://apis.itedus.cn/v1" \
   -e HARNESS_LLM_DEEPSEEK_DEFAULT_MODEL="gpt-5.5" \
   -v "${SCRIPT_DIR}/data:/app/data" \

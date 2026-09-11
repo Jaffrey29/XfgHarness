@@ -3,6 +3,7 @@ package cn.xiaofuge.deepseek.harness.infrastructure.adapter.port;
 import cn.xiaofuge.deepseek.harness.domain.runtime.model.adapter.port.IModelProviderPort;
 import cn.xiaofuge.deepseek.harness.domain.runtime.model.model.valobj.ModelProviderProfileVO;
 import cn.xiaofuge.deepseek.harness.domain.runtime.setting.IModelSettingQueryService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
@@ -15,17 +16,24 @@ import org.springframework.stereotype.Component;
 @Component
 public class ModelProviderPort implements IModelProviderPort {
 
-    private final IModelSettingQueryService modelSettingService;
+    private static final String DEFAULT_MODEL_PROFILE = "default";
 
-    public ModelProviderPort(IModelSettingQueryService modelSettingService) {
+    private final IModelSettingQueryService modelSettingService;
+    private final String fallbackModel;
+
+    public ModelProviderPort(IModelSettingQueryService modelSettingService,
+                             @Value("${harness.llm.deepseek.default-model:${LLM_DEFAULT_MODEL:${DEEPSEEK_DEFAULT_MODEL:glm-5.3-flash}}}") String fallbackModel) {
         this.modelSettingService = modelSettingService;
+        this.fallbackModel = fallbackModel;
     }
 
     @Override
     public ModelProviderProfileVO resolve(String profileCode) {
         return modelSettingService.findByProfileCode(profileCode)
                 .filter(s -> s.enabled())
+                .or(() -> modelSettingService.findByProfileCode(DEFAULT_MODEL_PROFILE)
+                        .filter(s -> s.enabled()))
                 .map(s -> new ModelProviderProfileVO(s.providerCode(), s.modelCode()))
-                .orElse(new ModelProviderProfileVO("deepseek", "glm-5.3-flash"));
+                .orElse(new ModelProviderProfileVO(DEFAULT_MODEL_PROFILE, fallbackModel));
     }
 }

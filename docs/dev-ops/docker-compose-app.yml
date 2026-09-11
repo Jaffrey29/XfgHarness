@@ -14,7 +14,7 @@ services:
       - TZ=PRC
       - SERVER_PORT=8090
       # LLM 网关配置（对应 harness.llm.deepseek.*，默认指向本机 127.0.0.1:8777 需覆盖）
-      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-sk-local}
+      - LLM_API_KEY=${LLM_API_KEY:-${DEEPSEEK_API_KEY:-sk-local}}
       - HARNESS_LLM_DEEPSEEK_BASE_URL=https://apis.itedus.cn/v1
       - HARNESS_LLM_DEEPSEEK_DEFAULT_MODEL=gpt-5.5
       # 数据卷说明：standalone(H2) 库文件写入 ./data，插件/工作区/.dsh 需持久化
