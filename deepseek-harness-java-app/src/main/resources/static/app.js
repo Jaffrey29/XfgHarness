@@ -14,7 +14,7 @@ const SETTINGS_API = '/api/harness/settings/models';
 const MODEL_CATALOG_API = '/api/harness/runtime/models';
 const MODEL_DISCOVER_API = '/api/harness/settings/models/discover';
 const CHANNEL_PRESETS_API = '/api/harness/channels/presets';
-const DEFAULT_MODEL = 'gpt-5.5';
+const DEFAULT_CHANNEL = '';
 const PLUGIN_API = '/api/harness/plugins';
 const CONSOLE_API = '/api/harness/console';
 const APPROVAL_API = '/api/harness/approvals';
@@ -166,7 +166,7 @@ const state = {
   currentWorkspace: localStorage.getItem('currentWorkspace') || '',
   modelSettings: [],
   availableModels: [],
-  currentModel: localStorage.getItem('currentModel') || DEFAULT_MODEL,
+  currentChannel: localStorage.getItem('currentChannel') || DEFAULT_CHANNEL,
   activeMainTab: 'chat',
   activeSettingsTab: 'models',
   plugins: [],
@@ -190,7 +190,7 @@ const state = {
     { name: '/export', desc: '导出对话记录', icon: '📥' },
     { name: '/compact', desc: '压缩上下文', icon: '📦' },
     { name: '/branch', desc: '分支当前对话', icon: '🌿' },
-    { name: '/model', desc: '切换模型', icon: '🤖' },
+    { name: '/channel', desc: '切换模型渠道', icon: '🤖' },
     { name: '/workspace', desc: '切换工作区', icon: '📁' },
     { name: '/todo', desc: '管理待办列表', icon: '✓' },
     { name: '/plan', desc: '查看/管理计划', icon: '📋' },
@@ -455,7 +455,7 @@ function renderSidebar() {
   settingsRound.appendChild(el('span', { class: 'c-tooltip' }, '设置'));
   collapsedBar.appendChild(settingsRound);
   collapsedBar.appendChild(el('div', { class: 'c-spacer' }));
-  collapsedBar.appendChild(el('div', { class: 'c-model-dot', title: state.currentModel }));
+  collapsedBar.appendChild(el('div', { class: 'c-model-dot', title: state.currentChannel || '当前激活渠道' }));
   sidebar.appendChild(collapsedBar);
 
   const expandSection = el('div', { class: 'sidebar-expand-section' });
@@ -962,7 +962,7 @@ function renderMain() {
   titleWrap.appendChild(el('div', { class: 'main-header-title' }, sess ? (sess.title || sess.displayName) : '新对话'));
   const headerSub = el('div', { class: 'main-header-sub' });
   if (sess && sess.messages.length > 0) {
-    headerSub.appendChild(el('span', { class: 'main-header-model' }, state.currentModel || DEFAULT_MODEL));
+    headerSub.appendChild(el('span', { class: 'main-header-model' }, state.currentChannel || '当前激活渠道'));
   }
   if (sess && sess.currentStage) {
     headerSub.appendChild(el('span', { class: 'process-stage', id: 'process-stage' },
@@ -1598,14 +1598,20 @@ async function executeSlashCommand(text, sess) {
       branchConversation(null);
       return true;
 
-    case '/model':
+    case '/channel':
       if (args) {
-        state.currentModel = args;
-        localStorage.setItem('currentModel', args);
-        showToast('模型已切换: ' + args);
+        const matchedChannel = (state.availableModels || []).find(function(model) {
+          return model.channelCode === args || model.displayName === args;
+        });
+        state.currentChannel = matchedChannel ? matchedChannel.channelCode : args;
+        localStorage.setItem('currentChannel', state.currentChannel);
+        showToast('模型渠道已切换: ' + (matchedChannel ? matchedChannel.displayName : args));
         render();
       } else {
-        showToast('当前模型: ' + state.currentModel + '。用法: /model <模型名>');
+        const currentChannel = (state.availableModels || []).find(function(model) {
+          return model.channelCode === state.currentChannel;
+        });
+        showToast('当前模型渠道: ' + (currentChannel ? currentChannel.displayName : (state.currentChannel || '未选择')) + '。用法: /channel <渠道名称>');
       }
       return true;
 
@@ -1980,8 +1986,13 @@ function applyAgentPreset(preset) {
     sess.title = preset.name;
     sess.systemPrompt = preset.systemPrompt;
     if (preset.model) {
-      state.currentModel = preset.model;
-      localStorage.setItem('currentModel', preset.model);
+      const matchedChannel = (state.availableModels || []).find(function(model) {
+        return model.modelCode === preset.model;
+      });
+      if (matchedChannel && matchedChannel.channelCode) {
+        state.currentChannel = matchedChannel.channelCode;
+        localStorage.setItem('currentChannel', matchedChannel.channelCode);
+      }
     }
   }
   render();
@@ -2807,28 +2818,28 @@ function renderComposer(sess) {
 
   toolbar.appendChild(left);
 
-  // Right: model selector + send/cancel
+  // Right: channel selector + send/cancel
   const right = el('div', { class: 'composer-right' });
 
   const modelSel = el('div', { class: 'composer-model-selector' });
   modelSel.appendChild(el('span', { class: 'dot' }));
   const select = el('select', {
     onchange: function(e) {
-      state.currentModel = e.target.value;
-      localStorage.setItem('currentModel', e.target.value);
+      state.currentChannel = e.target.value;
+      localStorage.setItem('currentChannel', e.target.value);
     }
   });
   if (state.availableModels.length === 0) {
-    select.appendChild(el('option', { value: DEFAULT_MODEL }, DEFAULT_MODEL));
+    select.appendChild(el('option', { value: '' }, '当前激活渠道'));
   } else {
     for (const ms of state.availableModels) {
-      const val = ms.modelCode || 'unknown';
-      const label = ms.displayName || ms.modelCode || 'unknown';
-      const opt = el('option', { value: val, selected: val === state.currentModel }, label);
+      const val = ms.channelCode || ms.modelCode || 'unknown';
+      const label = (ms.displayName || ms.channelCode || '默认渠道') + ' · ' + (ms.modelCode || 'unknown');
+      const opt = el('option', { value: val, selected: val === state.currentChannel }, label);
       select.appendChild(opt);
     }
   }
-  if (state.currentModel) select.value = state.currentModel;
+  if (state.currentChannel) select.value = state.currentChannel;
   modelSel.appendChild(select);
   right.appendChild(modelSel);
 
@@ -2988,6 +2999,8 @@ function renderModelSettings(body, footer) {
 
   const form = el('div', { class: 'settings-form-grid' });
 
+  form.appendChild(wrapInput('displayName', '渠道名称', '例如：公司代理、本地 Ollama'));
+
   // 渠道模板下拉：选中后自动填充 providerCode / protocol / baseUrl 与推荐模型
   const presetGroup = el('div', { class: 'form-group' });
   presetGroup.appendChild(el('label', { class: 'form-label' }, '渠道模板'));
@@ -2996,22 +3009,12 @@ function renderModelSettings(body, footer) {
   presetGroup.appendChild(presetSelect);
   form.appendChild(presetGroup);
 
-  const profileGroup = el('div', { class: 'form-group' });
-  profileGroup.appendChild(el('label', { class: 'form-label' }, 'Profile'));
-  const profileSelect = el('select', { class: 'form-input' },
-    el('option', { value: 'default' }, '默认（default）'),
-    el('option', { value: 'web' }, 'web（浏览器交互，需人工审批）'),
-    el('option', { value: 'headless' }, 'headless（无头/后台，自动执行）'));
-  profileGroup.appendChild(profileSelect);
-  profileGroup.appendChild(el('p', { class: 'form-hint', style: 'font-size:12px;color:#888;margin-top:4px' },
-    'Profile 是执行入口标识，与模型渠道无关。通常选「默认」即可；需要给特定入口单独配模型时再选 web 或 headless。'));
-  form.appendChild(profileGroup);
   // Provider 由渠道模板自动填充，不向用户展示；隐藏字段仅作为提交载体
   const providerGroup = wrapInput('providerCode', 'Provider', 'deepseek');
   providerGroup.style.display = 'none';
   providerGroup.querySelector('input').value = 'deepseek';
   form.appendChild(providerGroup);
-  form.appendChild(wrapInput('baseUrl', 'Base URL', 'http://127.0.0.1:8777/v1'));
+  form.appendChild(wrapInput('baseUrl', 'BaseUrl', 'http://127.0.0.1:8777/v1'));
   form.appendChild(wrapInput('apiKeyRef', 'API Key', 'sk-…'));
 
   const protocolGroup = el('div', { class: 'form-group' });
@@ -3051,6 +3054,8 @@ function renderModelSettings(body, footer) {
   presetSelect.onchange = function() {
     const preset = syncState.presets.find(function(p) { return p.id === presetSelect.value; });
     if (!preset) return;
+    const displayNameInput = form.querySelector('[data-key="displayName"]');
+    if (!displayNameInput.value.trim()) displayNameInput.value = preset.displayName || '';
     form.querySelector('[data-key="providerCode"]').value = preset.id;
     if (preset.baseUrl) form.querySelector('[data-key="baseUrl"]').value = preset.baseUrl;
     protocolSelect.value = preset.protocol || 'openai';
@@ -3114,15 +3119,16 @@ function renderModelSettings(body, footer) {
   };
 
   addBtn.onclick = async function() {
-    const profileCode = profileSelect.value;
+    const displayName = form.querySelector('[data-key="displayName"]').value.trim();
     const providerCode = form.querySelector('[data-key="providerCode"]').value.trim();
     const baseUrl = form.querySelector('[data-key="baseUrl"]').value.trim();
     const apiKeyRef = form.querySelector('[data-key="apiKeyRef"]').value.trim();
     const modelCode = modelInput.style.display !== 'none' && modelInput.value.trim()
       ? modelInput.value.trim()
       : modelSelect.value;
+    if (!displayName) { showToast('请填写渠道名称'); return; }
     if (!modelCode) { showToast('请选择或输入模型'); return; }
-      const data = { profileCode, providerCode: providerCode || 'default', modelCode, baseUrl, apiKeyRef, protocol: protocolSelect.value, enabled: true };
+      const data = { displayName, providerCode: providerCode || 'default', modelCode, baseUrl, apiKeyRef, protocol: protocolSelect.value, enabled: true };
       addBtn.textContent = '添加中…';
       addBtn.disabled = true;
       try {
@@ -3145,7 +3151,7 @@ function renderModelSettings(body, footer) {
   const listHeader = el('div', { class: 'settings-list-header' });
   listHeader.appendChild(el('div', null,
     el('h2', { class: 'settings-panel-title' }, '已配置模型'),
-    el('p', { class: 'settings-panel-desc' }, '同一 Profile 可添加多个模型，点「使用」切换当前生效模型。')));
+    el('p', { class: 'settings-panel-desc' }, '配置一个或多个模型渠道，点「使用」切换全局当前渠道。')));
   listHeader.appendChild(el('span', { class: 'settings-count' }, String(state.modelSettings.length)));
   body.appendChild(listHeader);
 
@@ -3162,8 +3168,8 @@ function renderEditableModelCard(ms, syncState) {
 
   const top = el('div', { class: 'settings-card-top' });
   const info = el('div', { class: 'settings-card-info' });
-  info.appendChild(el('div', { class: 'settings-card-title' }, ms.modelCode || ms.providerCode));
-  info.appendChild(el('div', { class: 'settings-card-sub' }, 'Profile · ' + ms.profileCode));
+  info.appendChild(el('div', { class: 'settings-card-title' }, ms.displayName || ms.channelCode || '默认渠道'));
+  info.appendChild(el('div', { class: 'settings-card-sub' }, '模型 · ' + (ms.modelCode || ms.providerCode)));
   top.appendChild(info);
   const badges = el('div', { style: 'display:flex;gap:6px;align-items:center' });
   if (ms.active === true) {
@@ -3181,10 +3187,12 @@ function renderEditableModelCard(ms, syncState) {
         await apiRequest(SETTINGS_API + '/active', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ profileCode: ms.profileCode, modelCode: ms.modelCode })
+          body: JSON.stringify({ channelCode: ms.channelCode })
         });
+        state.currentChannel = ms.channelCode;
+        localStorage.setItem('currentChannel', ms.channelCode);
         await refreshModelSettingsUI();
-        showToast('已切换为当前模型');
+        showToast('已切换为当前模型渠道');
       } catch (e) { showToast('切换失败: ' + e.message); }
     };
     actions.appendChild(activateBtn);
@@ -3195,7 +3203,8 @@ function renderEditableModelCard(ms, syncState) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          profileCode: ms.profileCode,
+          channelCode: ms.channelCode,
+          displayName: ms.displayName,
           providerCode: ms.providerCode,
           modelCode: ms.modelCode,
           baseUrl: ms.baseUrl,
@@ -3214,8 +3223,7 @@ function renderEditableModelCard(ms, syncState) {
   deleteBtn.onclick = async function() {
     try {
       await apiRequest(
-        SETTINGS_API + '/' + encodeURIComponent(ms.profileCode || 'default')
-          + '?modelCode=' + encodeURIComponent(ms.modelCode || ''),
+        SETTINGS_API + '/' + encodeURIComponent(ms.channelCode || 'default'),
         { method: 'DELETE' });
       await refreshModelSettingsUI();
       showToast('已删除');
@@ -3237,8 +3245,9 @@ function renderEditableModelCard(ms, syncState) {
 
   const editForm = el('div', { class: 'model-edit-form', style: 'display:none' });
   const editGrid = el('div', { class: 'settings-form-grid' });
+  editGrid.appendChild(wrapEditInput('displayName', '渠道名称', ms.displayName || ms.channelCode || ''));
   editGrid.appendChild(wrapEditInput('modelCode', '模型', ms.modelCode || ''));
-  editGrid.appendChild(wrapEditInput('baseUrl', 'Base URL', ms.baseUrl || ''));
+  editGrid.appendChild(wrapEditInput('baseUrl', 'BaseUrl', ms.baseUrl || ''));
   editGrid.appendChild(wrapEditInput('apiKeyRef', 'API Key', ms.apiKeyRef || ''));
   editForm.appendChild(editGrid);
 
@@ -3255,7 +3264,8 @@ function renderEditableModelCard(ms, syncState) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          profileCode: ms.profileCode,
+          channelCode: ms.channelCode,
+          displayName: updated.displayName || ms.displayName || ms.channelCode,
           providerCode: updated.providerCode || ms.providerCode,
           modelCode: updated.modelCode,
           baseUrl: updated.baseUrl || ms.baseUrl,
@@ -3955,7 +3965,7 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
   try {
     const requestBody = { agentId: sess.agentId, message: text };
     if (state.currentWorkspace) requestBody.cwd = state.currentWorkspace;
-    if (state.currentModel) requestBody.model = state.currentModel;
+    if (state.currentChannel) requestBody.channelCode = state.currentChannel;
     if (sess.approvalMode) requestBody.approvalMode = sess.approvalMode;
     // 图片附件：随请求发送 data URL 列表，后端转 ImageBlock 供多模态模型识别
     const imgAttachments = (sess.lastRequestAttachments || []).filter(function(a) { return a.type === 'image' && a.url; });
@@ -4016,7 +4026,7 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
             if (eventType === 'meta') {
               sess.currentStage = '连接模型';
               // v28: 轨迹日志 — 记录请求参数
-              trajPush(sess, 'system', '请求: model=' + (state.currentModel || DEFAULT_MODEL) + ', agentId=' + (data.agentId || sess.agentId) + (state.currentWorkspace ? ', workspace=' + state.currentWorkspace : ''), {});
+              trajPush(sess, 'system', '请求: channel=' + (state.currentChannel || 'active') + ', agentId=' + (data.agentId || sess.agentId) + (state.currentWorkspace ? ', workspace=' + state.currentWorkspace : ''), {});
             } else if (eventType === 'chunk') {
               receivedChunks = true;
               stopWaitTimer(sess);
@@ -4164,11 +4174,11 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
               }
 
               // Auto-fallback: if LLM call failed and we haven't already fallen back, retry with default model
-              const fallbackModel = getPreferredModel();
-              if (fullContent && fullContent.indexOf('LLM 调用失败') !== -1 && retryCount < MAX_RETRIES && state.currentModel !== fallbackModel) {
-                showToast('模型 ' + state.currentModel + ' 不可用，自动切换到 ' + fallbackModel);
-                state.currentModel = fallbackModel;
-                localStorage.setItem('currentModel', fallbackModel);
+              const fallbackChannel = getPreferredChannel();
+              if (fullContent && fullContent.indexOf('LLM 调用失败') !== -1 && retryCount < MAX_RETRIES && state.currentChannel !== fallbackChannel) {
+                showToast('模型渠道 ' + state.currentChannel + ' 不可用，自动切换到 ' + fallbackChannel);
+                state.currentChannel = fallbackChannel;
+                localStorage.setItem('currentChannel', fallbackChannel);
                 await sleep(RETRY_DELAY_MS);
                 return sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime, '', retryCount + 1);
               }
@@ -4654,33 +4664,33 @@ async function refreshModelSettingsUI() {
   openSettingsPage();
 }
 
-function getAvailableModelCodes() {
-  return state.availableModels.map(m => m.modelCode).filter(Boolean);
+function getAvailableChannelCodes() {
+  return state.availableModels.map(m => m.channelCode).filter(Boolean);
 }
 
-function getPreferredModel() {
-  const availableCodes = getAvailableModelCodes();
-  return availableCodes.length > 0 ? availableCodes[0] : DEFAULT_MODEL;
+function getPreferredChannel() {
+  const availableCodes = getAvailableChannelCodes();
+  return availableCodes.length > 0 ? availableCodes[0] : DEFAULT_CHANNEL;
 }
 
-function syncCurrentModel() {
-  const saved = localStorage.getItem('currentModel');
-  const availableCodes = getAvailableModelCodes();
+function syncCurrentChannel() {
+  const saved = localStorage.getItem('currentChannel');
+  const availableCodes = getAvailableChannelCodes();
   if (availableCodes.length === 0) {
-    state.currentModel = DEFAULT_MODEL;
+    state.currentChannel = DEFAULT_CHANNEL;
   } else if (saved && availableCodes.includes(saved)) {
-    state.currentModel = saved;
+    state.currentChannel = saved;
   } else {
-    state.currentModel = getPreferredModel();
+    state.currentChannel = getPreferredChannel();
   }
-  localStorage.setItem('currentModel', state.currentModel);
+  localStorage.setItem('currentChannel', state.currentChannel);
 }
 
 async function loadAvailableModels() {
   try {
     const data = await apiRequest(MODEL_CATALOG_API);
       state.availableModels = Array.isArray(data) ? data : [];
-      syncCurrentModel();
+      syncCurrentChannel();
   } catch (e) { /* ignore */ }
 }
 

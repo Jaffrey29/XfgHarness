@@ -13,6 +13,7 @@ import cn.xiaofuge.deepseek.harness.domain.runtime.tool.model.valobj.ToolSelecti
  * @param workspaceId 工作区编码
  * @param prompt 用户提示词
  * @param profileCode 执行画像编码
+ * @param channelCode 模型渠道编码；为空时使用当前激活渠道
  * @param toolSelection 请求的工具集合
  *
  * @author 小傅哥
@@ -22,6 +23,7 @@ public record TaskSubmissionVO(
         String workspaceId,
         String prompt,
         String profileCode,
+        String channelCode,
         ToolSelectionVO toolSelection
 ) {
 }

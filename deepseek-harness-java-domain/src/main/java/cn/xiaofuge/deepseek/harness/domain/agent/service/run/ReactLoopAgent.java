@@ -72,6 +72,7 @@ public class ReactLoopAgent implements AgentRun {
     private final SystemPromptAssembler systemPromptAssembler;
     private final AgentEventListener events;
     private final CompactionEngine compactionEngine;
+    private final java.util.function.Consumer<AgentOptions> optionsChangeListener;
 
     // ── 流式输出接收器（由 SSE 请求按次设置，用于实时推送增量） ──
     private volatile java.util.function.Consumer<String> streamDeltaSink;
@@ -110,6 +111,24 @@ public class ReactLoopAgent implements AgentRun {
             AgentEventListener events,
             CompactionEngine compactionEngine
     ) {
+        this(id, options, cwd, session, inbox, llm, toolRegistry, toolExecutor,
+                systemPromptAssembler, events, compactionEngine, ignored -> {});
+    }
+
+    public ReactLoopAgent(
+            String id,
+            AgentOptions options,
+            String cwd,
+            SessionLog session,
+            Inbox inbox,
+            ILlmRuntimePort llm,
+            ToolRegistry toolRegistry,
+            ToolCallExecutor toolExecutor,
+            SystemPromptAssembler systemPromptAssembler,
+            AgentEventListener events,
+            CompactionEngine compactionEngine,
+            java.util.function.Consumer<AgentOptions> optionsChangeListener
+    ) {
         this.id = Objects.requireNonNull(id, "id");
         this.options = Objects.requireNonNull(options, "options");
         this.cwd = Objects.requireNonNull(cwd, "cwd");
@@ -121,6 +140,7 @@ public class ReactLoopAgent implements AgentRun {
         this.systemPromptAssembler = Objects.requireNonNull(systemPromptAssembler, "systemPromptAssembler");
         this.events = events != null ? events : new NoopAgentEventListener();
         this.compactionEngine = Objects.requireNonNull(compactionEngine, "compactionEngine");
+        this.optionsChangeListener = Objects.requireNonNull(optionsChangeListener, "optionsChangeListener");
         this.phase = new Phase.Idle(0);
         this.toolExecutor.setLifecycleListener(this::onToolLifecycleEvent);
     }
@@ -139,6 +159,7 @@ public class ReactLoopAgent implements AgentRun {
      */
     public void updateOptions(AgentOptions options) {
         this.options = Objects.requireNonNull(options, "options");
+        optionsChangeListener.accept(options);
     }
     @Override public SessionLog session() { return session; }
     @Override public Inbox inbox() { return inbox; }
@@ -816,7 +837,8 @@ public class ReactLoopAgent implements AgentRun {
                 session.sessionId(), // sessionId
                 null,               // purpose
                 options.baseUrl(),
-                options.apiKey()
+                options.apiKey(),
+                options.protocol()
         );
     }
 

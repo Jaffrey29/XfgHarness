@@ -12,6 +12,7 @@ public record RuntimeExecutionPlanVO(
         String prompt,
         String profileCode,
         String executionMode,
+        String resolvedChannelCode,
         String resolvedModel,
         List<String> enabledTools,
         Instant acceptedAt,

@@ -96,7 +96,7 @@
                 <tr><td rowspan="2">运行期审批</td><td><code>GET /api/harness/approvals/runtime/pending</code></td><td>轮询 Agent 挂起的实时审批</td></tr>
                 <tr><td><code>POST /api/harness/approvals/runtime/{approvalId}/resolve</code></td><td><code>ALLOW_ONCE</code>、<code>ALLOW_SESSION</code>、<code>DENY</code> 或 <code>CANCEL</code></td></tr>
                 <tr><td rowspan="4">模型配置</td><td><code>GET/POST /api/harness/settings/models</code></td><td>读取或保存模型设置</td></tr>
-                <tr><td><code>DELETE /api/harness/settings/models/{profileCode}</code></td><td>删除模型设置</td></tr>
+                <tr><td><code>DELETE /api/harness/settings/models/{channelCode}</code></td><td>删除模型渠道</td></tr>
                 <tr><td><code>POST /api/harness/settings/models/discover</code></td><td>从模型网关发现模型</td></tr>
                 <tr><td><code>GET /api/harness/runtime/models</code></td><td>读取运行时可选模型</td></tr>
                 <tr><td rowspan="6">插件</td><td><code>GET /api/harness/plugins</code></td><td>插件列表</td></tr>

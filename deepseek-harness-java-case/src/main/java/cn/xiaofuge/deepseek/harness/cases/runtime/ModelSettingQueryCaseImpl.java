@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 /**
  * 模型设置读操作编排实现。
  * <p>流程：将查询目标交给对应 Pipeline → 执行领域查询节点 → 返回 DTO 列表。</p>
- * <p>数据示例：配置列表可包含 {@code profileCode=default, providerCode=openai-compatible}；
+ * <p>数据示例：配置列表可包含 {@code channelCode=default, providerCode=openai-compatible}；
  * 可用模型仅保留 {@code enabled=true} 且 {@code modelCode} 非空的记录。</p>
  */
 @Service

@@ -19,6 +19,7 @@ public class HarnessSessionAggregate {
     private final String profileCode;
     private final Instant createdAt;
     private String executionMode;
+    private String resolvedChannelCode;
     private String resolvedModel;
     private HarnessStatusEnumVO status;
     private Instant lastActivityAt;
@@ -62,6 +63,10 @@ public class HarnessSessionAggregate {
      */
     public String getExecutionMode() { return executionMode; }
     /**
+     * 获取Resolved Channel Code。
+     */
+    public String getResolvedChannelCode() { return resolvedChannelCode; }
+    /**
      * 获取Resolved Model。
      */
     public String getResolvedModel() { return resolvedModel; }
@@ -84,8 +89,9 @@ public class HarnessSessionAggregate {
      * @param executionMode execution 模式参数。
      * @param resolvedModel resolved 模型参数。
      */
-    public void prepare(String executionMode, String resolvedModel) {
+    public void prepare(String executionMode, String resolvedChannelCode, String resolvedModel) {
         this.executionMode = Objects.requireNonNull(executionMode, "executionMode");
+        this.resolvedChannelCode = resolvedChannelCode;
         this.resolvedModel = Objects.requireNonNull(resolvedModel, "resolvedModel");
     }
 

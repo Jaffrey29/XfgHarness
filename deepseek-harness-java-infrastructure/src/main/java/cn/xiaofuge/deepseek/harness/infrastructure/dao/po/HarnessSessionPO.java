@@ -15,6 +15,7 @@ public record HarnessSessionPO(
         String workspaceId,
         String profileCode,
         String executionMode,
+        String resolvedChannelCode,
         String resolvedModel,
         String status,
         Instant createdAt

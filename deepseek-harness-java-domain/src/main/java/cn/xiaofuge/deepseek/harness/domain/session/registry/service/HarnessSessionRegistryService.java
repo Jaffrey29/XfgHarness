@@ -35,9 +35,10 @@ public class HarnessSessionRegistryService implements IHarnessSessionRegistrySer
     public SessionOpenedResultVO openQueuedSession(RuntimeExecutionPlanVO plan) {
         String sessionId = UUID.randomUUID().toString();
         HarnessSessionAggregate session = new HarnessSessionAggregate(sessionId, plan.workspaceId(), plan.profileCode(), plan.acceptedAt());
-        session.prepare(plan.executionMode(), plan.resolvedModel());
+        session.prepare(plan.executionMode(), plan.resolvedChannelCode(), plan.resolvedModel());
         session.changeStatus(plan.status());
         harnessSessionRepository.save(session);
-        return new SessionOpenedResultVO(sessionId, plan.resolvedModel(), plan.status(), plan.acceptedAt());
+        return new SessionOpenedResultVO(
+                sessionId, plan.resolvedChannelCode(), plan.resolvedModel(), plan.status(), plan.acceptedAt());
     }
 }

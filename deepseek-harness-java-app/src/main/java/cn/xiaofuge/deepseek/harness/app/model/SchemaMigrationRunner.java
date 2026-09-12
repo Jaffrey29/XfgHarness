@@ -1,5 +1,10 @@
 package cn.xiaofuge.deepseek.harness.app.model;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.util.UUID;
+import javax.sql.DataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -8,16 +13,8 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.ResultSet;
-
 /**
- * 启动时幂等执行增量列迁移。
- * <p>MySQL 8.0 不支持 {@code ALTER TABLE ... ADD COLUMN IF NOT EXISTS}，
- * 因此先查 information_schema 判断列是否存在，再决定是否执行 ALTER；H2 亦兼容该写法。
- * <p>优先级设为最高，保证在 {@link ModelSyncRunner} 等读写模型配置的 Runner 之前执行。
- * <p>示例：存量库缺少 harness_model_setting.protocol 时启动自动补列，默认 openai。
+ * 启动时幂等执行开发期 schema 补齐。
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
@@ -27,21 +24,11 @@ public class SchemaMigrationRunner implements ApplicationRunner {
 
     private final DataSource dataSource;
 
-    /**
-     * 初始化迁移执行器。
-     *
-     * @param dataSource 应用数据源。
-     */
     public SchemaMigrationRunner(DataSource dataSource) {
         this.dataSource = dataSource;
     }
 
     @Override
-    /**
-     * 启动后执行增量迁移；失败仅记录日志，不阻断启动。
-     *
-     * @param args Spring Boot 启动参数。
-     */
     public void run(ApplicationArguments args) {
         try {
             addColumnIfMissing(
@@ -50,45 +37,159 @@ public class SchemaMigrationRunner implements ApplicationRunner {
             addColumnIfMissing(
                     "harness_model_setting", "active",
                     "ALTER TABLE harness_model_setting ADD COLUMN active BOOLEAN NOT NULL DEFAULT FALSE");
-            migrateToCompositePrimaryKey();
-            backfillActiveForSingleModelProfiles();
+            addColumnIfMissing(
+                    "harness_model_setting", "channel_code",
+                    "ALTER TABLE harness_model_setting ADD COLUMN channel_code VARCHAR(64) NOT NULL DEFAULT 'default'");
+            addColumnIfMissing(
+                    "harness_model_setting", "display_name",
+                    "ALTER TABLE harness_model_setting ADD COLUMN display_name VARCHAR(128) NOT NULL DEFAULT ''");
+            addColumnIfMissing(
+                    "harness_session", "channel_code",
+                    "ALTER TABLE harness_session ADD COLUMN channel_code VARCHAR(64) NULL");
+            ensurePayloadJsonCapacity();
+            migrateLegacyProfileColumn();
+            backfillActiveModelChannel();
         } catch (Exception e) {
             log.error("Schema migration failed: {}", e.getMessage(), e);
         }
     }
 
-    /**
-     * 存量库主键为 profile_code 单列时，迁移为 (profile_code, model_code) 联合主键。
-     * <p>流程：经 DatabaseMetaData 读主键列 -> 已是联合主键则跳过 -> 否则重建主键。
-     * MySQL 与 H2 均兼容 DROP/ADD PRIMARY KEY 写法。
-     */
-    private void migrateToCompositePrimaryKey() throws Exception {
+    private void backfillActiveModelChannel() throws Exception {
         try (Connection conn = dataSource.getConnection()) {
-            if (primaryKeyColumnCount(conn) >= 2) {
+            int activeCount = countChannels(conn, "active = TRUE");
+            String activeChannel = findFirstChannel(conn, "active = TRUE AND enabled = TRUE");
+            if (activeCount == 1 && activeChannel != null) {
+                backfillDisplayName(conn);
                 return;
             }
+            if (activeChannel == null) {
+                activeChannel = findFirstChannel(conn, "enabled = TRUE");
+            }
             try (var st = conn.createStatement()) {
-                st.execute("ALTER TABLE harness_model_setting DROP PRIMARY KEY");
-                st.execute("ALTER TABLE harness_model_setting ADD PRIMARY KEY (profile_code, model_code)");
-                log.info("Schema migration: harness_model_setting primary key -> (profile_code, model_code)");
+                st.executeUpdate("UPDATE harness_model_setting SET active = FALSE");
+            }
+            int updated = 0;
+            if (activeChannel != null) {
+                try (PreparedStatement statement = conn.prepareStatement(
+                        "UPDATE harness_model_setting SET active = TRUE WHERE channel_code = ?")) {
+                    statement.setString(1, activeChannel);
+                    updated = statement.executeUpdate();
+                }
+            }
+            if (updated > 0) {
+                log.info("Schema migration: activated {} model channel(s)", updated);
+            }
+            backfillDisplayName(conn);
+        }
+    }
+
+    private void backfillDisplayName(Connection conn) throws Exception {
+        try (var st = conn.createStatement()) {
+            int updated = st.executeUpdate(
+                    "UPDATE harness_model_setting SET display_name = CONCAT('#', channel_code) WHERE display_name IS NULL OR display_name = ''");
+            if (updated > 0) {
+                log.info("Schema migration: filled display_name for {} model channel(s)", updated);
             }
         }
     }
 
+    private void ensurePayloadJsonCapacity() throws Exception {
+        try (Connection conn = dataSource.getConnection()) {
+            String typeName = findColumnType(conn, "harness_session_event_log", "payload_json");
+            if (typeName == null || isLargeTextType(typeName)) {
+                return;
+            }
+            String databaseProduct = conn.getMetaData().getDatabaseProductName().toLowerCase();
+            try (var statement = conn.createStatement()) {
+                if (databaseProduct.contains("mysql") || databaseProduct.contains("mariadb")) {
+                    statement.execute("ALTER TABLE harness_session_event_log "
+                            + "MODIFY COLUMN payload_json LONGTEXT NULL");
+                } else {
+                    statement.execute("ALTER TABLE harness_session_event_log "
+                            + "ALTER COLUMN payload_json CLOB");
+                }
+            }
+            log.info("Schema migration: expanded harness_session_event_log.payload_json to large text");
+        }
+    }
+
+    private String findColumnType(Connection conn, String table, String column) throws Exception {
+        String[][] candidates = {
+                {table, column},
+                {table.toUpperCase(), column.toUpperCase()},
+                {table.toLowerCase(), column.toLowerCase()}
+        };
+        for (String[] pair : candidates) {
+            try (ResultSet columns = conn.getMetaData().getColumns(
+                    conn.getCatalog(), null, pair[0], pair[1])) {
+                if (columns.next()) {
+                    return columns.getString("TYPE_NAME");
+                }
+            }
+        }
+        return null;
+    }
+
+    private boolean isLargeTextType(String typeName) {
+        String normalized = typeName.toUpperCase();
+        return normalized.contains("LONGTEXT") || normalized.contains("CLOB");
+    }
+
     /**
-     * 读取 harness_model_setting 的主键列数；表不存在时返回 0。
+     * 将旧版按 profile_code 保存的模型配置迁移为独立渠道。
+     * <p>开发阶段不再保留 profile_code；旧记录各自生成内部渠道编码，名称沿用原 profile_code。
      */
+    private void migrateLegacyProfileColumn() throws Exception {
+        try (Connection conn = dataSource.getConnection()) {
+            if (!columnExists(conn, "harness_model_setting", "profile_code")) {
+                return;
+            }
+
+            boolean hasPrimaryKey = primaryKeyColumnCount(conn) > 0;
+            if (hasPrimaryKey) {
+                try (var statement = conn.createStatement()) {
+                    statement.execute("ALTER TABLE harness_model_setting DROP PRIMARY KEY");
+                }
+            }
+
+            try (PreparedStatement select = conn.prepareStatement(
+                    "SELECT profile_code, model_code FROM harness_model_setting");
+                 ResultSet rows = select.executeQuery();
+                 PreparedStatement update = conn.prepareStatement(
+                         "UPDATE harness_model_setting SET channel_code = ?, display_name = ? "
+                                 + "WHERE profile_code = ? AND model_code = ?")) {
+                while (rows.next()) {
+                    String profileCode = rows.getString("profile_code");
+                    String modelCode = rows.getString("model_code");
+                    update.setString(1, "channel-" + UUID.randomUUID());
+                    update.setString(2, profileCode == null || profileCode.isBlank() ? "模型渠道" : profileCode);
+                    update.setString(3, profileCode);
+                    update.setString(4, modelCode);
+                    update.addBatch();
+                }
+                update.executeBatch();
+            }
+
+            try (var statement = conn.createStatement()) {
+                statement.execute("ALTER TABLE harness_model_setting DROP COLUMN profile_code");
+                statement.execute("ALTER TABLE harness_model_setting ADD PRIMARY KEY (channel_code)");
+            }
+            log.info("Schema migration: harness_model_setting profile_code -> channel_code");
+        }
+    }
+
     private int primaryKeyColumnCount(Connection conn) throws Exception {
         int count = 0;
-        try (ResultSet rs = conn.getMetaData().getPrimaryKeys(conn.getCatalog(), null, "harness_model_setting")) {
-            while (rs.next()) {
+        try (ResultSet keys = conn.getMetaData().getPrimaryKeys(
+                conn.getCatalog(), null, "harness_model_setting")) {
+            while (keys.next()) {
                 count++;
             }
         }
         if (count == 0) {
-            // H2 可能返回大写表名，兜底再查一次
-            try (ResultSet rs = conn.getMetaData().getPrimaryKeys(conn.getCatalog(), null, "HARNESS_MODEL_SETTING")) {
-                while (rs.next()) {
+            try (ResultSet keys = conn.getMetaData().getPrimaryKeys(
+                    conn.getCatalog(), null, "HARNESS_MODEL_SETTING")) {
+                while (keys.next()) {
                     count++;
                 }
             }
@@ -96,34 +197,23 @@ public class SchemaMigrationRunner implements ApplicationRunner {
         return count;
     }
 
-    /**
-     * 存量数据回填：每个 profile 仅一条配置且未激活时，将其置为当前生效模型。
-     * <p>MySQL 不允许在 UPDATE 的子查询中直接引用被更新的表，
-     * 因此子查询外包一层派生表规避该限制（H2 亦兼容）。
-     */
-    private void backfillActiveForSingleModelProfiles() throws Exception {
-        try (Connection conn = dataSource.getConnection();
-             var st = conn.createStatement()) {
-            int updated = st.executeUpdate(
-                    "UPDATE harness_model_setting t SET t.active = TRUE "
-                            + "WHERE t.active = FALSE AND t.profile_code IN ("
-                            + "SELECT s.profile_code FROM ("
-                            + "SELECT x.profile_code FROM harness_model_setting x "
-                            + "GROUP BY x.profile_code HAVING COUNT(*) = 1) s)");
-            if (updated > 0) {
-                log.info("Schema migration: backfilled active for {} single-model profile(s)", updated);
-            }
+    private int countChannels(Connection conn, String condition) throws Exception {
+        String sql = "SELECT COUNT(*) FROM harness_model_setting WHERE " + condition;
+        try (PreparedStatement statement = conn.prepareStatement(sql);
+             ResultSet rs = statement.executeQuery()) {
+            return rs.next() ? rs.getInt(1) : 0;
         }
     }
 
-    /**
-     * 判断列是否存在，缺失时执行 ALTER。
-     * <p>流程：经 DatabaseMetaData 读列元数据（大小写各查一次，兼容 MySQL/H2）-> 存在则跳过 -> 否则执行迁移语句并记录日志。
-     *
-     * @param table 表名。
-     * @param column 列名。
-     * @param ddl 列缺失时执行的 DDL。
-     */
+    private String findFirstChannel(Connection conn, String condition) throws Exception {
+        String sql = "SELECT channel_code FROM harness_model_setting WHERE " + condition
+                + " ORDER BY updated_at ASC LIMIT 1";
+        try (PreparedStatement statement = conn.prepareStatement(sql);
+             ResultSet rs = statement.executeQuery()) {
+            return rs.next() ? rs.getString("channel_code") : null;
+        }
+    }
+
     private void addColumnIfMissing(String table, String column, String ddl) throws Exception {
         try (Connection conn = dataSource.getConnection()) {
             if (columnExists(conn, table, column)) {
@@ -136,9 +226,6 @@ public class SchemaMigrationRunner implements ApplicationRunner {
         }
     }
 
-    /**
-     * 经 DatabaseMetaData 判断列是否存在；MySQL 用小写标识符、H2 用大写，各查一次。
-     */
     private boolean columnExists(Connection conn, String table, String column) throws Exception {
         String[][] candidates = {
                 {table, column},

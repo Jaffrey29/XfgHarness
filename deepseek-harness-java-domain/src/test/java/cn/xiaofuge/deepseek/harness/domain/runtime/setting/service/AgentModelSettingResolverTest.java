@@ -14,15 +14,16 @@ import org.junit.jupiter.api.Test;
 class AgentModelSettingResolverTest {
 
     @Test
-    void usesDatabaseDefaultWhenRequestHasNoModel() {
+    void usesActiveChannelWhenRequestHasNoChannel() {
         var settings = new SettingsService(Map.of(
                 "deepseek", setting("deepseek", "deepseek", "glm-5.3-flash",
-                        "http://db.example/v1", "db-key")
+                        "http://db.example/v1", "db-key", true)
         ));
-        var resolver = new AgentModelSettingResolver(settings, "file-model");
+        var resolver = resolver(settings);
 
-        AgentOptions options = resolver.resolve(null, null, null);
+        AgentOptions options = resolver.resolve(null, null);
 
+        assertEquals("deepseek", options.channelCode());
         assertEquals("deepseek", options.provider());
         assertEquals("glm-5.3-flash", options.model());
         assertEquals("http://db.example/v1", options.baseUrl());
@@ -30,17 +31,18 @@ class AgentModelSettingResolverTest {
     }
 
     @Test
-    void usesMatchingDatabaseSettingForRequestedModel() {
+    void usesRequestedChannelWhenProvided() {
         var settings = new SettingsService(Map.of(
                 "deepseek", setting("deepseek", "deepseek", "glm-5.3-flash",
-                        "http://default.example/v1", "default-key"),
+                        "http://default.example/v1", "default-key", true),
                 "qwen", setting("qwen", "qwen", "qwen-max",
-                        "http://qwen.example/v1", "qwen-key")
+                        "http://qwen.example/v1", "qwen-key", false)
         ));
-        var resolver = new AgentModelSettingResolver(settings, "file-model");
+        var resolver = resolver(settings);
 
-        AgentOptions options = resolver.resolve(null, "qwen-max", null);
+        AgentOptions options = resolver.resolve("qwen", null);
 
+        assertEquals("qwen", options.channelCode());
         assertEquals("qwen", options.provider());
         assertEquals("qwen-max", options.model());
         assertEquals("http://qwen.example/v1", options.baseUrl());
@@ -49,33 +51,39 @@ class AgentModelSettingResolverTest {
 
     @Test
     void fallsBackToFileModelWhenDatabaseIsEmpty() {
-        var resolver = new AgentModelSettingResolver(new SettingsService(Map.of()), "file-model");
+        var resolver = resolver(new SettingsService(Map.of()));
 
-        AgentOptions options = resolver.resolve(null, null, null);
+        AgentOptions options = resolver.resolve(null, null);
 
+        assertEquals("default", options.channelCode());
         assertEquals("deepseek", options.provider());
         assertEquals("file-model", options.model());
         assertEquals(8192, options.maxTokens());
     }
 
     @Test
-    void requestProviderOverridesDatabaseProvider() {
+    void requestedChannelFallsBackWhenMissing() {
         var settings = new SettingsService(Map.of(
                 "deepseek", setting("deepseek", "deepseek", "glm-5.3-flash",
-                        "http://db.example/v1", "db-key")
+                        "http://db.example/v1", "db-key", true)
         ));
-        var resolver = new AgentModelSettingResolver(settings, "file-model");
+        var resolver = resolver(settings);
 
-        AgentOptions options = resolver.resolve("openai", null, null);
+        AgentOptions options = resolver.resolve("missing", null);
 
-        assertEquals("openai", options.provider());
-        assertEquals("glm-5.3-flash", options.model());
+        assertEquals("default", options.channelCode());
+        assertEquals("deepseek", options.provider());
+        assertEquals("file-model", options.model());
     }
 
-    private ModelSettingVO setting(String profileCode, String providerCode, String modelCode,
-                                   String baseUrl, String apiKeyRef) {
-        return new ModelSettingVO(profileCode, providerCode, modelCode, baseUrl, apiKeyRef,
-                null, true, Instant.parse("2026-01-01T00:00:00Z"));
+    private AgentModelSettingResolver resolver(IModelSettingQueryService settings) {
+        return new AgentModelSettingResolver(settings, "default", "file-model", "http://file.example/v1", "file-key");
+    }
+
+    private ModelSettingVO setting(String channelCode, String providerCode, String modelCode,
+                                   String baseUrl, String apiKeyRef, boolean active) {
+        return new ModelSettingVO(channelCode, channelCode, providerCode, modelCode, baseUrl, apiKeyRef,
+                "openai", true, active, Instant.parse("2026-01-01T00:00:00Z"));
     }
 
     private static final class SettingsService implements IModelSettingQueryService {
@@ -91,8 +99,13 @@ class AgentModelSettingResolverTest {
         }
 
         @Override
-        public Optional<ModelSettingVO> findByProfileCode(String profileCode) {
-            return Optional.ofNullable(settings.get(profileCode));
+        public Optional<ModelSettingVO> findByChannelCode(String channelCode) {
+            return Optional.ofNullable(settings.get(channelCode));
+        }
+
+        @Override
+        public Optional<ModelSettingVO> findActive() {
+            return settings.values().stream().filter(ModelSettingVO::active).findFirst();
         }
     }
 }

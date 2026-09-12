@@ -22,7 +22,7 @@ public class SubmitTaskDynamicContext {
 
     private TaskSubmissionVO submission;
     private ExecutionProfileVO executionProfile;
-    private ModelProviderProfileVO modelProfile;
+    private ModelProviderProfileVO modelChannel;
     private List<String> enabledTools;
     private PermissionAssessmentVO permissionAssessment;
     private ApprovalDecisionVO approvalDecision;
@@ -49,13 +49,13 @@ public class SubmitTaskDynamicContext {
     public void setExecutionProfile(ExecutionProfileVO executionProfile) { this.executionProfile = executionProfile; }
 
     /**
-     * 获取Model Profile。
+     * 获取Model Channel。
      */
-    public ModelProviderProfileVO getModelProfile() { return modelProfile; }
+    public ModelProviderProfileVO getModelChannel() { return modelChannel; }
     /**
-     * 设置Model Profile。
+     * 设置Model Channel。
      */
-    public void setModelProfile(ModelProviderProfileVO modelProfile) { this.modelProfile = modelProfile; }
+    public void setModelChannel(ModelProviderProfileVO modelChannel) { this.modelChannel = modelChannel; }
 
     /**
      * 获取Enabled Tools。

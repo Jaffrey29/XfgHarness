@@ -19,8 +19,8 @@ import org.springframework.stereotype.Service;
 /**
  * 模型设置 Pipeline 工厂。
  * <p>流程：按写/读目标组装四个独立 Pipeline，分别路由到保存、删除、配置列表和可用模型节点。</p>
- * <p>数据示例：保存传入 {@code profileCode=default} 返回配置 DTO；
- * 删除传入 {@code profileCode=default} 无返回；另两个查询无入参并返回列表。</p>
+ * <p>数据示例：保存传入 {@code channelCode=default} 返回配置 DTO；
+ * 删除传入 {@code channelCode=default} 无返回；另两个查询无入参并返回列表。</p>
  */
 @Service
 public class RuntimePipelineFactory

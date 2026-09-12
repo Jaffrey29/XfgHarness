@@ -1,13 +1,13 @@
-# dsh-java 官网
+# DSH Java 官网
 
-dsh-java 是 `deepseek-harness-java` 的官网静态站点，用于介绍 Java Agent Harness 运行时基座、实现机制、两个实际使用案例和最简便部署方式。站点使用原生 HTML/CSS/JS，不依赖前端构建链。作者：小傅哥。
+DSH Java 是 `deepseek-harness-java` 的官网静态站点，用于介绍 Java Agent Harness 运行时基座、实现机制、两个实际使用案例和最简便部署方式。站点使用原生 HTML/CSS/JS，不依赖前端构建链。作者：小傅哥。
 
 ## 目录结构
 
 ```text
 dsh-java/
 ├── index.html              # 首页：能力、机制、案例、部署与社群
-├── docs.html               # 体验教程：启动、控制台、插件与案例接入
+├── docs.html               # 使用教程：启动、控制台、插件与案例接入
 ├── assets/
 │   ├── css/style.css       # 响应式视觉系统
 │   ├── js/main.js          # 导航交互

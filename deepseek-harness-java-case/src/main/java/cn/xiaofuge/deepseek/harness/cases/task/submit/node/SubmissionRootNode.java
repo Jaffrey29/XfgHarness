@@ -54,6 +54,7 @@ public class SubmissionRootNode extends AbstractSubmitTaskNode {
                 request.workspaceId(),
                 request.prompt(),
                 request.profileCode(),
+                request.channelCode(),
                 new ToolSelectionVO(request.requestedTools())
         );
         taskSubmissionPolicyService.validate(submission);

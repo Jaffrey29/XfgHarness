@@ -1,6 +1,7 @@
 package cn.xiaofuge.deepseek.harness.domain.agent.service.run.tool;
 
 import cn.xiaofuge.deepseek.harness.domain.agent.contract.outbound.UserQuestionGateway;
+import cn.xiaofuge.deepseek.harness.domain.agent.model.entity.AgentOptions;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.ask.AskUserTool;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.subagent.SubagentRegistry;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.subagent.SubagentTool;
@@ -46,6 +47,7 @@ import cn.xiaofuge.deepseek.harness.domain.plugin.IPluginRuntimeService;
 import cn.xiaofuge.deepseek.harness.domain.plugin.registry.adapter.repository.IHarnessPluginRepository;
 
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 public final class AgentToolCatalog {
 
@@ -160,7 +162,8 @@ public final class AgentToolCatalog {
 
         if (subagentRegistry != null && !subagentRegistry.listProviderNames().isEmpty()) {
             String providerName = subagentRegistry.listProviderNames().get(0);
-            localRegistry.register(new SubagentTool(subagentRegistry, providerName));
+            localRegistry.register(new SubagentTool(
+                    subagentRegistry, providerName, "subagent", context.optionsSupplier()));
         }
 
         return new CompositeToolRegistry(localRegistry, sharedRegistry);
@@ -171,6 +174,17 @@ public final class AgentToolCatalog {
             String sessionId,
             String cwd,
             SessionLog session,
-            UserQuestionGateway userQuestions
-    ) {}
+            UserQuestionGateway userQuestions,
+            Supplier<AgentOptions> optionsSupplier
+    ) {
+        public AgentToolContext(
+                String agentId,
+                String sessionId,
+                String cwd,
+                SessionLog session,
+                UserQuestionGateway userQuestions
+        ) {
+            this(agentId, sessionId, cwd, session, userQuestions, () -> null);
+        }
+    }
 }

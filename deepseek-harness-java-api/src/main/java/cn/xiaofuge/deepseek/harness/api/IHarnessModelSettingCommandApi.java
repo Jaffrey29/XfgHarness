@@ -12,13 +12,11 @@ public interface IHarnessModelSettingCommandApi {
     /**
      * 删除模型设置。
      *
-     * @param profileCode 画像编码
-     * @param modelCode 模型编码（可空；为空删除该 profile 全部配置）
      */
-    Response<Void> delete(String profileCode, String modelCode);
+    Response<Void> delete(String channelCode);
 
     /**
-     * 将某 profile 下的指定模型切换为当前生效模型。
+     * 将指定模型渠道切换为当前生效渠道。
      */
     Response<ModelSettingResponseDTO> activate(ActivateModelSettingRequestDTO request);
 }

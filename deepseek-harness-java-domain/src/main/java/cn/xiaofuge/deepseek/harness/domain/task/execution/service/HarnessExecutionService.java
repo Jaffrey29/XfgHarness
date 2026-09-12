@@ -19,6 +19,8 @@ import cn.xiaofuge.deepseek.harness.domain.shared.model.valobj.HarnessStatusEnum
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 /**
@@ -37,6 +39,10 @@ public class HarnessExecutionService implements IHarnessExecutionService {
     private final ISessionEventRepository sessionEventRepository;
     private final ISessionLogService sessionLogService;
     private final IModelSettingQueryService modelSettingQueryService;
+    private final String fallbackChannel;
+    private final String fallbackModel;
+    private final String fallbackBaseUrl;
+    private final String fallbackApiKey;
 
     /**
      * 初始化任务执行服务。
@@ -47,13 +53,21 @@ public class HarnessExecutionService implements IHarnessExecutionService {
             IHarnessSessionRepository harnessSessionRepository,
             ISessionEventRepository sessionEventRepository,
             ISessionLogService sessionLogService,
-            IModelSettingQueryService modelSettingQueryService
+            IModelSettingQueryService modelSettingQueryService,
+            @Value("${harness.llm.deepseek.default-channel:${LLM_DEFAULT_CHANNEL:default}}") String fallbackChannel,
+            @Value("${harness.llm.deepseek.default-model:${LLM_DEFAULT_MODEL:${DEEPSEEK_DEFAULT_MODEL:glm-5.3-flash}}}") String fallbackModel,
+            @Value("${harness.llm.deepseek.base-url:${LLM_BASE_URL:${DEEPSEEK_BASE_URL:http://127.0.0.1:8777/v1}}}") String fallbackBaseUrl,
+            @Value("${harness.llm.deepseek.api-key:${LLM_API_KEY:${DEEPSEEK_API_KEY:}}}") String fallbackApiKey
     ) {
         this.modelExecutionPort = modelExecutionPort;
         this.harnessSessionRepository = harnessSessionRepository;
         this.sessionEventRepository = sessionEventRepository;
         this.sessionLogService = sessionLogService;
         this.modelSettingQueryService = modelSettingQueryService;
+        this.fallbackChannel = fallbackChannel;
+        this.fallbackModel = fallbackModel;
+        this.fallbackBaseUrl = fallbackBaseUrl;
+        this.fallbackApiKey = fallbackApiKey;
     }
     /**
      * 执行Session。
@@ -107,10 +121,44 @@ public class HarnessExecutionService implements IHarnessExecutionService {
     }
 
     private GenerateOptions buildOptions(HarnessSessionAggregate session, String prompt) {
-        var setting = modelSettingQueryService.findByProfileCode(session.getProfileCode())
-                .filter(ModelSettingVO::enabled)
-                .orElseThrow(() -> new IllegalStateException(
-                        "model setting is missing or disabled for profile: " + session.getProfileCode()));
+        Optional<ModelSettingVO> setting = findByChannel(session.getResolvedChannelCode());
+        if (setting.isPresent()) {
+            if (!setting.get().enabled()) {
+                throw new IllegalStateException(
+                        "model setting is missing or disabled: " + session.getResolvedChannelCode());
+            }
+            return buildOptions(setting.get(), session, prompt);
+        }
+        if (hasText(session.getResolvedChannelCode())
+                && !fallbackChannel.equals(session.getResolvedChannelCode())) {
+            throw new IllegalStateException(
+                    "model setting is missing or disabled: " + session.getResolvedChannelCode());
+        }
+        var message = Message.createUser(
+                List.of(new TextBlock(prompt)),
+                new MessageSource.UserSource()
+        );
+        return new GenerateOptions(
+                "deepseek",
+                fallbackModel,
+                null,
+                List.of(message),
+                null,
+                null,
+                null,
+                null,
+                null,
+                session.getSessionId(),
+                null,
+                fallbackBaseUrl,
+                fallbackApiKey,
+                "openai"
+        );
+    }
+
+    private GenerateOptions buildOptions(ModelSettingVO setting,
+                                         HarnessSessionAggregate session,
+                                         String prompt) {
         var message = Message.createUser(
                 List.of(new TextBlock(prompt)),
                 new MessageSource.UserSource()
@@ -131,6 +179,16 @@ public class HarnessExecutionService implements IHarnessExecutionService {
                 setting.apiKeyRef(),
                 setting.protocol()
         );
+    }
+
+    private Optional<ModelSettingVO> findByChannel(String channelCode) {
+        return hasText(channelCode)
+                ? modelSettingQueryService.findByChannelCode(channelCode)
+                : modelSettingQueryService.findActive();
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     /**

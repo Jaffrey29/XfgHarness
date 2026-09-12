@@ -157,7 +157,8 @@ public class BasicCompactionEngine implements CompactionEngine {
                 session.sessionId(),
                 "compaction",
                 options.baseUrl(),
-                options.apiKey()
+                options.apiKey(),
+                options.protocol()
         );
 
         // 调用大模型并收集摘要

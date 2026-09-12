@@ -1,5 +1,6 @@
 package cn.xiaofuge.deepseek.harness.domain.agent.service.subagent;
 
+import cn.xiaofuge.deepseek.harness.domain.agent.model.entity.AgentOptions;
 import cn.xiaofuge.deepseek.harness.domain.model.valobj.ContentBlock;
 import cn.xiaofuge.deepseek.harness.domain.model.valobj.TextBlock;
 import cn.xiaofuge.deepseek.harness.domain.model.entity.ToolDefinition;
@@ -9,6 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 
 /**
  * SubagentTool 表示子智能体调用的领域工具定义。
@@ -20,6 +22,7 @@ public class SubagentTool implements ToolDefinition {
     private final String toolName;
     private final SubagentRegistry registry;
     private final String providerName;
+    private final Supplier<AgentOptions> parentOptionsSupplier;
 
     /**
      * 初始化子智能体工具。
@@ -41,9 +44,22 @@ public class SubagentTool implements ToolDefinition {
             String providerName,
             String toolName
     ) {
+        this(registry, providerName, toolName, (Supplier<AgentOptions>) null);
+    }
+
+    /**
+     * 初始化从父 Agent 动态读取模型渠道的子智能体工具。
+     */
+    public SubagentTool(
+            SubagentRegistry registry,
+            String providerName,
+            String toolName,
+            Supplier<AgentOptions> parentOptionsSupplier
+    ) {
         this.registry = registry;
         this.providerName = providerName;
         this.toolName = toolName;
+        this.parentOptionsSupplier = parentOptionsSupplier;
     }
 
     @Override
@@ -137,7 +153,7 @@ public class SubagentTool implements ToolDefinition {
 
         SubagentProvider.SubagentStartRequest request = new SubagentProvider.SubagentStartRequest(
                 prompt,
-                null,           // options (use provider defaults)
+                parentOptionsSupplier == null ? null : parentOptionsSupplier.get(),
                 null,           // parentSessionId
                 null,           // parentCwd
                 0,              // delegationDepth (top-level)

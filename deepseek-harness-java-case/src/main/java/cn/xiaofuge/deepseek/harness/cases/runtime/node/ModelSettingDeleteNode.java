@@ -12,9 +12,7 @@ import org.springframework.stereotype.Service;
 
 /**
  * 模型设置删除节点。
- * <p>流程：校验 profileCode 非空 → 按 modelCode 是否为空分派「删除单个模型」或「删除该 profile 全部配置」→ Pipeline 终止。</p>
- * <p>数据示例：传入 {@code profileCode=default, modelCode=null} 删除该 profile 全部配置；
- * 传入 {@code profileCode=default, modelCode=glm-5.3-flash} 仅删除该模型。</p>
+ * <p>流程：校验 channelCode 非空 → 删除指定模型渠道 → Pipeline 终止。</p>
  */
 @Service
 public class ModelSettingDeleteNode extends AbstractStrategyRouter<DeleteModelSettingRequestDTO, NoContext, Void> {
@@ -33,14 +31,9 @@ public class ModelSettingDeleteNode extends AbstractStrategyRouter<DeleteModelSe
     @Override
     protected Void doApply(DeleteModelSettingRequestDTO command, NoContext context) {
         CaseGuard.requireNonNull(command, "delete model setting command must not be null");
-        CaseGuard.requireText(command.profileCode(), "profileCode must not be blank");
-        if (command.modelCode() == null || command.modelCode().isBlank()) {
-            modelSettingCommandService.deleteByProfileCode(command.profileCode());
-            log.info("[Runtime] 模型配置删除完成，profileCode={}", command.profileCode());
-        } else {
-            modelSettingCommandService.deleteByProfileAndModel(command.profileCode(), command.modelCode());
-            log.info("[Runtime] 模型配置删除完成，profileCode={} modelCode={}", command.profileCode(), command.modelCode());
-        }
+        CaseGuard.requireText(command.channelCode(), "channelCode must not be blank");
+        modelSettingCommandService.deleteByChannelCode(command.channelCode());
+        log.info("[Runtime] 模型渠道删除完成，channelCode={}", command.channelCode());
         return null;
     }
 

@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
 /**
  * 模型配置列表节点。
  * <p>流程：接收空请求 → 调用领域查询服务读取全部配置 → 转换为配置 DTO 列表。</p>
- * <p>数据示例：无入参；返回 {@code [{profileCode: "default", baseUrl: "http://127.0.0.1:8777/v1", enabled: true}]}。</p>
+ * <p>数据示例：无入参；返回 {@code [{channelCode: "default", baseUrl: "http://127.0.0.1:8777/v1", enabled: true}]}。</p>
  */
 @Service
 public class ModelSettingListSettingsNode
@@ -51,7 +51,7 @@ public class ModelSettingListSettingsNode
      */
     private ModelSettingResponseDTO toResponse(ModelSettingVO setting) {
         return new ModelSettingResponseDTO(
-                setting.profileCode(), setting.providerCode(), setting.modelCode(),
+                setting.channelCode(), setting.displayName(), setting.providerCode(), setting.modelCode(),
                 setting.baseUrl(), setting.apiKeyRef(), setting.protocol(),
                 setting.enabled(), setting.active(), setting.updatedAt()
         );

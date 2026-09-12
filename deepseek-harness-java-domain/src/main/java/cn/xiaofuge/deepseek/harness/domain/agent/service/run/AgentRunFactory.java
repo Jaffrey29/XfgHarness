@@ -27,6 +27,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class AgentRunFactory implements AgentRunLifecycle {
 
@@ -115,8 +116,9 @@ public class AgentRunFactory implements AgentRunLifecycle {
     private AgentRun wireAgent(String agentId, AgentOptions options, String cwd, SessionLog session) {
         Inbox inbox = new Inbox(session, LoggingInboxNotifications.INSTANCE);
         String sessionId = session.sessionId();
+        AtomicReference<AgentOptions> optionsReference = new AtomicReference<>(options);
         ToolRegistry toolRegistry = toolCatalog.createRegistry(
-                new AgentToolContext(agentId, sessionId, cwd, session, userQuestions),
+                new AgentToolContext(agentId, sessionId, cwd, session, userQuestions, optionsReference::get),
                 sharedToolRegistry
         );
 
@@ -155,7 +157,8 @@ public class AgentRunFactory implements AgentRunLifecycle {
                 executor,
                 systemPromptAssembler,
                 agentEventListener,
-                compactionEngine
+                compactionEngine,
+                optionsReference::set
         );
         liveAgents.put(agentId, agent);
         return agent;

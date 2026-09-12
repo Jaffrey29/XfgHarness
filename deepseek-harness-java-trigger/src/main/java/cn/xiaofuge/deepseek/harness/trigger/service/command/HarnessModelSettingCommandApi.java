@@ -20,16 +20,16 @@ public class HarnessModelSettingCommandApi implements IHarnessModelSettingComman
     public Response<ModelSettingResponseDTO> save(SaveModelSettingRequestDTO request) {
         return execute(() -> {
             var setting = modelSettingCommandCase.save(new SaveModelSettingRequestDTO(
-                    request.profileCode(), request.providerCode(), request.modelCode(),
+                    request.channelCode(), request.displayName(), request.providerCode(), request.modelCode(),
                     request.baseUrl(), request.apiKeyRef(), request.protocol(), request.enabled()
             ));
             return toResponse(setting);
         });
     }
 
-    public Response<Void> delete(String profileCode, String modelCode) {
+    public Response<Void> delete(String channelCode) {
         return execute(() -> {
-            modelSettingCommandCase.delete(new DeleteModelSettingRequestDTO(profileCode, modelCode));
+            modelSettingCommandCase.delete(new DeleteModelSettingRequestDTO(channelCode));
             return null;
         });
     }
@@ -43,7 +43,7 @@ public class HarnessModelSettingCommandApi implements IHarnessModelSettingComman
 
     private ModelSettingResponseDTO toResponse(ModelSettingResponseDTO setting) {
         return new ModelSettingResponseDTO(
-                setting.profileCode(), setting.providerCode(), setting.modelCode(),
+                setting.channelCode(), setting.displayName(), setting.providerCode(), setting.modelCode(),
                 setting.baseUrl(), setting.apiKeyRef(), setting.protocol(),
                 setting.enabled(), setting.active(), setting.updatedAt()
         );

@@ -18,7 +18,7 @@
 
 ## 章节导读
 
-本章讲两个主题：**LLM 调用抽象**（`llm`）+ **运行时配置**（`runtime` 的 4 个子域）。两者紧密相关：`runtime.setting` 保存用户的模型选择 → `runtime.model` 按 profile 路由 → `llm.ILlmRuntimePort` 真正发请求。
+本章讲两个主题：**LLM 调用抽象**（`llm`）+ **运行时配置**（`runtime` 的 4 个子域）。两者紧密相关：`runtime.setting` 保存模型渠道并维护全局 active 渠道 → `runtime.model` 按可选 `channelCode` 解析 → `llm.ILlmRuntimePort` 真正发请求。
 
 ```
                   +---------------------+
@@ -156,7 +156,7 @@ BlockAssembler.assemble(chunks) ←─────────┘
 
 ### ① 一句话作用
 
-按当前生效 profile + 用户设置，挑出"用哪个模型 + 用哪个 baseUrl + API key 怎么来"，封装成 `ModelProviderProfileVO` 给 LLM 调用使用。
+按请求指定的 `channelCode` 或全局 active 渠道，挑出“用哪个模型 + 用哪个 baseUrl + API key 怎么来”，封装成 `ModelProviderProfileVO` 给 LLM 调用使用。`headless` / `web` 只决定执行工具和审批策略，不参与模型渠道路由。
 
 ### ② 关键源码位置
 
@@ -246,7 +246,7 @@ public ModelProviderProfileVO route(AgentOptions opts) {
 
 ### ① 一句话作用
 
-按用户/系统选的 profile（headless / web）决定 Agent 的可用工具、System Prompt 模板、取消策略、模型路由策略。
+按用户/系统选的执行 profile（headless / web）决定 Agent 的可用工具、System Prompt 模板和审批/取消策略；模型统一从全局 active 渠道解析，也可以在请求中显式指定 `channelCode`。
 
 ### ② 关键源码位置
 

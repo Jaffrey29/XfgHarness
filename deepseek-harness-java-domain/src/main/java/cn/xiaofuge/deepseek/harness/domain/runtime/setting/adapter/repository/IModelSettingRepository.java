@@ -40,52 +40,42 @@ public interface IModelSettingRepository {
     List<ModelSettingEntity> queryAll();
 
     /**
-     * 按画像编码查询模型设置。
+     * 按渠道编码查询模型设置。
      * <p>
      * 执行流程：
-     * 1. 根据 profileCode 定位记录；
+     * 1. 根据 channelCode 定位记录；
      * 2. 转换为领域实体；
      * 3. 返回可选结果。
      */
-    Optional<ModelSettingEntity> findByProfileCode(String profileCode);
+    Optional<ModelSettingEntity> findByChannelCode(String channelCode);
 
     /**
-     * 按画像编码与模型编码查询模型设置。
+     * 查询当前激活的模型渠道。
      * <p>
      * 执行流程：
-     * 1. 根据 profileCode + modelCode 定位记录；
+     * 1. 根据 active 标记定位记录；
      * 2. 转换为领域实体；
      * 3. 返回可选结果。
      */
-    Optional<ModelSettingEntity> findByProfileAndModel(String profileCode, String modelCode);
+    Optional<ModelSettingEntity> findActive();
 
     /**
-     * 将指定模型置为该 profile 当前生效项（同 profile 其他行取消激活）。
+     * 将指定渠道置为当前生效项（其他渠道取消激活）。
      * <p>
      * 执行流程：
-     * 1. 清除该 profile 下所有行的激活标记；
+     * 1. 清除全部行的激活标记；
      * 2. 激活目标行；
      * 3. 返回是否存在目标行。
      */
-    boolean activate(String profileCode, String modelCode);
+    boolean activate(String channelCode);
 
     /**
-     * 删除某 profile 下的指定模型。
+     * 删除指定模型渠道。
      * <p>
      * 执行流程：
-     * 1. 读取 profileCode + modelCode；
+     * 1. 读取 channelCode；
      * 2. 删除持久化记录；
      * 3. 返回删除结果。
      */
-    void deleteByProfileAndModel(String profileCode, String modelCode);
-
-    /**
-     * 按画像编码删除模型设置。
-     * <p>
-     * 执行流程：
-     * 1. 读取 profileCode；
-     * 2. 删除持久化记录；
-     * 3. 返回删除结果。
-     */
-    void deleteByProfileCode(String profileCode);
+    void deleteByChannelCode(String channelCode);
 }

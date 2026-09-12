@@ -30,12 +30,17 @@ public interface IModelSettingQueryService {
     List<ModelSettingVO> queryAll();
 
     /**
-     * 按画像编码查询模型设置。
+     * 按渠道编码查询模型设置。
      * <p>
      * 执行流程：
-     * 1. 读取 profileCode；
+     * 1. 读取 channelCode；
      * 2. 定位对应设置；
      * 3. 返回可选值对象。
      */
-    Optional<ModelSettingVO> findByProfileCode(String profileCode);
+    Optional<ModelSettingVO> findByChannelCode(String channelCode);
+
+    /**
+     * 查询当前激活的模型渠道。
+     */
+    Optional<ModelSettingVO> findActive();
 }

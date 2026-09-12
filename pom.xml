@@ -20,7 +20,7 @@
         <module>deepseek-harness-java-domain</module>
         <module>deepseek-harness-java-infrastructure</module>
         <module>plugins/sample-tools-plugin</module>
-        <module>plugins/plugin-archetype</module>
+        <module>plugins/deepseek-harness-plugin-archetype</module>
     </modules>
 
     <properties>

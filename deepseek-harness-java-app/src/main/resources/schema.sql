@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS harness_session (
     profile_code VARCHAR(64) NOT NULL,
     execution_mode VARCHAR(32) NOT NULL,
     resolved_model VARCHAR(128) NOT NULL,
+    channel_code VARCHAR(64) NULL,
     status VARCHAR(32) NOT NULL,
     created_at TIMESTAMP(3) NOT NULL
 );
@@ -14,8 +15,7 @@ CREATE TABLE IF NOT EXISTS harness_task (
     prompt TEXT NOT NULL,
     enabled_tools_json TEXT NOT NULL,
     status VARCHAR(32) NOT NULL,
-    submitted_at TIMESTAMP(3) NOT NULL,
-    CONSTRAINT fk_harness_task_session FOREIGN KEY (session_id) REFERENCES harness_session(session_id)
+    submitted_at TIMESTAMP(3) NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS harness_session_event (
@@ -24,8 +24,7 @@ CREATE TABLE IF NOT EXISTS harness_session_event (
     event_type VARCHAR(128) NOT NULL,
     payload TEXT NOT NULL,
     occurred_at TIMESTAMP(3) NOT NULL,
-    KEY idx_harness_session_event_session (session_id),
-    CONSTRAINT fk_harness_session_event_session FOREIGN KEY (session_id) REFERENCES harness_session(session_id)
+    KEY idx_harness_session_event_session (session_id)
 );
 
 CREATE TABLE IF NOT EXISTS harness_plugin_installation (
@@ -48,8 +47,7 @@ CREATE TABLE IF NOT EXISTS harness_plugin_runtime_binding (
     runtime_command VARCHAR(1024) NULL,
     bridge_ready TINYINT(1) NOT NULL,
     message TEXT NOT NULL,
-    checked_at TIMESTAMP(3) NOT NULL,
-    CONSTRAINT fk_harness_plugin_runtime_binding_plugin FOREIGN KEY (plugin_id) REFERENCES harness_plugin_installation(plugin_id)
+    checked_at TIMESTAMP(3) NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS harness_plugin_config (
@@ -58,12 +56,12 @@ CREATE TABLE IF NOT EXISTS harness_plugin_config (
     config_value TEXT NULL,
     config_layer VARCHAR(32) NOT NULL,
     updated_at TIMESTAMP(3) NOT NULL,
-    PRIMARY KEY (plugin_id, config_key, config_layer),
-    CONSTRAINT fk_harness_plugin_config_plugin FOREIGN KEY (plugin_id) REFERENCES harness_plugin_installation(plugin_id)
+    PRIMARY KEY (plugin_id, config_key, config_layer)
 );
 
 CREATE TABLE IF NOT EXISTS harness_model_setting (
-    profile_code VARCHAR(64) NOT NULL,
+    channel_code VARCHAR(64) NOT NULL,
+    display_name VARCHAR(128) NOT NULL,
     provider_code VARCHAR(64) NOT NULL,
     model_code VARCHAR(128) NOT NULL,
     base_url VARCHAR(255) NULL,
@@ -72,11 +70,11 @@ CREATE TABLE IF NOT EXISTS harness_model_setting (
     enabled BOOLEAN NOT NULL,
     active BOOLEAN NOT NULL DEFAULT FALSE,
     updated_at TIMESTAMP(3) NOT NULL,
-    PRIMARY KEY (profile_code, model_code)
+    PRIMARY KEY (channel_code)
 );
 
--- 渠道协议列 protocol 已由 SchemaMigrationRunner 在启动时幂等补齐（查 information_schema 后再 ALTER），
--- 兼容 MySQL 与 H2 存量库升级；新建库时上方 CREATE TABLE 已包含该列。
+-- 开发阶段模型渠道表以 channel_code 为主键；channel_code 与 harness_session.channel_code
+-- 均由 SchemaMigrationRunner 在启动时幂等补齐。
 
 CREATE TABLE IF NOT EXISTS harness_goal_state (
     session_id VARCHAR(64) PRIMARY KEY,
@@ -112,7 +110,7 @@ CREATE TABLE IF NOT EXISTS harness_session_event_log (
     seq BIGINT NOT NULL,
     event_type VARCHAR(64) NOT NULL,
     event_time TIMESTAMP(3) NOT NULL,
-    payload_json TEXT NULL,
+    payload_json LONGTEXT NULL,
     surface_op VARCHAR(16) NULL,
     source_event_seqs VARCHAR(512) NULL,
     UNIQUE (session_id, seq),
@@ -134,8 +132,7 @@ CREATE TABLE IF NOT EXISTS harness_tool_catalog (
 CREATE TABLE IF NOT EXISTS harness_tool_profile_binding (
     profile_code VARCHAR(64) NOT NULL,
     tool_code VARCHAR(128) NOT NULL,
-    PRIMARY KEY (profile_code, tool_code),
-    CONSTRAINT fk_harness_tool_binding_tool FOREIGN KEY (tool_code) REFERENCES harness_tool_catalog(tool_code)
+    PRIMARY KEY (profile_code, tool_code)
 );
 
 -- ── Tool catalog seed data ───────────────────────────────────

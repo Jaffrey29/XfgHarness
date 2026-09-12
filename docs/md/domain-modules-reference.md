@@ -33,8 +33,8 @@
 | 18 | plugin.registry | 插件注册层：安装、启停状态、安装计划与结果 |
 | 19 | plugin.runtime | 插件运行时层：启动、运行、停止插件实例 |
 | 20 | **runtime** | 运行环境总模块入口（接口 + 路由点） |
-| 21 | runtime.model | 模型路由：发现上游模型、按 profile 路由 |
-| 22 | runtime.setting | 模型设置：用户保存的模型 / API key 配置查询与命令服务 |
+| 21 | runtime.model | 模型路由：按可选渠道编码解析上游模型 |
+| 22 | runtime.setting | 模型渠道：用户保存、激活和删除模型 / API key 配置 |
 | 23 | runtime.tool | 工具解析：内置 + 插件工具目录的查询、选择与解析 |
 | 24 | runtime.profile | 执行画像：headless / web 等 Profile 策略选择 |
 | 25 | **sandbox** | 沙箱执行策略：模式 + 工作区根目录 + request-time 解析 |
@@ -385,7 +385,7 @@ Trigger → SubmitHarnessTaskCaseImpl
 
 | 文件 | 角色 |
 | --- | --- |
-| `service/ModelRoutingService.java` | 模型路由实现：发现上游模型 + 按 profile 匹配 |
+| `service/ModelRoutingService.java` | 模型路由实现：按渠道编码解析上游模型 |
 | `adapter/port/IModelProviderPort.java` | 上游模型发现端口 |
 | `model/model/valobj/ModelProviderProfileVO.java` | 提供方画像 |
 

@@ -3,12 +3,12 @@
 <head data-page-node-id="y8M08KFICtsWdXHRHHR2pX">
   <meta charset="utf-8" data-page-node-id="0s1CNoGxb1KGyYh8E4YKVZ">
   <meta name="viewport" content="width=device-width, initial-scale=1" data-page-node-id="oaDt08KrFyFQiiY5PwBNhc">
-  <title>dsh-java 体验教程 · 部署与插件接入</title>
-  <meta name="description" content="dsh-java 快速体验教程：Docker 一键部署、Web 控制台使用、模型配置、插件安装、商城与 MySQL 案例接入、MySQL 库表导入、H2 与 MySQL 取舍、上线检查清单、插件发布收录。" data-page-node-id="kGzPTlt6EM6To5mF0C3nGt">
+  <title>DSH Java 使用教程 · 部署与插件接入</title>
+  <meta name="description" content="DSH Java 快速使用教程：Docker 一键部署、Web 控制台使用、模型配置、插件安装、商城与 MySQL 案例接入、MySQL 库表导入、H2 与 MySQL 取舍、上线检查清单、插件发布收录。" data-page-node-id="kGzPTlt6EM6To5mF0C3nGt">
   <meta name="author" content="小傅哥" data-page-node-id="I1fmMfVSLK6telXfNIExtT">
   <link rel="icon" href="assets/images/whale-logo.png" type="image/png" data-page-node-id="fIjoI2GB1sMXqO8aPSM8vW">
   <meta property="og:type" content="article" data-page-node-id="s0P9Fldi8nLEEX69rEgMsW">
-  <meta property="og:title" content="dsh-java 体验教程 · 部署与插件接入" data-page-node-id="WS7G3ZigU5fGUZXkguY53Q">
+  <meta property="og:title" content="DSH Java 使用教程 · 部署与插件接入" data-page-node-id="WS7G3ZigU5fGUZXkguY53Q">
   <meta property="og:description" content="Docker 一键部署、Web 控制台使用、模型配置、插件安装与实际案例接入。" data-page-node-id="AByTfpmUeBBmvJUQ9epASH">
   <meta property="og:image" content="assets/images/harness-session.png" data-page-node-id="pmGxHO7bVtvFV6rWTkYddG">
   <link rel="stylesheet" href="assets/css/style.css" data-page-node-id="1vniPi9PBFG8ojwR3oKkwp">
@@ -20,13 +20,13 @@
       <div class="container header-inner" data-page-node-id="84bPFDwhxGAp8sBrG4C7Ha">
         <a class="brand" href="/index.html" title="回到首页" data-page-node-id="6gJghSuu1LyTlkLd4qSxDY">
           <span class="brand-mark" data-page-node-id="tvebRMJLiqpLF0GM7OEdFp"><img src="assets/images/whale-logo.png" alt="小傅哥小鲸鱼 Logo" data-page-node-id="TNtdjXQQ1KMByO8EZaoFZl"></span>
-          <span class="brand-text" data-page-node-id="8GBl7iYJeFXcmqjoPjt8h9"><strong data-page-node-id="JyB8i5T7IvjjTfTtXClSar">dsh-java</strong><small data-page-node-id="aqvIUZJOpUiXuKaYqG9mJE">Java Agent Harness</small></span>
+          <span class="brand-text" data-page-node-id="8GBl7iYJeFXcmqjoPjt8h9"><strong data-page-node-id="JyB8i5T7IvjjTfTtXClSar">DSH Java</strong><small data-page-node-id="aqvIUZJOpUiXuKaYqG9mJE">Java Agent Harness</small></span>
         </a>
         <nav class="site-nav" aria-label="主导航" data-page-node-id="2m5z68zkh4tbT5qfVU8fIj">
           <a href="/index.html#runtime" data-page-node-id="yTdZTguDhvNWonCUHAezzH">运行时</a>
           <a href="/index.html#mechanism" data-page-node-id="SxrGDGqrT5cA4OL6wkgJu7">实现机制</a>
           <a href="/index.html#plugins" data-page-node-id="p3DnhsIsr1N9BqOSAwcQy5">社区插件</a>
-          <a href="/docs.html" data-page-node-id="Wb45Ht5JMaLWLPB5NEG0BO">体验教程</a>
+          <a href="/docs.html" data-page-node-id="Wb45Ht5JMaLWLPB5NEG0BO">使用教程</a>
           <a href="/document/index.html" target="_blank" rel="noopener" data-page-node-id="kue5wlEDu10etWClF02GFX">学习教程</a>
         </nav>
         <div class="header-actions" data-page-node-id="Ul4a3Wd9IbQ5WYVDYoYWyF">
@@ -37,7 +37,7 @@
       <div class="mobile-nav container" id="mobileNav" data-page-node-id="q0UEnC0pvoW6gK4ZhEevvF">
         <a href="/index.html" data-page-node-id="TMGdZR7iXVXgkae0yrUonV">首页</a>
         <a href="/index.html#plugins" data-page-node-id="eKS4aMvrN3CGvoBCStRqS5">社区插件</a>
-        <a href="/docs.html" data-page-node-id="iwDlAnZnIBBiob3abzTxYN">体验教程</a>
+        <a href="/docs.html" data-page-node-id="iwDlAnZnIBBiob3abzTxYN">使用教程</a>
         <a href="/document/index.html" target="_blank" rel="noopener" data-page-node-id="L7OQLFHA9EaAgYEa4mlJ9k">学习教程</a>
       </div>
     </header>
@@ -234,7 +234,7 @@ curl -X POST http://localhost:8090/api/harness/plugins/activate \
             <h3 data-page-node-id="DEtMv8VmzawkbA2XVFHvM5">AI Prompt 1 · 需求到插件设计</h3>
             <div class="prompt-card" data-page-node-id="s0ZJjMVVX3VvBSmajA4uRC">
               <div class="prompt-head" data-page-node-id="rmvHaxCEEGe94t0gPEwDLV"><strong data-page-node-id="mVXtEBH8hoGOmvtHEoVqLR">需求拆解</strong><button class="copy-button" type="button" data-page-node-id="4EZx0NnwBYEmamof4gKmDL">复制</button></div>
-              <pre data-page-node-id="qqraV5oE7mdeYH15jzA8qn"><code data-page-node-id="CQAKtHbMN9LewVCEgKLs83">你是一名 Java Agent 插件架构师。请把下面的需求整理成 deepseek-harness-java Java Native 插件设计文档：
+              <pre data-page-node-id="qqraV5oE7mdeYH15jzA8qn"><code data-page-node-id="CQAKtHbMN9LewVCEgKLs83">你是一名 Java Agent 插件架构师。请把下面的需求整理成 DSH Java Java Native 插件设计文档：
 
 业务需求：【在这里粘贴需求】
 
@@ -249,7 +249,7 @@ curl -X POST http://localhost:8090/api/harness/plugins/activate \
             <h3 data-page-node-id="GVLCARWWJ8rNs9zDT4FEgw">AI Prompt 2 · 生成 Maven + SPI 骨架</h3>
             <div class="prompt-card" data-page-node-id="691DD1HEReFFkTWEoO2kT0">
               <div class="prompt-head" data-page-node-id="EpR51GdkiNDsJ3QWlYPkih"><strong data-page-node-id="co8K3ebXdSFR7FOQ3DR5ST">骨架生成</strong><button class="copy-button" type="button" data-page-node-id="L8aGqjOHhlwwZY4UhUgGxz">复制</button></div>
-              <pre data-page-node-id="QeYOraK9OffKrhBNdwVVPH"><code data-page-node-id="fXAQoBBa74RYmP9bD7QKJG">请根据下面的插件设计文档，生成一个可编译的 deepseek-harness-java Java Native 插件骨架：
+              <pre data-page-node-id="QeYOraK9OffKrhBNdwVVPH"><code data-page-node-id="fXAQoBBa74RYmP9bD7QKJG">请根据下面的插件设计文档，生成一个可编译的 DSH Java Java Native 插件骨架：
 
 插件名：【your-plugin】
 基础包名：【cn.xiaofuge.plugin】
@@ -315,7 +315,7 @@ Harness 地址：【http://localhost:8090】
             <p data-page-node-id="iaUcUKGsLyU6edMvbGfKBT">方式一：打开仓库主页，点击右上角 <strong data-page-node-id="RTkX9hcQEra07rYV6FIBHB">About</strong> 区域的设置图标，在 <strong data-page-node-id="01omrG5KDeC6U3uP9QD8de">Topics</strong> 输入框中添加 <code data-page-node-id="WJ96U1oE4YYo3Wa0E0qRPl">dsh-plugin-java</code> 并保存。</p>
             <p data-page-node-id="fq7O1nIKOZ3RIERZiOhFGG">方式二：使用 GitHub CLI 一行完成：</p>
             <pre data-page-node-id="TYZphbLt14AC3oOkv7SEvW"><code data-page-node-id="vQqIq9DqSWpiQJ6UmsQmPs">gh repo edit --add-topic dsh-plugin-java</code></pre>
-            <div class="callout tip" data-page-node-id="HXC32g8CoxeaY9haUFCYjC"><strong data-page-node-id="uSQ2X0LTggffh1HCKofDay">命名建议：</strong>仓库名推荐以 <code data-page-node-id="SIfsBziBwkmtNw0OJoyvO8">dsh-java-</code> 为前缀（如 <code data-page-node-id="N1rlhcQEDQn5JLAtN9HNcY">dsh-java-mysql</code>），README 首屏写清「这是一个 dsh-java 插件」，方便检索与识别。</div>
+            <div class="callout tip" data-page-node-id="HXC32g8CoxeaY9haUFCYjC"><strong data-page-node-id="uSQ2X0LTggffh1HCKofDay">命名建议：</strong>仓库名推荐以 <code data-page-node-id="SIfsBziBwkmtNw0OJoyvO8">dsh-java-</code> 为前缀（如 <code data-page-node-id="N1rlhcQEDQn5JLAtN9HNcY">dsh-java-mysql</code>），README 首屏写清「这是一个 DSH Java 插件」，方便检索与识别。</div>
             <div class="callout" data-page-node-id="fKSdqy52VOcbJTIXIYfPT2"><strong data-page-node-id="nhcbbv9dlMs6XAnx1PHTcW">质量约定：</strong>被收录的插件应能直接构建或通过 Release 安装；写操作类工具请在 README 明确标注风险等级与所需审批配置。</div>
             <a class="btn btn-primary" href="https://github.com/topics/dsh-plugin-java" target="_blank" rel="noreferrer" data-page-node-id="PQdaRKHzWwxYXfhh6YS9ud">浏览社区插件</a>
           </section>
@@ -454,7 +454,7 @@ export SPRING_DATASOURCE_PASSWORD='your-password'</code></pre>
     <footer class="site-footer" data-page-node-id="8dunpfxZuyjE2AEIOsHtfK">
       <div class="container footer-grid" data-page-node-id="NDTTHmwUDJdkfz8nE2r6EY">
         <div data-page-node-id="D2miOLqwB0MQbWB3bqLdPe">
-          <a class="brand footer-brand" href="/index.html" data-page-node-id="qKxIOVxD0H1yqFswBLGB6s"><span class="brand-mark" data-page-node-id="Ya7pM07SLsgrBr2hZBneFL"><img src="assets/images/whale-logo.png" alt="小傅哥小鲸鱼 Logo" data-page-node-id="GJHJVaRjMSXaedwFwG0kXg"></span><strong data-page-node-id="sCSW0TcC9jLGPjKL5UJavV">dsh-java</strong></a>
+          <a class="brand footer-brand" href="/index.html" data-page-node-id="qKxIOVxD0H1yqFswBLGB6s"><span class="brand-mark" data-page-node-id="Ya7pM07SLsgrBr2hZBneFL"><img src="assets/images/whale-logo.png" alt="小傅哥小鲸鱼 Logo" data-page-node-id="GJHJVaRjMSXaedwFwG0kXg"></span><strong data-page-node-id="sCSW0TcC9jLGPjKL5UJavV">DSH Java</strong></a>
           <p data-page-node-id="3yX9nMDxxkhcKgfesymlZ4">可治理、可扩展、可审计的 Java Agent Harness 运行时基座。</p>
         </div>
         <nav aria-label="页脚导航" data-page-node-id="CuibdyCvu6F7VUvPKWEhqR">
@@ -467,7 +467,7 @@ export SPRING_DATASOURCE_PASSWORD='your-password'</code></pre>
         </nav>
         <nav aria-label="资源导航" data-page-node-id="lCJRchlbCyvIqFM5RYT483">
           <h4 data-page-node-id="LMFBKlTwUohXq2Qxi8yIjI">资源</h4>
-          <a href="/docs.html" data-page-node-id="DNF6jrP85IQh9N4IHmaSyp">体验教程</a>
+          <a href="/docs.html" data-page-node-id="DNF6jrP85IQh9N4IHmaSyp">使用教程</a>
           <a href="https://github.com/topics/dsh-plugin-java" target="_blank" rel="noreferrer" data-page-node-id="l0m80HpZPolmxnbO65FJ8f">社区插件</a>
           <a href="https://github.com/fuzhengwei/dsh-java-deploy" target="_blank" rel="noreferrer" data-page-node-id="6vDD1XiJghaDoypECFoMUp">部署教程</a>
           <a href="https://github.com/fuzhengwei/2d-weekend-mall" target="_blank" rel="noreferrer" data-page-node-id="448Ncf3BHnRX47W7XgqsOv">2D Weekend Mall</a>
@@ -475,7 +475,7 @@ export SPRING_DATASOURCE_PASSWORD='your-password'</code></pre>
         </nav>
       </div>
       <div class="footer-bottom container" data-page-node-id="5K926MTRoVtUawl4bfJnJa">
-        <p data-page-node-id="xYIivWLQqgvnYfXfc24xBG">© 2026 dsh-java · Powered by Java Agent Harness</p>
+        <p data-page-node-id="xYIivWLQqgvnYfXfc24xBG">© 2026 DSH Java · Powered by Java Agent Harness</p>
         <p class="credit" data-page-node-id="x7APftw4MpiDuSdmsXjSaH">作者：小傅哥 · 感谢并致敬 DeepSeek Harness 的开源设计思想。</p>
       </div>
     </footer>

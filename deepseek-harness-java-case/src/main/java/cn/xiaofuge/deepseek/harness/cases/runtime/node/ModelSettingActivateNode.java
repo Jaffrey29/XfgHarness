@@ -14,9 +14,9 @@ import org.springframework.stereotype.Service;
 
 /**
  * 模型设置激活节点。
- * <p>流程：校验 profileCode + modelCode → 调用领域命令服务将该模型置为当前生效 → 映射为配置 DTO。</p>
- * <p>数据示例：传入 {@code profileCode=deepseek, modelCode=glm-5.3-flash}；
- * 返回该配置的 DTO 且 active=true，同 profile 其他配置自动取消激活。</p>
+ * <p>流程：校验 channelCode → 调用领域命令服务将该渠道置为当前生效 → 映射为配置 DTO。</p>
+ * <p>数据示例：传入 {@code channelCode=deepseek-glm}；
+ * 返回该配置的 DTO 且 active=true，其他渠道自动取消激活。</p>
  */
 @Service
 public class ModelSettingActivateNode
@@ -36,12 +36,11 @@ public class ModelSettingActivateNode
     @Override
     protected ModelSettingResponseDTO doApply(ActivateModelSettingRequestDTO command, NoContext context) {
         CaseGuard.requireNonNull(command, "activate model setting command must not be null");
-        CaseGuard.requireText(command.profileCode(), "profileCode must not be blank");
-        CaseGuard.requireText(command.modelCode(), "modelCode must not be blank");
-        ModelSettingVO setting = modelSettingCommandService.activate(command.profileCode(), command.modelCode());
-        log.info("[Runtime] 模型配置激活完成，profileCode={} modelCode={}", setting.profileCode(), setting.modelCode());
+        CaseGuard.requireText(command.channelCode(), "channelCode must not be blank");
+        ModelSettingVO setting = modelSettingCommandService.activate(command.channelCode());
+        log.info("[Runtime] 模型渠道激活完成，channelCode={} modelCode={}", setting.channelCode(), setting.modelCode());
         return new ModelSettingResponseDTO(
-                setting.profileCode(), setting.providerCode(), setting.modelCode(),
+                setting.channelCode(), setting.displayName(), setting.providerCode(), setting.modelCode(),
                 setting.baseUrl(), setting.apiKeyRef(), setting.protocol(),
                 setting.enabled(), setting.active(), setting.updatedAt()
         );

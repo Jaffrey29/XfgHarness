@@ -4,7 +4,7 @@
   <meta charset="utf-8" data-page-node-id="IlnzQVW2150OpOeEqHk4mB">
   <meta name="viewport" content="width=device-width, initial-scale=1" data-page-node-id="3wASMuMw2RSHFCAIXNBCrC">
   <title>运行时详解 · DSH Java</title>
-  <meta name="description" content="dsh-java 运行时详细设计：ReAct 循环、统一工具系统、双模式插件、权限审批、事件溯源与原生 Web 控制台。" data-page-node-id="yV8ov1kkqUIKgN83FxWc9S">
+  <meta name="description" content="DSH Java 运行时详细设计：ReAct 循环、统一工具系统、双模式插件、权限审批、事件溯源与原生 Web 控制台。" data-page-node-id="yV8ov1kkqUIKgN83FxWc9S">
   <link rel="icon" href="assets/images/whale-logo.png" type="image/png" data-page-node-id="UvL6qt9pbOaGen6Uf6Dip1">
   <link rel="stylesheet" href="assets/css/home.css" data-page-node-id="80tlFE6Ip2MvZW46qsLCWE">
 </head>
@@ -25,7 +25,7 @@
         <a href="/index.html#runtime" data-page-node-id="aEF9IrCZsyckIWhdpw3sxi">运行时</a>
         <a href="/index.html#architecture" data-page-node-id="bNpIP0HkuBvZpKUBg89jZk">架构</a>
         <a href="/index.html#plugins" data-page-node-id="sHD2VItWwawFGoNtPAieHp">插件社区</a>
-        <a href="/docs.html" data-page-node-id="qf4jh5fWeiE2D9eSd5g0Lt">体验教程</a>
+        <a href="/docs.html" data-page-node-id="qf4jh5fWeiE2D9eSd5g0Lt">使用教程</a>
         <a href="/document/index.html" target="_blank" rel="noopener" data-page-node-id="5LVjkRkw03Ntbyeg603n3G">学习教程</a>
       </nav>
       <div class="header-actions" data-page-node-id="tQxApNJLvJ8k2exPYDcM5e">
@@ -39,7 +39,7 @@
         <a href="/index.html#runtime" data-page-node-id="HAXZnpJ0Anrtpk2ZdAVcX3">运行时</a>
         <a href="/index.html#architecture" data-page-node-id="PulCdoGk7s3arrfyQImcyR">架构</a>
         <a href="/index.html#plugins" data-page-node-id="8guTI0y5YDRdFW9zZC0tX4">插件社区</a>
-        <a href="/docs.html" data-page-node-id="46XqzqaEQZ0LghsnrqWeqc">体验教程</a>
+        <a href="/docs.html" data-page-node-id="46XqzqaEQZ0LghsnrqWeqc">使用教程</a>
         <a href="/document/index.html" target="_blank" rel="noopener" data-page-node-id="GBftYaYyDVrhgPiu2PPPwO">学习教程</a>
       </div>
     </div>
@@ -56,7 +56,7 @@
           一个进程内的<br data-page-node-id="RGfUCmuUWypUMkN8gMeD53"><span class="gradient-text" style="background:var(--grad-brand);-webkit-background-clip:text;background-clip:text;color:transparent;" data-page-node-id="IAgIkEAjv0xZjUQaLCci0D">完整 Agent 运行时</span>
         </h1>
         <p class="hero-lede reveal" data-page-node-id="4iNSylFN3WXilgDxbYeE3c">
-          从模型输出到工具执行，从插件加载到人工审批——dsh-java 把智能体运行所需的全部机制收进一个 Spring Boot 进程，单实例即可运行。
+          从模型输出到工具执行，从插件加载到人工审批——DSH Java 把智能体运行所需的全部机制收进一个 Spring Boot 进程，单实例即可运行。
         </p>
         <div class="toc-nav reveal" data-page-node-id="twAIi40SRBCS4bLvDJiOBy">
           <a href="#react" data-page-node-id="BBpEkcYcKspIDellKDktOM">ReAct 循环</a>
@@ -274,7 +274,7 @@
         </div>
         <figure class="screen-main reveal" style="margin-top:22px;" data-page-node-id="ZgrU4UOVqYOWvNawbBF9lp">
           <div class="browser-bar" data-page-node-id="Iiv1r0OX5ijdoEDUhs4Cpv"><span data-page-node-id="mgzG8LYuh4O76CanEi49iw"></span><span data-page-node-id="6kbiCA1659hrRu4kouNUE2"></span><span data-page-node-id="7YBHrJrW59VZVEWez26IDS"></span><em data-page-node-id="kRcppMAJ19Armk5VROaZgE">localhost:8090 · 轨迹视图</em></div>
-          <img src="assets/images/harness-trajectory.png" alt="dsh-java 轨迹视图：会话事件回放与审计" loading="lazy" data-page-node-id="AO981IEVN77SKQ3rZnmzzm">
+          <img src="assets/images/harness-trajectory.png" alt="DSH Java 轨迹视图：会话事件回放与审计" loading="lazy" data-page-node-id="AO981IEVN77SKQ3rZnmzzm">
         </figure>
       </div>
     </section>
@@ -289,7 +289,7 @@
         </div>
         <figure class="screen-main reveal" data-page-node-id="sxUyyZwSYPQiyKk5Xhq5Oy">
           <div class="browser-bar" data-page-node-id="0eeSmXRfjkDwWAkRQTc6Vo"><span data-page-node-id="aFW3Q1wkyMHDhB4XqASVbn"></span><span data-page-node-id="A8HF2SFQSOO1G4UBPKkE33"></span><span data-page-node-id="yZUFlavvLyCTgi4VsFPOAl"></span><em data-page-node-id="F2RjTaeYEfAFxcsENI4FWH">localhost:8090 · 对话</em></div>
-          <img src="assets/images/harness-chat.png" alt="dsh-java Web 控制台对话界面" loading="lazy" data-page-node-id="adgwtmJUN8GHVM8SsatWnY">
+          <img src="assets/images/harness-chat.png" alt="DSH Java Web 控制台对话界面" loading="lazy" data-page-node-id="adgwtmJUN8GHVM8SsatWnY">
         </figure>
         <div class="cta-actions" style="margin-top:40px;" data-page-node-id="XFWsImOM5WkqdPDTf7rQiJ">
           <a class="btn btn-primary btn-lg" href="/index.html#deploy" data-page-node-id="xSPYxogrT4TMlUkG1701WA">立即部署体验</a>
@@ -316,7 +316,7 @@
       </nav>
       <nav aria-label="资源导航" data-page-node-id="xqDyp3H5ncH9Qup2tuKbJV">
         <h4 data-page-node-id="kXxsjdFFOBPWwWDGB00AND">资源</h4>
-        <a href="/docs.html" data-page-node-id="2aDsvup98Kp3fsrezkhUsn">体验教程</a>
+        <a href="/docs.html" data-page-node-id="2aDsvup98Kp3fsrezkhUsn">使用教程</a>
         <a href="/document/index.html" target="_blank" rel="noopener" data-page-node-id="UQqXLuiqYEHtSm0sdiNVu2">学习教程</a>
         <a href="https://github.com/topics/dsh-plugin-java" target="_blank" rel="noreferrer" data-page-node-id="ZwfDEfoMImLb9o2Le9632l">社区插件</a>
         <a href="https://gitcode.net/KnowledgePlanet/deepseek-harness-java" target="_blank" rel="noreferrer" data-page-node-id="lmt419HDsq6JHEAoctz4gz">源码入口</a>

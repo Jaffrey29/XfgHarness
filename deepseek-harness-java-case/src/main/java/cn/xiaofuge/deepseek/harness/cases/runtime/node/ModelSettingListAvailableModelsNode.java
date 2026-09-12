@@ -6,18 +6,14 @@ import cn.xiaofuge.deepseek.harness.cases.orchestration.StrategyHandler;
 import cn.xiaofuge.deepseek.harness.api.dto.AvailableModelResponseDTO;
 import cn.xiaofuge.deepseek.harness.domain.runtime.setting.IModelSettingQueryService;
 import cn.xiaofuge.deepseek.harness.domain.runtime.setting.model.valobj.ModelSettingVO;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * 可用模型查询节点。
- * <p>流程：读取全部配置 → 过滤启用且模型编码非空的记录 → 按 provider:model 去重 → 返回可用模型列表。</p>
- * <p>数据示例：两个 profile 均配置 {@code openai-compatible:glm-5.3-flash} 时只返回一条
- * {@code modelCode=glm-5.3-flash}。</p>
+ * 可用模型渠道查询节点。
+ * <p>流程：读取全部配置 → 过滤启用且模型编码非空的记录 → 返回渠道列表。</p>
  */
 @Service
 public class ModelSettingListAvailableModelsNode
@@ -36,15 +32,13 @@ public class ModelSettingListAvailableModelsNode
      */
     @Override
     protected List<AvailableModelResponseDTO> doApply(Void request, NoContext context) {
-        Map<String, AvailableModelResponseDTO> models = new LinkedHashMap<>();
-        modelSettingQueryService.queryAll().stream()
+        var result = modelSettingQueryService.queryAll().stream()
                 .filter(ModelSettingVO::enabled)
                 .filter(setting -> setting.modelCode() != null && !setting.modelCode().isBlank())
-                .forEach(setting -> models.putIfAbsent(
-                        setting.providerCode() + ":" + setting.modelCode(),
-                        new AvailableModelResponseDTO(setting.providerCode(), setting.modelCode(), setting.modelCode())
-                ));
-        var result = List.copyOf(models.values());
+                .map(setting -> new AvailableModelResponseDTO(
+                        setting.channelCode(), setting.displayName(), setting.providerCode(), setting.modelCode()
+                ))
+                .toList();
         log.debug("[Runtime] 可用模型查询完成，count={}", result.size());
         return result;
     }

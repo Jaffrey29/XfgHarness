@@ -41,6 +41,7 @@ public class HarnessSessionRepository implements IHarnessSessionRepository {
                 session.getWorkspaceId(),
                 session.getProfileCode(),
                 session.getExecutionMode(),
+                session.getResolvedChannelCode(),
                 session.getResolvedModel(),
                 session.getStatus().name(),
                 session.getCreatedAt()
@@ -85,7 +86,7 @@ public class HarnessSessionRepository implements IHarnessSessionRepository {
                 sessionPO.profileCode(),
                 sessionPO.createdAt()
         );
-        session.prepare(sessionPO.executionMode(), sessionPO.resolvedModel());
+        session.prepare(sessionPO.executionMode(), sessionPO.resolvedChannelCode(), sessionPO.resolvedModel());
         session.changeStatus(HarnessStatusEnumVO.valueOf(sessionPO.status()));
         return session;
     }

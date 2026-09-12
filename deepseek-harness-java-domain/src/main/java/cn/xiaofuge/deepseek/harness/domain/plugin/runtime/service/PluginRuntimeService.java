@@ -34,7 +34,7 @@ public class PluginRuntimeService implements IPluginRuntimeService {
     @Override
     public PluginRunResultVO start(HarnessPluginEntity plugin, PluginBridgePlanVO plan) {
         if (plan.entrypointPath() == null || plan.entrypointPath().isBlank()) {
-            throw new IllegalStateException("plugin bridge plan does not provide a runnable Node entrypoint");
+            throw new IllegalStateException("plugin bridge plan does not provide a runnable entrypoint");
         }
         return pluginProcessPort.start(plugin, plan);
     }

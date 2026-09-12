@@ -11,8 +11,10 @@ import cn.xiaofuge.deepseek.harness.domain.model.valobj.TextBlock;
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionEvent;
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.valobj.TurnEndReason;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 
 /**
  * SpawnInProcessProvider 表示进程内创建子智能体的领域提供者。
@@ -22,7 +24,7 @@ public class SpawnInProcessProvider implements SubagentProvider {
     private final String providerName;
     private final SubagentRegistry registry;
     private final AgentRunLifecycle agentFactory;
-    private final AgentOptions defaultOptions;
+    private final Supplier<AgentOptions> defaultOptionsSupplier;
 
     /**
      * 初始化进程内新会话子智能体提供者。
@@ -32,12 +34,12 @@ public class SpawnInProcessProvider implements SubagentProvider {
             String providerName,
             SubagentRegistry registry,
             AgentRunLifecycle agentFactory,
-            AgentOptions defaultOptions
+            Supplier<AgentOptions> defaultOptionsSupplier
     ) {
         this.providerName = providerName;
         this.registry = registry;
         this.agentFactory = agentFactory;
-        this.defaultOptions = defaultOptions;
+        this.defaultOptionsSupplier = Objects.requireNonNull(defaultOptionsSupplier, "defaultOptionsSupplier");
     }
     /**
      * 返回 name。
@@ -75,7 +77,7 @@ public class SpawnInProcessProvider implements SubagentProvider {
             String childSessionId = "child-" + UUID.randomUUID();
             AgentOptions childOptions = request.options() != null
                     ? request.options()
-                    : defaultOptions;
+                    : Objects.requireNonNull(defaultOptionsSupplier.get(), "defaultOptionsSupplier returned null");
 
             // Create child agent with fresh session
             AgentRun childAgent = agentFactory.create(

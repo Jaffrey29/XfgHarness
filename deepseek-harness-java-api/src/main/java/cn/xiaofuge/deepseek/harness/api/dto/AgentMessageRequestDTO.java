@@ -4,8 +4,7 @@ package cn.xiaofuge.deepseek.harness.api.dto;
  * 向 Agent 发送消息的请求。
  *
  * @param agentId Agent ID
- * @param provider 模型提供方；为空时使用默认值
- * @param model 模型名称；为空时使用默认值
+ * @param channelCode 模型渠道；为空时使用当前激活渠道
  * @param maxTokens 最大输出 Token 数；为空时使用默认值
  * @param cwd 工作目录；为空时使用进程工作目录
  * @param message 用户消息文本
@@ -18,8 +17,7 @@ package cn.xiaofuge.deepseek.harness.api.dto;
  */
 public record AgentMessageRequestDTO(
         String agentId,
-        String provider,
-        String model,
+        String channelCode,
         Integer maxTokens,
         String cwd,
         String message,

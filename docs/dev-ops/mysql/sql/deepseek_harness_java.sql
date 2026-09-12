@@ -7,7 +7,7 @@
 #
 # 主机: 127.0.0.1 (MySQL 8.0.42)
 # 数据库: deepseek_harness_java
-# 生成时间: 2026-09-11 23:31:02 +0000
+# 生成时间: 2026-09-12 07:04:55 +0000
 # ************************************************************
 
 
@@ -51,7 +51,6 @@ CREATE TABLE `harness_goal_state` (
 DROP TABLE IF EXISTS `harness_model_setting`;
 
 CREATE TABLE `harness_model_setting` (
-  `profile_code` varchar(64) NOT NULL,
   `provider_code` varchar(64) NOT NULL,
   `model_code` varchar(128) NOT NULL,
   `base_url` varchar(255) DEFAULT NULL,
@@ -60,15 +59,18 @@ CREATE TABLE `harness_model_setting` (
   `enabled` tinyint(1) NOT NULL,
   `active` tinyint(1) NOT NULL DEFAULT '0',
   `updated_at` timestamp(3) NOT NULL,
-  PRIMARY KEY (`profile_code`,`model_code`)
+  `channel_code` varchar(64) NOT NULL DEFAULT 'default',
+  `display_name` varchar(128) NOT NULL DEFAULT '',
+  PRIMARY KEY (`channel_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 LOCK TABLES `harness_model_setting` WRITE;
 /*!40000 ALTER TABLE `harness_model_setting` DISABLE KEYS */;
 
-INSERT INTO `harness_model_setting` (`profile_code`, `provider_code`, `model_code`, `base_url`, `api_key_ref`, `protocol`, `enabled`, `active`, `updated_at`)
+INSERT INTO `harness_model_setting` (`provider_code`, `model_code`, `base_url`, `api_key_ref`, `protocol`, `enabled`, `active`, `updated_at`, `channel_code`, `display_name`)
 VALUES
-	('default','custom','glm-5.3-flash','http://127.0.0.1:8777/v1','sk-waliapi-4f8895c43a6c4bc1ae6173fd0915c0e9','openai',1,1,'2026-09-12 07:24:12.192');
+	('custom','gpt-5.5','http://127.0.0.1:8777/v1','sk-waliapi-4f8895c43a6c4bc1ae6173fd0915c0e9','openai',1,1,'2026-09-12 14:34:24.789','channel-3118f980-a706-4bc0-b769-df148a60fe22','测试'),
+	('deepseek','glm-5.3-flash','http://127.0.0.1:8777/v1',NULL,'openai',1,0,'2026-09-12 14:35:21.566','default','默认渠道');
 
 /*!40000 ALTER TABLE `harness_model_setting` ENABLE KEYS */;
 UNLOCK TABLES;
@@ -85,8 +87,7 @@ CREATE TABLE `harness_plugin_config` (
   `config_value` text,
   `config_layer` varchar(32) NOT NULL,
   `updated_at` timestamp(3) NOT NULL,
-  PRIMARY KEY (`plugin_id`,`config_key`,`config_layer`),
-  CONSTRAINT `fk_harness_plugin_config_plugin` FOREIGN KEY (`plugin_id`) REFERENCES `harness_plugin_installation` (`plugin_id`)
+  PRIMARY KEY (`plugin_id`,`config_key`,`config_layer`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 
@@ -115,6 +116,8 @@ LOCK TABLES `harness_plugin_installation` WRITE;
 INSERT INTO `harness_plugin_installation` (`plugin_id`, `display_name`, `plugin_version`, `runtime_type`, `install_mode`, `source_path`, `entrypoint`, `status`, `installed_at`)
 VALUES
 	('dsh-demo-plugin','DSH Demo Plugin','1.0.0','DSH_NODE_BRIDGE','NODE_BRIDGE','/Users/fuzhengwei/coding/github/deepseek-harness/deepseek-harness-java/plugins/dsh-demo-plugin','index.js','ACTIVE','2026-09-12 07:17:10.902'),
+	('dsh-java-mysql-plugin','DSH MySQL Plugin','0.1.0','JAVA_NATIVE','NATIVE','/Users/fuzhengwei/coding/github/deepseek-harness/deepseek-harness-java/plugins/dsh-java-mysql-plugin.jar','dsh-java-mysql-plugin.jar','ACTIVE','2026-09-12 14:51:03.950'),
+	('mall-weekend-assistant','2D Weekend Mall Assistant','1.0.0','JAVA_NATIVE','NATIVE','/Users/fuzhengwei/coding/github/deepseek-harness/deepseek-harness-java/plugins/mall-weekend-assistant.jar','mall-weekend-assistant.jar','ACTIVE','2026-09-12 14:53:57.130'),
 	('sample-tools','Sample Tools Plugin','1.0.0','JAVA_NATIVE','NATIVE','/Users/fuzhengwei/coding/github/deepseek-harness/deepseek-harness-java/plugins/sample-tools.jar','sample-tools.jar','ACTIVE','2026-09-12 07:17:07.776');
 
 /*!40000 ALTER TABLE `harness_plugin_installation` ENABLE KEYS */;
@@ -135,8 +138,7 @@ CREATE TABLE `harness_plugin_runtime_binding` (
   `bridge_ready` tinyint(1) NOT NULL,
   `message` text NOT NULL,
   `checked_at` timestamp(3) NOT NULL,
-  PRIMARY KEY (`plugin_id`),
-  CONSTRAINT `fk_harness_plugin_runtime_binding_plugin` FOREIGN KEY (`plugin_id`) REFERENCES `harness_plugin_installation` (`plugin_id`)
+  PRIMARY KEY (`plugin_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 LOCK TABLES `harness_plugin_runtime_binding` WRITE;
@@ -144,8 +146,10 @@ LOCK TABLES `harness_plugin_runtime_binding` WRITE;
 
 INSERT INTO `harness_plugin_runtime_binding` (`plugin_id`, `package_type`, `manifest_path`, `working_directory`, `runtime_command`, `bridge_ready`, `message`, `checked_at`)
 VALUES
-	('dsh-demo-plugin','DSH_PACKAGE','/Users/fuzhengwei/coding/github/deepseek-harness/deepseek-harness-java/plugins/dsh-demo-plugin/package.json','/Users/fuzhengwei/coding/github/deepseek-harness/deepseek-harness-java/plugins/dsh-demo-plugin','node /Users/fuzhengwei/coding/github/deepseek-harness/deepseek-harness-java/plugins/dsh-demo-plugin/index.js',1,'dsh package detected with executable Node entrypoint','2026-09-12 07:27:11.190'),
-	('sample-tools','DSH_PACKAGE','/Users/fuzhengwei/coding/github/deepseek-harness/deepseek-harness-java/plugins/sample-tools.jar','/Users/fuzhengwei/coding/github/deepseek-harness/deepseek-harness-java/plugins','java-in-process:sample-tools',1,'java-native plugin JAR ready for in-process loading','2026-09-12 07:27:55.673');
+	('dsh-demo-plugin','DSH_PACKAGE','/Users/fuzhengwei/coding/github/deepseek-harness/deepseek-harness-java/plugins/dsh-demo-plugin/package.json','/Users/fuzhengwei/coding/github/deepseek-harness/deepseek-harness-java/plugins/dsh-demo-plugin','node /Users/fuzhengwei/coding/github/deepseek-harness/deepseek-harness-java/plugins/dsh-demo-plugin/index.js',1,'dsh package detected with executable Node entrypoint','2026-09-12 14:34:21.474'),
+	('dsh-java-mysql-plugin','DSH_PACKAGE','/Users/fuzhengwei/coding/github/deepseek-harness/deepseek-harness-java/plugins/dsh-java-mysql-plugin.jar','/Users/fuzhengwei/coding/github/deepseek-harness/deepseek-harness-java/plugins','java-in-process:dsh-java-mysql-plugin',1,'java-native plugin JAR ready for in-process loading','2026-09-12 14:51:03.958'),
+	('mall-weekend-assistant','DSH_PACKAGE','/Users/fuzhengwei/coding/github/deepseek-harness/deepseek-harness-java/plugins/mall-weekend-assistant.jar','/Users/fuzhengwei/coding/github/deepseek-harness/deepseek-harness-java/plugins','java-in-process:mall-weekend-assistant',1,'java-native plugin JAR ready for in-process loading','2026-09-12 14:53:57.139'),
+	('sample-tools','DSH_PACKAGE','/Users/fuzhengwei/coding/github/deepseek-harness/deepseek-harness-java/plugins/sample-tools.jar','/Users/fuzhengwei/coding/github/deepseek-harness/deepseek-harness-java/plugins','java-in-process:sample-tools',1,'java-native plugin JAR ready for in-process loading','2026-09-12 14:35:21.516');
 
 /*!40000 ALTER TABLE `harness_plugin_runtime_binding` ENABLE KEYS */;
 UNLOCK TABLES;
@@ -164,6 +168,7 @@ CREATE TABLE `harness_session` (
   `resolved_model` varchar(128) NOT NULL,
   `status` varchar(32) NOT NULL,
   `created_at` timestamp(3) NOT NULL,
+  `channel_code` varchar(64) DEFAULT NULL,
   PRIMARY KEY (`session_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -181,8 +186,7 @@ CREATE TABLE `harness_session_event` (
   `payload` text NOT NULL,
   `occurred_at` timestamp(3) NOT NULL,
   PRIMARY KEY (`id`),
-  KEY `idx_harness_session_event_session` (`session_id`),
-  CONSTRAINT `fk_harness_session_event_session` FOREIGN KEY (`session_id`) REFERENCES `harness_session` (`session_id`)
+  KEY `idx_harness_session_event_session` (`session_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 
@@ -198,7 +202,7 @@ CREATE TABLE `harness_session_event_log` (
   `seq` bigint NOT NULL,
   `event_type` varchar(64) NOT NULL,
   `event_time` timestamp(3) NOT NULL,
-  `payload_json` text,
+  `payload_json` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci,
   `surface_op` varchar(16) DEFAULT NULL,
   `source_event_seqs` varchar(512) DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -231,7 +235,10 @@ LOCK TABLES `harness_session_header` WRITE;
 
 INSERT INTO `harness_session_header` (`session_id`, `version`, `created_at`, `cwd`, `parent_session`, `seed_length`, `origin`, `delegation_depth`, `agent_preset`)
 VALUES
-	('1e070121-575e-405a-bb99-8bdb6d11c32b',0,'2026-09-12 07:23:37.444','/Users/fuzhengwei/coding/github/deepseek-harness/deepseek-harness-java',NULL,0,NULL,0,'agent-1789169010271');
+	('1e070121-575e-405a-bb99-8bdb6d11c32b',0,'2026-09-12 07:23:37.444','/Users/fuzhengwei/coding/github/deepseek-harness/deepseek-harness-java',NULL,0,NULL,0,'agent-1789169010271'),
+	('3cfbfdaa-40d3-4fda-9302-e36dd7cfc780',0,'2026-09-12 14:34:32.940','/Users/fuzhengwei/coding/github/deepseek-harness/deepseek-harness-java',NULL,0,NULL,0,'agent-1789194872916'),
+	('7c57a246-1149-415d-9cdb-fb3b468cd647',0,'2026-09-12 14:52:09.557','/Users/fuzhengwei/coding/github/deepseek-harness/deepseek-harness-java',NULL,0,NULL,0,'3181cff2-e1bc-4153-b83e-126fee8360e0'),
+	('ac6a3454-2023-43d5-acaa-3df8f5939e98',0,'2026-09-12 14:34:58.773','/Users/fuzhengwei/coding/github/deepseek-harness/deepseek-harness-java',NULL,0,NULL,0,'customer-service-demo');
 
 /*!40000 ALTER TABLE `harness_session_header` ENABLE KEYS */;
 UNLOCK TABLES;
@@ -250,8 +257,7 @@ CREATE TABLE `harness_task` (
   `status` varchar(32) NOT NULL,
   `submitted_at` timestamp(3) NOT NULL,
   PRIMARY KEY (`task_id`),
-  KEY `fk_harness_task_session` (`session_id`),
-  CONSTRAINT `fk_harness_task_session` FOREIGN KEY (`session_id`) REFERENCES `harness_session` (`session_id`)
+  KEY `fk_harness_task_session` (`session_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 
@@ -294,8 +300,7 @@ CREATE TABLE `harness_tool_profile_binding` (
   `profile_code` varchar(64) NOT NULL,
   `tool_code` varchar(128) NOT NULL,
   PRIMARY KEY (`profile_code`,`tool_code`),
-  KEY `fk_harness_tool_binding_tool` (`tool_code`),
-  CONSTRAINT `fk_harness_tool_binding_tool` FOREIGN KEY (`tool_code`) REFERENCES `harness_tool_catalog` (`tool_code`)
+  KEY `fk_harness_tool_binding_tool` (`tool_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 LOCK TABLES `harness_tool_profile_binding` WRITE;

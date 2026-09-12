@@ -10,8 +10,8 @@ import org.springframework.stereotype.Service;
 /**
  * 模型设置写操作编排实现。
  * <p>流程：将保存/删除/激活请求交给对应 Pipeline → 执行领域命令节点 → 保存与激活返回 DTO，删除无返回。</p>
- * <p>数据示例：保存 {@code profileCode=default} 后返回 {@code enabled=true}；
- * 激活 {@code profileCode=default, modelCode=glm-5.3-flash} 后该模型成为当前生效配置。</p>
+ * <p>数据示例：保存 {@code channelCode=default} 后返回 {@code enabled=true}；
+ * 激活 {@code channelCode=default} 后该渠道成为当前生效配置。</p>
  */
 @Service
 public class ModelSettingCommandCaseImpl implements IModelSettingCommandCase {
@@ -45,4 +45,3 @@ public class ModelSettingCommandCaseImpl implements IModelSettingCommandCase {
         return runtimePipelineFactory.activatePipeline().execute(command);
     }
 }
-

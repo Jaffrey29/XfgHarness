@@ -41,8 +41,8 @@ public class AgentUseCase implements IAgentUseCase {
 
     @Override
     public AgentMessageResponseDTO sendMessage(AgentMessageRequestDTO request) {
-        log.info("[UseCase] Agent={} 收到消息发送请求（provider={} model={} streaming=false）",
-                request.agentId(), request.provider(), request.model());
+        log.info("[UseCase] Agent={} 收到消息发送请求（channel={} streaming=false）",
+                request.agentId(), request.channelCode());
         return agentMessageFactory.pipeline().execute(request);
     }
 
@@ -62,8 +62,8 @@ public class AgentUseCase implements IAgentUseCase {
             java.util.function.Consumer<String> reasoningSink,
             java.util.function.Consumer<AgentToolCallEventResponseDTO> toolCallSink,
             Runnable finishSink) {
-        log.info("[UseCase] Agent={} 收到流式消息发送请求（provider={} model={}）",
-                request.agentId(), request.provider(), request.model());
+        log.info("[UseCase] Agent={} 收到流式消息发送请求（channel={}）",
+                request.agentId(), request.channelCode());
         return agentMessageFactory.streamingPipeline(deltaSink, reasoningSink, toolCallSink, finishSink).execute(request);
     }
 

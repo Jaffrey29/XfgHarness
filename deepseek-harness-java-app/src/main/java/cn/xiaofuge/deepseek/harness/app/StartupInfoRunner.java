@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
  * <p>执行流程：Spring MVC 就绪 → 监听 ApplicationReadyEvent → 打印控制台地址 →
  * 校验数据库默认模型 → 校验模型 provider 是否已注册适配器。
  *
- * <p>数据示例：数据库存在 profileCode=default、modelCode=glm-5.3-flash、
+ * <p>数据示例：数据库存在 channelCode=default、modelCode=glm-5.3-flash、
  * providerCode=deepseek 的启用记录时，日志会展示该模型和已注册的 provider 列表；
  * 如果没有这条记录，则提示用户通过控制台补齐配置。
  *
@@ -28,7 +28,7 @@ import org.springframework.stereotype.Component;
 public class StartupInfoRunner {
 
     private static final Logger log = LoggerFactory.getLogger(StartupInfoRunner.class);
-    private static final String DEFAULT_MODEL_PROFILE = "default";
+    private static final String DEFAULT_MODEL_CHANNEL = "default";
 
     private final IModelSettingQueryService modelSettingQueryService;
     private final ILlmRuntimePort llmRuntimePort;
@@ -81,12 +81,12 @@ public class StartupInfoRunner {
      * 校验数据库默认模型，并输出可执行的配置建议。
      */
     private void checkDefaultModel() {
-        ModelSettingVO setting = modelSettingQueryService.findByProfileCode(DEFAULT_MODEL_PROFILE)
+        ModelSettingVO setting = modelSettingQueryService.findActive()
                 .orElse(null);
         if (setting == null || !setting.enabled()) {
-            log.warn("未找到启用的默认模型配置：profileCode={}，当前将按 model={} 走文件兜底。"
+            log.warn("未找到启用的模型渠道配置：channelCode={}，当前将按 model={} 走文件兜底。"
                             + "请打开 Web 控制台，在模型设置中保存 provider、baseUrl 和 apiKey。",
-                    DEFAULT_MODEL_PROFILE, fallbackModel);
+                    DEFAULT_MODEL_CHANNEL, fallbackModel);
             return;
         }
 
@@ -98,8 +98,8 @@ public class StartupInfoRunner {
             log.warn("默认模型 '{}' 的 apiKey 为空，LLM 适配器可能使用文件或环境变量兜底。"
                             + "建议在 Web 控制台模型设置中补齐 apiKey。", setting.modelCode());
         }
-        log.info("当前默认模型：provider={}，model={}，baseUrl={}",
-                setting.providerCode(), setting.modelCode(), setting.baseUrl());
+        log.info("当前默认模型渠道：channel={}，provider={}，model={}，baseUrl={}",
+                setting.channelCode(), setting.providerCode(), setting.modelCode(), setting.baseUrl());
     }
 
     /**

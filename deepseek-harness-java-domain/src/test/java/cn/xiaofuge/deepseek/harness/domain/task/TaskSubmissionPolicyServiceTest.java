@@ -18,7 +18,7 @@ class TaskSubmissionPolicyServiceTest {
         TaskSubmissionFilter first = submission -> invoked.add("first");
         TaskSubmissionFilter second = submission -> invoked.add("second");
         TaskSubmissionPolicyService service = new TaskSubmissionPolicyService(List.of(first, second));
-        var submission = new TaskSubmissionVO("workspace", "prompt", "headless", null);
+        var submission = new TaskSubmissionVO("workspace", "prompt", "headless", null, null);
 
         service.validate(submission);
 
@@ -36,7 +36,7 @@ class TaskSubmissionPolicyServiceTest {
         TaskSubmissionPolicyService service = new TaskSubmissionPolicyService(List.of(failing, successful));
 
         assertThrows(IllegalArgumentException.class,
-                () -> service.validate(new TaskSubmissionVO("workspace", "prompt", "headless", null)));
+                () -> service.validate(new TaskSubmissionVO("workspace", "prompt", "headless", null, null)));
         assertEquals(List.of("failing"), invoked);
     }
 }

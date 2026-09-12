@@ -46,7 +46,7 @@ public class HarnessModelSettingQueryApi implements IHarnessModelSettingQueryApi
     public Response<List<ModelSettingResponseDTO>> queryAll() {
         return execute(() -> modelSettingQueryCase.listSettings().stream()
                 .map(setting -> new ModelSettingResponseDTO(
-                        setting.profileCode(), setting.providerCode(), setting.modelCode(),
+                        setting.channelCode(), setting.displayName(), setting.providerCode(), setting.modelCode(),
                         setting.baseUrl(), setting.apiKeyRef(), setting.protocol(),
                         setting.enabled(), setting.active(), setting.updatedAt()
                 ))

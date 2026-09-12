@@ -1,8 +1,9 @@
 package cn.xiaofuge.deepseek.harness.domain.runtime.model.model.valobj;
 
 /**
- * Represents the model provider resolved for one execution profile.
+ * Represents the model channel resolved for one execution plan.
  *
+ * @param channelCode model channel identifier
  * @param providerCode provider identifier
  * @param modelCode model identifier
  *
@@ -12,6 +13,7 @@ package cn.xiaofuge.deepseek.harness.domain.runtime.model.model.valobj;
  * @website bugstack.cn
  */
 public record ModelProviderProfileVO(
+        String channelCode,
         String providerCode,
         String modelCode
 ) {

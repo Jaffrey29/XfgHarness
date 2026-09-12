@@ -14,9 +14,9 @@ import org.springframework.stereotype.Service;
 
 /**
  * 模型设置保存节点。
- * <p>流程：校验命令和 profileCode → 调用领域命令服务保存为 ModelSettingVO → 映射为配置 DTO。</p>
- * <p>数据示例：传入 {@code profileCode=default, modelCode=glm-5.3-flash, enabled=true}；
- * 返回包含同一 profileCode 和 updatedAt 的 DTO。</p>
+ * <p>流程：校验命令和 channelCode → 调用领域命令服务保存为 ModelSettingVO → 映射为配置 DTO。</p>
+ * <p>数据示例：传入 {@code channelCode=default, modelCode=glm-5.3-flash, enabled=true}；
+ * 返回包含同一 channelCode 和 updatedAt 的 DTO。</p>
  */
 @Service
 public class ModelSettingSaveNode
@@ -36,13 +36,16 @@ public class ModelSettingSaveNode
     @Override
     protected ModelSettingResponseDTO doApply(SaveModelSettingRequestDTO command, NoContext context) {
         CaseGuard.requireNonNull(command, "model setting command must not be null");
-        CaseGuard.requireText(command.profileCode(), "profileCode must not be blank");
+        CaseGuard.requireText(command.displayName(), "displayName must not be blank");
+        String channelCode = command.channelCode() == null || command.channelCode().isBlank()
+                ? "channel-" + java.util.UUID.randomUUID()
+                : command.channelCode();
         ModelSettingVO setting = modelSettingCommandService.save(
-                command.profileCode(), command.providerCode(), command.modelCode(),
+                channelCode, command.displayName(), command.providerCode(), command.modelCode(),
                 command.baseUrl(), command.apiKeyRef(), command.protocol(), command.enabled()
         );
-        log.info("[Runtime] 模型配置保存完成，profileCode={} modelCode={} protocol={} enabled={}",
-                setting.profileCode(), setting.modelCode(), setting.protocol(), setting.enabled());
+        log.info("[Runtime] 模型渠道保存完成，channelCode={} modelCode={} protocol={} enabled={}",
+                setting.channelCode(), setting.modelCode(), setting.protocol(), setting.enabled());
         return toResponse(setting);
     }
 
@@ -60,7 +63,7 @@ public class ModelSettingSaveNode
      */
     private ModelSettingResponseDTO toResponse(ModelSettingVO setting) {
         return new ModelSettingResponseDTO(
-                setting.profileCode(), setting.providerCode(), setting.modelCode(),
+                setting.channelCode(), setting.displayName(), setting.providerCode(), setting.modelCode(),
                 setting.baseUrl(), setting.apiKeyRef(), setting.protocol(),
                 setting.enabled(), setting.active(), setting.updatedAt()
         );

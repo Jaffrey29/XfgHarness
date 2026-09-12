@@ -404,7 +404,7 @@ SubmitHarnessController
     └── SubmitHarnessTaskCaseImpl.execute(req)
             └── SubmitHarnessTaskFactory.strategyHandler()
                     ├── SubmissionRootNode        // ITaskSubmissionPolicyService.validate
-                    ├── ProfileResolutionNode     // ExecutionProfile + ModelProfile
+                    ├── ProfileResolutionNode     // ExecutionProfile + ModelChannel
                     ├── ToolResolutionNode        // IToolResolutionService
                     ├── PermissionCheckNode       // assess + decide
                     └── EnqueueNode               // 开 session、入队、日志、必要时立刻 executeSession
@@ -419,7 +419,7 @@ SubmitHarnessController
 | 节点                  | 输入                                | 输出                                                  |
 | --------------------- | ----------------------------------- | ----------------------------------------------------- |
 | `SubmissionRootNode`  | `SubmitTaskRequest`                 | `TaskSubmissionVO`                                    |
-| `ProfileResolutionNode` | profileCode                       | `ExecutionProfileVO` + `ModelProviderProfileVO`       |
+| `ProfileResolutionNode` | `profileCode` + optional `channelCode` | `ExecutionProfileVO` + resolved model channel       |
 | `ToolResolutionNode`  | `toolSelection.toolCodes()`         | `List<String> enabledTools`                           |
 | `PermissionCheckNode` | `enabledTools`                      | `PermissionAssessmentVO` + `ApprovalDecisionVO`      |
 | `EnqueueNode`         | 全部上下文                          | `SessionOpenedResultVO` + `QueuedTaskResultVO`        |

@@ -13,6 +13,7 @@ import java.time.Instant;
  */
 public record SessionOpenedResultVO(
         String sessionId,
+        String resolvedChannelCode,
         String resolvedModel,
         HarnessStatusEnumVO status,
         Instant acceptedAt

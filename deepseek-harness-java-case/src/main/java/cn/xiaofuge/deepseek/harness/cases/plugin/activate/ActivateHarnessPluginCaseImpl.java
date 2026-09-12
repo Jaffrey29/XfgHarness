@@ -3,10 +3,12 @@ package cn.xiaofuge.deepseek.harness.cases.plugin.activate;
 import cn.xiaofuge.deepseek.harness.api.dto.ActivatePluginRequestDTO;
 import cn.xiaofuge.deepseek.harness.api.dto.ActivatePluginResponseDTO;
 import cn.xiaofuge.deepseek.harness.cases.plugin.IActivateHarnessPluginCase;
+import cn.xiaofuge.deepseek.harness.cases.plugin.IRunHarnessPluginCase;
 import cn.xiaofuge.deepseek.harness.cases.plugin.lifecycle.PluginRuntimeOutcome;
 import cn.xiaofuge.deepseek.harness.cases.plugin.lifecycle.PluginExecutionInput;
 import cn.xiaofuge.deepseek.harness.cases.plugin.lifecycle.PluginRuntimeKind;
 import cn.xiaofuge.deepseek.harness.cases.plugin.lifecycle.factory.PluginRuntimePipelineFactory;
+import cn.xiaofuge.deepseek.harness.domain.plugin.IPluginRegistryService;
 import org.springframework.stereotype.Service;
 
 /**
@@ -21,14 +23,20 @@ import org.springframework.stereotype.Service;
 public class ActivateHarnessPluginCaseImpl implements IActivateHarnessPluginCase {
 
     private final PluginRuntimePipelineFactory pipelineFactory;
+    private final IRunHarnessPluginCase runHarnessPluginCase;
+    private final IPluginRegistryService pluginRegistryService;
 
     /**
      * 激活组件，准备其运行时能力。
      */
     public ActivateHarnessPluginCaseImpl(
-            PluginRuntimePipelineFactory pipelineFactory
+            PluginRuntimePipelineFactory pipelineFactory,
+            IRunHarnessPluginCase runHarnessPluginCase,
+            IPluginRegistryService pluginRegistryService
     ) {
         this.pipelineFactory = pipelineFactory;
+        this.runHarnessPluginCase = runHarnessPluginCase;
+        this.pluginRegistryService = pluginRegistryService;
     }
 
     /**
@@ -36,10 +44,32 @@ public class ActivateHarnessPluginCaseImpl implements IActivateHarnessPluginCase
      */
     @Override
     public ActivatePluginResponseDTO execute(ActivatePluginRequestDTO request) {
-        if (pipelineFactory.pluginPipeline().execute(new PluginExecutionInput(request.pluginId(), PluginRuntimeKind.ACTIVATE))
-                instanceof PluginRuntimeOutcome.Activation activation) {
+        PluginRuntimeOutcome outcome = pipelineFactory.pluginPipeline().execute(
+                new PluginExecutionInput(request.pluginId(), PluginRuntimeKind.ACTIVATE));
+        if (outcome instanceof PluginRuntimeOutcome.Activation activation) {
+            try {
+                var runResult = runHarnessPluginCase.execute(
+                        new cn.xiaofuge.deepseek.harness.api.dto.RunPluginRequestDTO(request.pluginId()));
+                if (!runResult.running()) {
+                    markFailed(request.pluginId());
+                    throw new IllegalStateException(
+                            "plugin activated but failed to start: " + runResult.message());
+                }
+            } catch (RuntimeException exception) {
+                markFailed(request.pluginId());
+                throw exception;
+            }
             return activation.result();
         }
         throw new IllegalStateException("unexpected plugin activation outcome");
+    }
+
+    private void markFailed(String pluginId) {
+        try {
+            pluginRegistryService.refreshStatus(pluginRegistryService.loadPlugin(pluginId), false);
+        } catch (RuntimeException statusException) {
+            statusException.addSuppressed(new IllegalStateException(
+                    "failed to persist plugin failure status: " + pluginId));
+        }
     }
 }

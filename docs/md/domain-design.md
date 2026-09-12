@@ -105,7 +105,7 @@ flowchart LR
 
     subgraph RUNTIME["运行时领域"]
         direction TB
-        r_obj["ModelSetting / Profile"]:::obj
+        r_obj["ModelSetting / ExecutionProfile"]:::obj
         r_cmd["模型发现 / 保存设置"]:::cmd
         r_evt["工具目录绑定更新"]:::evt
         r_ext["MySQL 持久化"]:::ext
@@ -144,7 +144,7 @@ flowchart LR
 1. **对话主线**：会话领域 → Agent 领域（ReAct 循环）→ 工具领域 → 插件领域
 2. **任务主线**：任务领域 → 审批领域 → 执行领域 →（复用对话主线的 Agent 链路）
 
-运行时领域（模型 Profile、工具目录）横向支撑两条主线；所有过程事件最终落 MySQL，供控制台回放。
+运行时领域（模型渠道、执行画像、工具目录）横向支撑两条主线；所有过程事件最终落 MySQL，供控制台回放。
 
 ## 2. 限界上下文（Bounded Context）
 
@@ -155,7 +155,7 @@ flowchart LR
 | Agent 执行核心 | `agent`, `llm`, `session` | `ReactLoopAgent`、`Phase`（Idle/Running/Maintenance）、`ILlmRuntimePort`、`HarnessSessionAggregate`、`SessionLog` |
 | 任务与目标 | `task`, `goal`, `plan`, `todo`, `workflow`, `schedule`, `jobs` | `HarnessTaskEntity`、`GoalAggregate`、`WorkflowRun` |
 | 工具与插件 | `tool`, `plugin`, `typert`, `sdk` | `ToolRegistry`、`ToolCallExecutor`、`RuntimeApprovalGate` |
-| 运行时与环境 | `runtime`, `credentials`, `coderuntime`, `terminal`, `lsp`, `sandbox`, `e2b`, `acp` | `ModelSetting`、`Profile`、各类端口 |
+| 运行时与环境 | `runtime`, `credentials`, `coderuntime`, `terminal`, `lsp`, `sandbox`, `e2b`, `acp` | `ModelSetting`、`ExecutionProfile`、各类端口 |
 | 治理与存储 | `guard`, `hooks`, `storage` | 超时策略、Hook 引擎、KV 存储 |
 | 共享与技能 | `shared`, `skill` | `HarnessStatusEnumVO` 等跨域枚举 |
 

@@ -42,8 +42,8 @@ public class AgentStreamApi implements IAgentStreamApi {
 
     @Override
     public SseEmitter sendMessageStreaming(AgentMessageRequestDTO request) {
-        log.info("[SSE] 收到流式请求 agentId={} provider={} model={}",
-                request.agentId(), request.provider(), request.model());
+        log.info("[SSE] 收到流式请求 agentId={} channel={}",
+                request.agentId(), request.channelCode());
         SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
         java.util.concurrent.atomic.AtomicBoolean emitterClosed =
                 new java.util.concurrent.atomic.AtomicBoolean(false);

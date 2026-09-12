@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /** 面向 Web 控制台暴露模型设置写操作。 */
@@ -38,17 +37,15 @@ public class HarnessModelSettingCommandController {
     /**
      * 删除目标对象。
      * 流程：解析请求参数 → 调用应用门面 → 返回响应。
-     * @param profileCode profile 编码参数。
-     * @param modelCode 模型编码（可空；为空删除该 profile 全部配置）。
+     * @param channelCode 模型渠道编码参数。
      */
-    @DeleteMapping("/{profileCode}")
-    public Response<Void> delete(@PathVariable("profileCode") String profileCode,
-                                 @RequestParam(value = "modelCode", required = false) String modelCode) {
-        return harnessModelSettingCommandApi.delete(profileCode, modelCode);
+    @DeleteMapping("/{channelCode}")
+    public Response<Void> delete(@PathVariable("channelCode") String channelCode) {
+        return harnessModelSettingCommandApi.delete(channelCode);
     }
 
     /**
-     * 将某 profile 下的指定模型切换为当前生效模型。
+     * 将指定模型渠道切换为当前生效渠道。
      * 流程：解析请求参数 → 调用应用门面 → 返回激活后的配置。
      */
     @PostMapping("/active")

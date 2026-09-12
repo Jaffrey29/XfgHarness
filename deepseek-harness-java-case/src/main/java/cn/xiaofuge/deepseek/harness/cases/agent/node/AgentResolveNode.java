@@ -51,8 +51,8 @@ public class AgentResolveNode extends AbstractAgentMessageNode {
         if (agent == null) {
             AgentOptions options = buildAgentOptions(request);
             String workDir = request.cwd() != null ? request.cwd() : System.getProperty("user.dir");
-            log.info("[Resolve] Agent={} 不存在，创建新实例（model={} provider={} cwd={}）",
-                    request.agentId(), options.model(), options.provider(), workDir);
+            log.info("[Resolve] Agent={} 不存在，创建新实例（channel={} model={} cwd={}）",
+                    request.agentId(), options.channelCode(), options.model(), workDir);
             agent = agentFactory.create(request.agentId(), options, workDir);
             agentFactory.configureApprovalMode(request.agentId(), approvalMode(request));
         } else {
@@ -81,11 +81,11 @@ public class AgentResolveNode extends AbstractAgentMessageNode {
 
     /**
      * 将 HTTP 请求字段转换为 Agent 运行参数。
-     * <p>统一使用 {@link AgentModelOptionsResolver}：请求显式值优先，其次数据库默认配置，
+     * <p>统一使用 {@link AgentModelSettingResolver}：请求显式值优先，其次数据库默认配置，
      * 最后才使用 application.yml 的模型兜底。
      */
     private AgentOptions buildAgentOptions(AgentMessageRequestDTO request) {
-        return modelSettingResolver.resolve(request.provider(), request.model(), request.maxTokens());
+        return modelSettingResolver.resolve(request.channelCode(), request.maxTokens());
     }
 
     private ApprovalModeVO approvalMode(AgentMessageRequestDTO request) {

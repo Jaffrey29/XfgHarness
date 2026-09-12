@@ -63,7 +63,7 @@ public class EnqueueNode extends AbstractSubmitTaskNode {
                                          SubmitTaskDynamicContext ctx) throws Exception {
         var submission = ctx.getSubmission();
         var profile = ctx.getExecutionProfile();
-        var model = ctx.getModelProfile();
+        var model = ctx.getModelChannel();
         var permission = ctx.getPermissionAssessment();
         var approval = ctx.getApprovalDecision();
 
@@ -72,6 +72,7 @@ public class EnqueueNode extends AbstractSubmitTaskNode {
                 submission.prompt(),
                 profile.profileCode(),
                 profile.executionMode(),
+                model.channelCode(),
                 model.modelCode(),
                 permission.enabledTools(),
                 Instant.now(),
@@ -114,6 +115,7 @@ public class EnqueueNode extends AbstractSubmitTaskNode {
                 ctx.getTaskResult().taskId(),
                 ctx.getSessionResult().sessionId(),
                 ctx.getCurrentStatus(),
+                ctx.getSessionResult().resolvedChannelCode(),
                 ctx.getSessionResult().resolvedModel(),
                 ctx.getTaskResult().enabledTools(),
                 approval.approvalRequired(),

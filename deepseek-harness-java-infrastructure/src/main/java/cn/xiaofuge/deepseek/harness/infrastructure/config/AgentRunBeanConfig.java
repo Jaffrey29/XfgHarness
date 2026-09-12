@@ -2,7 +2,6 @@ package cn.xiaofuge.deepseek.harness.infrastructure.config;
 
 import cn.xiaofuge.deepseek.harness.domain.agent.contract.outbound.UserQuestionGateway;
 import cn.xiaofuge.deepseek.harness.domain.agent.contract.inbound.AgentRunLifecycle;
-import cn.xiaofuge.deepseek.harness.domain.agent.model.entity.AgentOptions;
 import cn.xiaofuge.deepseek.harness.domain.agent.contract.outbound.RuntimeApprovalGateway;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.run.AgentRunFactory;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.run.InMemoryUserQuestionGateway;
@@ -16,6 +15,7 @@ import cn.xiaofuge.deepseek.harness.domain.agent.service.SystemPromptAssembler;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.ScopedSystemPromptAssembler;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.subagent.SubagentRegistry;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.subagent.SpawnInProcessProvider;
+import cn.xiaofuge.deepseek.harness.domain.runtime.setting.service.AgentModelSettingResolver;
 import cn.xiaofuge.deepseek.harness.domain.goal.IGoalCommandService;
 import cn.xiaofuge.deepseek.harness.domain.goal.IGoalQueryService;
 import cn.xiaofuge.deepseek.harness.domain.jobs.IJobRegistryService;
@@ -148,13 +148,14 @@ public class AgentRunBeanConfig {
     @Bean
     public Object agentRunFactorySubagentInit(
             SubagentRegistry subagentRegistry,
-            AgentRunLifecycle agentRunFactory
+            AgentRunLifecycle agentRunFactory,
+            AgentModelSettingResolver modelSettingResolver
     ) {
         var spawn = new SpawnInProcessProvider(
                 "spawn-in-process",
                 subagentRegistry,
                 agentRunFactory,
-                new AgentOptions("deepseek", "gpt-5.5", 4096, null, null)
+                () -> modelSettingResolver.resolve(null, 4096)
         );
         subagentRegistry.register(spawn);
         return spawn;

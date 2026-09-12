@@ -200,7 +200,7 @@ java -jar deepseek-harness-java-app/target/deepseek-harness-java-app-1.0.0-SNAPS
 
 | 字段 | 说明 |
 | --- | --- |
-| Profile | 运行时选择模型的主键，如 `default` / `web` / `headless` |
+| 渠道编码 | 运行时选择模型渠道的主键，如 `default` / `qwen-max` / `local-ollama` |
 | Provider | 渠道标识，任意编码均可（模板之外的 provider 会按其协议动态路由） |
 | 协议 | `openai`（OpenAI 兼容，默认）/ `anthropic`（Messages 协议）/ `ollama`（原生） |
 | 模型 | 模型编码，可用同步按钮从上游拉取后下拉选择 |
@@ -208,7 +208,7 @@ java -jar deepseek-harness-java-app/target/deepseek-harness-java-app-1.0.0-SNAPS
 | API Key | 渠道密钥（Ollama 本地可留空） |
 | Enabled | 开启 |
 
-`profileCode=default` 是 Agent 的全局默认配置。保存后，数据库配置优先生效；只有该记录不存在或未启用时，才会回退到 `LLM_*` 环境变量和 `harness.yml` 文件兜底。
+`channelCode=default` 是 Agent 的全局默认模型渠道。保存后，数据库配置优先生效；只有未配置可用渠道时，才会回退到 `LLM_*` 环境变量和 `harness.yml` 文件兜底。`web` / `headless` 只用于工具与审批画像，不再需要各自重复配置模型。
 
 也可以调用 API 保存：
 
@@ -216,7 +216,7 @@ java -jar deepseek-harness-java-app/target/deepseek-harness-java-app-1.0.0-SNAPS
 curl -X POST http://localhost:8090/api/harness/settings/models \
   -H 'Content-Type: application/json' \
   -d '{
-    "profileCode": "default",
+    "channelCode": "default",
     "providerCode": "deepseek",
     "modelCode": "glm-5.3-flash",
     "baseUrl": "http://127.0.0.1:8777/v1",
@@ -231,7 +231,10 @@ curl -X POST http://localhost:8090/api/harness/settings/models \
 | 接口 | 说明 |
 | --- | --- |
 | `GET /api/harness/channels/presets` | 查询内置渠道模板（协议、默认地址、推荐模型），只读不落库 |
+| `GET /api/harness/settings/models` | 查询全部模型渠道及当前 active 渠道 |
 | `POST /api/harness/settings/models` | 保存模型渠道配置（含 `protocol` 字段，缺省按 `openai`） |
+| `POST /api/harness/settings/models/active` | 激活指定渠道，请求体：`{ "channelCode": "qwen" }` |
+| `DELETE /api/harness/settings/models/{channelCode}` | 删除指定模型渠道 |
 | `POST /api/harness/settings/models/discover` | 同步上游模型列表，请求体：`{ "baseUrl", "apiKeyRef", "protocol" }` |
 
 ### 2.5 启动方式三：Docker Compose
@@ -263,14 +266,13 @@ curl -X POST http://localhost:8090/api/agent/message \
   -d '{
     "agentId": "local-agent",
     "message": "Hello!",
-    "provider": "deepseek",
-    "model": "gpt-5.5",
+    "channelCode": "default",
     "maxTokens": 8192,
     "cwd": "."
   }'
 ```
 
-> `agentId` 和 `message` 必填；`provider`、`model`、`maxTokens`、`cwd` 省略后使用 `harness_model_setting` 中的默认模型配置；文件配置只在数据库无默认记录时用于首次初始化。
+> `agentId` 和 `message` 必填；`channelCode`、`maxTokens`、`cwd` 省略后使用 `harness_model_setting` 中当前激活的模型渠道；文件配置只在数据库无可用渠道时用于首次初始化。
 
 SSE 流式对话：
 
@@ -595,7 +597,7 @@ flowchart LR
 
     subgraph RUNTIME["运行时领域"]
         direction TB
-        r_obj["ModelSetting / Profile"]:::obj
+        r_obj["ModelSetting / Channel"]:::obj
         r_cmd["模型发现 / 保存设置"]:::cmd
         r_evt["工具目录绑定更新"]:::evt
         r_ext["MySQL 持久化"]:::ext
@@ -629,7 +631,7 @@ flowchart LR
     style RUNTIME stroke-dasharray:5 4
 ```
 
-两条业务主线：**对话主线**（会话 → Agent ReAct 循环 → 工具执行 → 插件扩展）与**任务主线**（任务提交 → 权限/审批 → 排队 → 执行，执行阶段复用 Agent 链路）；运行时领域横向提供模型 Profile 与工具目录支撑，过程事件落库供控制台回放。
+两条业务主线：**对话主线**（会话 → Agent ReAct 循环 → 工具执行 → 插件扩展）与**任务主线**（任务提交 → 权限/审批 → 排队 → 执行，执行阶段复用 Agent 链路）；运行时领域横向提供模型渠道、执行画像与工具目录支撑，过程事件落库供控制台回放。
 
 ### 4.2 限界上下文
 
@@ -1086,7 +1088,7 @@ flowchart TD
 | 任务 | `POST /api/harness/tasks/submit` | 提交 Harness Task |
 | 目标 | `GET /api/harness/goals/{sessionId}`, `POST /api/harness/goals/{sessionId}` | 查询与维护目标状态 |
 | 审批 | `GET /api/harness/approvals/pending`, `POST /api/harness/approvals/{sessionId}/approve` | 查询待审批项并审批 |
-| 模型设置 | `GET /api/harness/settings/models`, `POST /api/harness/settings/models` | 查询、保存、删除模型设置 |
+| 模型设置 | `GET/POST /api/harness/settings/models`, `POST /api/harness/settings/models/active`, `DELETE /api/harness/settings/models/{channelCode}` | 查询、保存、切换、删除模型渠道 |
 | 模型发现 | `POST /api/harness/settings/models/discover`, `GET /api/harness/runtime/models` | 发现模型和查询运行时目录 |
 | 插件 | `GET /api/harness/plugins`, `POST /api/harness/plugins/install` | 插件列表、安装、激活、运行、启停、卸载 |
 | 终端 | `POST /api/harness/terminal/sessions`, `GET /api/harness/terminal/sessions/{id}/read` | 打开、发送、读取、关闭终端 |
@@ -1158,7 +1160,7 @@ flowchart TD
 | `harness_goal_state` | 目标状态 |
 | `harness_plugin_installation` | 插件安装元数据 |
 | `harness_plugin_runtime_binding` | 插件运行绑定信息 |
-| `harness_model_setting` | 模型与 Provider 配置 |
+| `harness_model_setting` | 模型渠道与 Provider 配置 |
 | `harness_tool_catalog` / `harness_tool_profile_binding` | 工具目录与 Profile 绑定 |
 
 MySQL 承载结构化状态和事件（默认 profile）；standalone profile 使用 H2 文件库（`MODE=MySQL` 兼容模式），两者共用同一套 schema，`sql.init.mode=always` 幂等重跑。

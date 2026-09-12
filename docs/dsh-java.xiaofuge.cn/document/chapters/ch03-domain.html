@@ -106,7 +106,7 @@
 
 <p>回看整个领域设计，所有上下文最终服务于两条主线：</p>
 
-<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"chat","label":"对话主线\n会话 → ReAct循环 → 工具执行 → 插件扩展\n(交互式，人实时参与)","type":"process"},{"id":"task","label":"任务主线\n提交 → 权限/审批 → 排队 → 执行\n(异步，可先批准后执行)","type":"process"},{"id":"runtime","label":"运行时领域（横向支撑）\n模型 Profile · 工具目录","type":"decision"},{"id":"storage","label":"事件落库\n控制台回放 · 审计","type":"end"}],"edges":[{"from":"runtime","to":"chat"},{"from":"runtime","to":"task"},{"from":"chat","to":"storage"},{"from":"task","to":"chat","label":"执行阶段复用 Agent 链路"},{"from":"task","to":"storage"}]}'></div>
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"chat","label":"对话主线\n会话 → ReAct循环 → 工具执行 → 插件扩展\n(交互式，人实时参与)","type":"process"},{"id":"task","label":"任务主线\n提交 → 权限/审批 → 排队 → 执行\n(异步，可先批准后执行)","type":"process"},{"id":"runtime","label":"运行时领域（横向支撑）\n模型渠道 · 执行画像 · 工具目录","type":"decision"},{"id":"storage","label":"事件落库\n控制台回放 · 审计","type":"end"}],"edges":[{"from":"runtime","to":"chat"},{"from":"runtime","to":"task"},{"from":"chat","to":"storage"},{"from":"task","to":"chat","label":"执行阶段复用 Agent 链路"},{"from":"task","to":"storage"}]}'></div>
 
 <div class="card" style="border-left: 3px solid var(--color-success);">
   <div class="card-title">💡 关键设计：复用而非重复</div>
