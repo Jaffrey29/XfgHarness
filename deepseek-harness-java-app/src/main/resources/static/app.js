@@ -16,11 +16,22 @@ const MODEL_DISCOVER_API = '/api/harness/settings/models/discover';
 const CHANNEL_PRESETS_API = '/api/harness/channels/presets';
 const DEFAULT_CHANNEL = '';
 const PLUGIN_API = '/api/harness/plugins';
+const PLUGIN_API_TOKEN_KEY = 'harness.pluginApiToken';
 const CONSOLE_API = '/api/harness/console';
 const APPROVAL_API = '/api/harness/approvals';
 
+function pluginApiHeaders(existing) {
+  const headers = { ...(existing || {}) };
+  const token = localStorage.getItem(PLUGIN_API_TOKEN_KEY) || '';
+  if (token.trim()) headers['X-Plugin-Api-Token'] = token.trim();
+  return headers;
+}
+
 async function apiRequest(path, options = {}) {
-  const response = await fetch(path, options);
+  const requestOptions = path.startsWith(PLUGIN_API)
+    ? { ...options, headers: pluginApiHeaders(options.headers) }
+    : options;
+  const response = await fetch(path, requestOptions);
   let payload = null;
   try {
     payload = await response.json();
@@ -3376,6 +3387,22 @@ function renderPluginInstall(body) {
     el('span', { class: 'settings-pill' }, 'Auto Analyze')
   ));
 
+  const tokenGroup = el('div', { class: 'form-group plugin-api-token-group' });
+  tokenGroup.appendChild(el('label', { class: 'form-label' }, '插件 API Token'));
+  const tokenInput = el('input', {
+    class: 'form-input',
+    type: 'password',
+    autocomplete: 'off',
+    placeholder: '填写 HARNESS_PLUGINS_API_TOKEN'
+  });
+  tokenInput.value = localStorage.getItem(PLUGIN_API_TOKEN_KEY) || '';
+  tokenInput.oninput = function() {
+    localStorage.setItem(PLUGIN_API_TOKEN_KEY, tokenInput.value.trim());
+  };
+  tokenGroup.appendChild(tokenInput);
+  tokenGroup.appendChild(el('div', { class: 'form-hint' }, '远程访问 Harness 时，上传和安装插件需要此 Token。'));
+  panel.appendChild(tokenGroup);
+
   const modeTabs = el('div', { class: 'settings-mode-tabs' });
   const modes = [
     { id: 'jar', label: '选择 JAR' },
@@ -3406,7 +3433,11 @@ function renderPluginInstall(body) {
       state.pluginAnalyzeMessage = '分析中…';
       render();
       try {
-        const response = await fetch(PLUGIN_API + '/analyze-jar', { method: 'POST', body: (() => { const form = new FormData(); form.append('file', file); return form; })() });
+        const response = await fetch(PLUGIN_API + '/analyze-jar', {
+          method: 'POST',
+          headers: pluginApiHeaders(),
+          body: (() => { const form = new FormData(); form.append('file', file); return form; })()
+        });
         const payload = await response.json();
         if (!response.ok || payload.code !== '00000') throw new Error(payload.info || ('HTTP ' + response.status));
         state.pluginCandidate = payload.data;

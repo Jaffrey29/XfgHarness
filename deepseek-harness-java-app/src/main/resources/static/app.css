@@ -1718,6 +1718,7 @@ a:hover { text-decoration: underline; }
 .settings-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
 .settings-panel-title { margin: 0; font-size: 16px; font-weight: 650; color: var(--dsw-alias-label-primary); }
 .settings-panel-desc { font-size: 12px; color: var(--dsw-alias-label-tertiary); margin: 5px 0 14px; }
+.plugin-api-token-group { max-width: 520px; margin-bottom: 14px; }
 .settings-form-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .settings-panel-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 .settings-list-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
