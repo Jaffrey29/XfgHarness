@@ -16,22 +16,11 @@ const MODEL_DISCOVER_API = '/api/harness/settings/models/discover';
 const CHANNEL_PRESETS_API = '/api/harness/channels/presets';
 const DEFAULT_CHANNEL = '';
 const PLUGIN_API = '/api/harness/plugins';
-const PLUGIN_API_TOKEN_KEY = 'harness.pluginApiToken';
 const CONSOLE_API = '/api/harness/console';
 const APPROVAL_API = '/api/harness/approvals';
 
-function pluginApiHeaders(existing) {
-  const headers = { ...(existing || {}) };
-  const token = localStorage.getItem(PLUGIN_API_TOKEN_KEY) || '';
-  if (token.trim()) headers['X-Plugin-Api-Token'] = token.trim();
-  return headers;
-}
-
 async function apiRequest(path, options = {}) {
-  const requestOptions = path.startsWith(PLUGIN_API)
-    ? { ...options, headers: pluginApiHeaders(options.headers) }
-    : options;
-  const response = await fetch(path, requestOptions);
+  const response = await fetch(path, options);
   let payload = null;
   try {
     payload = await response.json();
@@ -3383,25 +3372,9 @@ function renderPluginInstall(body) {
   panel.appendChild(el('div', { class: 'settings-panel-head' },
     el('div', null,
       el('h2', { class: 'settings-panel-title' }, '安装插件'),
-      el('p', { class: 'settings-panel-desc' }, '选择本地 JAR 自动识别，或粘贴 Maven 依赖让系统定位插件。')),
+      el('p', { class: 'settings-panel-desc' }, '选择本地 JAR，确认后即可直接安装并启用。')),
     el('span', { class: 'settings-pill' }, 'Auto Analyze')
   ));
-
-  const tokenGroup = el('div', { class: 'form-group plugin-api-token-group' });
-  tokenGroup.appendChild(el('label', { class: 'form-label' }, '插件 API Token'));
-  const tokenInput = el('input', {
-    class: 'form-input',
-    type: 'password',
-    autocomplete: 'off',
-    placeholder: '填写 HARNESS_PLUGINS_API_TOKEN'
-  });
-  tokenInput.value = localStorage.getItem(PLUGIN_API_TOKEN_KEY) || '';
-  tokenInput.oninput = function() {
-    localStorage.setItem(PLUGIN_API_TOKEN_KEY, tokenInput.value.trim());
-  };
-  tokenGroup.appendChild(tokenInput);
-  tokenGroup.appendChild(el('div', { class: 'form-hint' }, '远程访问 Harness 时，上传和安装插件需要此 Token。'));
-  panel.appendChild(tokenGroup);
 
   const modeTabs = el('div', { class: 'settings-mode-tabs' });
   const modes = [
@@ -3422,7 +3395,7 @@ function renderPluginInstall(body) {
     const input = el('input', { type: 'file', accept: '.jar', style: 'display:none' });
     const dropText = el('div', { class: 'settings-drop-text' },
       el('strong', null, '点击选择 JAR 包'),
-      el('span', null, '系统会读取 META-INF/plugin.yaml，自动整理插件信息'));
+      el('span', null, '系统会读取 META-INF/plugin.yaml，识别后直接使用'));
     drop.appendChild(input);
     drop.appendChild(dropText);
     panel.appendChild(drop);
@@ -3433,11 +3406,7 @@ function renderPluginInstall(body) {
       state.pluginAnalyzeMessage = '分析中…';
       render();
       try {
-        const response = await fetch(PLUGIN_API + '/analyze-jar', {
-          method: 'POST',
-          headers: pluginApiHeaders(),
-          body: (() => { const form = new FormData(); form.append('file', file); return form; })()
-        });
+        const response = await fetch(PLUGIN_API + '/analyze-jar', { method: 'POST', body: (() => { const form = new FormData(); form.append('file', file); return form; })() });
         const payload = await response.json();
         if (!response.ok || payload.code !== '00000') throw new Error(payload.info || ('HTTP ' + response.status));
         state.pluginCandidate = payload.data;
