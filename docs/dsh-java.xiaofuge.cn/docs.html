@@ -82,7 +82,7 @@
   -v dsh-web-data:/app/data \
   -v dsh-web-storage:/app/storage \
   registry.cn-hangzhou.aliyuncs.com/xfg-studio/deepseek-harness-java:0.1.6</code></pre>
-            <p data-page-node-id="start-path-visit">浏览器打开 <code data-page-node-id="start-path-url">http://127.0.0.1:8090/</code>，新建工作区和会话，发送：<code data-page-node-id="start-path-prompt">请介绍一下你当前可以使用的工具，并说明哪些操作需要人工审批。</code></p>
+            <p data-page-node-id="start-path-visit">浏览器打开 <code data-page-node-id="start-path-url">http://127.0.0.1:8090/</code>，先进入「设置 → 模型设置 → 添加模型」，填写模型服务地址、模型名称和 API Key，保存后再新建工作区和会话，发送：<code data-page-node-id="start-path-prompt">请介绍一下你当前可以使用的工具，并说明哪些操作需要人工审批。</code></p>
             <p data-page-node-id="start-path-cleanup">进入下一步前执行 <code data-page-node-id="start-path-cleanup-code">docker rm -f dsh-java-web</code>，避免容器名和端口冲突。</p>
             <h3 data-page-node-id="start-path-plugin">第二步：部署插件服务并安装一个 JAR</h3>
             <p data-page-node-id="start-plugin-intro">先只启动 Harness 和 MySQL 管理服务，体验一个插件，不必一次启动商城和所有组件：</p>
@@ -95,24 +95,20 @@ docker compose up -d dsh-java-web dsh-java-mysql
             <p data-page-node-id="start-plugin-check">访问 <code data-page-node-id="start-plugin-web">http://127.0.0.1:8091/</code> 添加数据库连接，再用下面的命令确认插件已经激活：</p>
             <pre data-page-node-id="start-plugin-api"><code data-page-node-id="start-plugin-api-code">curl http://127.0.0.1:8090/api/harness/plugins</code></pre>
             <p data-page-node-id="start-plugin-prompt">在 Harness 会话中发送：<code data-page-node-id="start-plugin-prompt-code">请列出当前已配置的数据库连接，并说明这个插件提供哪些只读能力。</code></p>
-            <h3 data-page-node-id="start-path-full">第三步：完整部署 Harness、MySQL、商城与两个插件</h3>
-            <p data-page-node-id="eTEfP2xVp1fjT3pEDDEZaN">推荐使用 <a class="inline-link" href="https://github.com/fuzhengwei/dsh-java-deploy" target="_blank" rel="noreferrer" data-page-node-id="6I6qBanIWHnWrEjBHZB2OB">dsh-java-deploy</a> 标准部署包。它统一网络、持久化数据，并预置 <code data-page-node-id="oWDIVX6TyicQsGfJOTSbAy">dsh-java-mysql</code> 与 <code data-page-node-id="2DdPI1dn0eMZSMus2I1HEB">2d-weekend-mall</code> 插件：</p>
-            <pre data-page-node-id="fMEDUesbkJaOAEsji1pzrj"><code data-page-node-id="a6MkDJT7MvqEj0truNlQ8m">git clone https://github.com/fuzhengwei/dsh-java-deploy.git
-cd dsh-java-deploy
-
-cp .env.example .env
-# 修改 MALL_SERVICE_TOKEN、DEEPSEEK_BASE_URL、DEEPSEEK_API_KEY
-
-docker compose up -d
-./scripts/install-plugins.sh</code></pre>
+            <h3 data-page-node-id="start-path-full">第三步：标准部署 Harness 与商城</h3>
+            <p data-page-node-id="eTEfP2xVp1fjT3pEDDEZaN">下载并执行 <a class="inline-link" href="/scripts/deploy-standard.sh" download>标准部署脚本</a>。脚本会拉取 Harness 与 2D Weekend Mall 镜像，使用 host 网络启动两个容器，并挂载数据、存储和插件卷：</p>
+            <pre data-page-node-id="fMEDUesbkJaOAEsji1pzrj"><code data-page-node-id="a6MkDJT7MvqEj0truNlQ8m">curl -fsSLO https://dsh-java.xiaofuge.cn/scripts/deploy-standard.sh
+chmod +x deploy-standard.sh
+./deploy-standard.sh</code></pre>
             <p data-page-node-id="roloZnvJ0WyMVIXwzjwuOR">启动后访问：</p>
             <pre data-page-node-id="YprOg08gXyVhstW7sCArgF"><code data-page-node-id="FSIoXrISdCDhEGnSaF9siu">http://127.0.0.1:8090    # Harness Web
 http://127.0.0.1:8091    # DSH MySQL
 http://127.0.0.1:18080   # 2D Weekend Mall</code></pre>
+            <p data-page-node-id="model-config-deploy">部署完成后打开 Harness，进入「设置 → 模型设置 → 添加模型」，填写模型服务地址、模型名称和 API Key，保存后即可开始对话。</p>
             <p data-page-node-id="gu0QGivXM2m3qT0C4GHYno">验证插件：</p>
             <pre data-page-node-id="gIriogxqva5hUKW0zPoc34"><code data-page-node-id="ro7w3hCvCefOaxAk0eGMkX">curl http://127.0.0.1:8090/api/harness/plugins</code></pre>
-            <div class="callout tip" data-page-node-id="ZXVUABFu5Q37HnyO6MLpeL"><strong data-page-node-id="FIGa92zN9nQBwlKIGuTNMx">说明：</strong>部署包已内置插件 JAR，不需要先构建业务源码。如果插件源码更新，先执行仓库里的 <code data-page-node-id="X7GMv8GyoOt3Vg3bCJ8VdV">scripts/build-plugins.sh</code>。</div>
-            <div class="callout tip" data-page-node-id="EtlgGBv4JVB67ZvFuVh3jU"><strong data-page-node-id="2dhP0mkzH8yVhTOHzWOEIb">建议：</strong>完整部署已内置两个插件 JAR，不需要先构建业务源码；源码开发和 JAR 更新请进入“插件开发”章节。</div>
+            <div class="callout tip" data-page-node-id="ZXVUABFu5Q37HnyO6MLpeL"><strong data-page-node-id="FIGa92zN9nQBwlKIGuTNMx">安装商城插件：</strong>部署完成后，从 <a class="inline-link" href="https://github.com/fuzhengwei/2d-weekend-mall/blob/main/docs/mall-agent-plugin-1.0.0-SNAPSHOT.jar" target="_blank" rel="noreferrer">GitHub 下载 mall-agent-plugin-1.0.0-SNAPSHOT.jar</a>，打开 <code data-page-node-id="plugin-upload-url">http://127.0.0.1:8090</code>，进入“设置 → 插件管理 → 选择 JAR”，上传后点击“安装并启用”。</div>
+            <div class="callout tip" data-page-node-id="EtlgGBv4JVB67ZvFuVh3jU"><strong data-page-node-id="2dhP0mkzH8yVhTOHzWOEIb">验证：</strong>访问 <code>http://127.0.0.1:8090/api/harness/plugins</code>，确认 <code>mall-weekend-assistant</code> 已激活；商城访问地址为 <code>http://127.0.0.1:18080</code>。</div>
           </section>
 
           <section id="console" data-page-node-id="e5LQ0b5eGAYpDNs4vaKDA6">
@@ -151,16 +147,14 @@ http://127.0.0.1:18080   # 2D Weekend Mall</code></pre>
 
           <section id="mall" data-page-node-id="EDg3TDYHqgWsOcb84Mvjxm">
             <h2 data-page-node-id="dEnzepQxTv6Rfwcd6jyvU9">3. 完整商城案例：2D Weekend Mall</h2>
-            <p data-page-node-id="0UAnJfpEdXcrSWFkkFijFE">2D Weekend Mall 是完整部署阶段的 PC 虚拟商城，商品、购物车、订单、支付和物流在浏览器闭环。使用部署仓库时不需要单独构建商城源码，Compose 会自动配置容器网络。</p>
-            <h3 data-page-node-id="mall-compose">推荐：用部署仓库启动完整案例</h3>
-            <pre data-page-node-id="mall-compose-command"><code data-page-node-id="mall-compose-code">cd dsh-java-deploy
-cp .env.example .env
-# 修改 MALL_SERVICE_TOKEN、DEEPSEEK_BASE_URL、DEEPSEEK_API_KEY
-docker compose up -d
-./scripts/install-plugins.sh</code></pre>
-            <p data-page-node-id="mall-compose-visit">打开 <code data-page-node-id="mall-compose-url">http://127.0.0.1:18080/</code>，页面右上角 AI 客服会调用 <code data-page-node-id="mall-compose-plugin">mall-weekend-assistant</code> 插件。容器之间使用 <code data-page-node-id="mall-compose-dns">dsh-java-web</code>、<code data-page-node-id="mall-compose-dns-2">dsh-java-mysql</code> 和 <code data-page-node-id="mall-compose-dns-3">2d-weekend-mall</code>，不要在容器内使用 <code data-page-node-id="mall-compose-loopback">127.0.0.1</code>。</p>
+            <p data-page-node-id="0UAnJfpEdXcrSWFkkFijFE">2D Weekend Mall 是完整部署阶段的 PC 虚拟商城，商品、购物车、订单、支付和物流在浏览器闭环。使用标准部署脚本即可启动 Harness 与商城服务，再通过 Harness 插件管理安装客服插件 JAR。</p>
+            <h3 data-page-node-id="mall-compose">推荐：执行标准部署脚本</h3>
+            <pre data-page-node-id="mall-compose-command"><code data-page-node-id="mall-compose-code">curl -fsSLO https://dsh-java.xiaofuge.cn/scripts/deploy-standard.sh
+chmod +x deploy-standard.sh
+./deploy-standard.sh</code></pre>
+            <p data-page-node-id="mall-compose-visit">打开 <code data-page-node-id="mall-compose-url">http://127.0.0.1:18080/</code> 访问商城；然后从 <a class="inline-link" href="https://github.com/fuzhengwei/2d-weekend-mall/blob/main/docs/mall-agent-plugin-1.0.0-SNAPSHOT.jar" target="_blank" rel="noreferrer">GitHub 下载 mall-agent-plugin-1.0.0-SNAPSHOT.jar</a>，在 <code>http://127.0.0.1:8090</code> 的“设置 → 插件管理”中选择 JAR、安装并启用。插件配置使用 <code>mall.base-url=http://127.0.0.1:18080</code>，服务令牌使用脚本输出的值。</p>
             <h3 data-page-node-id="xB56nzPKEHEkkSmEpEGleE">源码开发时启动商城</h3>
-            <p data-page-node-id="mall-source-note">只有需要修改商城源码时才使用下面的本地启动方式；普通部署请使用上面的 Compose 命令。</p>
+            <p data-page-node-id="mall-source-note">只有需要修改商城源码时才使用下面的本地启动方式；普通部署请使用上面的标准部署脚本。</p>
             <pre data-page-node-id="C9HoztNtsgW5sGCp7BqHjP"><code data-page-node-id="Zw4LddcqZv8xjtiknAw9JP">git clone https://github.com/fuzhengwei/2d-weekend-mall.git
 cd 2d-weekend-mall
 
@@ -365,18 +359,11 @@ Harness 地址：【http://localhost:8090】
 
           <section id="ops" data-page-node-id="FamI7XIDWndun0jBhHT1KG">
             <h2 data-page-node-id="iyyjIAtH0Giaxzs4ljk91H">7. 持久化部署与安全</h2>
-            <p data-page-node-id="ndom8GEwV5HCFf4QN53YZI">完整部署推荐 <a class="inline-link" href="https://github.com/fuzhengwei/dsh-java-deploy" target="_blank" rel="noreferrer" data-page-node-id="HgQeTIF0BsYEm6CzvD6byo">dsh-java-deploy</a>。它用 Compose 管理 Harness、MySQL 后台、商城、网络、数据卷和插件；默认 Harness 镜像已更新为 <code data-page-node-id="ops-version">v0.1.6</code>：</p>
-            <pre data-page-node-id="PhzB8FHyPK86x0POESgfhi"><code data-page-node-id="epy95B54sSMqYbcpUYJvyM">git clone https://github.com/fuzhengwei/dsh-java-deploy.git
-cd dsh-java-deploy
-
-cp .env.example .env
-# 修改 MALL_SERVICE_TOKEN、DEEPSEEK_BASE_URL、DEEPSEEK_API_KEY
-
-docker compose up -d
-./scripts/install-plugins.sh
-
-docker compose ps</code></pre>
-            <p data-page-node-id="7mKh0xRZxkinWfphE2MiNM">部署包已把宿主机 <code data-page-node-id="Cgc2L8t78jRDcfjAgvRbIO">plugins/</code> 挂载到 Harness 容器 <code data-page-node-id="Fvyhf2lRL9F9QdPq5whetN">/app/plugins-in</code>，所以插件安装脚本会使用容器内路径。</p>
+            <p data-page-node-id="ndom8GEwV5HCFf4QN53YZI">完整部署推荐使用 <a class="inline-link" href="/scripts/deploy-standard.sh" download>标准部署脚本</a>。脚本使用 Harness <code data-page-node-id="ops-version">0.1.6.4</code> 与商城 <code>0.1.1</code> 镜像，并创建持久化数据、存储和插件卷：</p>
+            <pre data-page-node-id="PhzB8FHyPK86x0POESgfhi"><code data-page-node-id="epy95B54sSMqYbcpUYJvyM">curl -fsSLO https://dsh-java.xiaofuge.cn/scripts/deploy-standard.sh
+chmod +x deploy-standard.sh
+./deploy-standard.sh</code></pre>
+            <p data-page-node-id="7mKh0xRZxkinWfphE2MiNM">脚本部署完成后，请从 <a class="inline-link" href="https://github.com/fuzhengwei/2d-weekend-mall/blob/main/docs/mall-agent-plugin-1.0.0-SNAPSHOT.jar" target="_blank" rel="noreferrer">GitHub 下载商城插件 JAR</a>，在 Harness 的“设置 → 插件管理”中选择 JAR、安装并启用。脚本会输出相同的下载地址、服务地址和商城服务令牌。</p>
             <h3 data-page-node-id="qEGDEu6B5BkV0fDX81xXDZ">.env 关键配置项</h3>
             <table class="tool-table" data-page-node-id="INtxTReCuUs5h6NH9oeRsM">
               <thead data-page-node-id="DxTDSBGYATJgLBhiTYYwZD"><tr data-page-node-id="tCzrfKIN3YiijAwEYEWSl2"><th data-page-node-id="hDE4FBUABhjt9X4QcVywX0">变量</th><th data-page-node-id="9Mj9GboWJzBFyrj5yLO3pS">说明</th><th data-page-node-id="F83rGG8w5SEhqJ1ytPQWdI">建议</th></tr></thead>

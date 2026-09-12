@@ -19,34 +19,36 @@ dsh-java/
 
 ## 启动部署与体验
 
-推荐使用部署仓库：<https://github.com/fuzhengwei/dsh-java-deploy>
-
-标准部署包会启动 Harness、DSH MySQL 后台、2D Weekend Mall，并安装两个预置插件：
+标准部署脚本会启动 Harness 与 2D Weekend Mall，并挂载持久化数据、存储和插件卷：
 
 ```bash
-git clone https://github.com/fuzhengwei/dsh-java-deploy.git
-cd dsh-java-deploy
-
-cp .env.example .env
-# 修改 MALL_SERVICE_TOKEN、DEEPSEEK_BASE_URL、DEEPSEEK_API_KEY
-
-docker compose up -d
-./scripts/install-plugins.sh
+curl -fsSLO https://dsh-java.xiaofuge.cn/scripts/deploy-standard.sh
+chmod +x deploy-standard.sh
+./deploy-standard.sh
 ```
+
+标准部署脚本：[scripts/deploy-standard.sh](scripts/deploy-standard.sh)
+
+部署完成后下载商城插件 JAR：<https://github.com/fuzhengwei/2d-weekend-mall/blob/main/docs/mall-agent-plugin-1.0.0-SNAPSHOT.jar>
+
+打开 Harness 的 `http://127.0.0.1:8090`，进入「设置 → 插件管理 → 选择 JAR」，上传 `mall-agent-plugin-1.0.0-SNAPSHOT.jar`，然后安装并启用。
 
 启动后访问：
 
 ```text
 Harness：http://127.0.0.1:8090
-DSH MySQL：http://127.0.0.1:8091
 2D Weekend Mall：http://127.0.0.1:18080
 ```
+
+部署完成后打开 Harness，进入「设置 → 模型设置 → 添加模型」，填写模型服务地址、模型名称和 API Key，保存后即可开始对话。
 
 验证插件：
 
 ```bash
 curl http://127.0.0.1:8090/api/harness/plugins
 ```
+
+如需使用旧的 Compose 标准部署包，请访问 <https://github.com/fuzhengwei/dsh-java-deploy>。
 
 如果只需要看 Harness 界面，可以先跑单容器：
 
