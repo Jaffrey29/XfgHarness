@@ -6,7 +6,7 @@
     <parent>
         <groupId>cn.xiaofuge</groupId>
         <artifactId>deepseek-harness-java</artifactId>
-        <version>0.1.5</version>
+        <version>0.1.6</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -27,7 +27,7 @@
         <dependency>
             <groupId>cn.xiaofuge</groupId>
             <artifactId>sample-tools-plugin</artifactId>
-            <version>0.1.5</version>
+            <version>0.1.6</version>
         </dependency>
 
         <dependency>
