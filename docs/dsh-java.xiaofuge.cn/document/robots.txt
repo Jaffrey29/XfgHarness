@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://fuzhengwei.github.io/deepseek-harness-java/docs/html/sitemap.xml
+Sitemap: https://dsh-java.xiaofuge.cn/document/sitemap.xml

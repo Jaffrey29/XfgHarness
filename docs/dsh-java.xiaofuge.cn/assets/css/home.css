@@ -1410,6 +1410,50 @@ a { color: inherit; text-decoration: none; }
 
 .footer-bottom p { margin: 0; color: var(--muted); font-size: .78rem; }
 
+.footer-bottom a, .footer-record a { color: inherit; transition: color .18s ease, background-color .18s ease, border-color .18s ease; }
+.footer-bottom a:hover, .footer-record a:hover { color: var(--blue); }
+
+.footer-record {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px 0;
+  margin-top: 18px;
+  padding: 15px 0 0;
+  border-top: 1px solid var(--line);
+  color: #8995aa;
+  font-size: .72rem;
+  line-height: 1.6;
+  letter-spacing: .01em;
+  text-align: center;
+}
+
+.footer-record > a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 2px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+}
+
+.footer-record > a:hover {
+  color: #dbe7ff;
+  background: rgba(255, 255, 255, .06);
+  border-color: rgba(255, 255, 255, .1);
+}
+
+.footer-record > span {
+  padding: 0 4px;
+  color: #56647d;
+  user-select: none;
+}
+
+.footer-record > span:last-child {
+  color: #76839a;
+}
+
 /* ============================================================
    详情页（runtime / architecture）专用
    ============================================================ */
@@ -1602,5 +1646,6 @@ a { color: inherit; text-decoration: none; }
   .layer-row { flex-direction: column; align-items: flex-start; gap: 6px; }
   .layer-row .layer-tag { flex: none; }
   .footer-grid, .footer-bottom { grid-template-columns: 1fr; flex-direction: column; }
+  .footer-record { margin-top: 16px; padding-inline: 8px; font-size: .7rem; }
   .sub-hero { padding: 132px 0 48px; }
 }

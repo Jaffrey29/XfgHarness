@@ -9,6 +9,7 @@
 用法：python3 build.py
 """
 import html as htmllib
+import json
 import re
 import sys
 import time
@@ -17,9 +18,24 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 CHAPTERS_DIR = ROOT / 'chapters'
 # 部署域名（百度收录需要绝对 URL；换域名只改这一行）
-SITE_URL = 'https://fuzhengwei.github.io/deepseek-harness-java/docs/html'
+SITE_URL = 'https://dsh-java.xiaofuge.cn/document'
 SITE_TITLE = 'DeepSeek Harness Java 实战教程'
 ASSET_VERSION = '20260911-1'
+SITE_IMAGE = 'https://dsh-java.xiaofuge.cn/assets/images/harness-session.png'
+SITE_AUTHOR = '小傅哥'
+SITE_KEYWORDS = 'DeepSeek Harness Java, Java Agent, Agent Harness, ReAct, DDD, 六边形架构, 插件系统, MCP, SSE, 事件溯源'
+
+# 百度统计脚本（普通字符串：JS 花括号不能进 f-string）
+BAIDU_ANALYTICS_JS = """  <script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "https://hm.baidu.com/hm.js?73f12e140a9fa19547d818c8d3fe7d07";
+  var s = document.getElementsByTagName("script")[0];
+  s.parentNode.insertBefore(hm, s);
+})();
+  </script>
+"""
 
 # 阅读/滚动进度条脚本（普通字符串：JS 花括号不能进 f-string）
 SCROLL_PROGRESS_JS = """  <script>
@@ -354,6 +370,49 @@ def page_title(ch):
 def page_desc_text(ch):
     return page_desc(read_fragment(ch))
 
+
+def json_ld(data):
+    return '<script type="application/ld+json">' + json.dumps(data, ensure_ascii=False, separators=(',', ':')) + '</script>'
+
+
+def chapter_json_ld(ch, title, desc, canon):
+    return json_ld({
+        '@context': 'https://schema.org',
+        '@type': 'TechArticle',
+        'headline': title,
+        'description': desc,
+        'url': canon,
+        'inLanguage': 'zh-CN',
+        'author': {'@type': 'Person', 'name': SITE_AUTHOR},
+        'publisher': {'@type': 'Organization', 'name': 'DSH Java'},
+        'isPartOf': {'@type': 'Book', 'name': SITE_TITLE, 'url': SITE_URL + '/'},
+        'articleSection': section_text(ch['section']),
+        'position': ch['num'],
+        'keywords': SITE_KEYWORDS,
+        'mainEntityOfPage': {'@type': 'WebPage', '@id': canon},
+        'breadcrumb': {
+            '@type': 'BreadcrumbList',
+            'itemListElement': [
+                {'@type': 'ListItem', 'position': 1, 'name': SITE_TITLE, 'item': SITE_URL + '/'},
+                {'@type': 'ListItem', 'position': 2, 'name': title, 'item': canon},
+            ],
+        },
+    })
+
+
+def tutorial_index_json_ld(description):
+    return json_ld({
+        '@context': 'https://schema.org',
+        '@type': 'CollectionPage',
+        'name': SITE_TITLE + ' — 从零精通 Agent Harness 的设计与实现',
+        'description': description,
+        'url': SITE_URL + '/',
+        'inLanguage': 'zh-CN',
+        'author': {'@type': 'Person', 'name': SITE_AUTHOR},
+        'about': {'@type': 'SoftwareApplication', 'name': 'DeepSeek Harness Java', 'applicationCategory': 'DeveloperApplication'},
+        'keywords': SITE_KEYWORDS,
+    })
+
 def page_file(ch):
     return ROOT / page_slug(ch) + '.html' if False else ROOT / (page_slug(ch) + '.html')
 
@@ -495,6 +554,7 @@ def render_page(chapters, ch, prev_ch, next_ch):
                 f'<span class="page-nav-title">回首页</span></a>')
     page_nav = ('<nav class="page-nav">' + ''.join(prev_next) + '</nav>')
     title = f'第{ch["num"]}章 {ch["title"]} | {SITE_TITLE}'
+    chapter_schema = chapter_json_ld(ch, title, desc, canon)
     return f'''<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -502,12 +562,28 @@ def render_page(chapters, ch, prev_ch, next_ch):
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{htmllib.escape(title)}</title>
   <meta name="description" content="{htmllib.escape(desc)}">
+  <meta name="keywords" content="{htmllib.escape(SITE_KEYWORDS)}">
+  <meta name="author" content="{SITE_AUTHOR}">
+  <meta name="robots" content="index,follow,max-image-preview:large">
   <link rel="canonical" href="{canon}">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="DSH Java">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:title" content="{htmllib.escape(title)}">
+  <meta property="og:description" content="{htmllib.escape(desc)}">
+  <meta property="og:url" content="{canon}">
+  <meta property="og:image" content="{SITE_IMAGE}">
+  <meta property="og:image:alt" content="DSH Java Agent Harness">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{htmllib.escape(title)}">
+  <meta name="twitter:description" content="{htmllib.escape(desc)}">
+  <meta name="twitter:image" content="{SITE_IMAGE}">
+  {chapter_schema}
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
   <link rel="stylesheet" href="{asset('css/book.css')}">
   <link rel="stylesheet" href="{asset('css/site.css')}">
   <link rel="stylesheet" href="{asset('css/flowchart.css')}">
-</head>
+{BAIDU_ANALYTICS_JS}</head>
 <body data-chapter="{ch["id"]}">
   <div class="reading-progress" id="readingProgress"></div>
   <div class="app-layout chat-collapsed">
@@ -570,6 +646,7 @@ def render_page(chapters, ch, prev_ch, next_ch):
 </html>'''
 
 def render_index(chapters):
+    description = '18 章实战教程，基于真实开源项目 deepseek-harness-java，深入 DDD 六边形架构、ReAct 循环、事件溯源、统一配置、插件、MCP、Skills、审批治理、SSE 协议、工作流、子代理与平台能力。'
     cards = ''
     for section, chs in parts_grouped(chapters):
         # 移除 section 字符串里的 emoji（用 .home-part-title-bar 替代装饰），保留纯文字篇名
@@ -590,13 +667,29 @@ def render_index(chapters):
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{SITE_TITLE} — 从零精通 Agent Harness 的设计与实现</title>
-  <meta name="description" content="17 章正文，基于真实开源项目 deepseek-harness-java，深入 DDD 六边形架构、ReAct 循环、事件溯源、统一配置、插件、MCP、Skills、审批治理、SSE 协议、工作流、子代理与平台能力。">
+  <meta name="description" content="{description}">
+  <meta name="keywords" content="{SITE_KEYWORDS}">
+  <meta name="author" content="{SITE_AUTHOR}">
+  <meta name="robots" content="index,follow,max-image-preview:large">
   <link rel="canonical" href="{SITE_URL}/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="DSH Java">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:title" content="{SITE_TITLE} — 从零精通 Agent Harness 的设计与实现">
+  <meta property="og:description" content="{description}">
+  <meta property="og:url" content="{SITE_URL}/">
+  <meta property="og:image" content="{SITE_IMAGE}">
+  <meta property="og:image:alt" content="DSH Java Agent Harness">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{SITE_TITLE} — 从零精通 Agent Harness 的设计与实现">
+  <meta name="twitter:description" content="{description}">
+  <meta name="twitter:image" content="{SITE_IMAGE}">
+  {tutorial_index_json_ld(description)}
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
   <link rel="stylesheet" href="{asset('css/book.css')}">
   <link rel="stylesheet" href="{asset('css/site.css')}">
   <link rel="stylesheet" href="{asset('css/flowchart.css')}">
-</head>
+{BAIDU_ANALYTICS_JS}</head>
 <body class="home-page">
   <div class="reading-progress" id="readingProgress"></div>
   <div class="app-layout chat-collapsed">

@@ -4,12 +4,37 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DeepSeek Harness Java 实战教程 — 从零精通 Agent Harness 的设计与实现</title>
-  <meta name="description" content="17 章正文，基于真实开源项目 deepseek-harness-java，深入 DDD 六边形架构、ReAct 循环、事件溯源、统一配置、插件、MCP、Skills、审批治理、SSE 协议、工作流、子代理与平台能力。">
-  <link rel="canonical" href="https://fuzhengwei.github.io/deepseek-harness-java/docs/html/">
+  <meta name="description" content="18 章实战教程，基于真实开源项目 deepseek-harness-java，深入 DDD 六边形架构、ReAct 循环、事件溯源、统一配置、插件、MCP、Skills、审批治理、SSE 协议、工作流、子代理与平台能力。">
+  <meta name="keywords" content="DeepSeek Harness Java, Java Agent, Agent Harness, ReAct, DDD, 六边形架构, 插件系统, MCP, SSE, 事件溯源">
+  <meta name="author" content="小傅哥">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <link rel="canonical" href="https://dsh-java.xiaofuge.cn/document/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="DSH Java">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:title" content="DeepSeek Harness Java 实战教程 — 从零精通 Agent Harness 的设计与实现">
+  <meta property="og:description" content="18 章实战教程，基于真实开源项目 deepseek-harness-java，深入 DDD 六边形架构、ReAct 循环、事件溯源、统一配置、插件、MCP、Skills、审批治理、SSE 协议、工作流、子代理与平台能力。">
+  <meta property="og:url" content="https://dsh-java.xiaofuge.cn/document/">
+  <meta property="og:image" content="https://dsh-java.xiaofuge.cn/assets/images/harness-session.png">
+  <meta property="og:image:alt" content="DSH Java Agent Harness">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="DeepSeek Harness Java 实战教程 — 从零精通 Agent Harness 的设计与实现">
+  <meta name="twitter:description" content="18 章实战教程，基于真实开源项目 deepseek-harness-java，深入 DDD 六边形架构、ReAct 循环、事件溯源、统一配置、插件、MCP、Skills、审批治理、SSE 协议、工作流、子代理与平台能力。">
+  <meta name="twitter:image" content="https://dsh-java.xiaofuge.cn/assets/images/harness-session.png">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"CollectionPage","name":"DeepSeek Harness Java 实战教程 — 从零精通 Agent Harness 的设计与实现","description":"18 章实战教程，基于真实开源项目 deepseek-harness-java，深入 DDD 六边形架构、ReAct 循环、事件溯源、统一配置、插件、MCP、Skills、审批治理、SSE 协议、工作流、子代理与平台能力。","url":"https://dsh-java.xiaofuge.cn/document/","inLanguage":"zh-CN","author":{"@type":"Person","name":"小傅哥"},"about":{"@type":"SoftwareApplication","name":"DeepSeek Harness Java","applicationCategory":"DeveloperApplication"},"keywords":"DeepSeek Harness Java, Java Agent, Agent Harness, ReAct, DDD, 六边形架构, 插件系统, MCP, SSE, 事件溯源"}</script>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
   <link rel="stylesheet" href="css/book.css?v=20260911-1">
   <link rel="stylesheet" href="css/site.css?v=20260911-1">
   <link rel="stylesheet" href="css/flowchart.css?v=20260911-1">
+  <script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "https://hm.baidu.com/hm.js?73f12e140a9fa19547d818c8d3fe7d07";
+  var s = document.getElementsByTagName("script")[0];
+  s.parentNode.insertBefore(hm, s);
+})();
+  </script>
 </head>
 <body class="home-page">
   <div class="reading-progress" id="readingProgress"></div>
@@ -20,7 +45,6 @@
           <span class="brand-tile">📚</span>
           <span class="brand-meta"><span class="brand-name">Harness 教程</span><span class="brand-sub">Java 实战 · 18 页</span></span>
         </a>
-        <a class="brand-home-link" href="../index.html" title="返回 DSH Java 官网">🏠 官网</a>
         <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
       </div>
       <div class="sidebar-progress">

@@ -5,13 +5,45 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" data-page-node-id="oaDt08KrFyFQiiY5PwBNhc">
   <title>DSH Java 使用教程 · 部署与插件接入</title>
   <meta name="description" content="DSH Java 分阶段使用教程：先体验 Harness，再部署插件服务并安装 JAR，最后完成商城与 MySQL 完整部署，以及 Java Native Plugin 开发。" data-page-node-id="kGzPTlt6EM6To5mF0C3nGt">
+  <meta name="keywords" content="DSH Java 使用教程, Java Agent 部署, Java 插件开发, Native Plugin, Docker, MySQL" data-page-node-id="seo-keywords">
   <meta name="author" content="小傅哥" data-page-node-id="I1fmMfVSLK6telXfNIExtT">
+  <meta name="robots" content="index,follow,max-image-preview:large" data-page-node-id="seo-robots">
+  <link rel="canonical" href="https://dsh-java.xiaofuge.cn/docs.html" data-page-node-id="seo-canonical">
   <link rel="icon" href="assets/images/whale-logo.png" type="image/png" data-page-node-id="fIjoI2GB1sMXqO8aPSM8vW">
   <meta property="og:type" content="article" data-page-node-id="s0P9Fldi8nLEEX69rEgMsW">
+  <meta property="og:site_name" content="DSH Java" data-page-node-id="seo-og-site-name">
+  <meta property="og:locale" content="zh_CN" data-page-node-id="seo-og-locale">
   <meta property="og:title" content="DSH Java 使用教程 · 部署与插件接入" data-page-node-id="WS7G3ZigU5fGUZXkguY53Q">
   <meta property="og:description" content="先体验 Harness，再部署插件服务并安装 JAR，最后完成商城与 MySQL 完整部署，以及 Java Native Plugin 开发。" data-page-node-id="AByTfpmUeBBmvJUQ9epASH">
-  <meta property="og:image" content="assets/images/harness-session.png" data-page-node-id="pmGxHO7bVtvFV6rWTkYddG">
+  <meta property="og:url" content="https://dsh-java.xiaofuge.cn/docs.html" data-page-node-id="seo-og-url">
+  <meta property="og:image" content="https://dsh-java.xiaofuge.cn/assets/images/harness-session.png" data-page-node-id="pmGxHO7bVtvFV6rWTkYddG">
+  <meta property="og:image:alt" content="DSH Java Harness 会话控制台" data-page-node-id="seo-og-image-alt">
+  <meta name="twitter:card" content="summary_large_image" data-page-node-id="seo-twitter-card">
+  <meta name="twitter:title" content="DSH Java 使用教程 · 部署与插件接入" data-page-node-id="seo-twitter-title">
+  <meta name="twitter:description" content="从启动 Harness、安装插件到完成 MySQL 部署与 Java Native Plugin 开发。" data-page-node-id="seo-twitter-description">
+  <meta name="twitter:image" content="https://dsh-java.xiaofuge.cn/assets/images/harness-session.png" data-page-node-id="seo-twitter-image">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "name": "DSH Java 使用教程",
+    "description": "从启动 Harness、安装插件到完成商城与 MySQL 部署，并开发 Java Native Plugin。",
+    "url": "https://dsh-java.xiaofuge.cn/docs.html",
+    "inLanguage": "zh-CN",
+    "author": {"@type": "Person", "name": "小傅哥"},
+    "image": "https://dsh-java.xiaofuge.cn/assets/images/harness-session.png"
+  }
+  </script>
   <link rel="stylesheet" href="assets/css/style.css" data-page-node-id="1vniPi9PBFG8ojwR3oKkwp">
+  <script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "https://hm.baidu.com/hm.js?73f12e140a9fa19547d818c8d3fe7d07";
+  var s = document.getElementsByTagName("script")[0];
+  s.parentNode.insertBefore(hm, s);
+})();
+  </script>
 </head>
 <body data-page-node-id="8p5UtkfhYLK0nCTNbFBXGt">
   <div class="page-shell" data-page-node-id="pHMb7omDLcppH4aacuABvP">
@@ -505,8 +537,15 @@ export SPRING_DATASOURCE_PASSWORD='your-password'</code></pre>
         </nav>
       </div>
       <div class="footer-bottom container" data-page-node-id="5K926MTRoVtUawl4bfJnJa">
-        <p data-page-node-id="xYIivWLQqgvnYfXfc24xBG">© 2026 DSH Java · Powered by Java Agent Harness</p>
-        <p class="credit" data-page-node-id="x7APftw4MpiDuSdmsXjSaH">作者：小傅哥 · 感谢并致敬 DeepSeek Harness 的开源设计思想。</p>
+        <p data-page-node-id="xYIivWLQqgvnYfXfc24xBG">MIT 协议，版权所有 © 2026 <a href="https://xiaofuge.cn" target="_blank" rel="noopener noreferrer">小傅哥</a>，All rights reserved.</p>
+        <p class="credit" data-page-node-id="x7APftw4MpiDuSdmsXjSaH"><a href="https://github.com/fuzhengwei" target="_blank" rel="noopener noreferrer">GitHub</a> · <a href="https://xiaofuge.cn" target="_blank" rel="noopener noreferrer">小傅哥博客</a> · 感谢并致敬 DeepSeek Harness 的开源设计思想。</p>
+      </div>
+      <div class="footer-record container" data-page-node-id="footer-record-docs">
+        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">津ICP备2025037015号-1</a>
+        <span>|</span>
+        <a href="https://beian.mps.gov.cn/" target="_blank" rel="noopener noreferrer">公安备案京公网安备11010102000001号</a>
+        <span>|</span>
+        <span>让每一个技术梦想都能在这里绽放</span>
       </div>
     </footer>
 

@@ -5,14 +5,47 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" data-page-node-id="kPHuw3rxDZkShy8UfHorzd">
   <title>DSH Java · 一切皆可插件的 Java Agent 运行时</title>
   <meta name="description" content="DSH Java 以「一切皆可插件」为设计思想的 Java Agent 运行时：ReAct 循环、ClassLoader 动态插拔、任务审批、事件溯源与 Web 控制台。" data-page-node-id="kkZTTIRkwteGAimH7OgEyD">
+  <meta name="keywords" content="DSH Java, Java Agent, Agent Harness, ReAct, 插件系统, MCP, 事件溯源, Spring Boot" data-page-node-id="seo-keywords">
   <meta name="author" content="小傅哥" data-page-node-id="zsVxI0axDYWgZ6nXpaa0Fx">
+  <meta name="robots" content="index,follow,max-image-preview:large" data-page-node-id="seo-robots">
+  <link rel="canonical" href="https://dsh-java.xiaofuge.cn/" data-page-node-id="seo-canonical">
   <link rel="icon" href="assets/images/whale-logo.png" type="image/png" data-page-node-id="yS08H2e0freI4ncFtFyUHd">
   <meta property="og:type" content="website" data-page-node-id="CxCeoLtISffKb5jBe8yj0y">
   <meta property="og:title" content="DSH Java · 一切皆可插件的 Java Agent 运行时" data-page-node-id="FiB0FjRj484SFGvxAwLgTo">
   <meta property="og:site_name" content="DSH Java by 小傅哥" data-page-node-id="teewlgn6nIwgGnc1b200yG">
+  <meta property="og:locale" content="zh_CN" data-page-node-id="seo-og-locale">
   <meta property="og:description" content="一切皆可插件的 Java Agent 运行时：ReAct 循环、ClassLoader 动态插拔、任务审批、事件溯源与 Web 控制台。" data-page-node-id="uIvxoWXmRznD5qhSi1mbQ5">
-  <meta property="og:image" content="assets/images/harness-chat.png" data-page-node-id="UO2aCjGNIWnZY03BCDmuVj">
+  <meta property="og:url" content="https://dsh-java.xiaofuge.cn/" data-page-node-id="seo-og-url">
+  <meta property="og:image" content="https://dsh-java.xiaofuge.cn/assets/images/harness-chat.png" data-page-node-id="UO2aCjGNIWnZY03BCDmuVj">
+  <meta property="og:image:alt" content="DSH Java Agent Harness 控制台" data-page-node-id="seo-og-image-alt">
+  <meta name="twitter:card" content="summary_large_image" data-page-node-id="seo-twitter-card">
+  <meta name="twitter:title" content="DSH Java · 一切皆可插件的 Java Agent 运行时" data-page-node-id="seo-twitter-title">
+  <meta name="twitter:description" content="一切皆可插件的 Java Agent 运行时：ReAct 循环、工具系统、审批治理与 Web 控制台。" data-page-node-id="seo-twitter-description">
+  <meta name="twitter:image" content="https://dsh-java.xiaofuge.cn/assets/images/harness-chat.png" data-page-node-id="seo-twitter-image">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "DSH Java",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Java 17",
+    "description": "以插件扩展能力的 Java Agent 运行时，提供 ReAct 循环、工具系统、审批治理、事件溯源与 Web 控制台。",
+    "url": "https://dsh-java.xiaofuge.cn/",
+    "image": "https://dsh-java.xiaofuge.cn/assets/images/harness-chat.png",
+    "author": {"@type": "Person", "name": "小傅哥"},
+    "offers": {"@type": "Offer", "price": "0", "priceCurrency": "CNY"}
+  }
+  </script>
   <link rel="stylesheet" href="assets/css/home.css" data-page-node-id="ECzUvrf2wyPmpE9lkIhK3L">
+  <script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "https://hm.baidu.com/hm.js?73f12e140a9fa19547d818c8d3fe7d07";
+  var s = document.getElementsByTagName("script")[0];
+  s.parentNode.insertBefore(hm, s);
+})();
+  </script>
 </head>
 <body data-page-node-id="W6Hl1mxOZjjYUOc1Iq6ObC">
   <div class="ambient" aria-hidden="true" data-page-node-id="DbFCpoj3nsqr3cJQbn7otR"></div>
@@ -198,7 +231,7 @@
                 <pre><code id="code-onekey">docker run -d \
   --name dsh-java-web \
   -p 8090:8090 \
-  registry.cn-hangzhou.aliyuncs.com/xfg-studio/deepseek-harness-java:0.1.6.1</code></pre>
+  registry.cn-hangzhou.aliyuncs.com/xfg-studio/deepseek-harness-java:0.1.6.4</code></pre>
               </div>
               <p class="quick-tip">适合最快体验；需要持久化数据、插件与配套案例时，请切换到「插件安装 · 标准部署包」。</p>
               <p class="quick-tip"><strong>部署后配置模型：</strong>打开 Harness，进入「设置 → 模型设置 → 添加模型」，填写模型服务地址、模型名称和 API Key，保存后即可开始对话。</p>
@@ -469,8 +502,15 @@ https://github.com/fuzhengwei/2d-weekend-mall/blob/main/docs/mall-agent-plugin-1
       </nav>
     </div>
     <div class="footer-bottom container" data-page-node-id="4b04fMopzVDbJuvyxvkJUd">
-      <p data-page-node-id="6CySzsOpOJgEY2NRLkP26G">© 2026 DSH Java · Powered by Java Agent Harness</p>
-      <p class="credit" data-page-node-id="PNAHmnFctXLbEqhctwtuks">作者：小傅哥 · 感谢并致敬 DeepSeek Harness 的开源设计思想。</p>
+      <p data-page-node-id="6CySzsOpOJgEY2NRLkP26G">MIT 协议，版权所有 © 2026 <a href="https://xiaofuge.cn" target="_blank" rel="noopener noreferrer">小傅哥</a>，All rights reserved.</p>
+      <p class="credit" data-page-node-id="PNAHmnFctXLbEqhctwtuks"><a href="https://github.com/fuzhengwei" target="_blank" rel="noopener noreferrer">GitHub</a> · <a href="https://xiaofuge.cn" target="_blank" rel="noopener noreferrer">小傅哥博客</a> · 感谢并致敬 DeepSeek Harness 的开源设计思想。</p>
+    </div>
+    <div class="footer-record container" data-page-node-id="footer-record-home">
+      <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">津ICP备2025037015号-1</a>
+      <span>|</span>
+      <a href="https://beian.mps.gov.cn/" target="_blank" rel="noopener noreferrer">公安备案京公网安备11010102000001号</a>
+      <span>|</span>
+      <span>让每一个技术梦想都能在这里绽放</span>
     </div>
   </footer>
 

@@ -5,8 +5,45 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" data-page-node-id="3wASMuMw2RSHFCAIXNBCrC">
   <title>运行时详解 · DSH Java</title>
   <meta name="description" content="DSH Java 运行时详细设计：ReAct 循环、统一工具系统、双模式插件、权限审批、事件溯源与原生 Web 控制台。" data-page-node-id="yV8ov1kkqUIKgN83FxWc9S">
+  <meta name="keywords" content="DSH Java 运行时, ReAct 循环, ToolCallExecutor, Java 插件, 权限审批, 事件溯源" data-page-node-id="seo-keywords">
+  <meta name="author" content="小傅哥" data-page-node-id="seo-author">
+  <meta name="robots" content="index,follow,max-image-preview:large" data-page-node-id="seo-robots">
+  <link rel="canonical" href="https://dsh-java.xiaofuge.cn/runtime.html" data-page-node-id="seo-canonical">
   <link rel="icon" href="assets/images/whale-logo.png" type="image/png" data-page-node-id="UvL6qt9pbOaGen6Uf6Dip1">
+  <meta property="og:type" content="article" data-page-node-id="seo-og-type">
+  <meta property="og:site_name" content="DSH Java" data-page-node-id="seo-og-site-name">
+  <meta property="og:locale" content="zh_CN" data-page-node-id="seo-og-locale">
+  <meta property="og:title" content="运行时详解 · DSH Java" data-page-node-id="seo-og-title">
+  <meta property="og:description" content="DSH Java 运行时详细设计：ReAct 循环、统一工具系统、双模式插件、权限审批、事件溯源与原生 Web 控制台。" data-page-node-id="seo-og-description">
+  <meta property="og:url" content="https://dsh-java.xiaofuge.cn/runtime.html" data-page-node-id="seo-og-url">
+  <meta property="og:image" content="https://dsh-java.xiaofuge.cn/assets/images/harness-trajectory.png" data-page-node-id="seo-og-image">
+  <meta property="og:image:alt" content="DSH Java Agent 运行轨迹" data-page-node-id="seo-og-image-alt">
+  <meta name="twitter:card" content="summary_large_image" data-page-node-id="seo-twitter-card">
+  <meta name="twitter:title" content="运行时详解 · DSH Java" data-page-node-id="seo-twitter-title">
+  <meta name="twitter:description" content="了解 DSH Java 的 ReAct 循环、工具、插件、审批和事件溯源设计。" data-page-node-id="seo-twitter-description">
+  <meta name="twitter:image" content="https://dsh-java.xiaofuge.cn/assets/images/harness-trajectory.png" data-page-node-id="seo-twitter-image">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "运行时详解 · DSH Java",
+    "description": "DSH Java 运行时详细设计：ReAct 循环、统一工具系统、双模式插件、权限审批、事件溯源与原生 Web 控制台。",
+    "url": "https://dsh-java.xiaofuge.cn/runtime.html",
+    "inLanguage": "zh-CN",
+    "author": {"@type": "Person", "name": "小傅哥"},
+    "image": "https://dsh-java.xiaofuge.cn/assets/images/harness-trajectory.png"
+  }
+  </script>
   <link rel="stylesheet" href="assets/css/home.css" data-page-node-id="80tlFE6Ip2MvZW46qsLCWE">
+  <script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "https://hm.baidu.com/hm.js?73f12e140a9fa19547d818c8d3fe7d07";
+  var s = document.getElementsByTagName("script")[0];
+  s.parentNode.insertBefore(hm, s);
+})();
+  </script>
 </head>
 <body data-page-node-id="xiGQ00TdWWukWBJ6LV7Bzs">
   <div class="ambient" aria-hidden="true" data-page-node-id="PpTw447GMKoRJn3BFN6HIP"></div>
@@ -323,8 +360,15 @@
       </nav>
     </div>
     <div class="footer-bottom container" data-page-node-id="5ue2x6XxGoTQ567Dbmklae">
-      <p data-page-node-id="Dl2CdvjYbVwISk3PoZj8aB">© 2026 DSH Java · Powered by Java Agent Harness</p>
-      <p class="credit" data-page-node-id="BbaZIEyqfu7XV6edUMm2gw">作者：小傅哥 · 感谢并致敬 DeepSeek Harness 的开源设计思想。</p>
+      <p data-page-node-id="Dl2CdvjYbVwISk3PoZj8aB">MIT 协议，版权所有 © 2026 <a href="https://xiaofuge.cn" target="_blank" rel="noopener noreferrer">小傅哥</a>，All rights reserved.</p>
+      <p class="credit" data-page-node-id="BbaZIEyqfu7XV6edUMm2gw"><a href="https://github.com/fuzhengwei" target="_blank" rel="noopener noreferrer">GitHub</a> · <a href="https://xiaofuge.cn" target="_blank" rel="noopener noreferrer">小傅哥博客</a> · 感谢并致敬 DeepSeek Harness 的开源设计思想。</p>
+    </div>
+    <div class="footer-record container" data-page-node-id="footer-record-runtime">
+      <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">津ICP备2025037015号-1</a>
+      <span>|</span>
+      <a href="https://beian.mps.gov.cn/" target="_blank" rel="noopener noreferrer">公安备案京公网安备11010102000001号</a>
+      <span>|</span>
+      <span>让每一个技术梦想都能在这里绽放</span>
     </div>
   </footer>
 
