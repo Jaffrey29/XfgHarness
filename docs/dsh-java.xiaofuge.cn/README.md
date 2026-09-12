@@ -56,7 +56,7 @@ curl http://127.0.0.1:8090/api/harness/plugins
 docker run -d \
   --name dsh-java-web \
   -p 8090:8090 \
-registry.cn-hangzhou.aliyuncs.com/xfg-studio/deepseek-harness-java:0.1.5
+registry.cn-hangzhou.aliyuncs.com/xfg-studio/deepseek-harness-java:0.1.6.4
 ```
 
 如需注入模型凭据：
@@ -68,7 +68,7 @@ docker run -d \
   --name dsh-java-web \
   -p 8090:8090 \
   -e DEEPSEEK_API_KEY='your-model-api-key' \
-  registry.cn-hangzhou.aliyuncs.com/xfg-studio/deepseek-harness-java:0.1.5
+  registry.cn-hangzhou.aliyuncs.com/xfg-studio/deepseek-harness-java:0.1.6.4
 ```
 
 ## 启动官网

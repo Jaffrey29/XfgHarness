@@ -12,7 +12,7 @@ services:
         condition: service_started
 
   dsh-java-web:
-    image: registry.cn-hangzhou.aliyuncs.com/xfg-studio/deepseek-harness-java:0.1.5
+    image: registry.cn-hangzhou.aliyuncs.com/xfg-studio/deepseek-harness-java:0.1.6.4
     container_name: dsh-java-web
     ports:
       - "8090:8090"
