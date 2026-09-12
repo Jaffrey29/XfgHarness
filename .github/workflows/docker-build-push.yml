@@ -1,11 +1,16 @@
 # ── deepseek-harness-java Docker 镜像构建并推送到 Docker Hub 和阿里云 ACR ──
-# 触发条件：打 tag-v* 标签、手动触发（Actions 页面 Run workflow）
+# 触发条件：打 tag-v* 标签、手动触发（Actions 页面 Run workflow，可输入版本号）
 name: Build and Push Docker Image
 
 on:
   push:
     tags: ['tag-v*']
   workflow_dispatch:
+    inputs:
+      version:
+        description: '镜像版本号，可填 0.1.7、v0.1.7 或 tag-v0.1.7；留空则使用 latest 和短 SHA'
+        required: false
+        type: string
 
 env:
   DOCKERHUB_NAMESPACE: fuzhengwei
@@ -24,9 +29,31 @@ jobs:
       # ── 2. 设置镜像标签 ──
       - name: Set Image Tags
         id: tags
+        env:
+          VERSION_INPUT: ${{ inputs.version }}
         run: |
+          VERSION=""
           if [[ "${GITHUB_REF}" == refs/tags/tag-v* ]]; then
             VERSION="${GITHUB_REF_NAME#tag-v}"
+          elif [[ -n "$VERSION_INPUT" ]]; then
+            VERSION="${VERSION_INPUT#tag-v}"
+            VERSION="${VERSION#v}"
+          fi
+
+          if [[ "${GITHUB_REF}" == refs/tags/tag-v* && -z "$VERSION" ]]; then
+            echo "tag-v 后必须包含版本号，例如 tag-v0.1.7"
+            exit 1
+          fi
+          if [[ -n "$VERSION_INPUT" && -z "$VERSION" ]]; then
+            echo "手动输入的版本号不能为空，例如 0.1.7"
+            exit 1
+          fi
+
+          if [[ -n "$VERSION" ]]; then
+            if [[ ! "$VERSION" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]]; then
+              echo "版本号不符合 Docker tag 格式：$VERSION"
+              exit 1
+            fi
             # 打 tag 时：同时推版本号和 latest
             TAG_SUFFIX=":${VERSION},:latest"
           else

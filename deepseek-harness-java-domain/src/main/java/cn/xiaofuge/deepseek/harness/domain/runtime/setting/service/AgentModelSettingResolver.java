@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 public class AgentModelSettingResolver {
 
     private static final Logger log = LoggerFactory.getLogger(AgentModelSettingResolver.class);
-    private static final String DEFAULT_PROVIDER = "deepseek";
+    private static final String DEFAULT_PROVIDER = "custom";
     private static final Integer DEFAULT_MAX_TOKENS = 8192;
 
     private final IModelSettingQueryService modelSettingQueryService;

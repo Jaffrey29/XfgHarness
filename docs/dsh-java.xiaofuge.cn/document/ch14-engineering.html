@@ -215,7 +215,7 @@ mvn clean verify</code></pre>
               </tbody>
             </table>
           </div>
-          <p>发布链路由 <code>.github/workflows/docker-build-push.yml</code> 处理：推送 <code>tag-v*</code> 标签（例如 <code>tag-v0.1.6</code>）或手动触发时，Workflow 使用多阶段 <code>Dockerfile</code> 构建 JAR，并同时推送到 <code>fuzhengwei/deepseek-harness-java</code> 与 <code>registry.cn-hangzhou.aliyuncs.com/xfg-studio/deepseek-harness-java</code>。标签构建会发布去掉 <code>tag-v</code> 前缀的版本号与 <code>latest</code>，手动触发会发布 <code>latest</code> 与短 SHA 标签。仓库当前没有独立的 Maven CI 工作流，这是后续工程化最值得补的一环。</p>
+          <p>发布链路由 <code>.github/workflows/docker-build-push.yml</code> 处理：推送 <code>tag-v*</code> 标签（例如 <code>tag-v0.1.6</code>）或手动触发时，Workflow 使用多阶段 <code>Dockerfile</code> 构建 JAR，并同时推送到 <code>fuzhengwei/deepseek-harness-java</code> 与 <code>registry.cn-hangzhou.aliyuncs.com/xfg-studio/deepseek-harness-java</code>。标签构建会发布去掉 <code>tag-v</code> 前缀的版本号与 <code>latest</code>；手动触发时可输入 <code>0.1.7</code>、<code>v0.1.7</code> 或 <code>tag-v0.1.7</code>，留空则发布 <code>latest</code> 与短 SHA 标签。仓库当前没有独立的 Maven CI 工作流，这是后续工程化最值得补的一环。</p>
           <p>上线后至少观测四类信号：JVM 与 HTTP 指标、模型请求耗时与失败率、工具执行耗时与拒绝原因、数据库连接池和事件表增长。<code>/actuator</code> 方便排障，但公网部署必须放在认证、网关或内网之后。</p>
 
           <h2 class="section-heading" id="sec-8">14.8 工程协作与变更检查清单</h2>

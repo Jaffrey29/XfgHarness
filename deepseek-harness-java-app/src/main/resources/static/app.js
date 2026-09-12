@@ -3010,11 +3010,11 @@ function renderModelSettings(body, footer) {
   form.appendChild(presetGroup);
 
   // Provider 由渠道模板自动填充，不向用户展示；隐藏字段仅作为提交载体
-  const providerGroup = wrapInput('providerCode', 'Provider', 'deepseek');
+  const providerGroup = wrapInput('providerCode', 'Provider', 'custom');
   providerGroup.style.display = 'none';
-  providerGroup.querySelector('input').value = 'deepseek';
+  providerGroup.querySelector('input').value = 'custom';
   form.appendChild(providerGroup);
-  form.appendChild(wrapInput('baseUrl', 'BaseUrl', 'http://127.0.0.1:8777/v1'));
+  form.appendChild(wrapInput('baseUrl', 'BaseUrl', 'https://your-openai-compatible-endpoint/v1'));
   form.appendChild(wrapInput('apiKeyRef', 'API Key', 'sk-…'));
 
   const protocolGroup = el('div', { class: 'form-group' });

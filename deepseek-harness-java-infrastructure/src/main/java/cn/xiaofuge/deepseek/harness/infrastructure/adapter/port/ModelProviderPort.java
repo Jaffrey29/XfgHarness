@@ -37,7 +37,7 @@ public class ModelProviderPort implements IModelProviderPort {
                 .filter(s -> s.enabled())
                 .map(s -> new ModelProviderProfileVO(
                         s.channelCode(), s.providerCode(), s.modelCode()))
-                .orElse(new ModelProviderProfileVO(fallbackChannel, "deepseek", fallbackModel));
+                .orElse(new ModelProviderProfileVO(fallbackChannel, "custom", fallbackModel));
     }
 
     private boolean hasText(String value) {

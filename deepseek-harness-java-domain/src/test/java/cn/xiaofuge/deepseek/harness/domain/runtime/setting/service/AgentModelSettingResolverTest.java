@@ -56,7 +56,7 @@ class AgentModelSettingResolverTest {
         AgentOptions options = resolver.resolve(null, null);
 
         assertEquals("default", options.channelCode());
-        assertEquals("deepseek", options.provider());
+        assertEquals("custom", options.provider());
         assertEquals("file-model", options.model());
         assertEquals(8192, options.maxTokens());
     }
@@ -72,7 +72,7 @@ class AgentModelSettingResolverTest {
         AgentOptions options = resolver.resolve("missing", null);
 
         assertEquals("default", options.channelCode());
-        assertEquals("deepseek", options.provider());
+        assertEquals("custom", options.provider());
         assertEquals("file-model", options.model());
     }
 
