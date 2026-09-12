@@ -28,28 +28,18 @@
       </a>
       <nav class="site-nav" aria-label="主导航" data-page-node-id="ZuPxyALLrJIH4gLGKaW2ZL">
         <a href="#runtime" data-page-node-id="GTSM38SjCUSgj5xQGAErUl">运行时</a>
-        <a href="/architecture.html" data-page-node-id="PxbmtzZsPVcHMc6eMRUcTg">架构</a>
-        <a href="#screens" data-page-node-id="4KDuLDprCo2Y5uemUGQp0y">界面</a>
-        <a href="#cases" data-page-node-id="gT2oFutpVVBhJqXRVNFZ3Z">案例</a>
         <a href="#plugins" data-page-node-id="7MiPFAizzpwpwJFoMJN5dc">插件社区</a>
-        <a href="/deploy.html" data-page-node-id="5GkoCllRaGTXg1vWjdfRiW">部署详解</a>
         <a href="/docs.html" data-page-node-id="oJaED0UgCos8isA8CXCylA">体验教程</a>
         <a href="/document/index.html" target="_blank" rel="noopener" data-page-node-id="lvfYknQES6pJsIzq24jqCc">学习教程</a>
       </nav>
       <div class="header-actions" data-page-node-id="BjnR2FApZND0KXAf9qGJm1">
-        <a class="btn btn-sm" href="https://github.com/topics/dsh-plugin-java" target="_blank" rel="noreferrer" data-page-node-id="Ha6qBBPyiYmxiRZUTnvnbQ">插件社区</a>
-        <a class="btn btn-primary btn-sm" href="#quickstart" data-page-node-id="vJdCUhdKoc7wqL8gMxCx3T">快速开始</a>
         <button class="menu-button" type="button" aria-expanded="false" aria-controls="mobileNav" data-page-node-id="8sEQP9IFazHJVEMGTM4xlj">菜单</button>
       </div>
     </div>
     <div class="container" data-page-node-id="YjMJTNjTWvHnju9zIVpZ4q">
       <div class="mobile-nav" id="mobileNav" data-page-node-id="WBShETt2mssty9T5PFIwN0">
         <a href="#runtime" data-page-node-id="pD32pM6CzL6yvuYBizVBAY">运行时</a>
-        <a href="/architecture.html" data-page-node-id="krvoJlnPIV5VY7WcFjHgDY">架构</a>
-        <a href="#screens" data-page-node-id="VG3EbKmPBVbebfsxE0OjHT">界面</a>
-        <a href="#cases" data-page-node-id="J5HUkAZG4EcVi5PgDfsKz6">案例</a>
         <a href="#plugins" data-page-node-id="xJIG7ykvWINhOjBmVhrzXm">插件社区</a>
-        <a href="/deploy.html" data-page-node-id="6hI2WFEq8ZqSyKxeqGwTUf">部署详解</a>
         <a href="/docs.html" data-page-node-id="8M3qEJJuMzuVHXBgvERJym">体验教程</a>
         <a href="/document/index.html" target="_blank" rel="noopener" data-page-node-id="i61f47jtppbvBCHSb2Yymc">学习教程</a>
       </div>
@@ -72,6 +62,7 @@
           </p>
           <div class="hero-actions reveal" data-page-node-id="5GKeAG7brccaJL9unhiF1d">
             <a class="btn btn-primary btn-lg" href="#deploy" data-page-node-id="5XUKm44scWC3knNXG2gDNI">一键启动体验</a>
+            <a class="btn btn-lg" href="https://github.com/topics/dsh-plugin-java" target="_blank" rel="noreferrer">社区插件 ↗</a>
             <a class="btn btn-ghost btn-lg" href="/runtime.html" data-page-node-id="Rzy3Nk4XXuB7KA7ZE5K1br">探索运行时 →</a>
           </div>
           <dl class="hero-stats reveal" data-page-node-id="0pHoyO0lsYAPEyGiMcGg1X">
@@ -182,38 +173,48 @@
       </div>
     </section>
 
-    <!-- Quickstart：一键使用 / 插件安装 -->
-    <section class="section section-soft" id="quickstart" data-page-node-id="O16I5aFBXneu5iQk9RPPtD">
-      <div class="container" data-page-node-id="d2k86Xk1Kj8b7LHYmZUFXj">
-        <div class="section-head center reveal" data-page-node-id="ZHeZDYJrHaB3Ef4OaKlCRj">
-          <span class="section-tag" data-page-node-id="UUoDTAuP1Mnzsp9Jhna8TJ">Quickstart</span>
-          <h2 data-page-node-id="odyMngzEZF2vFLTRKFjp1N">两条命令，跑起来</h2>
-          <p data-page-node-id="5apNsAft1HTlQ7ZDpqNnPi">「一键使用」单容器拉起 Harness 运行时；「插件安装」用标准部署包一键启动 Harness + MySQL 后台 + 商城，并预置两个插件。复制脚本即可开始。</p>
+    <!-- Deploy & Quickstart：标签切换展示 -->
+    <section class="section section-soft" id="deploy">
+      <span id="quickstart" aria-hidden="true"></span>
+      <div class="container">
+        <div class="section-head center reveal">
+          <span class="section-tag">Quickstart</span>
+          <h2>最简便的部署与体验路径</h2>
+          <p>「一键使用」单容器拉起 Harness 运行时；「插件安装」用标准部署包一键启动 Harness + MySQL 后台 + 商城，并预置两个插件。复制脚本即可开始，详细步骤与 MySQL 库表导入见 <a class="inline-link" href="/docs.html#ops">体验教程 · 部署与安全</a>。</p>
         </div>
-        <div class="quickstart-grid" data-page-node-id="WCESci5x2TakaTP3PTowGF">
-          <article class="card quick-card reveal" data-page-node-id="6giSjJyZE7PBLQHCgiIPQz">
-            <div class="quick-card-head" data-page-node-id="KUIzaqWx4d2QCchDHkxRFG">
-              <h3 data-page-node-id="zqsgOCWyYSeWRPmiImODqD"><span class="step-no" data-page-node-id="5gLOyhOdZPi5f7BQ4gC395">1</span>一键使用 · 启动运行时</h3>
-              <button class="copy-btn" type="button" data-copy-target="code-onekey" data-page-node-id="xTy4v7bsI6YGPLbHH0xxZ4">复制脚本</button>
-            </div>
-            <p data-page-node-id="ba4QVHKDX2bsA3r8IZpdOA">单容器最小体验，打开 <code data-page-node-id="eLqvpCQHJxqygP1PjA61pd">http://localhost:8090</code> 即可进入控制台。</p>
-            <div class="codebox" data-page-node-id="pDK0jM9ov6SRpHOK0secsc">
-              <pre data-page-node-id="vyJaB5OK2DP7BdsknCo38H"><code id="code-onekey" data-page-node-id="odwpQF3vcWgrrwOF9DUyFM">docker run -d \
+        <div class="deploy-tabs reveal" role="tablist" aria-label="部署方式切换">
+          <button class="deploy-tab active" type="button" role="tab" aria-selected="true" data-tab="onekey"><span class="step-no">1</span>一键使用 · 单容器启动</button>
+          <button class="deploy-tab" type="button" role="tab" aria-selected="false" data-tab="bundle"><span class="step-no">2</span>插件安装 · 标准部署包</button>
+        </div>
+        <div class="deploy-tab-panel active" data-tab-panel="onekey" role="tabpanel">
+          <div class="quickstart-grid is-single">
+            <article class="card quick-card">
+              <div class="quick-card-head">
+                <h3><span class="step-no">1</span>一键使用 · 启动运行时</h3>
+                <button class="copy-btn" type="button" data-copy-target="code-onekey">复制脚本</button>
+              </div>
+              <p>单容器最小体验，打开 <code>http://localhost:8090</code> 即可进入控制台。</p>
+              <div class="codebox">
+                <pre><code id="code-onekey">docker run -d \
   --name dsh-java-web \
   -p 8090:8090 \
   -e DEEPSEEK_API_KEY='your-model-api-key' \
   registry.cn-hangzhou.aliyuncs.com/xfg-studio/deepseek-harness-java:0.1.5</code></pre>
-            </div>
-            <p class="quick-tip" data-page-node-id="JEUSVUA8mAwwBGTqs3koin">需要持久化数据、插件与配套案例时，请使用右侧标准部署包。</p>
-          </article>
-          <article class="card quick-card reveal" data-page-node-id="MMVmcfrsT7QgBr24jt1zON">
-            <div class="quick-card-head" data-page-node-id="rfkfbH9jjj1pD7Hbi5zdu7">
-              <h3 data-page-node-id="EgFxIWEWDaujqbyIbdPavO"><span class="step-no" data-page-node-id="18G6I5TLdJspIpzOJK3GcX">2</span>插件安装 · 标准部署包</h3>
-              <button class="copy-btn" type="button" data-copy-target="code-deploy" data-page-node-id="gDP9Qp9ppkDwqnMtcs7ekw">复制脚本</button>
-            </div>
-            <p data-page-node-id="keQITJTKtOZZbfvJDbgUOC">Compose 一键拉起三个服务，并安装/激活 dsh-java-mysql 与商城两个预置插件。</p>
-            <div class="codebox" data-page-node-id="Jl0HuKMyFFBmwzMs7RIo2c">
-              <pre data-page-node-id="J8I29L1u4Wjf4GKoSXZvJ2"><code id="code-deploy" data-page-node-id="NwBAySe82l7chEp1oyjwHb">git clone https://github.com/fuzhengwei/dsh-java-deploy.git
+              </div>
+              <p class="quick-tip">适合最快体验；需要持久化数据、插件与配套案例时，请切换到「插件安装 · 标准部署包」。</p>
+            </article>
+          </div>
+        </div>
+        <div class="deploy-tab-panel" data-tab-panel="bundle" role="tabpanel" hidden>
+          <div class="quickstart-grid">
+            <article class="card quick-card">
+              <div class="quick-card-head">
+                <h3><span class="step-no">1</span>启动标准部署包</h3>
+                <button class="copy-btn" type="button" data-copy-target="code-deploy">复制脚本</button>
+              </div>
+              <p>Compose 一键拉起三个服务，并安装/激活 dsh-java-mysql 与商城两个预置插件。</p>
+              <div class="codebox">
+                <pre><code id="code-deploy">git clone https://github.com/fuzhengwei/dsh-java-deploy.git
 cd dsh-java-deploy
 
 cp .env.example .env
@@ -221,13 +222,29 @@ cp .env.example .env
 
 docker compose up -d
 ./scripts/install-plugins.sh</code></pre>
-            </div>
-            <p class="quick-tip" data-page-node-id="O2NuPaSTbzaf0djoxAFwMU">部署包已内置插件 JAR，无需先构建业务源码。</p>
-          </article>
+              </div>
+              <p class="quick-tip">部署包已内置插件 JAR，无需先构建业务源码。</p>
+            </article>
+            <article class="card quick-card">
+              <div class="quick-card-head">
+                <h3><span class="step-no">2</span>验证服务</h3>
+                <button class="copy-btn" type="button" data-copy-target="code-verify">复制脚本</button>
+              </div>
+              <p>确认三个服务与插件链路均已就绪。</p>
+              <div class="codebox">
+                <pre><code id="code-verify">curl http://127.0.0.1:8090/api/harness/plugins
+
+http://127.0.0.1:8090    # Harness
+http://127.0.0.1:8091    # MySQL 后台
+http://127.0.0.1:18080   # 商城</code></pre>
+              </div>
+              <p class="quick-tip">能看到 dsh-java-mysql-plugin 和 mall-weekend-assistant 即代表插件链路安装成功。</p>
+            </article>
+          </div>
         </div>
-        <div class="quickstart-actions reveal" data-page-node-id="pp4eBZHcTL7vGSTIG01Dmi">
-          <a class="btn btn-primary" href="/deploy.html" data-page-node-id="FIXJdr6L1rWWHYMBifvM9b">查看部署详解（含 MySQL 库表导入）</a>
-          <a class="btn btn-ghost" href="https://github.com/fuzhengwei/dsh-java-deploy" target="_blank" rel="noreferrer" data-page-node-id="KyGVGjDYLTO7IjFp0JEX1m">前往 GitHub 下载 dsh-java-deploy ↗</a>
+        <div class="quickstart-actions reveal">
+          <a class="btn btn-primary" href="/docs.html#ops">查看部署与安全（含 MySQL 库表导入）</a>
+          <a class="btn btn-ghost" href="https://github.com/fuzhengwei/dsh-java-deploy" target="_blank" rel="noreferrer">前往 GitHub 下载 dsh-java-deploy ↗</a>
         </div>
       </div>
     </section>
@@ -390,51 +407,20 @@ docker compose up -d
 <span class="cmd" data-page-node-id="3CPbZa8sYFXq3Rz2qjftlV">gh repo edit</span> --add-topic <span class="accent" data-page-node-id="3M9yAjYTOO6HR5OBCXT3yS">dsh-plugin-java</span></code></pre>
           </div>
         </div>
-      </div>
-    </section>
-
-    <!-- Deploy -->
-    <section class="section section-soft" id="deploy" data-page-node-id="nJ6z43gHxAa0m2NbbwUoet">
-      <div class="container" data-page-node-id="NPb08pW6mg6B2yjMAZ1r5i">
-        <div class="section-head center reveal" data-page-node-id="REd6SsHOf067q64vSscpsS">
-          <span class="section-tag" data-page-node-id="UMHCKBUi71cwKn4G9VAvdb">Deploy</span>
-          <h2 data-page-node-id="UVxMuktSfzbSwVYB2M8idh">最简便的部署与体验路径</h2>
-          <p data-page-node-id="uW7GsZw9P9xjYhJQSsBuXx">单容器适合最小体验；标准部署包一键拉起 Harness、MySQL 后台、商城，并预置两个插件。详细步骤与 MySQL 库表导入见 <a class="inline-link" href="/deploy.html" data-page-node-id="IHNFuQoWQNYNDECcvBkvAg">部署详解页</a>，部署包下载：<a class="inline-link" href="https://github.com/fuzhengwei/dsh-java-deploy" target="_blank" rel="noreferrer" data-page-node-id="43CUrGLkG7BMxBBfvDWFYc">github.com/fuzhengwei/dsh-java-deploy</a></p>
-        </div>
-        <div class="deploy-grid" data-page-node-id="6PuxDSzrEp0BJufIzq12kv">
-          <div class="card deploy-card reveal" data-page-node-id="aUHSHHiCUKENnWwM2FVUBG">
-            <h3 data-page-node-id="2kl24Mq82U1HZ6CmDXkzmk"><span class="step-no" data-page-node-id="PpBDKTboFkugOxiOkz6LnE">1</span>启动 Harness</h3>
-            <pre data-page-node-id="2QTc1CUlPplb33EnudXigS"><code data-page-node-id="oq0iWTTuYILAYGhH2cFRIs">docker run -d \
-  --name dsh-java-web \
-  -p 8090:8090 \
-  registry.cn-hangzhou.aliyuncs.com/xfg-studio/deepseek-harness-java:0.1.5</code></pre>
-            <p data-page-node-id="ZSPXpdFhxlAmgd61Ap0JQs">适合最快体验。若需要持久化数据、插件与工作区，请使用标准部署包。</p>
+        <div class="plugin-video reveal">
+          <div class="plugin-video-copy">
+            <span class="section-tag">Video</span>
+            <h3>插件的开发与使用 · 视频讲解</h3>
+            <p>跟着视频走一遍插件开发、安装与工具调用的完整流程，配合上方文档教程食用更佳。</p>
+            <a class="more-link" href="https://www.bilibili.com/video/BV1LHYh6NE2T" target="_blank" rel="noreferrer">在 Bilibili 打开原视频</a>
           </div>
-          <div class="card deploy-card reveal" data-page-node-id="jHJBTxaHOlQm7vml8hi0xD">
-            <h3 data-page-node-id="Po3HAnACc2DGX6rOhYH6j8"><span class="step-no" data-page-node-id="K9HEuvcsppdCTIJUyPAbS1">2</span>标准部署包</h3>
-            <pre data-page-node-id="glGJZZFtwtxrg6vRPEUaIC"><code data-page-node-id="4hNC6GbCG4aHtEyqqaBm7L">git clone https://github.com/fuzhengwei/dsh-java-deploy.git
-cd dsh-java-deploy
-
-cp .env.example .env
-# 修改 MALL_SERVICE_TOKEN、
-# DEEPSEEK_BASE_URL、DEEPSEEK_API_KEY
-
-docker compose up -d
-./scripts/install-plugins.sh</code></pre>
-            <p data-page-node-id="7RB2azS4jSJ9LH5E1cpGNr">启动 Harness、MySQL 后台和商城，并安装/激活预置插件。</p>
-          </div>
-          <div class="card deploy-card reveal" data-page-node-id="GgpChpODI5UzghdudBLJwM">
-            <h3 data-page-node-id="3lKqvy9MDwvGnFBVwXqR7D"><span class="step-no" data-page-node-id="3I9Z9DZXJtoFVf9SgOaLdb">3</span>验证服务</h3>
-            <pre data-page-node-id="0Tz3DtxGCJdqZ9bi3tuYIG"><code data-page-node-id="rKT3rHAb4BZaMSGvOoWaie">curl http://127.0.0.1:8090/api/harness/plugins
-
-http://127.0.0.1:8090    # Harness
-http://127.0.0.1:8091    # MySQL 后台
-http://127.0.0.1:18080   # 商城</code></pre>
-            <p data-page-node-id="gjX1iIdWqWy9S1RZdMK1Ar">能看到 dsh-java-mysql-plugin 和 mall-weekend-assistant 即代表插件链路安装成功。</p>
+          <div class="plugin-video-frame">
+            <iframe src="//player.bilibili.com/player.html?bvid=BV1LHYh6NE2T&autoplay=0" scrolling="no" frameborder="0" allowfullscreen="true" title="插件的开发与使用 · Bilibili 视频" loading="lazy"></iframe>
           </div>
         </div>
       </div>
     </section>
+
 
     <!-- CTA / Community -->
     <section class="section" id="community" data-page-node-id="3zRLblLaqEQPmZ2LCN5GAj">
@@ -469,17 +455,16 @@ http://127.0.0.1:18080   # 商城</code></pre>
         <h4 data-page-node-id="Ok2vtEwo09EU6FH22Vl37A">项目</h4>
         <a href="#runtime" data-page-node-id="xIjGq0kvkmD7PKcpasgtbi">运行时能力</a>
         <a href="/runtime.html" data-page-node-id="uo5avIm0EK4l7EDYPMsQlu">运行时详解</a>
-        <a href="/architecture.html" data-page-node-id="gVk5GhJNxuYe4rbXDpvjUc">架构机制详解</a>
+        <a href="/document/ch02-architecture.html" data-page-node-id="gVk5GhJNxuYe4rbXDpvjUc">架构机制详解</a>
         <a href="#cases" data-page-node-id="cW3Fl6htknBE9WGaHAFSsk">使用案例</a>
         <a href="#plugins" data-page-node-id="a3SKDA9dufAw02KYS1kUgX">社区插件</a>
         <a href="#deploy" data-page-node-id="sxSMGxTO23qzEzwuvje4X9">部署体验</a>
-        <a href="/deploy.html" data-page-node-id="Rkpt2CFy9KIb99PMYucpWG">部署详解</a>
       </nav>
       <nav aria-label="资源导航" data-page-node-id="Hdf4MtB0UaXj61gxj11Fo6">
         <h4 data-page-node-id="qeC5aqwkV5Jmzh9FEPtbnZ">资源</h4>
         <a href="/docs.html" data-page-node-id="ikliaVWQSNcelIQzxa4dBa">体验教程</a>
         <a href="/document/index.html" target="_blank" rel="noopener" data-page-node-id="8Zm5lH7ZXQUu9DKrzENKuA">学习教程</a>
-        <a href="/deploy.html" data-page-node-id="1BDAMQW3EideYy8qUJgKVX">部署详解</a>
+        <a href="/docs.html#ops" data-page-node-id="1BDAMQW3EideYy8qUJgKVX">部署与安全</a>
         <a href="https://github.com/topics/dsh-plugin-java" target="_blank" rel="noreferrer" data-page-node-id="cdMBjIIIBGNOSWOkgUv9ho">社区插件</a>
         <a href="https://github.com/fuzhengwei/dsh-java-deploy" target="_blank" rel="noreferrer" data-page-node-id="GwTpVKJlPvDEdtCElj4i5H">部署教程</a>
         <a href="https://gitcode.net/KnowledgePlanet/deepseek-harness-java" target="_blank" rel="noreferrer" data-page-node-id="Je2hPyHzrp7NvNJXk9Dbvp">源码入口</a>

@@ -55,6 +55,28 @@ if (spotlight && !reduceMotion && window.matchMedia('(pointer: fine)').matches) 
   }, { passive: true });
 }
 
+/* ---- 部署方式标签切换（一键使用 / 插件安装） ---- */
+const deployTabs = document.querySelectorAll('.deploy-tab');
+
+if (deployTabs.length) {
+  deployTabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const key = tab.getAttribute('data-tab');
+      if (!key) return;
+      deployTabs.forEach((t) => {
+        const active = t === tab;
+        t.classList.toggle('active', active);
+        t.setAttribute('aria-selected', String(active));
+      });
+      document.querySelectorAll('.deploy-tab-panel').forEach((panel) => {
+        const active = panel.getAttribute('data-tab-panel') === key;
+        panel.classList.toggle('active', active);
+        panel.hidden = !active;
+      });
+    });
+  });
+}
+
 /* ---- 一键复制脚本按钮 ---- */
 document.querySelectorAll('.copy-btn').forEach((btn) => {
   btn.addEventListener('click', async () => {

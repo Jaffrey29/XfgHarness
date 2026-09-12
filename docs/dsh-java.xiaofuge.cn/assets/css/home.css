@@ -1056,6 +1056,125 @@ a { color: inherit; text-decoration: none; }
   margin-top: 36px;
 }
 
+/* ---- Deploy Tabs（Quickstart / Deploy 合并的标签切换） ---- */
+.deploy-tabs {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: fit-content;
+  margin: 0 auto 34px;
+  padding: 5px;
+  border-radius: 999px;
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+}
+
+.deploy-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 20px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: .9rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color .2s ease, background .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+
+.deploy-tab .step-no {
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  font-size: .74rem;
+  box-shadow: none;
+  background: var(--bg-soft);
+  border: 1px solid var(--line-2);
+  color: var(--muted);
+  transition: all .2s ease;
+}
+
+.deploy-tab:hover { color: var(--blue); }
+
+.deploy-tab.active {
+  background: var(--grad-btn);
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(79, 70, 229, .3);
+}
+
+.deploy-tab.active .step-no {
+  background: rgba(255, 255, 255, .2);
+  border-color: rgba(255, 255, 255, .35);
+  color: #fff;
+}
+
+.deploy-tab-panel { animation: tabFade .35s ease; }
+.deploy-tab-panel[hidden] { display: none; }
+
+@keyframes tabFade {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deploy-tab-panel { animation: none; }
+}
+
+/* 单卡面板：收窄并居中，视觉更聚焦 */
+.quickstart-grid.is-single {
+  grid-template-columns: minmax(0, 680px);
+  justify-content: center;
+}
+
+@media (max-width: 740px) {
+  .deploy-tabs { width: 100%; }
+  .deploy-tab { flex: 1 1 auto; justify-content: center; }
+  .quickstart-grid.is-single { grid-template-columns: 1fr; }
+}
+
+/* ---- 插件视频（Bilibili 嵌入） ---- */
+.plugin-video {
+  display: grid;
+  grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
+  gap: 44px;
+  align-items: center;
+  margin-top: 52px;
+  padding: 44px 48px;
+  border-radius: 26px;
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-md);
+}
+
+.plugin-video-copy .section-tag { margin-bottom: 14px; }
+.plugin-video-copy h3 { margin: 0 0 12px; font-size: 1.4rem; letter-spacing: -.02em; }
+.plugin-video-copy p { margin: 0; color: var(--text-2); font-size: .95rem; }
+.plugin-video-copy .more-link { margin-top: 22px; }
+
+.plugin-video-frame {
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid var(--line-2);
+  box-shadow: var(--shadow-sm);
+  background: #0f172a;
+}
+
+.plugin-video-frame iframe {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border: 0;
+}
+
+@media (max-width: 1024px) {
+  .plugin-video { grid-template-columns: 1fr; gap: 28px; padding: 34px 28px; }
+}
+
 /* ============================================================
    Deploy 详情页（deploy.html）
    ============================================================ */
