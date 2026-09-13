@@ -25,7 +25,7 @@ const App = {
 
     // 第四篇：工具与扩展
     { id: 'ch08', num: 8, title: '工具系统：ToolCallExecutor 与 Hook 链', section: '🛠️ 第四篇：工具与扩展', file: 'ch08-tools.html' },
-    { id: 'ch09', num: 9, title: '插件开发实战：Java 与 Node 双模式', section: '🛠️ 第四篇：工具与扩展', file: 'ch09-plugin.html' },
+    { id: 'ch09', num: 9, title: '插件系统设计：从 ClassLoader 到对话执行', section: '🛠️ 第四篇：工具与扩展', file: 'ch09-plugin.html' },
     { id: 'ch10', num: 10, title: 'MCP 集成：连接外部工具生态', section: '🛠️ 第四篇：工具与扩展', file: 'ch10-mcp.html' },
 
     // 第五篇：治理
@@ -321,6 +321,7 @@ const App = {
       const m = s.match(/^([\u{1F000}-\u{1FAFF}\u2600-\u27BF\uFE0F\u200D]+)\s*/u);
       return m ? [m[1], s.slice(m[0].length)] : ['', s];
     };
+    const isStaticPage = !!document.body.dataset.chapter;
     this.chapters.forEach(ch => {
       if (ch.section !== lastSection) {
         if (lastSection !== null) html += '</div>';
@@ -332,12 +333,17 @@ const App = {
               + `<span class="nav-section-count">${String(ch.num).padStart(2, '0')}</span></div>`;
         lastSection = ch.section;
       }
-      html += `<a class="nav-item" data-chapter="${ch.id}" href="#${ch.id}">
+      const href = isStaticPage ? ch.file : `#${ch.id}`;
+      html += `<a class="nav-item" data-chapter="${ch.id}" href="${href}">
         <span class="nav-num">${String(ch.num).padStart(2, '0')}</span>
         <span class="nav-title">${ch.title}</span>
       </a>`;
     });
     nav.innerHTML = html + (lastSection !== null ? '</div>' : '');
+    if (isStaticPage) {
+      nav.querySelector(`.nav-item[data-chapter="${this.currentChapter || document.body.dataset.chapter}"]`)?.classList.add('active');
+      return;
+    }
     nav.querySelectorAll('.nav-item').forEach(item => {
       item.addEventListener('click', e => {
         e.preventDefault();

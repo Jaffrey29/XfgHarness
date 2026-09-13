@@ -1,216 +1,156 @@
-<h1 class="chapter-title">第9章 插件开发实战：Java 与 Node 双模式</h1>
-<p class="chapter-subtitle">亲手给系统加一个"天气查询"工具——两种插件模式各写一遍</p>
+<h1 class="chapter-title">第9章 插件系统设计：从 ClassLoader 到对话执行</h1>
+<p class="chapter-subtitle">用稳定契约连接 Agent、插件运行时与外部业务系统</p>
 
 <h2 class="section-heading" id="sec-1">9.1 本章导读</h2>
 
-<p>第8章说了所有工具都穿过统一执行器，那"插件工具"是怎么进来的？本章动手实战：用 <strong>Java Native</strong>（进程内类隔离）和 <strong>Node Bridge</strong>（sidecar 进程）两种模式各写一个插件，走通"开发 → 打包 → 安装 → 激活 → 被 Agent 调用"的完整闭环。读完你就能给系统扩展任意能力。</p>
+<p>插件系统的核心不是“把一个 JAR 放进目录”，而是建立一条可演进的扩展链路：宿主负责 Agent 编排和执行治理，插件负责把工具调用转换为业务调用，业务系统负责真实数据、业务规则和最终权限。</p>
 
-<h2 class="section-heading" id="sec-2">9.2 插件体系的三段式架构</h2>
-
-<p>回顾第3章，plugin 域拆成 Registry / Bridge / Runtime 三条边界。从开发者视角，一次插件运行的完整路径是：</p>
-
-<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"install","label":"install\n插件包放入 install-root\n落 HarnessPluginEntity","type":"start"},{"id":"activate","label":"activate\nBridge 识别包型\n(JAVA_NATIVE / DSH_NODE_BRIDGE)\n生成绑定计划","type":"process"},{"id":"run","label":"run\nPluginRuntimeService.start\n加载并注册工具","type":"process"},{"id":"registry","label":"工具注册进 ToolRegistry\n名称: plugin__\u003cpluginId\u003e__\u003ctoolName\u003e","type":"process"},{"id":"agent","label":"Agent 调用\n与内置工具同一执行链\n(Hook/守卫/事件回填)","type":"end"}],"edges":[{"from":"install","to":"activate"},{"from":"activate","to":"run"},{"from":"run","to":"registry"},{"from":"registry","to":"agent"}]}'></div>
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"app","label":"外部应用\n发起对话并展示结果","type":"start"},{"id":"harness","label":"deepseek-harness-java\nAgent / ReAct / 执行治理","type":"process"},{"id":"plugin","label":"插件运行时\nTool / ClassLoader / 生命周期","type":"process"},{"id":"business","label":"业务系统\nAPI / SDK / 数据源","type":"end"}],"edges":[{"from":"app","to":"harness","label":"对话请求"},{"from":"harness","to":"plugin","label":"工具调用"},{"from":"plugin","to":"business","label":"业务访问"},{"from":"business","to":"plugin","label":"业务结果"},{"from":"plugin","to":"harness","label":"ToolResult"},{"from":"harness","to":"app","label":"最终回答 / 流式事件"}]}'></div>
 
 <div class="card" style="border-left: 3px solid var(--color-accent);">
-  <div class="card-title">💡 关键认知：插件工具没有特权</div>
-  <p style="font-size: 13px; color: var(--color-text-secondary);">插件工具注册后与内置工具<strong>完全同构</strong>——同样过 PRE/POST Hook、同样受超时与重复调用守卫约束、同样产生 ToolCall/ToolResult 事件、同样可被审批矩阵拦截。这就是为什么"唯一入口"（第8章）是扩展性的根基。</p>
+  <div class="card-title">本章的核心结论</div>
+  <p style="font-size: 13px; color: var(--color-text-secondary); margin-bottom: 0;"><code>ClassLoader</code> 负责类和依赖隔离，插件运行时负责生命周期，Tool Registry 负责能力发现，<code>ToolCallExecutor</code> 负责统一执行治理，业务系统负责真实数据和最终权限。</p>
 </div>
 
-<h2 class="section-heading" id="sec-3">9.3 Java Native 模式：写一个天气插件</h2>
+<h2 class="section-heading" id="sec-2">9.2 插件系统的边界与依赖方向</h2>
 
-<p>Java 插件以 JAR 安装，宿主用<strong>隔离的 URLClassLoader</strong> 加载——插件的类与宿主隔离，插件之间也互相隔离。</p>
+<p>插件不是另一个 Agent，也不是数据库访问层的简单暴露。它是一个受宿主管理的能力适配器：把模型能够理解的 Tool，转换为业务系统能够执行的请求，再把结果转换成模型可以继续推理的结构。</p>
 
-<h3 class="sub-heading">9.3.1 五步上手</h3>
+<div class="comparison-table">
+  <table>
+    <thead><tr><th style="text-align:left;">层次</th><th style="text-align:left;">主要职责</th><th style="text-align:left;">不应承担的职责</th></tr></thead>
+    <tbody>
+      <tr><td>外部应用</td><td>用户身份、会话上下文、对话请求、结果展示</td><td>自行实现 ReAct 循环和插件内部加载</td></tr>
+      <tr><td>Harness 宿主</td><td>模型调用、工具目录、执行器、事件、审批、超时</td><td>直接理解每个业务系统的内部模型</td></tr>
+      <tr><td>插件</td><td>Tool 定义、参数校验、业务适配、结果裁剪</td><td>替代业务系统的最终权限和核心规则</td></tr>
+      <tr><td>业务系统</td><td>真实数据、业务规则、身份授权、审计</td><td>把数据库表直接暴露给模型</td></tr>
+    </tbody>
+  </table>
+</div>
 
-<p><strong>第1步</strong>：引入 types 模块（纯 SPI 契约，不依赖 Spring），继承 <code>AbstractHarnessPlugin</code>：</p>
+<p>推荐的依赖方向是：插件只依赖稳定的 <code>deepseek-harness-java-types</code> 契约包，宿主实现并提供运行时能力。插件不应依赖宿主的 Controller、DAO、内部领域对象或具体 Registry 实现。</p>
 
-<div class="code-block"><pre>// plugins/sample-tools-plugin/.../SampleToolsPlugin.java（项目自带示例）
-public class SampleToolsPlugin extends AbstractHarnessPlugin {
-    public SampleToolsPlugin() {
-        super("sample-tools");   // 插件 ID，决定工具名前缀
-    }
-    @Override
-    public List&lt;ToolDefinition&gt; tools() {
-        return List.of(new WeatherQueryTool(), new FileSummaryTool());
-    }
+<div class="code-block"><pre>插件实现
+    ↓ 依赖
+deepseek-harness-java-types（稳定 SPI 契约）
+    ↑ 由宿主实现和提供
+deepseek-harness-java（运行时与基础设施）</pre></div>
+
+<h2 class="section-heading" id="sec-3">9.3 SPI、Tool 与 PluginContext</h2>
+
+<p>插件边界需要三个层次的契约。入口契约负责生命周期和能力声明，Tool 契约负责模型可见的动作，Context 契约负责插件向宿主注册扩展并获取受控能力。</p>
+
+<h3 class="sub-heading">9.3.1 插件入口</h3>
+
+<p>入口对象是插件的根对象。宿主通过 SPI 或元数据找到它，再按生命周期调用。入口不应直接持有宿主内部 Bean，而应通过 <code>PluginContext</code> 获取宿主提供的能力。</p>
+
+<div class="code-block"><pre>public interface JavaHarnessPlugin {
+    String pluginId();
+    List&lt;ToolDefinition&gt; tools();
+    void configure(PluginContext context);
+    void onStart();
+    void onStop();
 }</pre></div>
 
-<p><strong>第2步</strong>：实现工具，继承 <code>AbstractTool</code> 声明四个要素：</p>
+<h3 class="sub-heading">9.3.2 Tool 契约</h3>
 
-<div class="code-block"><pre>public class WeatherQueryTool extends AbstractTool {
-    @Override public String name() { return "weather_query"; }
+<p>一个 Tool 至少包含名称、描述、参数 Schema 和执行函数。名称和描述会进入模型工具目录，参数 Schema 用于约束模型生成的调用参数，执行函数只处理一次明确的业务动作。</p>
 
-    @Override public String description() {
-        return "查询指定城市的天气信息（温度、天气状况、湿度）。";
-    }
+<div class="code-block"><pre>Tool
+├── name                 局部工具名
+├── description          用于模型选择的语义说明
+├── inputSchema          参数结构与约束
+├── execute(arguments)   执行适配逻辑
+└── result                成功、业务拒绝或可恢复错误</pre></div>
 
-    @Override public Map&lt;String, Object&gt; parameters() {
-        return objectSchema()
-                .prop("city", stringSchema("城市名称，如 北京、上海、深圳"))
-                .required("city")
-                .build();
-    }
+<h3 class="sub-heading">9.3.3 PluginContext</h3>
 
-    @Override public boolean isConcurrencySafe(Object args) { return true; }  // 只读工具
+<p><code>PluginContext</code> 是插件与宿主的受控连接面。它可以提供工具注册、配置读取、Prompt 扩展、Hook 注册、事件订阅和资源释放登记。宿主保存这些注册项，并在停止插件时统一撤销。</p>
 
-    @Override public CompletableFuture&lt;ToolExecutionResult&gt; run(ToolRunContext ctx, Object args) {
-        // 实际查询逻辑（示例返回模拟数据）
-    }
-}</pre></div>
+<h2 class="section-heading" id="sec-4">9.4 ClassLoader 的作用与边界</h2>
 
-<p><code>name</code> 是调用名，<code>description</code> 和 <code>parameters</code>（JSON Schema）会一起喂给模型——<strong>description 写得越清楚，模型越知道何时该调它</strong>。<code>isConcurrencySafe</code> 声明无副作用，允许并发。</p>
+<p>Java Native 插件运行在宿主 JVM 内。宿主为每个插件创建独立的 <code>URLClassLoader</code>，使插件拥有独立的类命名空间，同时通过父加载器共享稳定 SPI 类型。</p>
 
-<p><strong>第3步</strong>：在 <code>META-INF/plugin.yaml</code> 声明元数据：</p>
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"parent","label":"宿主 ClassLoader\n共享 SPI 与基础契约","type":"start"},{"id":"a","label":"Plugin A\nURLClassLoader","type":"process"},{"id":"b","label":"Plugin B\nURLClassLoader","type":"process"},{"id":"c","label":"Plugin C\nURLClassLoader","type":"end"}],"edges":[{"from":"parent","to":"a","label":"父加载器"},{"from":"parent","to":"b","label":"父加载器"},{"from":"parent","to":"c","label":"父加载器"}]}'></div>
 
-<div class="code-block"><pre>id: sample-tools
-name: Sample Tools Plugin
-version: 1.0.0
-author: Harness Team
-description: 示例插件，提供天气查询(weather_query)和文件摘要(file_summary)工具。
-entrypoint: cn.walioffice.plugin.sample.SampleToolsPlugin</pre></div>
+<h3 class="sub-heading">9.4.1 为什么必须隔离</h3>
 
-<p><strong>第4步</strong>：SPI 注册——在 <code>META-INF/services/cn.xiaofuge.deepseek.harness.domain.spi.JavaHarnessPlugin</code> 文件中写入入口类全限定名。</p>
+<p>如果所有插件共享同一个加载器，一个插件的第三方依赖版本可能覆盖另一个插件的版本，静态状态也可能互相污染。独立加载器将插件实现放入不同的命名空间，降低依赖冲突和升级影响。</p>
 
-<p><strong>第5步</strong>：打包成 JAR，放入 <code>harness.extensions.plugins.install-root</code>（默认 <code>./plugins</code>）。</p>
+<h3 class="sub-heading">9.4.2 父加载器与共享类型</h3>
 
-<h3 class="sub-heading">9.3.2 用 Archetype 快速生成</h3>
+<p>Java 通常采用父加载优先模型。宿主和插件必须使用同一份 <code>JavaHarnessPlugin</code>、Tool 基础接口及结果契约。如果相同全限定名由不同的 ClassLoader 加载，JVM 会把它们视为不同类型：</p>
 
-<p>项目自带 <code>plugins/plugin-archetype</code>，可用 Maven 直接生成插件骨架，省去手写五步。完整命令与 HTTP 安装示例见 <code>docs/java-plugin-development.md</code>。</p>
+<div class="code-block"><pre>相同全限定名 + 不同 ClassLoader = 不同 Java 类型</pre></div>
 
-<h3 class="sub-heading">9.3.3 预置加载（可选）</h3>
+<p>因此，SPI 契约不能被插件重新打包成私有副本。否则可能出现 <code>ClassCastException</code>、SPI 找不到实现或方法参数无法转换。</p>
 
-<p>想让插件随启动自动装载，在 <code>harness.yml</code> 声明 preset：</p>
+<h3 class="sub-heading">9.4.3 ClassLoader 不是安全沙箱</h3>
 
-<div class="code-block"><pre>harness:
-  extensions:
-    plugins:
-      install-root: ./plugins
-      node-bridge-enabled: true
-      preset:
-        - plugin-id: sample-tools
-          display-name: Sample Tools Plugin
-          plugin-version: 1.0.0
-          runtime-type: JAVA_NATIVE
-          source-path: ./plugins/sample-tools-plugin-1.0.0.jar
-          entrypoint: sample-tools-plugin-1.0.0.jar
-          auto-start: true</pre></div>
+<p>类加载隔离解决的是命名空间和依赖问题，不是进程安全问题。插件仍然和宿主共享 CPU、内存、线程和 JVM 权限，也可能访问文件和网络。对不可信代码，需要独立进程、容器或远程执行边界。</p>
 
-<h2 class="section-heading" id="sec-4">9.4 Node Bridge 模式：复用 Node 生态</h2>
+<h3 class="sub-heading">9.4.4 卸载与内存泄漏</h3>
 
-<p><code>DSH_NODE_BRIDGE</code> 用于跑 Node 插件——宿主启动一个 <strong>sidecar 进程</strong>（<code>node &lt;entrypoint&gt;</code>），通过 JSON-RPC 通信。</p>
+<p>关闭 <code>URLClassLoader</code> 只表示释放 JAR 文件句柄，不等于插件类立即卸载。只有当加载器及其类没有任何可达引用时，JVM 才可能回收它。停止插件必须清理 Tool、Prompt、Hook、事件订阅、线程池、定时器、ThreadLocal、异步回调和注册表引用。</p>
 
-<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"host","label":"宿主 JVM\nPluginRuntimeService","type":"start"},{"id":"spawn","label":"启动 sidecar\nnode \u003centrypoint\u003e\n(不经 Shell 拼接)","type":"process"},{"id":"rpc","label":"JSON-RPC 通信\nstdin/stdout","type":"process"},{"id":"plugin","label":"Node 插件进程\nindex.js","type":"end"}],"edges":[{"from":"host","to":"spawn"},{"from":"spawn","to":"rpc"},{"from":"rpc","to":"plugin"}]}'></div>
+<h2 class="section-heading" id="sec-5">9.5 生命周期与运行时状态</h2>
 
-<p>约束与安全边界：</p>
+<p>插件状态表示宿主当前是否允许它贡献能力。安装、激活和运行必须分开，避免“文件存在”被误认为“插件已经可执行”。</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"install","label":"INSTALL\n登记包与元数据","type":"start"},{"id":"activate","label":"ACTIVATE\n建立运行绑定","type":"process"},{"id":"start","label":"STARTING\n创建加载器并初始化","type":"process"},{"id":"active","label":"ACTIVE\n工具可被发现和调用","type":"process"},{"id":"stop","label":"STOPPING\n停止新调用并撤销注册","type":"process"},{"id":"disposed","label":"DISPOSED\n释放资源与加载器","type":"end"}],"edges":[{"from":"install","to":"activate"},{"from":"activate","to":"start"},{"from":"start","to":"active"},{"from":"active","to":"stop"},{"from":"stop","to":"disposed"}]}'></div>
+
+<p>Java Native 启动过程为：定位 JAR，创建插件 ClassLoader，读取元数据，定位入口类，实例化入口，调用启动方法，注册 Tool、Prompt、Hook 和事件，最后将状态置为 <code>ACTIVE</code>。任一步失败，都必须回滚已经完成的注册并关闭加载器。</p>
+
+<p>停止过程遵循逆序释放：先停止接收新调用，再注销 Tool 和其他扩展，取消事件与任务，释放连接和线程资源，调用插件停止方法，最后关闭 ClassLoader。热重载不是在原加载器中覆盖类，而是完整停止旧实例后创建新的加载器。</p>
+
+<h2 class="section-heading" id="sec-6">9.6 Tool Registry 与统一执行器</h2>
+
+<p>插件 Tool 注册后，不应绕过宿主执行链直接调用模型或向外部应用返回结果。它必须和内置工具一样进入 Registry 和 <code>ToolCallExecutor</code>。</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"plugin-tool","label":"插件 Tool\n局部名称 + Schema","type":"start"},{"id":"registry","label":"Tool Registry\n统一命名与发现","type":"process"},{"id":"catalog","label":"Agent Tool Catalog\n提供给模型的工具目录","type":"process"},{"id":"executor","label":"ToolCallExecutor\nHook / 审批 / 超时 / 事件","type":"process"},{"id":"result","label":"ToolResult\n回填 ReAct 上下文","type":"end"}],"edges":[{"from":"plugin-tool","to":"registry","label":"注册"},{"from":"registry","to":"catalog","label":"发现"},{"from":"catalog","to":"executor","label":"模型选择后执行"},{"from":"executor","to":"result","label":"统一结果"}]}'></div>
+
+<p>工具名应使用命名空间，例如 <code>plugin__&lt;pluginId&gt;__&lt;toolName&gt;</code>。这样既避免局部名称冲突，也能让执行器根据工具名定位所属插件。执行器还应统一处理参数校验、权限判断、幂等或并发策略、超时、异常转换、审计和 ToolCall / ToolResult 事件。</p>
+
+<h2 class="section-heading" id="sec-7">9.7 一次对话的完整时序</h2>
+
+<p>外部应用只需要调用对话接口。模型并不直接访问插件，也不直接访问业务数据库；它先从工具目录中选择一个 Tool，再由宿主执行器驱动插件。</p>
+
+<div class="flowchart-container" data-flowchart='{"nodes":[{"id":"request","label":"1. 外部应用\n提交用户消息","type":"start"},{"id":"model1","label":"2. Harness 调用模型\n附带工具目录","type":"process"},{"id":"call","label":"3. 模型返回 ToolCall\n选择命名空间工具","type":"process"},{"id":"execute","label":"4. ToolCallExecutor\n校验与治理","type":"process"},{"id":"data","label":"5. 插件访问业务系统\n获得业务结果","type":"process"},{"id":"model2","label":"6. ToolResult 回填模型\n继续 ReAct 循环","type":"process"},{"id":"response","label":"7. 生成最终回答\n通过 REST / SSE 返回","type":"end"}],"edges":[{"from":"request","to":"model1"},{"from":"model1","to":"call"},{"from":"call","to":"execute"},{"from":"execute","to":"data"},{"from":"data","to":"model2"},{"from":"model2","to":"response"},{"from":"model2","to":"call","label":"仍需工具时循环"}]}'></div>
+
+<p>这条链路中，模型只负责选择和组织动作，宿主负责是否允许执行，插件负责如何适配业务，业务系统负责是否真正授权。最终答案只是 ReAct 循环结束后的表达，不应被当作业务权限判断的依据。</p>
+
+<h2 class="section-heading" id="sec-8">9.8 插件如何访问业务数据</h2>
+
+<p>插件访问业务数据有三种常见方式：调用业务 HTTP API、调用稳定 SDK、在明确边界内使用 JDBC。选择哪一种取决于业务系统的所有权、权限模型和部署位置，但原则不变：插件应使用业务系统认可的入口。</p>
 
 <div class="comparison-table">
   <table>
-    <thead>
-      <tr><th style="text-align:left;">约束</th><th style="text-align:left;">说明</th></tr>
-    </thead>
+    <thead><tr><th style="text-align:left;">访问方式</th><th style="text-align:left;">适用边界</th><th style="text-align:left;">设计要求</th></tr></thead>
     <tbody>
-      <tr><td>入口识别</td><td>识别 <code>.codex-plugin/plugin.json</code>、<code>package.json</code>、<code>cordis.yml</code></td></tr>
-      <tr><td>入口限制</td><td>必须在插件安装目录内，且是 <code>.js</code> / <code>.mjs</code> / <code>.cjs</code></td></tr>
-      <tr><td>进程隔离</td><td>独立进程，崩溃不拖垮宿主；不经 Shell 拼接避免注入</td></tr>
-      <tr><td>项目示例</td><td><code>plugins/dsh-demo-plugin</code>（已在 yml preset 预置）</td></tr>
+      <tr><td>HTTP / RPC</td><td>业务系统独立部署或由其他团队维护</td><td>身份传递、超时、重试、错误码和审计必须明确</td></tr>
+      <tr><td>稳定 SDK</td><td>业务能力有版本化客户端契约</td><td>控制依赖版本，避免把内部对象穿过插件边界</td></tr>
+      <tr><td>JDBC</td><td>插件与数据源同属受控部署边界</td><td>限制 SQL 能力、字段范围、连接权限和资源消耗</td></tr>
     </tbody>
   </table>
 </div>
 
-<h2 class="section-heading" id="sec-5">9.5 两种模式怎么选</h2>
+<p>插件不应把原始数据库表、内部异常堆栈、访问令牌或无关字段直接返回给模型。应在插件层完成参数白名单、结果裁剪、敏感字段脱敏和错误归一化；最终的用户权限仍需由业务系统再次校验。</p>
 
-<div class="comparison-table">
-  <table>
-    <thead>
-      <tr><th style="text-align:left;">维度</th><th style="text-align:left;">Java Native</th><th style="text-align:left;">Node Bridge</th></tr>
-    </thead>
-    <tbody>
-      <tr><td>性能</td><td>进程内调用，零 IPC</td><td>每次调用走 JSON-RPC，有序列化开销</td></tr>
-      <tr><td>隔离性</td><td>类隔离（URLClassLoader），但同进程</td><td>进程隔离，崩溃互不影响</td></tr>
-      <tr><td>生态</td><td>Java 生态</td><td>复用海量 npm 包与既有 Node 插件</td></tr>
-      <tr><td>依赖</td><td>仅 JVM</td><td>需 Node.js 18+</td></tr>
-      <tr><td>适合</td><td>高频、性能敏感、企业 Java 团队</td><td>复用 Node 资产、快速集成第三方</td></tr>
-    </tbody>
-  </table>
-</div>
-
-<h2 class="section-heading" id="sec-6">9.6 对话中 @插件提及（v0.1.5 新增）</h2>
-
-<p>装好插件后，怎么在对话里<strong>显式指定</strong>用某个插件？v0.1.5 在控制台引入了 <code>@插件</code> 提及：输入框敲 <code>@</code> 会弹出已安装且处于 <code>ACTIVE</code> 状态的插件候选（按插件 ID / 显示名模糊匹配，最多 8 条），<code>↑</code>/<code>↓</code> 移动高亮，<code>Enter</code>/<code>Tab</code> 确认回填 <code>@&lt;pluginId&gt; </code>，<code>Escape</code> 关闭。</p>
-
-<p>真正的转换发生在用例编排层：<code>AgentDispatchNode</code> 用正则 <code>(?&lt;=^|\s)@([A-Za-z0-9][A-Za-z0-9._-]*)</code> 识别提及（与 pluginId 字符集一致，邮件地址 <code>someone@example.com</code> 不会误判），命中后在消息末尾追加 <code>[插件提及]</code> 指令，要求模型优先在对应 <code>plugin__&lt;插件ID&gt;__&lt;工具名&gt;</code> 工具中选择，其他插件工具只在被指定或确实更匹配时才使用。这样不用切换插件启停状态，就能显式验证某个插件的工具链路。</p>
-
-<div class="warning-box"><p><strong>注意</strong>：<code>@插件</code> 提及是<strong>优先级引导而非强制路由</strong>——模型在工具缺失时仍可能回退到其他插件。提及候选只展示 <code>ACTIVE</code> 插件，<code>DISABLED</code>/<code>FAILED</code> 不出现在补全列表。</p></div>
-
-<h2 class="section-heading" id="sec-7">9.7 插件接口访问控制（v0.1.5 新增）</h2>
-
-<p>插件链路「能装能跑」之后，下一个问题是「谁能装」。v0.1.5 新增 <code>PluginApiAuthFilter</code>（<code>@Order(10)</code>），作用于 <code>/api/harness/plugins</code> 及其子路径：</p>
-
-<div class="comparison-table">
-  <table>
-    <thead>
-      <tr><th style="text-align:left;">场景</th><th style="text-align:left;">行为</th></tr>
-    </thead>
-    <tbody>
-      <tr><td>只读请求</td><td><code>GET</code> / <code>HEAD</code> / <code>OPTIONS</code> 直接放行（控制台展示不受影响）</td></tr>
-      <tr><td>本机调用</td><td><code>127.0.0.1</code> / <code>::1</code> 回环地址放行</td></tr>
-      <tr><td>远程命令调用</td><td>必须携带 <code>X-Plugin-Api-Token</code> 头，且与 <code>harness.plugins.api-token</code> 配置一致</td></tr>
-      <tr><td>鉴权失败</td><td>返回 <code>401</code>，响应体 <code>{"code":"A0300","info":"plugin API token required","data":null}</code></td></tr>
-    </tbody>
-  </table>
-</div>
-
-<div class="code-block"><pre>harness:
-  plugins:
-    api-token: &lt;your-token&gt;   # 远程调用插件命令接口时必填；为空则远程命令调用一律拒绝</pre></div>
-
-<p>设计取舍：读接口继续开放便于控制台展示；安装、运行、启停、卸载、配置保存等<strong>命令接口</strong>在远程访问时必须带 Token，避免暴露主机后插件被任意安装或停用。当前 Token 为单值配置，暂不支持多 Token、按插件粒度授权或轮换。</p>
-
-<h2 class="section-heading" id="sec-8">9.8 注册与提示词安全加固（v0.1.5）</h2>
-
-<h3 class="sub-heading">9.8.1 pluginId 字符集强制校验</h3>
-
-<p><code>PluginRegistryService</code> 在安装登记时强制校验 <code>pluginId</code> 字符集：<code>[A-Za-z0-9][A-Za-z0-9._-]*</code>——必须以字母或数字开头，只能包含字母、数字、点、下划线和短横线。原因在于 <code>pluginId</code> 会参与注册工具名（<code>plugin__&lt;pluginId&gt;__&lt;toolName&gt;</code>）和安装目录路径拼接，若允许空白、斜杠等字符，会破坏工具命名规则并带来路径穿越风险。非法 ID 在安装阶段直接抛出 <code>IllegalArgumentException</code>，不会写入登记表。</p>
-
-<h3 class="sub-heading">9.8.2 工具注册幂等</h3>
-
-<p><code>PluginToolBridgeService</code> 注册插件工具时改为 <code>putIfAbsent</code> 语义：首次注册正常登记工具名、释放器和提示词区段；重复注册则执行本次产生的所有 disposer、返回已有工具名列表，不再覆盖。避免插件被重复 <code>run</code> 时工具重复挂载、提示词区段重复写入。</p>
-
-<h3 class="sub-heading">9.8.3 提示词注入防护与 Schema 一致</h3>
-
-<p>两个配套修正：</p>
-
-<div class="comparison-table">
-  <table>
-    <thead>
-      <tr><th style="text-align:left;">修正</th><th style="text-align:left;">内容</th></tr>
-    </thead>
-    <tbody>
-      <tr><td>提示词与 Schema 一致</td><td>插件能力写入系统提示词时使用注册后的完整工具名（<code>plugin__&lt;pluginId&gt;__&lt;toolName&gt;</code>），而不是插件声明的裸工具名——避免模型按未加前缀的名字调用失败</td></tr>
-      <tr><td>注入防护</td><td>插件贡献的工具描述写入系统提示词前经过 <code>sanitizePromptText</code>：换行、回车、制表符统一替换为空格并去首尾空白，防止恶意描述通过换行伪装成提示词结构注入系统提示词</td></tr>
-    </tbody>
-  </table>
-</div>
-
-<h3 class="sub-heading">9.8.4 安装脚本加固</h3>
-
-<p><code>scripts/install-plugin.sh</code> 新增 <code>json_escape</code> 处理安装请求字段：反斜杠、双引号转义，多行内容逐行拼接为 <code>\n</code>，行尾多余换行去除。插件 ID、显示名、版本、JAR 路径和入口类名在拼入 JSON 请求体前统一转义，路径中包含空格或特殊字符时不再破坏请求格式。注意：脚本用于远程主机部署时，也必须补充 <code>X-Plugin-Api-Token</code> 请求头。</p>
-
-<h2 class="section-heading" id="sec-9">9.9 验证你的插件</h2>
+<h2 class="section-heading" id="sec-9">9.9 设计检查清单</h2>
 
 <div class="checklist-box">
   <ul>
-    <li>☐ 插件包放入 <code>./plugins</code>，启动日志出现插件加载记录</li>
-    <li>☐ <code>GET /api/harness/plugins</code> 能看到插件状态为已激活</li>
-    <li>☐ 控制台问"北京今天天气怎么样"，Agent 调用了 <code>plugin__sample-tools__weather_query</code></li>
-    <li>☐ 工具卡片显示执行结果（SSE step_break → tool_result → done 全链路）</li>
-    <li>☐ <code>harness_session_event_log</code> 表里有对应的 ToolCall/ToolResult 事件</li>
+    <li>☐ 插件只依赖稳定 SPI，不依赖宿主内部实现</li>
+    <li>☐ 每个插件拥有独立 ClassLoader，SPI 类型由父加载器统一提供</li>
+    <li>☐ Tool 使用命名空间，描述和参数 Schema 足够明确</li>
+    <li>☐ 所有调用都经过 Tool Registry 和 ToolCallExecutor</li>
+    <li>☐ 生命周期失败可回滚，停止时清理跨边界引用</li>
+    <li>☐ 业务权限、数据裁剪和审计位于业务系统或明确的业务边界内</li>
+    <li>☐ 对不可信插件采用独立进程或更强隔离，而不是仅依赖 ClassLoader</li>
   </ul>
 </div>
 
-<h2 class="section-heading" id="sec-10">9.10 小结与下一章预告</h2>
-
 <div class="summary-box">
-  <p><strong>本章要点</strong>：插件走 install→activate→run 三段，工具注册后与内置工具同构；Java Native 五步（继承 AbstractHarnessPlugin → 实现 AbstractTool → plugin.yaml → SPI 注册 → 打包）；Node Bridge 用 sidecar 进程 + JSON-RPC 复用 npm 生态；选型看性能/隔离/生态三角。v0.1.5 补齐了对话侧 <code>@插件</code> 提及、接口侧 Token 访问控制、注册侧 pluginId 校验与提示词注入防护，把插件链路从「可用」推进到「可信」。</p>
-  <p style="margin-bottom:0;"><strong>下一章</strong>：除了私有插件，还有一个开放标准能接入全世界的工具——MCP（Model Context Protocol）。第10章讲如何用 stdio、SSE 和 streamable-http 连接 MCP Server。</p>
-</div></div></div>
+  <p><strong>本章总结</strong>：插件系统通过 SPI 建立契约，通过 ClassLoader 隔离实现，通过生命周期管理运行，通过 Tool Registry 进入 Agent，通过统一执行器完成治理，再由插件访问业务系统并把结果回填到 ReAct 循环。</p>
+  <p style="margin-bottom:0;"><a class="inline-link" href="https://gitcode.net/KnowledgePlanet/deepseek-harness-java/-/blob/main/docs/md/draw.io/dsh-java-plugin-integration.drawio" target="_blank" rel="noopener">查看配套 draw.io 架构图</a> · <a class="inline-link" href="https://gitcode.net/KnowledgePlanet/deepseek-harness-java/-/blob/main/docs/md/plugin-design-implementation.md" target="_blank" rel="noopener">阅读完整设计方案</a></p>
+</div>

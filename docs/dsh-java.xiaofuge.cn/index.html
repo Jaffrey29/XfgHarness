@@ -213,11 +213,12 @@ var _hmt = _hmt || [];
         <div class="section-head center reveal">
           <span class="section-tag">Quickstart</span>
           <h2>最简便的部署与体验路径</h2>
-          <p>「一键使用」单容器拉起 Harness 运行时；「插件安装」用标准部署脚本启动 Harness 与 2D Weekend Mall，再从 GitHub 下载商城 JAR 并在插件管理中安装。详细步骤与 MySQL 库表导入见 <a class="inline-link" href="/docs.html#ops">使用教程 · 部署与安全</a>。</p>
+          <p>「一键使用」单容器拉起 Harness 运行时；「本地 JAR」下载运行包后在 JDK 17 中直接启动；「插件安装」用标准部署脚本启动 Harness 与 2D Weekend Mall，再从 GitHub 下载商城 JAR 并在插件管理中安装。详细步骤与 MySQL 库表导入见 <a class="inline-link" href="/docs.html#ops">使用教程 · 部署与安全</a>。</p>
         </div>
         <div class="deploy-tabs reveal" role="tablist" aria-label="部署方式切换">
           <button class="deploy-tab active" type="button" role="tab" aria-selected="true" data-tab="onekey"><span class="step-no">1</span>一键使用 · 单容器启动</button>
-          <button class="deploy-tab" type="button" role="tab" aria-selected="false" data-tab="bundle"><span class="step-no">2</span>插件安装 · 标准部署包</button>
+          <button class="deploy-tab" type="button" role="tab" aria-selected="false" data-tab="jar"><span class="step-no">2</span>本地 JAR · 无 Docker</button>
+          <button class="deploy-tab" type="button" role="tab" aria-selected="false" data-tab="bundle"><span class="step-no">3</span>插件安装 · 标准部署包</button>
         </div>
         <div class="deploy-tab-panel active" data-tab-panel="onekey" role="tabpanel">
           <div class="quickstart-grid is-single">
@@ -234,6 +235,27 @@ var _hmt = _hmt || [];
   registry.cn-hangzhou.aliyuncs.com/xfg-studio/deepseek-harness-java:0.1.6.4</code></pre>
               </div>
               <p class="quick-tip">适合最快体验；需要持久化数据、插件与配套案例时，请切换到「插件安装 · 标准部署包」。</p>
+              <p class="quick-tip"><strong>部署后配置模型：</strong>打开 Harness，进入「设置 → 模型设置 → 添加模型」，填写模型服务地址、模型名称和 API Key，保存后即可开始对话。</p>
+            </article>
+          </div>
+        </div>
+        <div class="deploy-tab-panel" data-tab-panel="jar" role="tabpanel" hidden>
+          <div class="quickstart-grid is-single">
+            <article class="card quick-card">
+              <div class="quick-card-head">
+                <h3><span class="step-no">1</span>本地 JAR · 一键启动</h3>
+                <button class="copy-btn" type="button" data-copy-target="code-local-jar">复制步骤</button>
+              </div>
+              <p>下载运行 JAR 到启动脚本同目录，使用 JDK 17 执行。无需 Docker 和 MySQL，数据使用 H2 文件库。</p>
+              <div class="codebox">
+                <pre><code id="code-local-jar">下载 JAR：
+https://drive.weixin.qq.com/s?k=ACMA4AfQABUnIBrQ39
+
+curl -fsSLO https://dsh-java.xiaofuge.cn/scripts/start-local-jar.sh
+chmod +x start-local-jar.sh
+./start-local-jar.sh</code></pre>
+              </div>
+              <p class="quick-tip">如果 JAR 不在脚本同目录，可用 <code>JAR_PATH=/path/to/deepseek-harness-java.jar ./start-local-jar.sh</code> 指定路径。</p>
               <p class="quick-tip"><strong>部署后配置模型：</strong>打开 Harness，进入「设置 → 模型设置 → 添加模型」，填写模型服务地址、模型名称和 API Key，保存后即可开始对话。</p>
             </article>
           </div>

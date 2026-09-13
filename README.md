@@ -138,7 +138,23 @@ mvn clean package -DskipTests
 
 ```text
 deepseek-harness-java-app/target/deepseek-harness-java-app-1.0.0-SNAPSHOT.jar
+deepseek-harness-java-app/target/deepseek-harness-java-app-0.1.6.jar
 ```
+
+如需分发一个非 Docker 的本地启动包，可执行：
+
+```bash
+scripts/package-local.sh --zip
+```
+
+产物位于 `dist/deepseek-harness-java-local` 和 `dist/deepseek-harness-java-local-<version>.zip`。解压后运行：
+
+```bash
+cd deepseek-harness-java-local
+./start.sh
+```
+
+该包默认启用 `standalone` Profile，使用 H2 文件库，只需要本机安装 JDK 17+；Windows 可运行 `start.bat`。
 
 ### 2.3 启动方式一：Standalone（H2，零外部依赖）
 
@@ -147,7 +163,7 @@ deepseek-harness-java-app/target/deepseek-harness-java-app-1.0.0-SNAPSHOT.jar
 ```bash
 export LLM_API_KEY='your-model-api-key'
 
-java -jar deepseek-harness-java-app/target/deepseek-harness-java-app-1.0.0-SNAPSHOT.jar \
+java -jar deepseek-harness-java-app/target/deepseek-harness-java-app-0.1.6.jar \
   --spring.profiles.active=standalone
 ```
 
@@ -156,7 +172,7 @@ H2 数据文件默认写入 `./data/deepseek-harness-java.mv.db`。
 如需覆盖默认模型服务：
 
 ```bash
-java -jar deepseek-harness-java-app/target/deepseek-harness-java-app-1.0.0-SNAPSHOT.jar \
+java -jar deepseek-harness-java-app/target/deepseek-harness-java-app-0.1.6.jar \
   --spring.profiles.active=standalone \
   --harness.llm.deepseek.base-url='http://127.0.0.1:8777/v1' \
   --harness.llm.deepseek.api-key="$LLM_API_KEY" \
@@ -1213,4 +1229,7 @@ MySQL 承载结构化状态和事件（默认 profile）；standalone profile �
 | [`docs/domain-design.md`](docs/md/domain-design.md) | 领域设计详解：事件风暴、全部事件清单、端口与子域细节 |
 | [`docs/domain-modules-reference.md`](docs/md/domain-modules-reference.md) | **领域模块速查**：逐个讲解 37 个领域模块的用途、子包分层、关键类、端口、与谁打交道 |
 | [`docs/domain-course/`](docs/md/domain-course/README.md) | **领域模块课程**（教程分章）：9 章逐模块讲解，按"学习目标 / 关键源码 / 设计意图 / 与谁打交道 / 思考题"组织；文件名不带序号，方便后续增删调序 |
+| [`docs/draw.io/dsh-java-plugin-integration.drawio`](docs/md/draw.io/dsh-java-plugin-integration.drawio) | DSH Java 插件接入架构图：整体架构、对话时序、插件开发与安装流程 |
 | [`docs/java-plugin-development.md`](docs/md/java-plugin-development.md) | 插件开发指南：Archetype 命令、代码模板、HTTP 安装示例 |
+| [`docs/plugin-development-tutorial.md`](docs/md/plugin-development-tutorial.md) | 插件开发实战教程：基于 dsh-java-mysql，从 Tool 编写到 JAR 上传验证 |
+| [`docs/plugin-design-implementation.md`](docs/md/plugin-design-implementation.md) | 插件设计与实现方案：理论架构、ClassLoader、生命周期、对话时序与安全边界 |

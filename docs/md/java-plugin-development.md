@@ -145,6 +145,22 @@ my-plugin/
 
 ### 2. Maven 依赖
 
+在外部工程中开发插件时，可以直接从 Maven 仓库引入契约包：
+
+```xml
+<!-- Source: https://mvnrepository.com/artifact/cn.xiaofuge/deepseek-harness-java-types -->
+<dependency>
+    <groupId>cn.xiaofuge</groupId>
+    <artifactId>deepseek-harness-java-types</artifactId>
+    <version>0.1.5</version>
+    <scope>compile</scope>
+</dependency>
+```
+
+之后可以参考插件案例源码，开发你需要的插件。开发完成后，可以在 DSH-Java 上传使用。
+
+如果插件由 DSH-Java 宿主加载，也可以使用 `provided`，由宿主 JVM 提供契约包：
+
 ```xml
 <dependency>
     <groupId>cn.xiaofuge</groupId>
