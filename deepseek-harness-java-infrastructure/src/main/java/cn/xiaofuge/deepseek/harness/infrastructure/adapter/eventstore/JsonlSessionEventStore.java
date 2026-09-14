@@ -63,16 +63,7 @@ public class JsonlSessionEventStore implements ISessionEventStore {
             Path dir = sessionDir(header.sessionId());
             Files.createDirectories(dir);
             Path headerFile = dir.resolve("header.json");
-            ObjectNode node = objectMapper.createObjectNode();
-            node.put("version", header.version());
-            node.put("sessionId", header.sessionId());
-            node.put("createdAt", header.createdAt().toString());
-            node.put("cwd", header.cwd());
-            if (header.parentSession() != null) node.put("parentSession", header.parentSession());
-            if (header.seedLength() >= 0) node.put("seedLength", header.seedLength());
-            if (header.origin() != null) node.put("origin", header.origin());
-            node.put("delegationDepth", header.delegationDepth());
-            if (header.agentPreset() != null) node.put("agentPreset", header.agentPreset());
+            ObjectNode node = headerJson(header);
             Files.writeString(headerFile, objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(node),
                     StandardCharsets.UTF_8);
         } catch (IOException e) {
@@ -95,20 +86,57 @@ public class JsonlSessionEventStore implements ISessionEventStore {
         }
         try {
             var node = objectMapper.readTree(Files.readString(headerFile, StandardCharsets.UTF_8));
-            return Optional.of(new SessionHeader(
-                    node.has("version") ? node.get("version").asInt() : 1,
+            int version = node.has("version") ? node.get("version").asInt() : 1;
+            if (version > SessionHeader.SESSION_FORMAT_VERSION) {
+                throw new IllegalStateException("session uses unsupported format v" + version);
+            }
+            SessionHeader header = new SessionHeader(
+                    version,
                     node.get("sessionId").asText(),
                     Instant.parse(node.get("createdAt").asText()),
                     node.has("cwd") ? node.get("cwd").asText() : null,
                     node.has("parentSession") ? node.get("parentSession").asText() : null,
-                    node.has("seedLength") ? node.get("seedLength").asInt() : -1,
+                    node.has("seedLength") ? Math.max(0, node.get("seedLength").asInt()) : 0,
                     node.has("origin") ? node.get("origin").asText() : null,
                     node.has("delegationDepth") ? node.get("delegationDepth").asInt() : 0,
                     node.has("agentPreset") ? node.get("agentPreset").asText() : null
-            ));
+            );
+            if (version < SessionHeader.SESSION_FORMAT_VERSION) {
+                header = migrate(header);
+                saveHeader(header);
+            }
+            return Optional.of(header);
         } catch (IOException e) {
             throw new RuntimeException("Failed to read header for session " + sessionId, e);
         }
+    }
+
+    private SessionHeader migrate(SessionHeader legacy) {
+        return new SessionHeader(
+                SessionHeader.SESSION_FORMAT_VERSION,
+                legacy.sessionId(),
+                legacy.createdAt(),
+                legacy.cwd(),
+                legacy.parentSession(),
+                legacy.seedLength(),
+                legacy.origin(),
+                legacy.delegationDepth(),
+                legacy.agentPreset()
+        );
+    }
+
+    private ObjectNode headerJson(SessionHeader header) {
+        ObjectNode node = objectMapper.createObjectNode();
+        node.put("version", SessionHeader.SESSION_FORMAT_VERSION);
+        node.put("sessionId", header.sessionId());
+        node.put("createdAt", header.createdAt().toString());
+        node.put("cwd", header.cwd());
+        if (header.parentSession() != null) node.put("parentSession", header.parentSession());
+        if (header.seedLength() >= 0) node.put("seedLength", header.seedLength());
+        if (header.origin() != null) node.put("origin", header.origin());
+        node.put("delegationDepth", header.delegationDepth());
+        if (header.agentPreset() != null) node.put("agentPreset", header.agentPreset());
+        return node;
     }
     /**
      * 追加目标对象。

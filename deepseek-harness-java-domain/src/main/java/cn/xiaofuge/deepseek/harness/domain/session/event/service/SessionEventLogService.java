@@ -9,6 +9,8 @@ import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionLog
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.time.Duration;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.stereotype.Service;
 
@@ -19,6 +21,7 @@ import org.springframework.stereotype.Service;
 public class SessionEventLogService implements ISessionEventLogService {
 
     private final ISessionEventStore store;
+    private final SessionWriteLeaseService writeLeaseService;
     private final Map<String, SessionLog> logs = new ConcurrentHashMap<>();
 
     /**
@@ -27,16 +30,22 @@ public class SessionEventLogService implements ISessionEventLogService {
      * @param store store参数。
      * @return 方法执行结果。
      */
-    public SessionEventLogService(ISessionEventStore store) {
+    public SessionEventLogService(
+            ISessionEventStore store,
+            SessionWriteLeaseService writeLeaseService
+    ) {
         this.store = Objects.requireNonNull(store, "store");
+        this.writeLeaseService = Objects.requireNonNull(writeLeaseService, "writeLeaseService");
     }
 
     @Override
     public SessionHeader createSession(SessionHeader header) {
-        store.saveHeader(header);
-        SessionLog log = new SessionLog(header.sessionId(), header);
-        logs.put(header.sessionId(), log);
-        return header;
+        return withWriteLease(header.sessionId(), () -> {
+            store.saveHeader(header);
+            SessionLog log = new SessionLog(header.sessionId(), header);
+            logs.put(header.sessionId(), log);
+            return header;
+        });
     }
     /**
      * 追加目标对象。
@@ -49,10 +58,12 @@ public class SessionEventLogService implements ISessionEventLogService {
 
     @Override
     public SessionEvent append(String sessionId, SessionEvent event) {
-        SessionLog log = getOrCreateLog(sessionId);
-        SessionEvent appended = log.append(event);
-        store.append(sessionId, appended);
-        return appended;
+        return withWriteLease(sessionId, () -> {
+            SessionLog log = getOrCreateLog(sessionId);
+            SessionEvent appended = log.append(event);
+            store.append(sessionId, appended);
+            return appended;
+        });
     }
     /**
      * 追加Batch。
@@ -65,10 +76,12 @@ public class SessionEventLogService implements ISessionEventLogService {
 
     @Override
     public List<SessionEvent> appendBatch(String sessionId, List<SessionEvent> events) {
-        SessionLog log = getOrCreateLog(sessionId);
-        List<SessionEvent> appended = log.appendBatch(events);
-        store.appendBatch(sessionId, appended);
-        return appended;
+        return withWriteLease(sessionId, () -> {
+            SessionLog log = getOrCreateLog(sessionId);
+            List<SessionEvent> appended = log.appendBatch(events);
+            store.appendBatch(sessionId, appended);
+            return appended;
+        });
     }
     /**
      * 读取All。
@@ -149,6 +162,15 @@ public class SessionEventLogService implements ISessionEventLogService {
     }
 
     // ── Helpers ──────────────────────────────────────────────────
+
+    private <T> T withWriteLease(String sessionId, java.util.function.Supplier<T> action) {
+        var lease = writeLeaseService.acquire(sessionId, "session-event-log:" + UUID.randomUUID(), Duration.ofSeconds(30));
+        try {
+            return action.get();
+        } finally {
+            writeLeaseService.release(sessionId, lease.leaseId());
+        }
+    }
 
     /**
      * 获取OrCreateLog。

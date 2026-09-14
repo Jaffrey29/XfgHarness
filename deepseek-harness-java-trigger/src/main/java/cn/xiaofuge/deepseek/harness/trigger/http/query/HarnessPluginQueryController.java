@@ -2,6 +2,7 @@ package cn.xiaofuge.deepseek.harness.trigger.http.query;
 
 import cn.xiaofuge.deepseek.harness.api.dto.QueryPluginStatusResponseDTO;
 import cn.xiaofuge.deepseek.harness.api.dto.InstalledPluginResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.PluginInventoryResponseDTO;
 import cn.xiaofuge.deepseek.harness.api.IHarnessPluginQueryApi;
 import cn.xiaofuge.deepseek.harness.api.response.Response;
 import java.util.List;
@@ -50,6 +51,11 @@ public class HarnessPluginQueryController {
     @GetMapping
     public Response<List<InstalledPluginResponseDTO>> listInstalledPlugins() {
         return harnessPluginQueryApi.listInstalledPlugins();
+    }
+
+    @GetMapping("/inventory")
+    public Response<PluginInventoryResponseDTO> listPluginInventory() {
+        return harnessPluginQueryApi.listPluginInventory();
     }
 
     /**

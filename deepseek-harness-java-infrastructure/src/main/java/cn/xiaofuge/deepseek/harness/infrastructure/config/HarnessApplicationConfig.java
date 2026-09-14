@@ -61,7 +61,9 @@ import cn.xiaofuge.deepseek.harness.infrastructure.adapter.plugin.JsonRpcPluginT
 import java.nio.file.Path;
 
 import cn.xiaofuge.deepseek.harness.domain.credentials.adapter.port.ICredentialProviderPort;
+import cn.xiaofuge.deepseek.harness.domain.session.event.adapter.repository.ISessionProjectionCache;
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.credentials.LocalCredentialProviderPort;
+import cn.xiaofuge.deepseek.harness.domain.session.event.service.InMemorySessionProjectionCache;
 
 import java.util.List;
 import java.util.Map;
@@ -397,6 +399,13 @@ public class HarnessApplicationConfig {
     @Bean
     public TypertProtocolLoader typertProtocolLoader(ObjectMapper objectMapper) {
         return new TypertProtocolLoader(objectMapper);
+    }
+
+    // ── 会话投影缓存层 ─────────────────────────────────────
+
+    @Bean
+    public ISessionProjectionCache sessionProjectionCache() {
+        return new InMemorySessionProjectionCache();
     }
 
 }
