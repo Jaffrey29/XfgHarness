@@ -73,7 +73,10 @@ public class AgentApi implements IAgentApi {
                             event.callId(),
                             event.toolName(),
                             event.arguments(),
-                            "running"
+                            "result".equals(event.phase()) ? event.status() : "running",
+                            event.phase(),
+                            event.result(),
+                            event.durationMs()
                     )),
                     finishSink
         ));

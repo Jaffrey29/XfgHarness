@@ -2,10 +2,12 @@ package cn.xiaofuge.deepseek.harness.trigger.service;
 
 import cn.xiaofuge.deepseek.harness.api.dto.QueryPluginStatusResponseDTO;
 import cn.xiaofuge.deepseek.harness.api.dto.InstalledPluginResponseDTO;
+import cn.xiaofuge.deepseek.harness.api.dto.PluginInventoryResponseDTO;
 import cn.xiaofuge.deepseek.harness.api.IHarnessPluginQueryApi;
 import cn.xiaofuge.deepseek.harness.api.response.Response;
 import cn.xiaofuge.deepseek.harness.trigger.service.query.HarnessInstalledPluginQueryApi;
 import cn.xiaofuge.deepseek.harness.cases.plugin.IQueryHarnessPluginStatusCase;
+import cn.xiaofuge.deepseek.harness.cases.plugin.IPluginInventoryQueryCase;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
@@ -27,15 +29,18 @@ public class HarnessPluginQueryApi implements IHarnessPluginQueryApi {
 
     private final HarnessInstalledPluginQueryApi harnessInstalledPluginQueryApi;
     private final IQueryHarnessPluginStatusCase queryHarnessPluginStatusCase;
+    private final IPluginInventoryQueryCase pluginInventoryQueryCase;
 
     /**
      * 初始化插件查询适配器，并注入已安装插件与运行状态查询能力。
      * <p>流程：HTTP 请求 → API 适配器 → 查询用例。</p>
      */
     public HarnessPluginQueryApi(HarnessInstalledPluginQueryApi harnessInstalledPluginQueryApi,
-                                 IQueryHarnessPluginStatusCase queryHarnessPluginStatusCase) {
+                                 IQueryHarnessPluginStatusCase queryHarnessPluginStatusCase,
+                                 IPluginInventoryQueryCase pluginInventoryQueryCase) {
         this.harnessInstalledPluginQueryApi = harnessInstalledPluginQueryApi;
         this.queryHarnessPluginStatusCase = queryHarnessPluginStatusCase;
+        this.pluginInventoryQueryCase = pluginInventoryQueryCase;
     }
 
     /**
@@ -43,6 +48,10 @@ public class HarnessPluginQueryApi implements IHarnessPluginQueryApi {
      */
     public Response<List<InstalledPluginResponseDTO>> listInstalledPlugins() {
         return harnessInstalledPluginQueryApi.listInstalledPlugins();
+    }
+
+    public Response<PluginInventoryResponseDTO> listPluginInventory() {
+        return execute(pluginInventoryQueryCase::inventory);
     }
 
     /**

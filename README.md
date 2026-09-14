@@ -134,6 +134,8 @@ mvn clean verify
 mvn clean package -DskipTests
 ```
 
+测试用例与后续功能补测流程见 [docs/md/test-cases.md](docs/md/test-cases.md)。
+
 构建产物：
 
 ```text

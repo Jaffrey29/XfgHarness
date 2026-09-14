@@ -7,7 +7,7 @@ import java.util.Objects;
  * SessionHeader 表示会话SessionHeader。
  */
 public record SessionHeader(
-        int version,           // session format version (currently 0)
+        int version,           // session format version (currently 3)
         String sessionId,      // unique session identifier
         Instant createdAt,     // epoch ms, non-negative
         String cwd,            // working directory (or null)
@@ -17,13 +17,13 @@ public record SessionHeader(
         int delegationDepth,   // recursion depth budget (persisted across restarts)
         String agentPreset     // determines tools & prompts for this session
 ) {
-    public static final int SESSION_FORMAT_VERSION = 0;
+    public static final int SESSION_FORMAT_VERSION = 3;
 
     public SessionHeader {
         Objects.requireNonNull(sessionId, "sessionId");
         Objects.requireNonNull(createdAt, "createdAt");
-        if (version < 0) {
-            throw new IllegalArgumentException("version must be non-negative: " + version);
+        if (version < 0 || version > SESSION_FORMAT_VERSION) {
+            throw new IllegalArgumentException("unsupported session format version: " + version);
         }
         if (seedLength < 0) {
             throw new IllegalArgumentException("seedLength must be non-negative: " + seedLength);

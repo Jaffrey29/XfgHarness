@@ -4,6 +4,7 @@ import cn.xiaofuge.deepseek.harness.domain.agent.model.entity.Phase;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.Inbox;
 import cn.xiaofuge.deepseek.harness.domain.model.entity.Message;
 import cn.xiaofuge.deepseek.harness.domain.session.ISessionEventLogService;
+import cn.xiaofuge.deepseek.harness.domain.session.event.adapter.repository.ISessionProjectionCache;
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionEvent;
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionHeader;
 import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionLog;
@@ -23,6 +24,7 @@ import org.springframework.stereotype.Service;
 public class SessionRebuilderService {
 
     private final ISessionEventLogService eventLogService;
+    private final ISessionProjectionCache projectionCache;
 
     /**
      * 处理会话 Rebuilder Service。
@@ -30,8 +32,12 @@ public class SessionRebuilderService {
      * @param eventLogService 事件 Log Service参数。
      * @return 方法执行结果。
      */
-    public SessionRebuilderService(ISessionEventLogService eventLogService) {
+    public SessionRebuilderService(
+            ISessionEventLogService eventLogService,
+            ISessionProjectionCache projectionCache
+    ) {
         this.eventLogService = eventLogService;
+        this.projectionCache = projectionCache;
     }
 
     /**
@@ -41,7 +47,12 @@ public class SessionRebuilderService {
      * @return 领域处理结果。
      */
     public RestoredSession rebuild(String sessionId) {
-        // 1. Restore the SessionLog from the store
+        long lastSeq = eventLogService.getLastSeq(sessionId);
+        return projectionCache.get(sessionId, lastSeq, RestoredSession.class)
+                .orElseGet(() -> rebuildAndCache(sessionId, lastSeq));
+    }
+
+    private RestoredSession rebuildAndCache(String sessionId, long lastSeq) {
         eventLogService.restore(sessionId);
 
         SessionHeader header = eventLogService.getHeader(sessionId);
@@ -75,7 +86,7 @@ public class SessionRebuilderService {
         // 9. Last assistant message
         Optional<Message> lastAssistantMessage = extractLastAssistantMessage(events);
 
-        return new RestoredSession(
+        RestoredSession restored = new RestoredSession(
                 header,
                 messages,
                 phase,
@@ -88,6 +99,8 @@ public class SessionRebuilderService {
                 lastAssistantMessage.orElse(null),
                 events.size()
         );
+        projectionCache.put(sessionId, lastSeq, RestoredSession.class, restored);
+        return restored;
     }
 
     // ── Projection helpers ───────────────────────────────────────
