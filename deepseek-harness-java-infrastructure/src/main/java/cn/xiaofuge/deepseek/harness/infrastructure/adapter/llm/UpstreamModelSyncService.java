@@ -1,6 +1,7 @@
 package cn.xiaofuge.deepseek.harness.infrastructure.adapter.llm;
 
 import cn.xiaofuge.deepseek.harness.domain.channel.model.valobj.ChannelProtocol;
+import cn.xiaofuge.deepseek.harness.domain.channel.service.OpenAiCompatibleUriResolver;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
@@ -60,8 +61,10 @@ public class UpstreamModelSyncService {
         ChannelProtocol resolved = ChannelProtocol.fromCode(protocol);
         return switch (resolved) {
             case OLLAMA -> fetch(baseUrl, apiKey, resolved, this::resolveOllamaTagsUri, this::parseOllamaTags);
-            case ANTHROPIC -> fetch(baseUrl, apiKey, resolved, this::resolveModelsUri, this::parseOpenAiModels);
-            case OPENAI -> fetch(baseUrl, apiKey, resolved, this::resolveModelsUri, this::parseOpenAiModels);
+            case ANTHROPIC -> fetch(baseUrl, apiKey, resolved, OpenAiCompatibleUriResolver::resolveModelsUri,
+                    this::parseOpenAiModels);
+            case OPENAI -> fetch(baseUrl, apiKey, resolved, OpenAiCompatibleUriResolver::resolveModelsUri,
+                    this::parseOpenAiModels);
         };
     }
 
@@ -99,17 +102,6 @@ public class UpstreamModelSyncService {
             log.warn("Failed to sync models from {} (protocol={}): {}", baseUrl, protocol.code(), e.getMessage());
             throw new IllegalStateException("无法连接到上游服务: " + e.getMessage(), e);
         }
-    }
-
-    /**
-     * OpenAI / Anthropic 模型列表端点：{base}/models（自动补 /v1）。
-     */
-    private URI resolveModelsUri(String baseUrl) {
-        String normalized = baseUrl.endsWith("/")
-                ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
-        if (normalized.endsWith("/models")) return URI.create(normalized);
-        if (normalized.endsWith("/v1")) return URI.create(normalized + "/models");
-        return URI.create(normalized + "/v1/models");
     }
 
     /**

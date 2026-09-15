@@ -61,6 +61,7 @@ public class AgentModelSettingResolver {
                     DEFAULT_PROVIDER,
                     fallbackModel,
                     requestedMaxTokens != null ? requestedMaxTokens : DEFAULT_MAX_TOKENS,
+                    null,
                     fallbackBaseUrl,
                     fallbackApiKey,
                     "openai"
@@ -76,6 +77,7 @@ public class AgentModelSettingResolver {
                 setting.providerCode(),
                 setting.modelCode(),
                 requestedMaxTokens != null ? requestedMaxTokens : DEFAULT_MAX_TOKENS,
+                null,
                 setting.baseUrl(),
                 setting.apiKeyRef(),
                 setting.protocol()

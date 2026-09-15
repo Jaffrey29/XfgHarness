@@ -11,6 +11,7 @@ package cn.xiaofuge.deepseek.harness.api.dto;
  * @param images 图片附件列表；每项为 data URL（data:image/png;base64,...）或裸 base64，
  *               可为 null/空。仅多模态模型支持，文本-only 模型会忽略或报错。
  * @param approvalMode 运行审批模式：REQUEST_APPROVAL / AUTO_APPROVE / FULL_OPEN
+ * @param reasoningEffort 推理级别：low / medium / high；为空时使用模型默认值
  *
  * @author 小傅哥
  * @website bugstack.cn
@@ -22,7 +23,8 @@ public record AgentMessageRequestDTO(
         String cwd,
         String message,
         java.util.List<String> images,
-        String approvalMode
+        String approvalMode,
+        String reasoningEffort
 ) {
     public AgentMessageRequestDTO {
         if (agentId == null || agentId.isBlank()) {

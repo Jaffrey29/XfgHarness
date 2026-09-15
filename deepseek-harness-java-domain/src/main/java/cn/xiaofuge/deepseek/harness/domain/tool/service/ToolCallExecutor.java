@@ -430,9 +430,8 @@ public final class ToolCallExecutor {
             java.util.function.Consumer<Message> acceptContext
     ) {
         ToolExecutionResult result = slot.result;
-
         // 按需执行 finalizeContent
-        if (slot.needsPost) {
+        if (slot.needsPost && slot.ctx != null) {
             var defOpt = registry.lookup(call.block.name());
             if (defOpt.isPresent()) {
                 var finalized = defOpt.get().finalizeContent(slot.ctx.execution(), result);
@@ -450,7 +449,9 @@ public final class ToolCallExecutor {
         }
 
         // 合并延迟上下文
-        List<Message> deferred = slot.ctx.drainDeferredContexts();
+        List<Message> deferred = slot.ctx == null
+                ? List.of()
+                : slot.ctx.drainDeferredContexts();
         if (!deferred.isEmpty()) {
             if (result instanceof ToolExecutionResult.Success s) {
                 var combined = new ArrayList<>(s.additionalContexts());

@@ -134,7 +134,7 @@ public class AgentRunFactory implements AgentRunLifecycle {
         if (permissionMatrixPort != null && approvalGateway != null) {
             MatrixRuntimeApprovalGate gate = new MatrixRuntimeApprovalGate(
                     permissionMatrixPort,
-                    session.sessionId(),
+                    agentId,
                     (request, ignored) -> approvalGateway.requestApproval(request)
             );
             gate.setApprovalMode(options.approvalMode());

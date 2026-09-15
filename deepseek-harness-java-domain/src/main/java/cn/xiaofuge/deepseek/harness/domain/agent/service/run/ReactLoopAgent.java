@@ -827,7 +827,7 @@ public class ReactLoopAgent implements AgentRun {
         return new GenerateOptions(
                 options.provider(),
                 options.model(),
-                null,               // reasoningEffort
+                options.reasoningEffort(),
                 history,
                 assembly.system(),
                 assembly.tools(),

@@ -85,7 +85,8 @@ public class AgentResolveNode extends AbstractAgentMessageNode {
      * 最后才使用 application.yml 的模型兜底。
      */
     private AgentOptions buildAgentOptions(AgentMessageRequestDTO request) {
-        return modelSettingResolver.resolve(request.channelCode(), request.maxTokens());
+        return modelSettingResolver.resolve(request.channelCode(), request.maxTokens())
+                .withReasoningEffort(request.reasoningEffort());
     }
 
     private ApprovalModeVO approvalMode(AgentMessageRequestDTO request) {

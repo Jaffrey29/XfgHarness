@@ -6,6 +6,7 @@ import cn.xiaofuge.deepseek.harness.cases.orchestration.StrategyHandler;
 import cn.xiaofuge.deepseek.harness.api.dto.DiscoverModelsRequestDTO;
 import cn.xiaofuge.deepseek.harness.cases.support.CaseGuard;
 import cn.xiaofuge.deepseek.harness.domain.channel.model.valobj.ChannelProtocol;
+import cn.xiaofuge.deepseek.harness.domain.channel.service.OpenAiCompatibleUriResolver;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
@@ -67,7 +68,7 @@ public class ModelDiscoverySyncNode
         HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(protocol == ChannelProtocol.OLLAMA
                         ? resolveOllamaTagsUri(normalizedBase)
-                        : resolveModelsUri(normalizedBase))
+                        : OpenAiCompatibleUriResolver.resolveModelsUri(normalizedBase))
                 .timeout(Duration.ofSeconds(30))
                 .header("Accept", "application/json")
                 .GET();
@@ -141,22 +142,6 @@ public class ModelDiscoverySyncNode
             }
         }
         return result;
-    }
-
-    /**
-     * OpenAI / Anthropic 模型列表端点：{base}/models（自动补 /v1）。
-     */
-    private URI resolveModelsUri(String baseUrl) {
-        String normalized = baseUrl.endsWith("/")
-                ? baseUrl.substring(0, baseUrl.length() - 1)
-                : baseUrl;
-        if (normalized.endsWith("/models")) {
-            return URI.create(normalized);
-        }
-        if (normalized.endsWith("/v1")) {
-            return URI.create(normalized + "/models");
-        }
-        return URI.create(normalized + "/v1/models");
     }
 
     /**

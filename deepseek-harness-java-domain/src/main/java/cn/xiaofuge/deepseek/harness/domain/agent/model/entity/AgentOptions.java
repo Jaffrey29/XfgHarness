@@ -10,6 +10,7 @@ public record AgentOptions(
         String provider,
         String model,
         Integer maxTokens,
+        String reasoningEffort,
         String baseUrl,
         String apiKey,
         String protocol,
@@ -18,6 +19,12 @@ public record AgentOptions(
     public AgentOptions(String channelCode, String provider, String model, Integer maxTokens,
                         String baseUrl, String apiKey, String protocol) {
         this(channelCode, provider, model, maxTokens, baseUrl, apiKey, protocol,
+                null, ApprovalModeVO.REQUEST_APPROVAL);
+    }
+
+    public AgentOptions(String channelCode, String provider, String model, Integer maxTokens,
+                        String reasoningEffort, String baseUrl, String apiKey, String protocol) {
+        this(channelCode, provider, model, maxTokens, reasoningEffort, baseUrl, apiKey, protocol,
                 ApprovalModeVO.REQUEST_APPROVAL);
     }
 
@@ -25,5 +32,13 @@ public record AgentOptions(
         if (maxTokens != null && maxTokens <= 0) {
             throw new IllegalArgumentException("maxTokens must be a positive integer");
         }
+    }
+
+    public AgentOptions withReasoningEffort(String value) {
+        if (value == null || value.isBlank()) {
+            return this;
+        }
+        return new AgentOptions(channelCode, provider, model, maxTokens,
+                value.trim().toLowerCase(), baseUrl, apiKey, protocol, approvalMode);
     }
 }
