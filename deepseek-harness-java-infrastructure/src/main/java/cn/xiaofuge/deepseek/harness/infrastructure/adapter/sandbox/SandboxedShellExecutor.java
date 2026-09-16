@@ -40,6 +40,7 @@ public class SandboxedShellExecutor implements IShellExecutor {
     private final IShellExecutor delegate;
     private final ISandboxPolicyService sandboxPolicyService;
     private final String fallbackWorkspaceRoot;
+    private final java.util.function.Supplier<List<Path>> extraRootsSupplier;
 
     /**
      * 初始化沙箱 Shell 执行器。
@@ -50,18 +51,32 @@ public class SandboxedShellExecutor implements IShellExecutor {
             ISandboxPolicyService sandboxPolicyService,
             String fallbackWorkspaceRoot
     ) {
+        this(delegate, sandboxPolicyService, fallbackWorkspaceRoot, List::of);
+    }
+
+    /**
+     * 带动态额外根的构造：每次执行时从 supplier 取当前会话授权的工程目录。
+     */
+    public SandboxedShellExecutor(
+            IShellExecutor delegate,
+            ISandboxPolicyService sandboxPolicyService,
+            String fallbackWorkspaceRoot,
+            java.util.function.Supplier<List<Path>> extraRootsSupplier
+    ) {
         this.delegate = delegate;
         this.sandboxPolicyService = sandboxPolicyService;
         this.fallbackWorkspaceRoot = fallbackWorkspaceRoot;
+        this.extraRootsSupplier = extraRootsSupplier != null ? extraRootsSupplier : List::of;
     }
 
     @Override
     public ShellResult execute(String command, String cwd, long timeoutMs) {
-        SandboxExecutionPolicy policy = sandboxPolicyService.resolve(
+        SandboxExecutionPolicy policy = sandboxPolicyService.resolveWithExtraRoots(
                 new SandboxPolicyRequest(
                         Optional.ofNullable(cwd != null ? Path.of(cwd) : null),
                         Optional.empty()
-                )
+                ),
+                extraRootsSupplier.get()
         );
 
         return switch (policy.mode()) {
@@ -77,20 +92,23 @@ public class SandboxedShellExecutor implements IShellExecutor {
 
     /**
      * 在工作区写模式内执行 Shell 命令。
-     * <p>流程：规范化 cwd → 校验工作区边界和逃逸命令 → 委托本地执行器。</p>
+     * <p>流程：规范化 cwd → 校验是否落在任一可写根（工作区或授权工程目录）和逃逸命令 → 委托本地执行器。</p>
      */
     private ShellResult executeInWorkspace(String command, String cwd, long timeoutMs,
                                            SandboxExecutionPolicy policy) {
-        // 1. cwd 边界：必须落在 workspaceRoot 内
-        Path root = policy.workspaceRoot().orElse(Path.of(fallbackWorkspaceRoot));
+        // 1. cwd 边界：必须落在任一可写根内
+        List<Path> roots = policy.workspaceRoots() != null && !policy.workspaceRoots().isEmpty()
+                ? policy.workspaceRoots()
+                : policy.workspaceRoot().map(List::of).orElse(List.of(Path.of(fallbackWorkspaceRoot)));
         Path target = cwd != null && !cwd.isBlank()
                 ? Path.of(cwd).toAbsolutePath().normalize()
-                : root;
-        if (!target.startsWith(root)) {
+                : roots.get(0);
+        boolean withinAnyRoot = roots.stream().anyMatch(target::startsWith);
+        if (!withinAnyRoot) {
             return new ShellResult(
                     "",
                     "[sandbox] shell_execute denied: cwd " + target +
-                            " is outside the workspace root " + root,
+                            " is outside all writable roots " + roots,
                     -101, 0);
         }
 

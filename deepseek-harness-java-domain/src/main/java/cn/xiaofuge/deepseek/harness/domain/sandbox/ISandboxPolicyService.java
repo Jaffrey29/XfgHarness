@@ -3,6 +3,9 @@ package cn.xiaofuge.deepseek.harness.domain.sandbox;
 import cn.xiaofuge.deepseek.harness.domain.sandbox.model.valobj.SandboxExecutionPolicy;
 import cn.xiaofuge.deepseek.harness.domain.sandbox.model.valobj.SandboxPolicyRequest;
 
+import java.nio.file.Path;
+import java.util.List;
+
 /**
  * Application-facing sandbox-policy seam. The single owner of the deployment's
  * sandbox fallbacks plus per-session resolution.
@@ -21,4 +24,15 @@ public interface ISandboxPolicyService {
      * @return 领域处理结果。
      */
     SandboxExecutionPolicy resolve(SandboxPolicyRequest request);
+
+    /**
+     * 在会话工作区之外附加用户授权的可写根（如项目下挂载的工程目录），
+     * 仅对 WORKSPACE_WRITE 模式有意义。
+     * @param request 请求。
+     * @param extraRoots 额外可写根（绝对路径）。
+     * @return 领域处理结果。
+     */
+    default SandboxExecutionPolicy resolveWithExtraRoots(SandboxPolicyRequest request, List<Path> extraRoots) {
+        return resolve(request);
+    }
 }

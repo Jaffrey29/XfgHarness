@@ -38,6 +38,9 @@ public class AgentResolveNode extends AbstractAgentMessageNode {
     @Qualifier("agentMessageIntentNode")
     private AgentIntentNode intentNode;
 
+    @Autowired
+    private cn.xiaofuge.deepseek.harness.domain.sandbox.service.SandboxExtraRootsRegistry sandboxExtraRootsRegistry;
+
     /**
      * 解析或创建本次消息要使用的 Agent。
      * <p>执行流程：按 agentId 查缓存；命中则复用，未命中则用默认 provider/model 和工作目录创建。
@@ -47,6 +50,10 @@ public class AgentResolveNode extends AbstractAgentMessageNode {
     @Override
     protected AgentMessageResponseDTO doApply(AgentMessageRequestDTO request,
                                            AgentMessageDynamicContext ctx) throws Exception {
+        // 桌面端把项目下授权的工程目录随请求传入，workspace-write 沙箱据此放行
+        if (request.sandboxRoots() != null) {
+            sandboxExtraRootsRegistry.update(request.sandboxRoots());
+        }
         AgentRun agent = agentFactory.get(request.agentId());
         if (agent == null) {
             AgentOptions options = buildAgentOptions(request);
@@ -83,10 +90,14 @@ public class AgentResolveNode extends AbstractAgentMessageNode {
      * 将 HTTP 请求字段转换为 Agent 运行参数。
      * <p>统一使用 {@link AgentModelSettingResolver}：请求显式值优先，其次数据库默认配置，
      * 最后才使用 application.yml 的模型兜底。
+     * <p>approvalMode 也要写入 options：ApprovalAwareFsPort/ApprovalAwareShellExecutor
+     * 依据 options.approvalMode 判断是否放开沙箱（FULL_OPEN 走不受限端口），
+     * 只配置 gate 不同步 options 会导致完全开放模式下 fs_write 仍被沙箱拦截。
      */
     private AgentOptions buildAgentOptions(AgentMessageRequestDTO request) {
         return modelSettingResolver.resolve(request.channelCode(), request.maxTokens())
-                .withReasoningEffort(request.reasoningEffort());
+                .withReasoningEffort(request.reasoningEffort())
+                .withApprovalMode(approvalMode(request));
     }
 
     private ApprovalModeVO approvalMode(AgentMessageRequestDTO request) {

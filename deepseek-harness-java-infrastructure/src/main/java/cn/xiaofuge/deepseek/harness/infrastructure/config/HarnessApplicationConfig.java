@@ -184,12 +184,13 @@ public class HarnessApplicationConfig {
     public IShellExecutor shellExecutor(
             ISandboxPolicyService sandboxPolicyService,
             @Value("${harness.agent.default-cwd:#{systemProperties['user.dir']}}") String defaultCwd,
-            @Value("${harness.sandbox.shell-enabled:true}") boolean sandboxEnabled
+            @Value("${harness.sandbox.shell-enabled:true}") boolean sandboxEnabled,
+            cn.xiaofuge.deepseek.harness.domain.sandbox.service.SandboxExtraRootsRegistry sandboxExtraRootsRegistry
     ) {
         IShellExecutor raw = new LocalShellExecutor();
         // 沙箱开关：默认启用，可通过 harness.sandbox.shell-enabled=false 回退裸执行
         return sandboxEnabled
-                ? new SandboxedShellExecutor(raw, sandboxPolicyService, defaultCwd)
+                ? new SandboxedShellExecutor(raw, sandboxPolicyService, defaultCwd, sandboxExtraRootsRegistry::current)
                 : raw;
     }
 
@@ -197,10 +198,11 @@ public class HarnessApplicationConfig {
     public IFsPort fsService(
             @Value("${harness.agent.default-cwd:#{systemProperties['user.dir']}}") String defaultCwd,
             ISandboxPolicyService sandboxPolicyService,
-            @Value("${harness.sandbox.fs-enabled:true}") boolean sandboxEnabled
+            @Value("${harness.sandbox.fs-enabled:true}") boolean sandboxEnabled,
+            cn.xiaofuge.deepseek.harness.domain.sandbox.service.SandboxExtraRootsRegistry sandboxExtraRootsRegistry
     ) {
         return sandboxEnabled
-                ? new SandboxedFsService(defaultCwd, sandboxPolicyService)
+                ? new SandboxedFsService(defaultCwd, sandboxPolicyService, sandboxExtraRootsRegistry::current)
                 : new LocalFsService(defaultCwd);
     }
 

@@ -41,4 +41,12 @@ public record AgentOptions(
         return new AgentOptions(channelCode, provider, model, maxTokens,
                 value.trim().toLowerCase(), baseUrl, apiKey, protocol, approvalMode);
     }
+
+    public AgentOptions withApprovalMode(ApprovalModeVO mode) {
+        if (mode == null) {
+            return this;
+        }
+        return new AgentOptions(channelCode, provider, model, maxTokens,
+                reasoningEffort, baseUrl, apiKey, protocol, mode);
+    }
 }

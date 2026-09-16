@@ -208,6 +208,40 @@ public class LocalFsService implements IFsPort {
         return resolved;
     }
 
+    /**
+     * 按多根策略解析写路径：目标落在任一允许根内即放行。
+     * @param path 目标路径。
+     * @param allowedRoots 允许写入的根列表（含主工作区与授权工程目录）。
+     * @return 规范化后的绝对路径。
+     */
+    public Path resolveForWrite(String path, java.util.List<Path> allowedRoots) {
+        Path resolved = resolve(path);
+        boolean allowed = allowedRoots != null && allowedRoots.stream().anyMatch(resolved::startsWith);
+        if (!allowed) {
+            throw new SecurityException(
+                    "[sandbox: file access denied under workspace-write mode] " + resolved);
+        }
+        return resolved;
+    }
+
+    /**
+     * 按多根策略写入。
+     * @param path 文件路径。
+     * @param content 内容。
+     * @param allowedRoots 允许写入的根列表。
+     */
+    public void write(String path, String content, java.util.List<Path> allowedRoots) {
+        Path resolved = resolveForWrite(path, allowedRoots);
+        try {
+            if (resolved.getParent() != null) {
+                Files.createDirectories(resolved.getParent());
+            }
+            Files.writeString(resolved, content, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new RuntimeException("Write error: " + e.getMessage(), e);
+        }
+    }
+
     @Override
     public List<String> grep(String directory, String pattern, String include, boolean isRegex, int maxResults) {
         Path root = resolve(directory);

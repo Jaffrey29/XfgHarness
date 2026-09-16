@@ -35,7 +35,7 @@ class AgentApiTest {
         AgentApi agentApi = new AgentApi(useCase);
 
         agentApi.sendMessageStreaming(
-                new AgentMessageRequestDTO("agent-1", null, null, null, "message", null, null, null),
+                new AgentMessageRequestDTO("agent-1", null, null, null, "message", null, null, null, null),
                 delta -> {}, delta -> {}, sinkEvent::set, () -> {}
         );
 
