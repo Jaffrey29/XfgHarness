@@ -36,7 +36,7 @@ public class ConversationRecentSessionsNode
         var result = conversationQueryService.listRecentSessions(query.limit(), query.offset()).stream()
                 .map(summary -> new ConversationSessionSummaryResponseDTO(
                         summary.sessionId(), summary.title(), summary.preview(), summary.status(),
-                        summary.createdAt(), summary.agentId()
+                        summary.createdAt(), summary.agentId(), summary.workspaceId()
                 ))
                 .toList();
         log.debug("[Session] 最近会话查询完成，limit={} offset={} count={}", query.limit(), query.offset(), result.size());

@@ -234,7 +234,8 @@ public class WorkspaceRegistryService {
      * @return 方法执行结果。
      */
     private static String safeName(String name) {
-        return name.replaceAll("[^\\p{L}\\p{N}._-]", "_");
+        // 仅阻止路径分隔符，允许 emoji 和其他 Unicode 字符
+        return name.replaceAll("[\\\\/]", "_");
     }
 
     /**

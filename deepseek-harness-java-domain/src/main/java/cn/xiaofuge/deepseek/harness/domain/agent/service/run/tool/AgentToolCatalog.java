@@ -53,6 +53,8 @@ public final class AgentToolCatalog {
 
     private final IShellExecutor shellExecutor;
     private final IFsPort fsPort;
+    private final IShellExecutor unrestrictedShellExecutor;
+    private final IFsPort unrestrictedFsPort;
     private final IWebPort webPort;
     private final PlanModeService planModeService;
     private final TodoWriteService todoWriteService;
@@ -71,6 +73,8 @@ public final class AgentToolCatalog {
     public AgentToolCatalog(
             IShellExecutor shellExecutor,
             IFsPort fsPort,
+            IShellExecutor unrestrictedShellExecutor,
+            IFsPort unrestrictedFsPort,
             IWebPort webPort,
             PlanModeService planModeService,
             TodoWriteService todoWriteService,
@@ -88,6 +92,8 @@ public final class AgentToolCatalog {
     ) {
         this.shellExecutor = shellExecutor;
         this.fsPort = fsPort;
+        this.unrestrictedShellExecutor = unrestrictedShellExecutor;
+        this.unrestrictedFsPort = unrestrictedFsPort;
         this.webPort = webPort;
         this.planModeService = planModeService;
         this.todoWriteService = todoWriteService;
@@ -108,18 +114,30 @@ public final class AgentToolCatalog {
         InMemoryToolRegistry localRegistry = new InMemoryToolRegistry();
         AtomicReference<PlanModeState> planState =
                 new AtomicReference<>(new PlanModeState.Off());
+        java.util.function.Supplier<AgentOptions> optionsSupplier = context.optionsSupplier();
+        IShellExecutor effectiveShellExecutor = unrestrictedShellExecutor == null || optionsSupplier == null
+                ? shellExecutor
+                : new ApprovalAwareShellExecutor(shellExecutor, unrestrictedShellExecutor, optionsSupplier);
+        IFsPort effectiveFsPort = unrestrictedFsPort == null || optionsSupplier == null
+                ? fsPort
+                : new ApprovalAwareFsPort(fsPort, unrestrictedFsPort, optionsSupplier);
 
         localRegistry.register(new TodoWriteTool(context.session(), false, todoWriteService));
         localRegistry.register(new AskUserTool(context.userQuestions(), context.agentId()));
         localRegistry.register(new ExitPlanModeTool(context.session(), planState, planModeService));
-        localRegistry.register(new ShellExecuteTool(shellExecutor, context.cwd()));
+        localRegistry.register(new ShellExecuteTool(
+                effectiveShellExecutor,
+                context.cwd()));
         localRegistry.register(new FsReadTool(fsPort));
-        localRegistry.register(new FsWriteTool(fsPort));
+        localRegistry.register(new FsWriteTool(
+                effectiveFsPort));
         localRegistry.register(new FsSearchTool(fsPort));
-        localRegistry.register(new StrReplaceEditorTool(fsPort));
+        localRegistry.register(new StrReplaceEditorTool(
+                effectiveFsPort));
         localRegistry.register(new FsGrepTool(fsPort));
         localRegistry.register(new FsReadImageTool(fsPort));
-        localRegistry.register(new FsEditTool(fsPort));
+        localRegistry.register(new FsEditTool(
+                effectiveFsPort));
         localRegistry.register(new PluginStatusTool(pluginRepository, pluginRuntimeService));
         localRegistry.register(new WebSearchTool(webPort));
         localRegistry.register(new WebFetchTool(webPort));

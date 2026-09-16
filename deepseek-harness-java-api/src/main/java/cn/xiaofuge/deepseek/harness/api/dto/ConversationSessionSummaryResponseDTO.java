@@ -8,6 +8,7 @@ public record ConversationSessionSummaryResponseDTO(
         String preview,
         String status,
         Instant createdAt,
-        String agentId
+        String agentId,
+        String workspaceId
 ) {
 }

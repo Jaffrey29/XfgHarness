@@ -8,6 +8,8 @@ import cn.xiaofuge.deepseek.harness.domain.agent.service.run.InMemoryUserQuestio
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.agent.PersistingAgentEventListener;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.run.PersistingSessionLog;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.run.RuntimeApprovalBroker;
+import cn.xiaofuge.deepseek.harness.infrastructure.adapter.fs.LocalFsService;
+import cn.xiaofuge.deepseek.harness.infrastructure.adapter.shell.LocalShellExecutor;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.run.tool.InMemoryToolRegistry;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.run.tool.AgentToolCatalog;
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.tool.JacksonToolArgumentsParser;
@@ -103,6 +105,7 @@ public class AgentRunBeanConfig {
                 - 当任务涉及「读取/列出/搜索/写入文件、执行命令、查看目录、访问网页、查询代码」等任何需要真实数据的操作时，你必须调用对应工具，严禁凭空编造或复述请求。
                 - 即使用户只说一句"列出当前目录的文件"，也必须调用工具获取真实结果，而不是回答"我来列出"。
                 - **列出目录内容（一级子目录/文件）时，优先用 `shell_execute` 执行 `ls -la <目录>` 或 `find <目录> -maxdepth 1 -type d`；`fs_search` 是 glob 文件搜索工具，不适合列目录。**
+                - 使用 `shell_execute` 时，优先通过 `cwd` 参数指定工作目录；不要执行 `cd ~/...`、`cd /` 或 `cd $HOME`，工作区写模式下这些命令会被沙箱拒绝。
                 - 工具调用前简要说明目的，调用后基于真实结果解读。
                 - 危险操作（删除、覆盖）前确认。
                 - 任务完成后停止调用工具，给出最终回复。
@@ -174,6 +177,7 @@ public class AgentRunBeanConfig {
             SubagentRegistry subagentRegistry,
             IShellExecutor shellExecutor,
             IFsPort fsService,
+            @Value("${harness.agent.default-cwd:#{systemProperties['user.dir']}}") String defaultCwd,
             IWebPort webService,
             IJobRegistryService jobRegistryService,
             IGoalQueryService goalQueryService,
@@ -202,6 +206,8 @@ public class AgentRunBeanConfig {
         AgentToolCatalog toolCatalog = new AgentToolCatalog(
                 shellExecutor,
                 fsService,
+                new LocalShellExecutor(),
+                new LocalFsService(defaultCwd, false),
                 webService,
                 planModeService,
                 todoWriteService,
