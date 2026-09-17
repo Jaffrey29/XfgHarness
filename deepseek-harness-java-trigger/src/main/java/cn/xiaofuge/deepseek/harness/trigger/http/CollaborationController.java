@@ -75,9 +75,11 @@ public class CollaborationController {
             List<String> mentions = body.get("mentions") instanceof List<?> list
                     ? list.stream().filter(String.class::isInstance).map(String.class::cast).toList()
                     : List.of();
+            Map<String, String> digitalHumanTokens = stringMap(body.get("digitalHumanTokens"));
             return Response.success(collaborationService.postMessage(
                     roomId, text(body.get("content")), mentions,
-                    text(body.get("token")), text(body.get("channelCode")), text(body.get("approvalMode"))));
+                    text(body.get("token")), digitalHumanTokens,
+                    text(body.get("channelCode")), text(body.get("approvalMode"))));
         } catch (IllegalArgumentException e) {
             return Response.invalidArgument(e.getMessage());
         }
@@ -100,9 +102,41 @@ public class CollaborationController {
         try {
             String roomId = body != null && body.get("roomId") instanceof String value ? value : "";
             String token = body != null && body.get("token") instanceof String value ? value : null;
+            Map<String, String> digitalHumanTokens = body == null ? Map.of() : stringMap(body.get("digitalHumanTokens"));
             String channelCode = body != null && body.get("channelCode") instanceof String value ? value : null;
             String approvalMode = body != null && body.get("approvalMode") instanceof String value ? value : null;
-            return Response.success(collaborationService.resumeTask(roomId, taskId, token, channelCode, approvalMode));
+            return Response.success(collaborationService.resumeTask(roomId, taskId, token, digitalHumanTokens, channelCode, approvalMode));
+        } catch (IllegalArgumentException e) {
+            return Response.invalidArgument(e.getMessage());
+        }
+    }
+
+    @PostMapping("/tasks/{taskId}/retry")
+    public Response<Map<String, Object>> retryTask(@PathVariable("taskId") String taskId,
+                                                   @RequestBody(required = false) Map<String, Object> body) {
+        try {
+            String roomId = body != null && body.get("roomId") instanceof String value ? value : "";
+            String token = body != null && body.get("token") instanceof String value ? value : null;
+            Map<String, String> digitalHumanTokens = body == null ? Map.of() : stringMap(body.get("digitalHumanTokens"));
+            String channelCode = body != null && body.get("channelCode") instanceof String value ? value : null;
+            String approvalMode = body != null && body.get("approvalMode") instanceof String value ? value : null;
+            return Response.success(collaborationService.retryTask(roomId, taskId, token, digitalHumanTokens, channelCode, approvalMode));
+        } catch (IllegalArgumentException e) {
+            return Response.invalidArgument(e.getMessage());
+        }
+    }
+
+    @PostMapping("/tasks/{taskId}/reassign")
+    public Response<Map<String, Object>> reassignTask(@PathVariable("taskId") String taskId,
+                                                      @RequestBody(required = false) Map<String, Object> body) {
+        try {
+            String roomId = body != null && body.get("roomId") instanceof String value ? value : "";
+            String targetDigitalHumanId = body != null && body.get("targetDigitalHumanId") instanceof String value ? value : "";
+            String token = body != null && body.get("token") instanceof String value ? value : null;
+            Map<String, String> digitalHumanTokens = body == null ? Map.of() : stringMap(body.get("digitalHumanTokens"));
+            String channelCode = body != null && body.get("channelCode") instanceof String value ? value : null;
+            String approvalMode = body != null && body.get("approvalMode") instanceof String value ? value : null;
+            return Response.success(collaborationService.reassignTask(roomId, taskId, targetDigitalHumanId, token, digitalHumanTokens, channelCode, approvalMode));
         } catch (IllegalArgumentException e) {
             return Response.invalidArgument(e.getMessage());
         }
@@ -123,5 +157,16 @@ public class CollaborationController {
 
     private String text(Object value) {
         return value instanceof String string && !string.isBlank() ? string.trim() : null;
+    }
+
+    private Map<String, String> stringMap(Object value) {
+        if (!(value instanceof Map<?, ?> raw)) return Map.of();
+        java.util.LinkedHashMap<String, String> result = new java.util.LinkedHashMap<>();
+        raw.forEach((key, entry) -> {
+            if (key instanceof String textKey && entry instanceof String textValue && !textValue.isBlank()) {
+                result.put(textKey, textValue);
+            }
+        });
+        return result;
     }
 }

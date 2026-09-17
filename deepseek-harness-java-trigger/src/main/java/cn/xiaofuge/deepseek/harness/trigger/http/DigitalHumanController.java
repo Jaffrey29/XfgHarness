@@ -73,9 +73,10 @@ public class DigitalHumanController {
     public Response<Map<String, Object>> discover(@RequestBody Map<String, Object> body) {
         String baseUrl = body.get("baseUrl") instanceof String value ? value : null;
         String credentialRef = body.get("credentialRef") instanceof String value ? value : null;
+        String endpointType = body.get("endpointType") instanceof String value ? value : "remote-dsh";
         // 凭据明文一次性使用，不保存
         String token = body.get("token") instanceof String value ? value : null;
-        return Response.success(digitalHumanService.discover(baseUrl, credentialRef, token));
+        return Response.success(digitalHumanService.discover(baseUrl, endpointType, credentialRef, token));
     }
 
     @PostMapping("/{id}/health-check")

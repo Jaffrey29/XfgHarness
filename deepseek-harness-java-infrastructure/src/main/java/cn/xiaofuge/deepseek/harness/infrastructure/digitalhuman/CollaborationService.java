@@ -158,7 +158,8 @@ public class CollaborationService {
     // ══════════════ 消息入口：手动 @ / 自动分工 ══════════════
 
     public Map<String, Object> postMessage(String roomId, String content, List<String> mentions,
-                                           String token, String channelCode, String approvalMode) {
+                                           String token, Map<String, String> digitalHumanTokens,
+                                           String channelCode, String approvalMode) {
         RoomPO room = ensureRoom(roomId);
         String objective = requireText(content, "消息内容不能为空");
         if (room.objective() == null || room.objective().isBlank()) {
@@ -178,11 +179,11 @@ public class CollaborationService {
                 TaskPO task = createTask(roomId, objective, target.digitalHumanId(), "user", null);
                 dispatched.add(taskView(task));
             }
-            schedule(roomId, token, channelCode, approvalMode);
+            schedule(roomId, token, digitalHumanTokens, channelCode, approvalMode);
             return Map.of("accepted", true, "mode", "MANUAL", "tasks", dispatched);
         }
         // 多成员未指定：AUTO_PLAN 生成分工计划
-        return autoPlan(roomId, objective, participants, token, channelCode, approvalMode);
+        return autoPlan(roomId, objective, participants, token, digitalHumanTokens, channelCode, approvalMode);
     }
 
     private List<ParticipantPO> resolveTargets(List<ParticipantPO> participants, List<String> mentions) {
@@ -206,7 +207,8 @@ public class CollaborationService {
      * 两条路径最终都落成同一套 Task DAG，由 schedule() 统一调度。
      */
     private Map<String, Object> autoPlan(String roomId, String objective, List<ParticipantPO> participants,
-                                         String token, String channelCode, String approvalMode) {
+                                         String token, Map<String, String> digitalHumanTokens,
+                                         String channelCode, String approvalMode) {
         // 参与者能力卡
         List<PlannerService.CapabilityCard> cards = new ArrayList<>();
         for (ParticipantPO participant : participants) {
@@ -259,7 +261,7 @@ public class CollaborationService {
         payload.put("planner", plannerKind);
         payload.put("steps", steps);
         appendEvent(roomId, null, null, null, "PLAN_CREATED", payload);
-        schedule(roomId, token, channelCode, approvalMode);
+        schedule(roomId, token, digitalHumanTokens, channelCode, approvalMode);
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("accepted", true);
@@ -289,7 +291,8 @@ public class CollaborationService {
      * DAG 调度核心：找出依赖已满足且执行者有空闲并发的 READY 任务，派下去。
      * 每有任务状态变化就再跑一遍，直到没有可调度的任务。
      */
-    private synchronized void schedule(String roomId, String token, String channelCode, String approvalMode) {
+    private synchronized void schedule(String roomId, String token, Map<String, String> digitalHumanTokens,
+                                      String channelCode, String approvalMode) {
         List<TaskPO> tasks = collaborationDao.listTasks(roomId);
         Map<String, String> stateById = new LinkedHashMap<>();
         Map<String, Integer> runningByHuman = new LinkedHashMap<>();
@@ -314,7 +317,7 @@ public class CollaborationService {
             final String taskId = task.id();
             final String humanId = task.assignedTo();
             final String instruction = buildInstructionWithDeps(task, stateById);
-            executor.submit(() -> runTask(roomId, taskId, humanId, instruction, token, channelCode, approvalMode));
+            executor.submit(() -> runTask(roomId, taskId, humanId, instruction, token, digitalHumanTokens, channelCode, approvalMode));
         }
         // 全部任务终态 → 房间回到 done
         boolean allTerminal = tasks.stream().allMatch(t ->
@@ -384,7 +387,8 @@ public class CollaborationService {
      * 拒绝走 cancelTask。
      */
     public Map<String, Object> resumeTask(String roomId, String taskId,
-                                          String token, String channelCode, String approvalMode) {
+                                          String token, Map<String, String> digitalHumanTokens,
+                                          String channelCode, String approvalMode) {
         TaskPO task = collaborationDao.findTask(taskId)
                 .orElseThrow(() -> new IllegalArgumentException("任务不存在：" + taskId));
         if (!"WAITING_APPROVAL".equals(task.state())) {
@@ -393,14 +397,61 @@ public class CollaborationService {
         collaborationDao.updateTaskState(taskId, "READY", null, null, Instant.now());
         appendEvent(roomId, taskId, null, task.assignedTo(), "APPROVAL_RESOLVED",
                 Map.of("taskId", taskId, "verdict", "ALLOW"));
-        schedule(roomId, token, channelCode, approvalMode);
+        schedule(roomId, token, digitalHumanTokens, channelCode, approvalMode);
+        return taskView(collaborationDao.findTask(taskId).orElse(task));
+    }
+
+    /** 失败/取消/完成后的任务重新入队，保留原执行者与依赖。 */
+    public Map<String, Object> retryTask(String roomId, String taskId,
+                                         String token, Map<String, String> digitalHumanTokens,
+                                         String channelCode, String approvalMode) {
+        TaskPO task = collaborationDao.findTask(taskId)
+                .orElseThrow(() -> new IllegalArgumentException("任务不存在：" + taskId));
+        if (!roomId.equals(task.roomId())) {
+            throw new IllegalArgumentException("任务不属于当前房间");
+        }
+        collaborationDao.updateTaskState(taskId, "READY", null, null, Instant.now());
+        collaborationDao.updatePresence(roomId, task.assignedTo(), "idle", null);
+        appendEvent(roomId, taskId, null, task.assignedTo(), "TASK_RETRIED",
+                Map.of("taskId", taskId, "assignedTo", task.assignedTo()));
+        appendEvent(roomId, taskId, null, task.assignedTo(), "TASK_STATE_CHANGED",
+                Map.of("state", "READY"));
+        collaborationDao.updateRoomState(roomId, "running");
+        schedule(roomId, token, digitalHumanTokens, channelCode, approvalMode);
+        return taskView(collaborationDao.findTask(taskId).orElse(task));
+    }
+
+    /** 转派任务给房间内其他数字人，并重新入队。 */
+    public Map<String, Object> reassignTask(String roomId, String taskId, String targetDigitalHumanId,
+                                            String token, Map<String, String> digitalHumanTokens,
+                                            String channelCode, String approvalMode) {
+        TaskPO task = collaborationDao.findTask(taskId)
+                .orElseThrow(() -> new IllegalArgumentException("任务不存在：" + taskId));
+        if (!roomId.equals(task.roomId())) {
+            throw new IllegalArgumentException("任务不属于当前房间");
+        }
+        if (collaborationDao.findParticipant(roomId, targetDigitalHumanId).isEmpty()) {
+            throw new IllegalArgumentException("目标数字人不在当前房间");
+        }
+        collaborationDao.updateTaskAssignment(taskId, targetDigitalHumanId, "READY", Instant.now());
+        if (task.assignedTo() != null && !task.assignedTo().equals(targetDigitalHumanId)) {
+            collaborationDao.updatePresence(roomId, task.assignedTo(), "idle", null);
+        }
+        collaborationDao.updatePresence(roomId, targetDigitalHumanId, "idle", null);
+        appendEvent(roomId, taskId, null, targetDigitalHumanId, "TASK_REASSIGNED",
+                Map.of("taskId", taskId, "from", task.assignedTo(), "to", targetDigitalHumanId));
+        appendEvent(roomId, taskId, null, targetDigitalHumanId, "TASK_STATE_CHANGED",
+                Map.of("state", "READY", "assignedTo", targetDigitalHumanId));
+        collaborationDao.updateRoomState(roomId, "running");
+        schedule(roomId, token, digitalHumanTokens, channelCode, approvalMode);
         return taskView(collaborationDao.findTask(taskId).orElse(task));
     }
 
     // ══════════════ 任务执行 ══════════════
 
     private void runTask(String roomId, String taskId, String digitalHumanId,
-                         String instruction, String token, String channelCode, String approvalMode) {
+                         String instruction, String token, Map<String, String> digitalHumanTokens,
+                         String channelCode, String approvalMode) {
         DigitalHumanPO human = humanDao.findById(digitalHumanId).orElse(null);
         DigitalHumanEndpointPO endpoint = endpointDao.findByHumanId(digitalHumanId).orElse(null);
         String displayName = human == null ? digitalHumanId : human.displayName();
@@ -412,6 +463,7 @@ public class CollaborationService {
         StringBuilder finalText = new StringBuilder();
         GatewayEventSink sink = new GatewayEventSink(roomId, taskId, digitalHumanId, finalText);
         try {
+            String effectiveApprovalMode = effectiveApprovalMode(human, approvalMode);
             if (endpoint == null || "local-dsh".equals(endpoint.endpointType()) || endpoint.baseUrl() == null) {
                 String roleInstruction = "[角色设定] 你是「" + displayName + "」，职责："
                         + (human == null ? "通用智能体" : human.purpose())
@@ -420,10 +472,17 @@ public class CollaborationService {
                         + "协作流中无人实时回答会导致任务卡死。遇到信息不足时，基于已有上下文和上游交付物"
                         + "自主做出最合理的假设并继续推进，在结果中注明你的假设即可。\n\n" + instruction;
                 runWithTimeout(taskId, () ->
-                        gateway.runLocal(roleInstruction, channelCode, approvalMode, sink));
-            } else {
+                        gateway.runLocal(roleInstruction, channelCode, effectiveApprovalMode, sink));
+            } else if ("a2a".equals(endpoint.endpointType())) {
+                String remoteToken = tokenForHuman(token, digitalHumanTokens, digitalHumanId);
+                String remoteInstruction = remoteInstruction(human, displayName, instruction);
                 runWithTimeout(taskId, () ->
-                        gateway.runRemote(endpoint.baseUrl(), token, instruction, channelCode, approvalMode, sink));
+                        gateway.runA2a(endpoint.baseUrl(), remoteToken, remoteInstruction, sink));
+            } else {
+                String remoteToken = tokenForHuman(token, digitalHumanTokens, digitalHumanId);
+                String remoteInstruction = remoteInstruction(human, displayName, instruction);
+                runWithTimeout(taskId, () ->
+                        gateway.runRemote(endpoint.baseUrl(), remoteToken, remoteInstruction, channelCode, effectiveApprovalMode, sink));
             }
             // 审批中断：执行在写操作审批点暂停，转入等待审批而非完成
             if (sink.approvalPending) {
@@ -459,8 +518,33 @@ public class CollaborationService {
                     Map.of("state", "FAILED"));
         } finally {
             // 状态变化后再调度一轮：唤醒依赖当前任务的下游
-            schedule(roomId, token, channelCode, approvalMode);
+            schedule(roomId, token, digitalHumanTokens, channelCode, approvalMode);
         }
+    }
+
+
+    private String effectiveApprovalMode(DigitalHumanPO human, String requestedMode) {
+        String policy = human == null || human.approvalPolicy() == null ? "WRITE_REQUIRES_APPROVAL" : human.approvalPolicy();
+        String requested = requestedMode == null || requestedMode.isBlank() ? "" : requestedMode;
+        if ("ALWAYS_CONFIRM".equals(policy)) return "REQUEST_APPROVAL";
+        if ("AUTO_ALLOW".equals(policy)) return "FULL_OPEN";
+        return "REQUEST_APPROVAL".equals(requested) ? requested : "REQUEST_APPROVAL";
+    }
+
+    private String tokenForHuman(String fallbackToken, Map<String, String> digitalHumanTokens, String digitalHumanId) {
+        if (digitalHumanTokens != null) {
+            String token = digitalHumanTokens.get(digitalHumanId);
+            if (token != null && !token.isBlank()) return token;
+        }
+        return fallbackToken;
+    }
+
+    private String remoteInstruction(DigitalHumanPO human, String displayName, String instruction) {
+        return "[角色设定] 你是「" + displayName + "」，职责："
+                + (human == null ? "通用智能体" : human.purpose())
+                + "。请以该身份完成任务。\n"
+                + "[协作规则] 你在多数字人协作房间中工作。遇到信息不足时，请基于上下文做出假设并继续推进，"
+                + "在结果中注明假设与交付物。\n\n" + instruction;
     }
 
     /** 带看门狗的任务执行：超时（默认 6 分钟）未完成则抛错，杜绝 ask_user_question 之类的死等 */

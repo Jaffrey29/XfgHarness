@@ -133,15 +133,23 @@ public class DigitalHumanService {
 
     // ── 探测 ──
 
-    /** 探测远端 Agent Card：GET {baseUrl}/.well-known/dsh-agent-card */
-    public Map<String, Object> discover(String baseUrl, String credentialRef, String token) {
+    /** 探测远端 Agent Card：DSH 走 /.well-known/dsh-agent-card；A2A 走 /.well-known/agent.json。 */
+    public Map<String, Object> discover(String baseUrl, String endpointType, String credentialRef, String token) {
         String normalized = normalizeBaseUrl(baseUrl);
+        String type = endpointType == null || endpointType.isBlank() ? "remote-dsh" : endpointType;
         Map<String, Object> result = new LinkedHashMap<>();
         if (normalized == null) {
             result.put("reachable", false);
             result.put("error", Map.of("kind", "network", "message", "请填写服务地址"));
             return result;
         }
+        if ("a2a".equals(type)) {
+            return discoverA2a(normalized, token, result);
+        }
+        return discoverDsh(normalized, token, result);
+    }
+
+    private Map<String, Object> discoverDsh(String normalized, String token, Map<String, Object> result) {
         long startedAt = System.currentTimeMillis();
         try {
             HttpRequest.Builder builder = HttpRequest.newBuilder()
@@ -200,6 +208,68 @@ public class DigitalHumanService {
         }
     }
 
+    private Map<String, Object> discoverA2a(String normalized, String token, Map<String, Object> result) {
+        long startedAt = System.currentTimeMillis();
+        try {
+            HttpRequest.Builder builder = HttpRequest.newBuilder()
+                    .uri(URI.create(normalized + "/.well-known/agent.json"))
+                    .timeout(Duration.ofSeconds(10))
+                    .GET();
+            if (token != null && !token.isBlank()) {
+                builder.header("Authorization", "Bearer " + token.trim());
+            }
+            HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+            long latency = System.currentTimeMillis() - startedAt;
+            result.put("latencyMs", latency);
+            if (response.statusCode() == 401 || response.statusCode() == 403) {
+                result.put("reachable", false);
+                result.put("error", Map.of("kind", "unauthorized", "message", "A2A 凭据无效或权限不足"));
+                return result;
+            }
+            if (response.statusCode() == 404) {
+                result.put("reachable", false);
+                result.put("error", Map.of("kind", "not-found", "message", "该服务未暴露 A2A Agent Card"));
+                return result;
+            }
+            if (response.statusCode() != 200) {
+                result.put("reachable", false);
+                result.put("error", Map.of("kind", "network", "message", "HTTP " + response.statusCode()));
+                return result;
+            }
+            JsonNode card = objectMapper.readTree(response.body());
+            if (!card.hasNonNull("name") && !card.hasNonNull("description") && !card.has("skills")) {
+                result.put("reachable", false);
+                result.put("error", Map.of("kind", "incompatible", "message", "响应不是有效的 A2A Agent Card"));
+                return result;
+            }
+            Map<String, Object> suggested = new LinkedHashMap<>();
+            suggested.put("displayName", card.path("name").asText(card.path("displayName").asText("A2A Agent")));
+            suggested.put("avatarRef", "🤝");
+            suggested.put("purpose", card.path("description").asText("通过 A2A 协议接入的外部智能体"));
+            List<String> tags = new ArrayList<>();
+            card.path("skills").forEach(skill -> {
+                if (skill.hasNonNull("name")) tags.add(skill.path("name").asText());
+                skill.path("tags").forEach(tag -> tags.add(tag.asText()));
+            });
+            suggested.put("roleTags", tags.stream().distinct().limit(8).toList());
+            suggested.put("approvalPolicy", "WRITE_REQUIRES_APPROVAL");
+            suggested.put("maxConcurrentTasks", 1);
+            result.put("reachable", true);
+            result.put("protocolVersion", card.path("protocolVersion").asText("a2a.v1"));
+            result.put("suggested", suggested);
+            return result;
+        } catch (java.net.http.HttpConnectTimeoutException e) {
+            return unreachable(result, startedAt, "network", "连接超时");
+        } catch (javax.net.ssl.SSLException e) {
+            return unreachable(result, startedAt, "tls", "TLS 证书校验失败：" + e.getMessage());
+        } catch (java.net.UnknownHostException e) {
+            return unreachable(result, startedAt, "dns", "域名解析失败");
+        } catch (Exception e) {
+            log.warn("A2A agent card discover failed for {}: {}", normalized, e.getMessage());
+            return unreachable(result, startedAt, "network", "连接失败：" + e.getMessage());
+        }
+    }
+
     private Map<String, Object> unreachable(Map<String, Object> result, long startedAt, String kind, String message) {
         result.put("reachable", false);
         result.put("latencyMs", System.currentTimeMillis() - startedAt);
@@ -220,7 +290,7 @@ public class DigitalHumanService {
         } else if (endpoint.baseUrl() == null) {
             state = "unknown";
         } else {
-            Map<String, Object> probe = discover(endpoint.baseUrl(), endpoint.credentialRef(), token);
+            Map<String, Object> probe = discover(endpoint.baseUrl(), endpoint.endpointType(), endpoint.credentialRef(), token);
             state = Boolean.TRUE.equals(probe.get("reachable")) ? "online"
                     : probe.get("error") instanceof Map<?, ?> err && "unauthorized".equals(err.get("kind")) ? "unauthorized"
                     : "offline";

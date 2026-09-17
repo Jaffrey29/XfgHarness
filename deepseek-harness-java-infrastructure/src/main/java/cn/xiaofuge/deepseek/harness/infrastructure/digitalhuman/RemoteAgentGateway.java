@@ -80,6 +80,141 @@ public class RemoteAgentGateway {
         stream(builder.build(), sink);
     }
 
+    /** A2A 数字人：优先 POST {baseUrl}/message/stream，失败回退 POST {baseUrl}/message/send。 */
+    public void runA2a(String baseUrl, String token, String instruction, EventSink sink) throws Exception {
+        String normalized = baseUrl.replaceAll("/+$", "");
+        Exception lastError = null;
+        try {
+            streamA2a(a2aMessageRequest(normalized + "/message/stream", token, instruction)
+                    .timeout(Duration.ofMinutes(10))
+                    .build(), sink);
+            return;
+        } catch (Exception error) {
+            lastError = error;
+            log.debug("A2A message/stream failed, fallback: {}", error.getMessage());
+        }
+
+        try {
+            sendA2a(a2aMessageRequest(normalized + "/message/send", token, instruction)
+                    .timeout(Duration.ofMinutes(10))
+                    .build(), sink);
+            return;
+        } catch (Exception error) {
+            lastError = error;
+            log.debug("A2A message/send failed, fallback: {}", error.getMessage());
+        }
+
+        try {
+            streamA2a(a2aJsonRpcRequest(normalized, token, "tasks/sendSubscribe", instruction)
+                    .timeout(Duration.ofMinutes(10))
+                    .build(), sink);
+            return;
+        } catch (Exception error) {
+            lastError = error;
+            log.debug("A2A tasks/sendSubscribe failed, fallback: {}", error.getMessage());
+        }
+
+        try {
+            sendA2a(a2aJsonRpcRequest(normalized, token, "tasks/send", instruction)
+                    .timeout(Duration.ofMinutes(10))
+                    .build(), sink);
+            return;
+        } catch (Exception error) {
+            lastError = error;
+        }
+        throw lastError == null ? new IllegalStateException("A2A Agent 调用失败") : lastError;
+    }
+
+    private void sendA2a(HttpRequest request, EventSink sink) throws Exception {
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() != 200) {
+            throw new IllegalStateException("A2A Agent 返回 HTTP " + response.statusCode() + "：" + abbreviate(response.body()));
+        }
+        JsonNode payload = objectMapper.readTree(response.body());
+        String text = extractA2aText(payload);
+        if (!text.isBlank()) sink.onChunk(text);
+    }
+
+    private HttpRequest.Builder a2aMessageRequest(String url, String token, String instruction) throws Exception {
+        Map<String, Object> body = Map.of(
+                "message", Map.of(
+                        "role", "user",
+                        "parts", java.util.List.of(Map.of("kind", "text", "text", instruction))
+                )
+        );
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)));
+        if (token != null && !token.isBlank()) {
+            builder.header("Authorization", "Bearer " + token.trim());
+        }
+        return builder;
+    }
+
+    private HttpRequest.Builder a2aJsonRpcRequest(String url, String token, String method, String instruction) throws Exception {
+        Map<String, Object> body = Map.of(
+                "jsonrpc", "2.0",
+                "id", "a2a-" + System.currentTimeMillis(),
+                "method", method,
+                "params", Map.of(
+                        "message", Map.of(
+                                "role", "user",
+                                "parts", java.util.List.of(Map.of("kind", "text", "text", instruction))
+                        )
+                )
+        );
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)));
+        if (token != null && !token.isBlank()) {
+            builder.header("Authorization", "Bearer " + token.trim());
+        }
+        return builder;
+    }
+
+    private void streamA2a(HttpRequest request, EventSink sink) throws Exception {
+        HttpResponse<java.io.InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
+        if (response.statusCode() != 200) {
+            String errorBody;
+            try (var stream = response.body()) {
+                errorBody = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+            }
+            throw new IllegalStateException("A2A Agent 返回 HTTP " + response.statusCode() + "：" + abbreviate(errorBody));
+        }
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(response.body(), StandardCharsets.UTF_8))) {
+            StringBuilder dataLines = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.startsWith("data:")) {
+                    String value = line.substring(5);
+                    if (value.startsWith(" ")) value = value.substring(1);
+                    if (dataLines.length() > 0) dataLines.append("\n");
+                    dataLines.append(value);
+                } else if (line.isBlank()) {
+                    if (dataLines.length() > 0) {
+                        dispatchA2a(dataLines.toString(), sink);
+                        dataLines.setLength(0);
+                    }
+                }
+            }
+            if (dataLines.length() > 0) {
+                dispatchA2a(dataLines.toString(), sink);
+            }
+        }
+    }
+
+    private void dispatchA2a(String raw, EventSink sink) {
+        try {
+            JsonNode payload = objectMapper.readTree(raw);
+            String text = extractA2aText(payload);
+            if (!text.isBlank()) sink.onChunk(text);
+        } catch (Exception e) {
+            if (!raw.isBlank()) sink.onChunk(raw);
+        }
+    }
+
     /**
      * 本地数字人：回环调用本服务的 /api/agent/stream。
      * 通过运行时实际端口自连，避免在协作层重复实现 Agent 主循环。
@@ -207,6 +342,40 @@ public class RemoteAgentGateway {
             if (node.isTextual()) return node.asText();
         }
         return payload.toString();
+    }
+
+    private String extractA2aText(JsonNode payload) {
+        if (payload == null || payload.isMissingNode() || payload.isNull()) return "";
+        if (payload.isTextual()) return payload.asText();
+        JsonNode result = payload.path("result");
+        if (!result.isMissingNode()) {
+            String text = extractA2aText(result);
+            if (!text.isBlank()) return text;
+        }
+        JsonNode message = payload.path("message");
+        if (!message.isMissingNode()) {
+            String text = extractA2aText(message);
+            if (!text.isBlank()) return text;
+        }
+        JsonNode artifact = payload.path("artifact");
+        if (!artifact.isMissingNode()) {
+            String text = extractA2aText(artifact);
+            if (!text.isBlank()) return text;
+        }
+        JsonNode parts = payload.path("parts");
+        if (parts.isArray()) {
+            StringBuilder builder = new StringBuilder();
+            parts.forEach(part -> {
+                String text = part.path("text").asText("");
+                if (!text.isBlank()) builder.append(text);
+            });
+            if (builder.length() > 0) return builder.toString();
+        }
+        for (String field : new String[]{"text", "content", "delta", "message", "result"}) {
+            JsonNode node = payload.path(field);
+            if (node.isTextual()) return node.asText();
+        }
+        return "";
     }
 
     private String rawJson(JsonNode payload) {
