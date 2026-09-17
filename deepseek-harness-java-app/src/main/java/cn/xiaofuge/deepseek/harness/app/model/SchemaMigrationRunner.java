@@ -46,6 +46,15 @@ public class SchemaMigrationRunner implements ApplicationRunner {
             addColumnIfMissing(
                     "harness_session", "channel_code",
                     "ALTER TABLE harness_session ADD COLUMN channel_code VARCHAR(64) NULL");
+            addColumnIfMissing(
+                    "collaboration_task", "depends_on",
+                    "ALTER TABLE collaboration_task ADD COLUMN depends_on VARCHAR(512) NULL");
+            addColumnIfMissing(
+                    "collaboration_task", "input_artifacts",
+                    "ALTER TABLE collaboration_task ADD COLUMN input_artifacts VARCHAR(512) NULL");
+            addColumnIfMissing(
+                    "collaboration_task", "output_artifacts",
+                    "ALTER TABLE collaboration_task ADD COLUMN output_artifacts VARCHAR(512) NULL");
             ensurePayloadJsonCapacity();
             migrateLegacyProfileColumn();
             backfillActiveModelChannel();

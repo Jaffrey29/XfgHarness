@@ -1,0 +1,690 @@
+package cn.xiaofuge.deepseek.harness.infrastructure.digitalhuman;
+
+import cn.xiaofuge.deepseek.harness.infrastructure.dao.ICollaborationDao;
+import cn.xiaofuge.deepseek.harness.infrastructure.dao.IDigitalHumanDao;
+import cn.xiaofuge.deepseek.harness.infrastructure.dao.IDigitalHumanEndpointDao;
+import cn.xiaofuge.deepseek.harness.infrastructure.dao.po.CollaborationPO.ArtifactPO;
+import cn.xiaofuge.deepseek.harness.infrastructure.dao.po.CollaborationPO.ParticipantPO;
+import cn.xiaofuge.deepseek.harness.infrastructure.dao.po.CollaborationPO.RoomEventPO;
+import cn.xiaofuge.deepseek.harness.infrastructure.dao.po.CollaborationPO.RoomPO;
+import cn.xiaofuge.deepseek.harness.infrastructure.dao.po.CollaborationPO.TaskPO;
+import cn.xiaofuge.deepseek.harness.infrastructure.dao.po.DigitalHumanEndpointPO;
+import cn.xiaofuge.deepseek.harness.infrastructure.dao.po.DigitalHumanPO;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+/**
+ * 协作房间领域服务：房间/参与者/任务、统一事件日志、
+ * Orchestrator 编排（计划/DAG/并行/交接）与远端任务转发。
+ *
+ * <p>事实源是 room_event 表：UI 的一切展示都来自事件投影。</p>
+ */
+@Service
+public class CollaborationService {
+
+    private static final Logger log = LoggerFactory.getLogger(CollaborationService.class);
+    private static final int EVENT_PAGE_SIZE = 500;
+
+    private final ICollaborationDao collaborationDao;
+    private final IDigitalHumanDao humanDao;
+    private final IDigitalHumanEndpointDao endpointDao;
+    private final PlannerService plannerService;
+    private final RemoteAgentGateway gateway;
+    private final ObjectMapper objectMapper;
+    private final ExecutorService executor;
+
+    /** roomId -> 活跃 SSE 订阅者 */
+    private final Map<String, CopyOnWriteArrayList<SseEmitter>> roomEmitters = new ConcurrentHashMap<>();
+
+    public CollaborationService(ICollaborationDao collaborationDao,
+                                IDigitalHumanDao humanDao,
+                                IDigitalHumanEndpointDao endpointDao,
+                                PlannerService plannerService) {
+        this.collaborationDao = collaborationDao;
+        this.humanDao = humanDao;
+        this.endpointDao = endpointDao;
+        this.plannerService = plannerService;
+        this.gateway = new RemoteAgentGateway();
+        this.objectMapper = new ObjectMapper();
+        this.executor = Executors.newCachedThreadPool(runnable -> {
+            Thread thread = new Thread(runnable, "collab-worker");
+            thread.setDaemon(true);
+            return thread;
+        });
+    }
+
+    // ══════════════ 房间 ══════════════
+
+    public Map<String, Object> createRoom(String workspaceId, String title, String objective, String orchestrationMode) {
+        String id = "room_" + shortId();
+        collaborationDao.insertRoom(new RoomPO(id,
+                workspaceId == null || workspaceId.isBlank() ? "default" : workspaceId,
+                requireText(title, "房间标题不能为空"), objective,
+                orchestrationMode == null || orchestrationMode.isBlank() ? "MANUAL" : orchestrationMode,
+                "idle", Instant.now()));
+        return roomDetail(id);
+    }
+
+    public Map<String, Object> roomDetail(String roomId) {
+        RoomPO room = ensureRoom(roomId);
+        Map<String, Object> view = new LinkedHashMap<>();
+        view.put("id", room.id());
+        view.put("workspaceId", room.workspaceId());
+        view.put("title", room.title());
+        view.put("objective", room.objective());
+        view.put("orchestrationMode", room.orchestrationMode());
+        view.put("runState", room.runState());
+        view.put("createdAt", room.createdAt() == null ? null : room.createdAt().toString());
+
+        List<Map<String, Object>> participants = new ArrayList<>();
+        for (ParticipantPO participant : collaborationDao.listParticipants(roomId)) {
+            Map<String, Object> p = new LinkedHashMap<>();
+            p.put("participantId", participant.id());
+            p.put("digitalHumanId", participant.digitalHumanId());
+            p.put("roomRole", participant.roomRole());
+            p.put("presence", participant.presence());
+            p.put("activeTaskLabel", participant.activeTaskLabel());
+            p.put("joinedAt", participant.joinedAt() == null ? null : participant.joinedAt().toString());
+            humanDao.findById(participant.digitalHumanId()).ifPresent(human -> {
+                p.put("displayName", human.displayName());
+                p.put("avatarRef", human.avatarRef());
+                p.put("themeColor", human.themeColor());
+            });
+            participants.add(p);
+        }
+        view.put("participants", participants);
+
+        List<Map<String, Object>> tasks = new ArrayList<>();
+        for (TaskPO task : collaborationDao.listTasks(roomId)) {
+            tasks.add(taskView(task));
+        }
+        view.put("tasks", tasks);
+
+        List<Map<String, Object>> artifacts = new ArrayList<>();
+        for (ArtifactPO artifact : collaborationDao.listArtifacts(roomId)) {
+            artifacts.add(artifactView(artifact));
+        }
+        view.put("artifacts", artifacts);
+        return view;
+    }
+
+    // ══════════════ 参与者 ══════════════
+
+    public Map<String, Object> joinRoom(String roomId, String digitalHumanId, String roomRole) {
+        ensureRoom(roomId);
+        DigitalHumanPO human = humanDao.findById(digitalHumanId)
+                .orElseThrow(() -> new IllegalArgumentException("数字人不存在：" + digitalHumanId));
+        if (collaborationDao.findParticipant(roomId, digitalHumanId).isEmpty()) {
+            collaborationDao.insertParticipant(new ParticipantPO(
+                    "pt_" + shortId(), roomId, digitalHumanId,
+                    roomRole == null || roomRole.isBlank() ? "member" : roomRole,
+                    "idle", null, Instant.now()));
+            appendEvent(roomId, null, null, digitalHumanId, "PARTICIPANT_JOINED",
+                    Map.of("displayName", human.displayName()));
+        }
+        return roomDetail(roomId);
+    }
+
+    public Map<String, Object> leaveRoom(String roomId, String digitalHumanId) {
+        ensureRoom(roomId);
+        collaborationDao.removeParticipant(roomId, digitalHumanId);
+        humanDao.findById(digitalHumanId).ifPresent(human ->
+                appendEvent(roomId, null, null, digitalHumanId, "PARTICIPANT_LEFT",
+                        Map.of("displayName", human.displayName())));
+        return roomDetail(roomId);
+    }
+
+    // ══════════════ 消息入口：手动 @ / 自动分工 ══════════════
+
+    public Map<String, Object> postMessage(String roomId, String content, List<String> mentions,
+                                           String token, String channelCode, String approvalMode) {
+        RoomPO room = ensureRoom(roomId);
+        String objective = requireText(content, "消息内容不能为空");
+        if (room.objective() == null || room.objective().isBlank()) {
+            collaborationDao.fillObjective(roomId, objective.length() > 60 ? objective.substring(0, 60) : objective);
+        }
+        List<ParticipantPO> participants = collaborationDao.listParticipants(roomId);
+        appendEvent(roomId, null, null, null, "MESSAGE_CREATED",
+                Map.of("role", "user", "content", objective));
+        collaborationDao.updateRoomState(roomId, "running");
+
+        boolean explicit = mentions != null && !mentions.isEmpty();
+        if (explicit || participants.size() <= 1) {
+            // 手动 @ 或单成员：直接派单，走 DAG 调度
+            List<ParticipantPO> targets = resolveTargets(participants, mentions);
+            List<Map<String, Object>> dispatched = new ArrayList<>();
+            for (ParticipantPO target : targets) {
+                TaskPO task = createTask(roomId, objective, target.digitalHumanId(), "user", null);
+                dispatched.add(taskView(task));
+            }
+            schedule(roomId, token, channelCode, approvalMode);
+            return Map.of("accepted", true, "mode", "MANUAL", "tasks", dispatched);
+        }
+        // 多成员未指定：AUTO_PLAN 生成分工计划
+        return autoPlan(roomId, objective, participants, token, channelCode, approvalMode);
+    }
+
+    private List<ParticipantPO> resolveTargets(List<ParticipantPO> participants, List<String> mentions) {
+        if (mentions == null || mentions.isEmpty()) {
+            if (participants.isEmpty()) throw new IllegalArgumentException("房间还没有数字人，请先加入");
+            return List.of(participants.get(0));
+        }
+        List<ParticipantPO> targets = new ArrayList<>();
+        for (String humanId : mentions) {
+            participants.stream().filter(p -> p.digitalHumanId().equals(humanId))
+                    .findFirst().ifPresent(targets::add);
+        }
+        if (targets.isEmpty()) throw new IllegalArgumentException("@ 的数字人不在当前房间");
+        return targets;
+    }
+
+    // ══════════════ Orchestrator ══════════════
+
+    /**
+     * 自动分工：优先 LLM 规划器（按能力卡生成 DAG），失败回退规则型串行链。
+     * 两条路径最终都落成同一套 Task DAG，由 schedule() 统一调度。
+     */
+    private Map<String, Object> autoPlan(String roomId, String objective, List<ParticipantPO> participants,
+                                         String token, String channelCode, String approvalMode) {
+        // 参与者能力卡
+        List<PlannerService.CapabilityCard> cards = new ArrayList<>();
+        for (ParticipantPO participant : participants) {
+            DigitalHumanPO human = humanDao.findById(participant.digitalHumanId()).orElse(null);
+            cards.add(new PlannerService.CapabilityCard(
+                    participant.digitalHumanId(),
+                    human == null ? participant.digitalHumanId() : human.displayName(),
+                    human == null ? "执行任务" : human.purpose(),
+                    human == null || human.roleTags() == null || human.roleTags().isBlank()
+                            ? List.of() : List.of(human.roleTags().split(","))));
+        }
+
+        // LLM 规划（失败回退规则型）
+        List<PlannerService.PlanStep> llmSteps = plannerService.plan(objective, cards);
+        List<Map<String, Object>> steps = new ArrayList<>();
+        String plannerKind;
+
+        if (llmSteps != null && !llmSteps.isEmpty()) {
+            plannerKind = "llm";
+            // 按 LLM 计划建 DAG：dependsOn 是步骤序号，落成 taskId 引用
+            List<String> taskIds = new ArrayList<>();
+            for (int i = 0; i < llmSteps.size(); i++) {
+                PlannerService.PlanStep step = llmSteps.get(i);
+                String dependsOn = step.dependsOn().isEmpty() ? null
+                        : step.dependsOn().stream().map(taskIds::get).reduce((a, b) -> a + "," + b).orElse(null);
+                TaskPO task = createTask(roomId, step.title(), step.instruction(), step.assignTo(),
+                        "orchestrator", dependsOn);
+                taskIds.add(task.id());
+                steps.add(stepView(i + 1, task.id(), step.title(), step.assignTo(), cards, step.dependsOn()));
+            }
+        } else {
+            plannerKind = "rule";
+            // 规则型兜底：按参与者顺序串行，每步依赖上一步
+            String lastTaskId = null;
+            int seq = 1;
+            for (PlannerService.CapabilityCard card : cards) {
+                String title = "步骤 " + seq + "：" + abbreviate(card.purpose(), 24);
+                String instruction = "作为「" + card.displayName() + "」（职责：" + card.purpose()
+                        + "），参与完成房间目标：「" + objective + "」。"
+                        + (lastTaskId == null ? "请先完成你职责范围内的部分，并明确交付物。"
+                                : "请参考上游交付物，完成你职责范围内的部分。");
+                TaskPO task = createTask(roomId, title, instruction, card.digitalHumanId(),
+                        "orchestrator", lastTaskId);
+                List<Integer> deps = lastTaskId == null ? List.of() : List.of(seq - 2);
+                lastTaskId = task.id();
+                steps.add(stepView(seq, task.id(), card.purpose(), card.digitalHumanId(), cards, deps));
+                seq++;
+            }
+        }
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("objective", objective);
+        payload.put("planner", plannerKind);
+        payload.put("steps", steps);
+        appendEvent(roomId, null, null, null, "PLAN_CREATED", payload);
+        schedule(roomId, token, channelCode, approvalMode);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("accepted", true);
+        result.put("mode", "AUTO_PLAN");
+        result.put("planner", plannerKind);
+        result.put("plan", steps);
+        return result;
+    }
+
+    private Map<String, Object> stepView(int seq, String taskId, String title, String assignTo,
+                                         List<PlannerService.CapabilityCard> cards, List<Integer> dependsOn) {
+        String assigneeName = cards.stream()
+                .filter(c -> c.digitalHumanId().equals(assignTo))
+                .map(PlannerService.CapabilityCard::displayName)
+                .findFirst().orElse(assignTo);
+        Map<String, Object> step = new LinkedHashMap<>();
+        step.put("seq", seq);
+        step.put("taskId", taskId);
+        step.put("title", abbreviate(title, 30));
+        step.put("assignTo", assignTo);
+        step.put("assigneeName", assigneeName);
+        step.put("dependsOn", dependsOn);
+        return step;
+    }
+
+    /**
+     * DAG 调度核心：找出依赖已满足且执行者有空闲并发的 READY 任务，派下去。
+     * 每有任务状态变化就再跑一遍，直到没有可调度的任务。
+     */
+    private synchronized void schedule(String roomId, String token, String channelCode, String approvalMode) {
+        List<TaskPO> tasks = collaborationDao.listTasks(roomId);
+        Map<String, String> stateById = new LinkedHashMap<>();
+        Map<String, Integer> runningByHuman = new LinkedHashMap<>();
+        for (TaskPO task : tasks) {
+            stateById.put(task.id(), task.state());
+            if ("RUNNING".equals(task.state()) && task.assignedTo() != null) {
+                runningByHuman.merge(task.assignedTo(), 1, Integer::sum);
+            }
+        }
+        boolean dispatchedAny = false;
+        for (TaskPO task : tasks) {
+            if (!"READY".equals(task.state())) continue;
+            if (!depsSatisfied(task.dependsOn(), stateById)) continue;
+            int limit = humanDao.findById(task.assignedTo())
+                    .map(DigitalHumanPO::concurrencyLimit).orElse(1);
+            int running = runningByHuman.getOrDefault(task.assignedTo(), 0);
+            if (running >= limit) continue;
+            // 占位派发
+            collaborationDao.updateTaskState(task.id(), "ASSIGNED", null, null, Instant.now());
+            runningByHuman.merge(task.assignedTo(), 1, Integer::sum);
+            dispatchedAny = true;
+            final String taskId = task.id();
+            final String humanId = task.assignedTo();
+            final String instruction = buildInstructionWithDeps(task, stateById);
+            executor.submit(() -> runTask(roomId, taskId, humanId, instruction, token, channelCode, approvalMode));
+        }
+        // 全部任务终态 → 房间回到 done
+        boolean allTerminal = tasks.stream().allMatch(t ->
+                List.of("COMPLETED", "FAILED", "CANCELED", "TIMEOUT").contains(t.state()));
+        if (!tasks.isEmpty() && allTerminal && !dispatchedAny) {
+            collaborationDao.updateRoomState(roomId, "done");
+        }
+    }
+
+    private boolean depsSatisfied(String dependsOn, Map<String, String> stateById) {
+        if (dependsOn == null || dependsOn.isBlank()) return true;
+        for (String dep : dependsOn.split(",")) {
+            if (!"COMPLETED".equals(stateById.get(dep.trim()))) return false;
+        }
+        return true;
+    }
+
+    /** 把上游任务的交付物拼进当前任务指令（交接的语义载体） */
+    private String buildInstructionWithDeps(TaskPO task, Map<String, String> stateById) {
+        if (task.dependsOn() == null || task.dependsOn().isBlank()) return task.instruction();
+        StringBuilder upstream = new StringBuilder();
+        for (String dep : task.dependsOn().split(",")) {
+            collaborationDao.findTask(dep.trim()).ifPresent(depTask ->
+                    collaborationDao.listArtifacts(task.roomId()).stream()
+                            .filter(a -> depTask.id().equals(a.taskId()))
+                            .forEach(a -> upstream.append("\n\n--- 上游交付物：").append(a.title())
+                                    .append(" ---\n").append(abbreviate(a.content(), 2000))));
+        }
+        return upstream.length() == 0 ? task.instruction()
+                : task.instruction() + "\n" + upstream;
+    }
+
+    private TaskPO createTask(String roomId, String titleOrObjective, String assignedTo,
+                              String requestedBy, String dependsOn) {
+        return createTask(roomId,
+                titleOrObjective.length() > 40 ? titleOrObjective.substring(0, 40) + "…" : titleOrObjective,
+                titleOrObjective, assignedTo, requestedBy, dependsOn);
+    }
+
+    private TaskPO createTask(String roomId, String title, String instruction, String assignedTo,
+                              String requestedBy, String dependsOn) {
+        TaskPO task = new TaskPO("task_" + shortId(), roomId, null, title, instruction,
+                assignedTo, requestedBy, "READY", dependsOn, null, null, null,
+                "tr_" + shortId(), null, Instant.now(), Instant.now());
+        collaborationDao.insertTask(task);
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("title", title);
+        payload.put("assignedTo", assignedTo);
+        if (dependsOn != null) payload.put("dependsOn", List.of(dependsOn.split(",")));
+        appendEvent(roomId, task.id(), null, assignedTo, "TASK_CREATED", payload);
+        return task;
+    }
+
+    public Map<String, Object> cancelTask(String roomId, String taskId) {
+        TaskPO task = collaborationDao.findTask(taskId)
+                .orElseThrow(() -> new IllegalArgumentException("任务不存在：" + taskId));
+        gateway.cancel(task.remoteSessionId());
+        collaborationDao.updateTaskState(taskId, "CANCELED", task.remoteSessionId(), null, Instant.now());
+        collaborationDao.updatePresence(roomId, task.assignedTo(), "idle", null);
+        appendEvent(roomId, taskId, null, task.assignedTo(), "TASK_STATE_CHANGED",
+                Map.of("state", "CANCELED"));
+        return taskView(collaborationDao.findTask(taskId).orElse(task));
+    }
+
+    /**
+     * 审批通过后恢复任务：把 WAITING_APPROVAL 的任务置回 READY 并重新调度。
+     * 拒绝走 cancelTask。
+     */
+    public Map<String, Object> resumeTask(String roomId, String taskId,
+                                          String token, String channelCode, String approvalMode) {
+        TaskPO task = collaborationDao.findTask(taskId)
+                .orElseThrow(() -> new IllegalArgumentException("任务不存在：" + taskId));
+        if (!"WAITING_APPROVAL".equals(task.state())) {
+            throw new IllegalArgumentException("任务不在等待审批状态（当前：" + task.state() + "）");
+        }
+        collaborationDao.updateTaskState(taskId, "READY", null, null, Instant.now());
+        appendEvent(roomId, taskId, null, task.assignedTo(), "APPROVAL_RESOLVED",
+                Map.of("taskId", taskId, "verdict", "ALLOW"));
+        schedule(roomId, token, channelCode, approvalMode);
+        return taskView(collaborationDao.findTask(taskId).orElse(task));
+    }
+
+    // ══════════════ 任务执行 ══════════════
+
+    private void runTask(String roomId, String taskId, String digitalHumanId,
+                         String instruction, String token, String channelCode, String approvalMode) {
+        DigitalHumanPO human = humanDao.findById(digitalHumanId).orElse(null);
+        DigitalHumanEndpointPO endpoint = endpointDao.findByHumanId(digitalHumanId).orElse(null);
+        String displayName = human == null ? digitalHumanId : human.displayName();
+
+        collaborationDao.updateTaskState(taskId, "RUNNING", null, null, Instant.now());
+        collaborationDao.updatePresence(roomId, digitalHumanId, "working", taskTitle(taskId));
+        appendEvent(roomId, taskId, null, digitalHumanId, "TASK_STATE_CHANGED", Map.of("state", "RUNNING"));
+
+        StringBuilder finalText = new StringBuilder();
+        GatewayEventSink sink = new GatewayEventSink(roomId, taskId, digitalHumanId, finalText);
+        try {
+            if (endpoint == null || "local-dsh".equals(endpoint.endpointType()) || endpoint.baseUrl() == null) {
+                String roleInstruction = "[角色设定] 你是「" + displayName + "」，职责："
+                        + (human == null ? "通用智能体" : human.purpose())
+                        + "。请以该身份完成任务。\n"
+                        + "[协作规则] 你在多数字人协作房间中工作。重要：不要调用 ask_user_question 向用户提问，"
+                        + "协作流中无人实时回答会导致任务卡死。遇到信息不足时，基于已有上下文和上游交付物"
+                        + "自主做出最合理的假设并继续推进，在结果中注明你的假设即可。\n\n" + instruction;
+                runWithTimeout(taskId, () ->
+                        gateway.runLocal(roleInstruction, channelCode, approvalMode, sink));
+            } else {
+                runWithTimeout(taskId, () ->
+                        gateway.runRemote(endpoint.baseUrl(), token, instruction, channelCode, approvalMode, sink));
+            }
+            // 审批中断：执行在写操作审批点暂停，转入等待审批而非完成
+            if (sink.approvalPending) {
+                collaborationDao.updateTaskState(taskId, "WAITING_APPROVAL", null, null, Instant.now());
+                collaborationDao.updatePresence(roomId, digitalHumanId, "waiting_approval", taskTitle(taskId));
+                appendEvent(roomId, taskId, null, digitalHumanId, "APPROVAL_REQUIRED",
+                        Map.of("digitalHumanId", digitalHumanId, "displayName", displayName,
+                                "taskId", taskId, "summary", sink.approvalSummary,
+                                "riskLevel", "write"));
+                return; // 不 schedule：等审批 resolve 后由 resumeTask 重新派发
+            }
+            String answer = finalText.toString();
+            // 交付物归档（协作真正留下的东西）
+            if (!answer.isBlank()) {
+                ArtifactPO artifact = new ArtifactPO("art_" + shortId(), roomId, taskId, digitalHumanId,
+                        "markdown", taskTitle(taskId) + " · 交付", 1, answer, taskId, Instant.now());
+                collaborationDao.insertArtifact(artifact);
+                collaborationDao.updateTaskArtifacts(taskId, artifact.id(), Instant.now());
+                appendEvent(roomId, taskId, null, digitalHumanId, "ARTIFACT_CREATED",
+                        Map.of("artifactId", artifact.id(), "title", artifact.title(), "kind", "markdown"));
+            }
+            collaborationDao.updateTaskState(taskId, "COMPLETED", null, null, Instant.now());
+            collaborationDao.updatePresence(roomId, digitalHumanId, "done", null);
+            appendEvent(roomId, taskId, null, digitalHumanId, "MESSAGE_CREATED",
+                    Map.of("role", "assistant", "digitalHumanId", digitalHumanId,
+                            "displayName", displayName, "content", answer));
+            appendEvent(roomId, taskId, null, digitalHumanId, "TASK_STATE_CHANGED",
+                    Map.of("state", "COMPLETED"));
+        } catch (Exception e) {
+            log.warn("Collab task {} failed: {}", taskId, e.getMessage());
+            collaborationDao.updateTaskState(taskId, "FAILED", null, e.getMessage(), Instant.now());
+            collaborationDao.updatePresence(roomId, digitalHumanId, "error", null);
+            appendEvent(roomId, taskId, null, digitalHumanId, "ERROR",
+                    Map.of("code", "TASK_FAILED", "message", e.getMessage() == null ? "执行失败" : e.getMessage(),
+                            "recoverable", true));
+            appendEvent(roomId, taskId, null, digitalHumanId, "TASK_STATE_CHANGED",
+                    Map.of("state", "FAILED"));
+        } finally {
+            // 状态变化后再调度一轮：唤醒依赖当前任务的下游
+            schedule(roomId, token, channelCode, approvalMode);
+        }
+    }
+
+    /** 带看门狗的任务执行：超时（默认 6 分钟）未完成则抛错，杜绝 ask_user_question 之类的死等 */
+    private void runWithTimeout(String taskId, ThrowingRunnable runnable) throws Exception {
+        java.util.concurrent.FutureTask<Void> future = new java.util.concurrent.FutureTask<>(() -> {
+            runnable.run();
+            return null;
+        });
+        Thread thread = new Thread(future, "collab-task-" + taskId);
+        thread.setDaemon(true);
+        thread.start();
+        try {
+            future.get(6, java.util.concurrent.TimeUnit.MINUTES);
+        } catch (java.util.concurrent.TimeoutException e) {
+            future.cancel(true);
+            thread.interrupt();
+            throw new IllegalStateException("执行超时（可能因等待用户输入而中断），已自动停止。可重试或调整任务描述。");
+        } catch (java.util.concurrent.ExecutionException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof Exception exception) throw exception;
+            throw new IllegalStateException(String.valueOf(cause));
+        }
+    }
+
+    @FunctionalInterface
+    private interface ThrowingRunnable {
+        void run() throws Exception;
+    }
+
+    private class GatewayEventSink implements RemoteAgentGateway.EventSink {
+        private final String roomId;
+        private final String taskId;
+        private final String digitalHumanId;
+        private final StringBuilder finalText;
+        /** 执行在写操作审批点中断（Agent 流内出现需审批的工具调用后流结束） */
+        volatile boolean approvalPending = false;
+        volatile String approvalSummary = "";
+
+        GatewayEventSink(String roomId, String taskId, String digitalHumanId, StringBuilder finalText) {
+            this.roomId = roomId;
+            this.taskId = taskId;
+            this.digitalHumanId = digitalHumanId;
+            this.finalText = finalText;
+        }
+
+        @Override public void onChunk(String text) {
+            finalText.append(text);
+            appendEvent(roomId, taskId, null, digitalHumanId, "MESSAGE_CHUNK", Map.of("text", text));
+        }
+
+        @Override public void onReasoning(String text) {
+            appendEvent(roomId, taskId, null, digitalHumanId, "REASONING_CHUNK", Map.of("text", text));
+        }
+
+        @Override public void onToolCall(String toolName, String summary) {
+            appendEvent(roomId, taskId, null, digitalHumanId, "TOOL_CALL",
+                    Map.of("toolName", toolName, "summary", summary));
+        }
+
+        @Override public void onToolResult(String toolName, String summary) {
+            appendEvent(roomId, taskId, null, digitalHumanId, "TOOL_RESULT",
+                    Map.of("toolName", toolName, "summary", summary));
+        }
+
+        @Override public void onApprovalRequired(String toolName, String summary) {
+            approvalPending = true;
+            approvalSummary = summary == null || summary.isBlank() ? toolName : summary;
+        }
+    }
+
+    // ══════════════ 事件流 ══════════════
+
+    public SseEmitter subscribe(String roomId, long afterSeq) {
+        ensureRoom(roomId);
+        SseEmitter emitter = new SseEmitter(0L);
+        List<RoomEventPO> backlog = collaborationDao.listEventsAfter(roomId, afterSeq, EVENT_PAGE_SIZE);
+        roomEmitters.computeIfAbsent(roomId, key -> new CopyOnWriteArrayList<>()).add(emitter);
+        Runnable cleanup = () -> roomEmitters.getOrDefault(roomId, new CopyOnWriteArrayList<>()).remove(emitter);
+        emitter.onCompletion(cleanup);
+        emitter.onTimeout(cleanup);
+        emitter.onError(error -> cleanup.run());
+        executor.submit(() -> {
+            try {
+                for (RoomEventPO event : backlog) {
+                    emitter.send(SseEmitter.event().name("room-event").data(toJson(eventView(event))));
+                }
+            } catch (Exception e) {
+                cleanup.run();
+                emitter.complete();
+            }
+        });
+        return emitter;
+    }
+
+    private void appendEvent(String roomId, String taskId, String participantId,
+                             String digitalHumanId, String type, Map<String, Object> payload) {
+        try {
+            synchronized (("seq_" + roomId).intern()) {
+                long seq = collaborationDao.maxEventSeq(roomId) + 1;
+                RoomEventPO event = new RoomEventPO("evt_" + shortId(), roomId, seq,
+                        taskId, participantId, digitalHumanId, type, Instant.now(), "room",
+                        toJson(payload), taskId);
+                collaborationDao.insertEvent(event);
+                push(roomId, event);
+            }
+        } catch (Exception e) {
+            log.warn("Append room event failed ({} {}): {}", roomId, type, e.getMessage());
+        }
+    }
+
+    private void push(String roomId, RoomEventPO event) {
+        List<SseEmitter> emitters = roomEmitters.get(roomId);
+        if (emitters == null || emitters.isEmpty()) return;
+        String json = toJson(eventView(event));
+        for (SseEmitter emitter : emitters) {
+            try {
+                emitter.send(SseEmitter.event().name("room-event").data(json));
+            } catch (Exception e) {
+                emitters.remove(emitter);
+            }
+        }
+    }
+
+    public List<Map<String, Object>> listEvents(String roomId, long afterSeq) {
+        List<Map<String, Object>> views = new ArrayList<>();
+        for (RoomEventPO event : collaborationDao.listEventsAfter(roomId, afterSeq, EVENT_PAGE_SIZE)) {
+            views.add(eventView(event));
+        }
+        return views;
+    }
+
+    // ══════════════ 视图与工具 ══════════════
+
+    private Map<String, Object> taskView(TaskPO task) {
+        Map<String, Object> view = new LinkedHashMap<>();
+        view.put("taskId", task.id());
+        view.put("roomId", task.roomId());
+        view.put("title", task.title());
+        view.put("instruction", task.instruction());
+        view.put("assignedTo", task.assignedTo());
+        view.put("state", task.state());
+        view.put("dependsOn", task.dependsOn() == null ? List.of() : List.of(task.dependsOn().split(",")));
+        view.put("traceId", task.traceId());
+        view.put("errorSummary", task.errorSummary());
+        view.put("createdAt", task.createdAt() == null ? null : task.createdAt().toString());
+        humanDao.findById(task.assignedTo()).ifPresent(human -> {
+            view.put("assigneeName", human.displayName());
+            view.put("assigneeAvatar", human.avatarRef());
+            view.put("assigneeColor", human.themeColor());
+        });
+        return view;
+    }
+
+    private Map<String, Object> artifactView(ArtifactPO artifact) {
+        Map<String, Object> view = new LinkedHashMap<>();
+        view.put("artifactId", artifact.id());
+        view.put("taskId", artifact.taskId());
+        view.put("producerId", artifact.producerId());
+        view.put("kind", artifact.kind());
+        view.put("title", artifact.title());
+        view.put("version", artifact.version());
+        view.put("content", artifact.content());
+        view.put("createdAt", artifact.createdAt() == null ? null : artifact.createdAt().toString());
+        humanDao.findById(artifact.producerId()).ifPresent(human -> {
+            view.put("producerName", human.displayName());
+            view.put("producerColor", human.themeColor());
+        });
+        return view;
+    }
+
+    private Map<String, Object> eventView(RoomEventPO event) {
+        Map<String, Object> view = new LinkedHashMap<>();
+        view.put("id", event.id());
+        view.put("roomId", event.roomId());
+        view.put("seq", event.seq());
+        view.put("taskId", event.taskId());
+        view.put("participantId", event.participantId());
+        view.put("digitalHumanId", event.digitalHumanId());
+        view.put("type", event.eventType());
+        view.put("occurredAt", event.occurredAt() == null ? null : event.occurredAt().toString());
+        try {
+            view.put("payload", objectMapper.readValue(event.payload() == null ? "{}" : event.payload(), Map.class));
+        } catch (Exception e) {
+            view.put("payload", Map.of());
+        }
+        view.put("traceId", event.traceId());
+        if (event.digitalHumanId() != null) {
+            humanDao.findById(event.digitalHumanId()).ifPresent(human -> {
+                view.put("displayName", human.displayName());
+                view.put("avatarRef", human.avatarRef());
+                view.put("themeColor", human.themeColor());
+            });
+        }
+        return view;
+    }
+
+    private String taskTitle(String taskId) {
+        return collaborationDao.findTask(taskId).map(TaskPO::title).orElse(null);
+    }
+
+    private RoomPO ensureRoom(String roomId) {
+        return collaborationDao.findRoom(roomId)
+                .orElseThrow(() -> new IllegalArgumentException("房间不存在：" + roomId));
+    }
+
+    private String requireText(String value, String message) {
+        if (value == null || value.isBlank()) throw new IllegalArgumentException(message);
+        return value.trim();
+    }
+
+    private String abbreviate(String text, int max) {
+        if (text == null) return "";
+        String singleLine = text.replaceAll("\\s+", " ").trim();
+        return singleLine.length() > max ? singleLine.substring(0, max) + "…" : singleLine;
+    }
+
+    private String shortId() {
+        return UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+    }
+
+    private String toJson(Object value) {
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (Exception e) {
+            return "{}";
+        }
+    }
+}

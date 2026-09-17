@@ -161,3 +161,111 @@ INSERT IGNORE INTO harness_tool_profile_binding (profile_code, tool_code) VALUES
 INSERT IGNORE INTO harness_tool_profile_binding (profile_code, tool_code) VALUES ('headless', 'web.search');
 INSERT IGNORE INTO harness_tool_profile_binding (profile_code, tool_code) VALUES ('web', 'fs.read');
 INSERT IGNORE INTO harness_tool_profile_binding (profile_code, tool_code) VALUES ('web', 'web.search');
+
+-- ── 数字人协作 ─────────────────────────────────
+-- 数字人身份（展示与策略，与连接解耦）
+CREATE TABLE IF NOT EXISTS digital_human (
+    id VARCHAR(64) PRIMARY KEY,
+    display_name VARCHAR(128) NOT NULL,
+    avatar_ref VARCHAR(255) NULL,
+    purpose VARCHAR(1024) NOT NULL,
+    role_tags VARCHAR(512) NULL,
+    theme_color VARCHAR(16) NULL,
+    approval_policy VARCHAR(32) NOT NULL DEFAULT 'WRITE_REQUIRES_APPROVAL',
+    concurrency_limit INT NOT NULL DEFAULT 1,
+    created_at TIMESTAMP(3) NOT NULL,
+    updated_at TIMESTAMP(3) NOT NULL
+);
+
+-- 服务端点（连接配置）
+CREATE TABLE IF NOT EXISTS digital_human_endpoint (
+    id VARCHAR(64) PRIMARY KEY,
+    digital_human_id VARCHAR(64) NOT NULL,
+    endpoint_type VARCHAR(24) NOT NULL,
+    base_url VARCHAR(512) NULL,
+    credential_ref VARCHAR(128) NULL,
+    protocol_version VARCHAR(16) NULL,
+    agent_card TEXT NULL,
+    health_state VARCHAR(16) NOT NULL DEFAULT 'unknown',
+    last_checked_at TIMESTAMP(3) NULL,
+    latency_ms INT NULL,
+    KEY idx_dh_endpoint_human (digital_human_id)
+);
+
+-- 协作房间
+CREATE TABLE IF NOT EXISTS collaboration_room (
+    id VARCHAR(64) PRIMARY KEY,
+    workspace_id VARCHAR(128) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    objective TEXT NULL,
+    orchestration_mode VARCHAR(24) NOT NULL DEFAULT 'MANUAL',
+    run_state VARCHAR(16) NOT NULL DEFAULT 'idle',
+    created_at TIMESTAMP(3) NOT NULL
+);
+
+-- 房间参与者
+CREATE TABLE IF NOT EXISTS room_participant (
+    id VARCHAR(64) PRIMARY KEY,
+    room_id VARCHAR(64) NOT NULL,
+    digital_human_id VARCHAR(64) NOT NULL,
+    room_role VARCHAR(16) NOT NULL DEFAULT 'member',
+    presence VARCHAR(24) NOT NULL DEFAULT 'idle',
+    active_task_label VARCHAR(255) NULL,
+    joined_at TIMESTAMP(3) NOT NULL,
+    UNIQUE KEY uk_room_participant (room_id, digital_human_id),
+    KEY idx_participant_room (room_id)
+);
+
+-- 协作任务
+CREATE TABLE IF NOT EXISTS collaboration_task (
+    id VARCHAR(64) PRIMARY KEY,
+    room_id VARCHAR(64) NOT NULL,
+    parent_task_id VARCHAR(64) NULL,
+    title VARCHAR(255) NOT NULL,
+    instruction TEXT NOT NULL,
+    assigned_to VARCHAR(64) NULL,
+    requested_by VARCHAR(64) NOT NULL,
+    state VARCHAR(24) NOT NULL DEFAULT 'READY',
+    depends_on VARCHAR(512) NULL,
+    input_artifacts VARCHAR(512) NULL,
+    output_artifacts VARCHAR(512) NULL,
+    remote_session_id VARCHAR(128) NULL,
+    trace_id VARCHAR(64) NOT NULL,
+    error_summary VARCHAR(1024) NULL,
+    created_at TIMESTAMP(3) NOT NULL,
+    updated_at TIMESTAMP(3) NOT NULL,
+    KEY idx_task_room_state (room_id, state)
+);
+
+-- 协作产物
+CREATE TABLE IF NOT EXISTS collaboration_artifact (
+    id VARCHAR(64) PRIMARY KEY,
+    room_id VARCHAR(64) NOT NULL,
+    task_id VARCHAR(64) NULL,
+    producer_id VARCHAR(64) NULL,
+    kind VARCHAR(24) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    version INT NOT NULL DEFAULT 1,
+    content TEXT NULL,
+    trace_id VARCHAR(64) NULL,
+    created_at TIMESTAMP(3) NOT NULL,
+    KEY idx_artifact_room (room_id)
+);
+
+-- 统一房间事件日志（一切展示与恢复的源头）
+CREATE TABLE IF NOT EXISTS room_event (
+    id VARCHAR(64) PRIMARY KEY,
+    room_id VARCHAR(64) NOT NULL,
+    seq BIGINT NOT NULL,
+    task_id VARCHAR(64) NULL,
+    participant_id VARCHAR(64) NULL,
+    digital_human_id VARCHAR(64) NULL,
+    event_type VARCHAR(48) NOT NULL,
+    occurred_at TIMESTAMP(3) NOT NULL,
+    visibility VARCHAR(16) NOT NULL DEFAULT 'room',
+    payload TEXT NULL,
+    trace_id VARCHAR(64) NULL,
+    UNIQUE KEY uk_room_event_seq (room_id, seq),
+    KEY idx_event_room_seq (room_id, seq),
+    KEY idx_event_task (task_id)
+);
