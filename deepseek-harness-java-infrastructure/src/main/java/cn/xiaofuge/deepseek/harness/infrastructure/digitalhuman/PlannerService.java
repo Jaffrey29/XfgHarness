@@ -11,7 +11,9 @@ import cn.xiaofuge.deepseek.harness.domain.runtime.setting.service.AgentModelSet
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -96,13 +98,14 @@ public class PlannerService {
                 【要求】
                 1. 每一步明确派给一名员工（assignTo 用其 id），任务要落在该员工的职责与能力标签内。
                 2. 有先后依赖的步骤用 dependsOn 引用前序步骤的序号（从 0 开始）；无依赖的步骤可以并行。
-                3. 步骤尽量少而精，通常 2-%d 步，不要为凑数拆分。
-                4. title 用一句话概括该步产出，instruction 是给该员工的完整任务说明。
-                5. 只输出 JSON 数组，不要输出任何其他文字、解释或 markdown 代码块标记。
+                3. 每名数字员工至少分到一步；如果职责可以并行，dependsOn 必须为空数组，避免无意义串行。
+                4. 步骤尽量少而精，通常 %d-%d 步，不要为凑数拆分。
+                5. title 用一句话概括该步产出，instruction 是给该员工的完整任务说明。
+                6. 只输出 JSON 数组，不要输出任何其他文字、解释或 markdown 代码块标记。
 
                 【输出格式】
                 [{"assignTo":"员工id","title":"步骤标题","instruction":"任务说明","dependsOn":[]}]
-                """.formatted(objective, cards, Math.max(2, participants.size() + 1));
+                """.formatted(objective, cards, participants.size(), Math.max(2, participants.size() + 1));
     }
 
     /** 解析模型输出：剥离可能的代码块标记，校验结构与引用合法性 */
@@ -121,9 +124,11 @@ public class PlannerService {
             if (!array.isArray() || array.isEmpty()) return null;
             List<String> validIds = participants.stream().map(CapabilityCard::digitalHumanId).toList();
             List<PlanStep> steps = new ArrayList<>();
+            Set<String> assignedIds = new HashSet<>();
             for (JsonNode node : array) {
                 String assignTo = node.path("assignTo").asText("");
                 if (!validIds.contains(assignTo)) return null; // 派给不存在的员工 → 整体非法
+                assignedIds.add(assignTo);
                 String title = node.path("title").asText("").trim();
                 String instruction = node.path("instruction").asText("").trim();
                 if (title.isEmpty() || instruction.isEmpty()) return null;
@@ -135,6 +140,7 @@ public class PlannerService {
                 }
                 steps.add(new PlanStep(assignTo, title, instruction, deps));
             }
+            if (participants.size() > 1 && assignedIds.size() < participants.size()) return null;
             return steps;
         } catch (Exception e) {
             log.warn("Planner output parse failed: {}", e.getMessage());

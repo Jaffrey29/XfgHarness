@@ -49,6 +49,10 @@ public class RemoteAgentGateway {
 
         void onToolResult(String toolName, String summary);
 
+        default void onToolResult(String toolName, String summary, String rawResult) {
+            onToolResult(toolName, summary);
+        }
+
         /** 执行在审批点中断：携带审批关键信息（若流内有），由协作层落房间事件 */
         default void onApprovalRequired(String toolName, String summary) {
         }
@@ -152,13 +156,15 @@ public class RemoteAgentGateway {
                 case "tool_result" -> {
                     String toolName = payload.path("toolName").asText(
                             payload.path("name").asText("tool"));
-                    String summary = abbreviate(extractText(payload));
+                    JsonNode resultNode = payload.path("result");
+                    String rawResult = resultNode.isMissingNode() ? "" : rawJson(resultNode);
+                    String summary = abbreviate(resultNode.isMissingNode() ? extractText(payload) : extractText(resultNode));
                     // tool_result 事件在 DSH 中既承载发起也承载返回，按 status 区分
                     String status = payload.path("status").asText("");
                     if ("running".equals(status) || "call".equals(status)) {
                         sink.onToolCall(toolName, summary);
                     } else {
-                        sink.onToolResult(toolName, summary);
+                        sink.onToolResult(toolName, summary, rawResult);
                     }
                 }
                 case "step_break" -> {
@@ -201,6 +207,11 @@ public class RemoteAgentGateway {
             if (node.isTextual()) return node.asText();
         }
         return payload.toString();
+    }
+
+    private String rawJson(JsonNode payload) {
+        if (payload == null || payload.isMissingNode() || payload.isNull()) return "";
+        return payload.isTextual() ? payload.asText() : payload.toString();
     }
 
     private String abbreviate(String text) {

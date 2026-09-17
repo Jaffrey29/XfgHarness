@@ -11,16 +11,21 @@ import cn.xiaofuge.deepseek.harness.infrastructure.dao.po.CollaborationPO.TaskPO
 import cn.xiaofuge.deepseek.harness.infrastructure.dao.po.DigitalHumanEndpointPO;
 import cn.xiaofuge.deepseek.harness.infrastructure.dao.po.DigitalHumanPO;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -37,6 +42,9 @@ public class CollaborationService {
 
     private static final Logger log = LoggerFactory.getLogger(CollaborationService.class);
     private static final int EVENT_PAGE_SIZE = 500;
+    private static final Pattern LOCAL_FILE_PATTERN = Pattern.compile(
+            "(?:/[^\\s<>\\\"'，。；）)]+|[A-Za-z]:\\\\[^\\s<>\\\"']+)\\.(?:docx|xlsx|xls|csv|md|markdown)",
+            Pattern.CASE_INSENSITIVE);
 
     private final ICollaborationDao collaborationDao;
     private final IDigitalHumanDao humanDao;
@@ -231,20 +239,17 @@ public class CollaborationService {
             }
         } else {
             plannerKind = "rule";
-            // 规则型兜底：按参与者顺序串行，每步依赖上一步
-            String lastTaskId = null;
+            // 规则型兜底：让每个参与者都并行领取职责范围内的任务。
+            // 这保证规划器不可用时，多数字人房间不会退化成“只有第一个人在工作”。
             int seq = 1;
             for (PlannerService.CapabilityCard card : cards) {
                 String title = "步骤 " + seq + "：" + abbreviate(card.purpose(), 24);
                 String instruction = "作为「" + card.displayName() + "」（职责：" + card.purpose()
                         + "），参与完成房间目标：「" + objective + "」。"
-                        + (lastTaskId == null ? "请先完成你职责范围内的部分，并明确交付物。"
-                                : "请参考上游交付物，完成你职责范围内的部分。");
+                        + "请与其他数字人并行完成你职责范围内的部分，并明确交付物。";
                 TaskPO task = createTask(roomId, title, instruction, card.digitalHumanId(),
-                        "orchestrator", lastTaskId);
-                List<Integer> deps = lastTaskId == null ? List.of() : List.of(seq - 2);
-                lastTaskId = task.id();
-                steps.add(stepView(seq, task.id(), card.purpose(), card.digitalHumanId(), cards, deps));
+                        "orchestrator", null);
+                steps.add(stepView(seq, task.id(), card.purpose(), card.digitalHumanId(), cards, List.of()));
                 seq++;
             }
         }
@@ -433,12 +438,8 @@ public class CollaborationService {
             String answer = finalText.toString();
             // 交付物归档（协作真正留下的东西）
             if (!answer.isBlank()) {
-                ArtifactPO artifact = new ArtifactPO("art_" + shortId(), roomId, taskId, digitalHumanId,
-                        "markdown", taskTitle(taskId) + " · 交付", 1, answer, taskId, Instant.now());
-                collaborationDao.insertArtifact(artifact);
-                collaborationDao.updateTaskArtifacts(taskId, artifact.id(), Instant.now());
-                appendEvent(roomId, taskId, null, digitalHumanId, "ARTIFACT_CREATED",
-                        Map.of("artifactId", artifact.id(), "title", artifact.title(), "kind", "markdown"));
+                archiveArtifact(roomId, taskId, digitalHumanId,
+                        new ArtifactDraft("markdown", taskTitle(taskId) + " · 交付", answer, null));
             }
             collaborationDao.updateTaskState(taskId, "COMPLETED", null, null, Instant.now());
             collaborationDao.updatePresence(roomId, digitalHumanId, "done", null);
@@ -489,11 +490,143 @@ public class CollaborationService {
         void run() throws Exception;
     }
 
+    private record ArtifactDraft(String kind, String title, String content, String identity) {
+    }
+
+    private String archiveArtifact(String roomId, String taskId, String digitalHumanId, ArtifactDraft draft) {
+        ArtifactPO artifact = new ArtifactPO("art_" + shortId(), roomId, taskId, digitalHumanId,
+                draft.kind(), draft.title(), 1, draft.content(), taskId, Instant.now());
+        collaborationDao.insertArtifact(artifact);
+        appendTaskArtifact(taskId, artifact.id());
+
+        Map<String, Object> eventPayload = new LinkedHashMap<>();
+        eventPayload.put("artifactId", artifact.id());
+        eventPayload.put("title", artifact.title());
+        eventPayload.put("kind", artifact.kind());
+        readJsonObject(artifact.content()).ifPresent(node -> {
+            putText(eventPayload, "filePath", node.path("filePath"));
+            putText(eventPayload, "mimeType", node.path("mimeType"));
+        });
+        appendEvent(roomId, taskId, null, digitalHumanId, "ARTIFACT_CREATED", eventPayload);
+        return artifact.id();
+    }
+
+    private void appendTaskArtifact(String taskId, String artifactId) {
+        Set<String> ids = new HashSet<>();
+        collaborationDao.findTask(taskId).ifPresent(task -> {
+            if (task.outputArtifacts() == null || task.outputArtifacts().isBlank()) return;
+            for (String id : task.outputArtifacts().split(",")) {
+                if (!id.isBlank()) ids.add(id.trim());
+            }
+        });
+        ids.add(artifactId);
+        collaborationDao.updateTaskArtifacts(taskId, String.join(",", ids), Instant.now());
+    }
+
+    private List<ArtifactDraft> extractToolArtifacts(String toolName, String summary, String rawResult) {
+        List<ArtifactDraft> drafts = new ArrayList<>();
+        readJsonObject(rawResult).ifPresent(node -> {
+            String title = textOr(node.path("title"), toolArtifactTitle(toolName, summary));
+            JsonNode echartsOption = node.path("echartsOption");
+            if (!echartsOption.isMissingNode() && !echartsOption.isNull()) {
+                Map<String, Object> content = new LinkedHashMap<>();
+                content.put("kind", "echarts");
+                content.put("title", title);
+                content.put("summary", textOr(node.path("summary"), summary));
+                content.put("echartsOption", objectMapper.convertValue(echartsOption, Object.class));
+                drafts.add(new ArtifactDraft("echarts", title, toJson(content), "echarts:" + title));
+            }
+
+            String filePath = textOr(node.path("filePath"), textOr(node.path("path"), ""));
+            if (!filePath.isBlank()) {
+                String kind = kindFromFilePath(filePath, toolName);
+                Map<String, Object> content = new LinkedHashMap<>();
+                content.put("kind", kind);
+                content.put("title", title);
+                content.put("filePath", filePath);
+                content.put("mimeType", mimeTypeOf(filePath, kind));
+                putText(content, "summary", node.path("summary"));
+                putText(content, "previewMarkdown", node.path("markdown"));
+                drafts.add(new ArtifactDraft(kind, title, toJson(content), kind + ":" + filePath));
+            }
+        });
+
+        if (drafts.isEmpty()) {
+            for (String filePath : extractLocalFilePaths(rawResult + "\n" + summary)) {
+                String kind = kindFromFilePath(filePath, toolName);
+                Map<String, Object> content = new LinkedHashMap<>();
+                content.put("kind", kind);
+                content.put("title", toolArtifactTitle(toolName, summary));
+                content.put("filePath", filePath);
+                content.put("mimeType", mimeTypeOf(filePath, kind));
+                drafts.add(new ArtifactDraft(kind, toolArtifactTitle(toolName, summary), toJson(content), kind + ":" + filePath));
+            }
+        }
+        return drafts;
+    }
+
+    private java.util.Optional<JsonNode> readJsonObject(String value) {
+        if (value == null || value.isBlank()) return java.util.Optional.empty();
+        try {
+            JsonNode node = objectMapper.readTree(value.trim());
+            if (node.isTextual()) node = objectMapper.readTree(node.asText());
+            return node.isObject() ? java.util.Optional.of(node) : java.util.Optional.empty();
+        } catch (Exception ignored) {
+            return java.util.Optional.empty();
+        }
+    }
+
+    private List<String> extractLocalFilePaths(String text) {
+        List<String> paths = new ArrayList<>();
+        Matcher matcher = LOCAL_FILE_PATTERN.matcher(text == null ? "" : text);
+        while (matcher.find()) {
+            String path = matcher.group().replaceAll("[.,;:!?，。；：！？）)」】'\"]+$", "");
+            if (!paths.contains(path)) paths.add(path);
+        }
+        return paths;
+    }
+
+    private String toolArtifactTitle(String toolName, String summary) {
+        String base = summary == null || summary.isBlank() ? toolName : summary;
+        if (base == null || base.isBlank()) return "工具产物";
+        return base.length() > 48 ? base.substring(0, 48) + "…" : base;
+    }
+
+    private String kindFromFilePath(String filePath, String toolName) {
+        String lower = filePath == null ? "" : filePath.toLowerCase();
+        String tool = toolName == null ? "" : toolName.toLowerCase();
+        if (lower.endsWith(".docx") || tool.contains("doc")) return "word";
+        if (lower.endsWith(".xlsx") || lower.endsWith(".xls") || lower.endsWith(".csv") || tool.contains("sheet")) return "excel";
+        if (lower.endsWith(".md") || lower.endsWith(".markdown")) return "markdown";
+        return "file";
+    }
+
+    private String mimeTypeOf(String filePath, String kind) {
+        String lower = filePath == null ? "" : filePath.toLowerCase();
+        if (lower.endsWith(".docx")) return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        if (lower.endsWith(".xlsx")) return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        if (lower.endsWith(".xls")) return "application/vnd.ms-excel";
+        if (lower.endsWith(".csv")) return "text/csv";
+        if ("markdown".equals(kind)) return "text/markdown";
+        return "application/octet-stream";
+    }
+
+    private String textOr(JsonNode node, String fallback) {
+        return node != null && node.isTextual() ? node.asText() : fallback;
+    }
+
+    private void putText(Map<String, Object> target, String key, JsonNode node) {
+        if (node != null && node.isTextual() && !node.asText().isBlank()) {
+            target.put(key, node.asText());
+        }
+    }
+
     private class GatewayEventSink implements RemoteAgentGateway.EventSink {
         private final String roomId;
         private final String taskId;
         private final String digitalHumanId;
         private final StringBuilder finalText;
+        private final Set<String> artifactKeys = ConcurrentHashMap.newKeySet();
         /** 执行在写操作审批点中断（Agent 流内出现需审批的工具调用后流结束） */
         volatile boolean approvalPending = false;
         volatile String approvalSummary = "";
@@ -520,8 +653,20 @@ public class CollaborationService {
         }
 
         @Override public void onToolResult(String toolName, String summary) {
+            onToolResult(toolName, summary, "");
+        }
+
+        @Override public void onToolResult(String toolName, String summary, String rawResult) {
             appendEvent(roomId, taskId, null, digitalHumanId, "TOOL_RESULT",
                     Map.of("toolName", toolName, "summary", summary));
+            for (ArtifactDraft draft : extractToolArtifacts(toolName, summary, rawResult)) {
+                if (draft.identity() != null && !artifactKeys.add(draft.identity())) continue;
+                try {
+                    archiveArtifact(roomId, taskId, digitalHumanId, draft);
+                } catch (Exception exception) {
+                    log.debug("Skip tool artifact archive for {}: {}", toolName, exception.getMessage());
+                }
+            }
         }
 
         @Override public void onApprovalRequired(String toolName, String summary) {
@@ -622,6 +767,16 @@ public class CollaborationService {
         view.put("title", artifact.title());
         view.put("version", artifact.version());
         view.put("content", artifact.content());
+        readJsonObject(artifact.content()).ifPresent(node -> {
+            putText(view, "filePath", node.path("filePath"));
+            putText(view, "mimeType", node.path("mimeType"));
+            putText(view, "previewMarkdown", node.path("previewMarkdown"));
+            putText(view, "summary", node.path("summary"));
+            JsonNode echartsOption = node.path("echartsOption");
+            if (!echartsOption.isMissingNode() && !echartsOption.isNull()) {
+                view.put("echartsOption", objectMapper.convertValue(echartsOption, Object.class));
+            }
+        });
         view.put("createdAt", artifact.createdAt() == null ? null : artifact.createdAt().toString());
         humanDao.findById(artifact.producerId()).ifPresent(human -> {
             view.put("producerName", human.displayName());
