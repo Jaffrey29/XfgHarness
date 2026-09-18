@@ -528,7 +528,7 @@ public class CollaborationService {
         String requested = requestedMode == null || requestedMode.isBlank() ? "" : requestedMode;
         if ("ALWAYS_CONFIRM".equals(policy)) return "REQUEST_APPROVAL";
         if ("AUTO_ALLOW".equals(policy)) return "FULL_OPEN";
-        return "REQUEST_APPROVAL".equals(requested) ? requested : "REQUEST_APPROVAL";
+        return "AUTO_APPROVE";
     }
 
     private String tokenForHuman(String fallbackToken, Map<String, String> digitalHumanTokens, String digitalHumanId) {
