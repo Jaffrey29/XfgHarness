@@ -682,6 +682,7 @@ public class CollaborationService {
         if (lower.endsWith(".docx") || tool.contains("doc")) return "word";
         if (lower.endsWith(".xlsx") || lower.endsWith(".xls") || lower.endsWith(".csv") || tool.contains("sheet")) return "excel";
         if (lower.endsWith(".md") || lower.endsWith(".markdown")) return "markdown";
+        if (lower.endsWith(".html") || lower.endsWith(".htm")) return "html";
         return "file";
     }
 
@@ -692,6 +693,7 @@ public class CollaborationService {
         if (lower.endsWith(".xls")) return "application/vnd.ms-excel";
         if (lower.endsWith(".csv")) return "text/csv";
         if ("markdown".equals(kind)) return "text/markdown";
+        if ("html".equals(kind)) return "text/html";
         return "application/octet-stream";
     }
 
