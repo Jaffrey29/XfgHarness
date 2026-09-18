@@ -110,6 +110,15 @@ public final class ToolCallExecutor {
      * <p>数据示例：shell_execute 未获得审批时返回 denied=true；fs_read 通常直接放行。
      */
     private ApprovalOutcome checkApproval(String toolName, Object args) {
+        // 阻塞等待裁决前先发出显式挂起信号：远程协作层据此识别"审批等待"，
+        // 而不是把长时间阻塞误判为普通工具执行（step_break 的 status=requires_approval）。
+        if (approvalGate.requiresApproval(toolName)) {
+            log.info("[Tool] 工具 {} 需运行期审批，已发出 requires_approval 信号，等待人工裁决...", toolName);
+            notifyLifecycle(new ToolLifecycleEvent(
+                    "call", null, toolName,
+                    args == null ? null : String.valueOf(args),
+                    null, "requires_approval", null));
+        }
         RuntimeApprovalGate.Decision decision = approvalGate.check(toolName, args);
         return new ApprovalOutcome(decision == RuntimeApprovalGate.Decision.DENY, false);
     }

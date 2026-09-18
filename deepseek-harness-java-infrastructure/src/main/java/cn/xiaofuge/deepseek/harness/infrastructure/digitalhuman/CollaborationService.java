@@ -524,8 +524,10 @@ public class CollaborationService {
 
 
     private String effectiveApprovalMode(DigitalHumanPO human, String requestedMode) {
+        // 桌面端下发的审批模式优先：远程协作的审批节奏由桌面端统一掌控，
+        // 需审批时通过运行期审批接口反馈到桌面端裁决。仅在未指定时回退数字人档案策略。
+        if (requestedMode != null && !requestedMode.isBlank()) return requestedMode;
         String policy = human == null || human.approvalPolicy() == null ? "WRITE_REQUIRES_APPROVAL" : human.approvalPolicy();
-        String requested = requestedMode == null || requestedMode.isBlank() ? "" : requestedMode;
         if ("ALWAYS_CONFIRM".equals(policy)) return "REQUEST_APPROVAL";
         if ("AUTO_ALLOW".equals(policy)) return "FULL_OPEN";
         return "AUTO_APPROVE";
@@ -743,6 +745,9 @@ public class CollaborationService {
         }
 
         @Override public void onToolResult(String toolName, String summary, String rawResult) {
+            // 审批被裁决（放行/拒绝）后工具必然产出结果：清除挂起标记，
+            // 任务就地完成，避免误入 WAITING_APPROVAL 触发 resumeTask 全量重跑。
+            approvalPending = false;
             appendEvent(roomId, taskId, null, digitalHumanId, "TOOL_RESULT",
                     Map.of("toolName", toolName, "summary", summary));
             for (ArtifactDraft draft : extractToolArtifacts(toolName, summary, rawResult)) {

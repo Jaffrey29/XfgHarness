@@ -33,6 +33,20 @@ public interface RuntimeApprovalGate {
     Decision check(String toolName, Object arguments);
 
     /**
+     * 预判该工具在当前模式下是否会进入人工审批（ask）挂起。
+     * <p>供执行器在阻塞等待裁决<b>之前</b>向流式调用方发出显式信号
+     * （如 SSE step_break 的 requires_approval 状态），
+     * 使远程协作层能感知"审批挂起"，而不是把阻塞误判为普通工具执行。
+     * 默认实现返回 false（不会挂起）。
+     *
+     * @param toolName 工具名
+     * @return true 表示随后调用 {@link #check} 会阻塞等待人工裁决
+     */
+    default boolean requiresApproval(String toolName) {
+        return false;
+    }
+
+    /**
      * 需要人工裁决时的交互入口。默认实现直接 DENY（防御性）；
      * 装配层注入可阻塞等待用户选择的实现（对应 TS 的 gate.kind === 'ask'）。
      *

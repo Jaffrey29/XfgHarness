@@ -68,6 +68,14 @@ public final class MatrixRuntimeApprovalGate implements RuntimeApprovalGate {
     }
 
     @Override
+    public boolean requiresApproval(String toolName) {
+        if (toolName == null || sessionAllowed.contains(toolName)) return false;
+        if (approvalMode == ApprovalModeVO.FULL_OPEN || approvalMode == ApprovalModeVO.AUTO_APPROVE) return false;
+        var matrix = permissionMatrixPort.load();
+        return matrix.approvalRequiredTools().contains(toolName);
+    }
+
+    @Override
     public Decision check(String toolName, Object arguments) {
         if (sessionAllowed.contains(toolName)) return Decision.ALLOW;
         if (approvalMode == ApprovalModeVO.FULL_OPEN) return Decision.ALLOW;
