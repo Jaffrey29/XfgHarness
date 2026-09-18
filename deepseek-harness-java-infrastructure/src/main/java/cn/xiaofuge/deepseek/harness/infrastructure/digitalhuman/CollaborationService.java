@@ -57,6 +57,12 @@ public class CollaborationService {
     /** roomId -> 活跃 SSE 订阅者 */
     private final Map<String, CopyOnWriteArrayList<SseEmitter>> roomEmitters = new ConcurrentHashMap<>();
 
+    /** 任务执行沙箱边界（taskId -> cwd + 可写根）：桌面端发消息时下发，数字人执行时透传给 Agent */
+    private record SandboxScope(String cwd, List<String> sandboxRoots) {
+        static final SandboxScope EMPTY = new SandboxScope(null, List.of());
+    }
+    private final Map<String, SandboxScope> taskSandboxScopes = new ConcurrentHashMap<>();
+
     public CollaborationService(ICollaborationDao collaborationDao,
                                 IDigitalHumanDao humanDao,
                                 IDigitalHumanEndpointDao endpointDao,
@@ -159,7 +165,8 @@ public class CollaborationService {
 
     public Map<String, Object> postMessage(String roomId, String content, List<String> mentions,
                                            String token, Map<String, String> digitalHumanTokens,
-                                           String channelCode, String approvalMode) {
+                                           String channelCode, String approvalMode,
+                                           String cwd, List<String> sandboxRoots) {
         RoomPO room = ensureRoom(roomId);
         String objective = requireText(content, "消息内容不能为空");
         if (room.objective() == null || room.objective().isBlank()) {
@@ -170,6 +177,7 @@ public class CollaborationService {
                 Map.of("role", "user", "content", objective));
         collaborationDao.updateRoomState(roomId, "running");
 
+        SandboxScope scope = new SandboxScope(cwd, sandboxRoots == null ? List.of() : sandboxRoots);
         boolean explicit = mentions != null && !mentions.isEmpty();
         if (explicit || participants.size() <= 1) {
             // 手动 @ 或单成员：直接派单，走 DAG 调度
@@ -177,13 +185,14 @@ public class CollaborationService {
             List<Map<String, Object>> dispatched = new ArrayList<>();
             for (ParticipantPO target : targets) {
                 TaskPO task = createTask(roomId, objective, target.digitalHumanId(), "user", null);
+                taskSandboxScopes.put(task.id(), scope);
                 dispatched.add(taskView(task));
             }
             schedule(roomId, token, digitalHumanTokens, channelCode, approvalMode);
             return Map.of("accepted", true, "mode", "MANUAL", "tasks", dispatched);
         }
         // 多成员未指定：AUTO_PLAN 生成分工计划
-        return autoPlan(roomId, objective, participants, token, digitalHumanTokens, channelCode, approvalMode);
+        return autoPlan(roomId, objective, participants, token, digitalHumanTokens, channelCode, approvalMode, scope);
     }
 
     private List<ParticipantPO> resolveTargets(List<ParticipantPO> participants, List<String> mentions) {
@@ -208,7 +217,7 @@ public class CollaborationService {
      */
     private Map<String, Object> autoPlan(String roomId, String objective, List<ParticipantPO> participants,
                                          String token, Map<String, String> digitalHumanTokens,
-                                         String channelCode, String approvalMode) {
+                                         String channelCode, String approvalMode, SandboxScope scope) {
         // 参与者能力卡
         List<PlannerService.CapabilityCard> cards = new ArrayList<>();
         for (ParticipantPO participant : participants) {
@@ -236,6 +245,7 @@ public class CollaborationService {
                         : step.dependsOn().stream().map(taskIds::get).reduce((a, b) -> a + "," + b).orElse(null);
                 TaskPO task = createTask(roomId, step.title(), step.instruction(), step.assignTo(),
                         "orchestrator", dependsOn);
+                taskSandboxScopes.put(task.id(), scope);
                 taskIds.add(task.id());
                 steps.add(stepView(i + 1, task.id(), step.title(), step.assignTo(), cards, step.dependsOn()));
             }
@@ -251,6 +261,7 @@ public class CollaborationService {
                         + "请与其他数字人并行完成你职责范围内的部分，并明确交付物。";
                 TaskPO task = createTask(roomId, title, instruction, card.digitalHumanId(),
                         "orchestrator", null);
+                taskSandboxScopes.put(task.id(), scope);
                 steps.add(stepView(seq, task.id(), card.purpose(), card.digitalHumanId(), cards, List.of()));
                 seq++;
             }
@@ -462,6 +473,8 @@ public class CollaborationService {
 
         StringBuilder finalText = new StringBuilder();
         GatewayEventSink sink = new GatewayEventSink(roomId, taskId, digitalHumanId, finalText);
+        // 桌面端随消息下发的沙箱边界：cwd = 会话归属项目；可写根 = @ 工程 + 资源目录
+        SandboxScope scope = taskSandboxScopes.getOrDefault(taskId, SandboxScope.EMPTY);
         try {
             String effectiveApprovalMode = effectiveApprovalMode(human, approvalMode);
             if (endpoint == null || "local-dsh".equals(endpoint.endpointType()) || endpoint.baseUrl() == null) {
@@ -472,7 +485,8 @@ public class CollaborationService {
                         + "协作流中无人实时回答会导致任务卡死。遇到信息不足时，基于已有上下文和上游交付物"
                         + "自主做出最合理的假设并继续推进，在结果中注明你的假设即可。\n\n" + instruction;
                 runWithTimeout(taskId, () ->
-                        gateway.runLocal(roleInstruction, channelCode, effectiveApprovalMode, sink));
+                        gateway.runLocal(roleInstruction, channelCode, effectiveApprovalMode, sink,
+                                scope.cwd(), scope.sandboxRoots()));
             } else if ("a2a".equals(endpoint.endpointType())) {
                 String remoteToken = tokenForHuman(token, digitalHumanTokens, digitalHumanId);
                 String remoteInstruction = remoteInstruction(human, displayName, instruction);

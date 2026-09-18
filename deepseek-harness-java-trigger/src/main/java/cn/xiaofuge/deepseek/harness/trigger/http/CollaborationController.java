@@ -76,10 +76,15 @@ public class CollaborationController {
                     ? list.stream().filter(String.class::isInstance).map(String.class::cast).toList()
                     : List.of();
             Map<String, String> digitalHumanTokens = stringMap(body.get("digitalHumanTokens"));
+            // 桌面端随消息下发的沙箱边界：会话归属项目工作目录 + 用户授权的可写根
+            List<String> sandboxRoots = body.get("sandboxRoots") instanceof List<?> roots
+                    ? roots.stream().filter(String.class::isInstance).map(String.class::cast).toList()
+                    : List.of();
             return Response.success(collaborationService.postMessage(
                     roomId, text(body.get("content")), mentions,
                     text(body.get("token")), digitalHumanTokens,
-                    text(body.get("channelCode")), text(body.get("approvalMode"))));
+                    text(body.get("channelCode")), text(body.get("approvalMode")),
+                    text(body.get("cwd")), sandboxRoots));
         } catch (IllegalArgumentException e) {
             return Response.invalidArgument(e.getMessage());
         }

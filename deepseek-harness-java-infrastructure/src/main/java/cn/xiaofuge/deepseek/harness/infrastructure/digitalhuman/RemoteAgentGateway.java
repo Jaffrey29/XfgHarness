@@ -73,7 +73,7 @@ public class RemoteAgentGateway {
                 .uri(URI.create(url))
                 .timeout(Duration.ofMinutes(10))
                 .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(buildBody(instruction, null, approvalMode)));
+                .POST(HttpRequest.BodyPublishers.ofString(buildBody(instruction, null, approvalMode, null, null)));
         if (token != null && !token.isBlank()) {
             builder.header("Authorization", "Bearer " + token.trim());
         }
@@ -215,18 +215,26 @@ public class RemoteAgentGateway {
         }
     }
 
+    public void runLocal(String instruction, String channelCode, String approvalMode, EventSink sink) throws Exception {
+        runLocal(instruction, channelCode, approvalMode, sink, null, null);
+    }
+
     /**
      * 本地数字人：回环调用本服务的 /api/agent/stream。
      * 通过运行时实际端口自连，避免在协作层重复实现 Agent 主循环。
+     *
+     * @param cwd          数字人执行时的工作目录（会话归属项目路径），空则用进程目录
+     * @param sandboxRoots 用户授权的额外可写根（@ 工程 + 资源目录），workspace-write 沙箱据此放行
      */
-    public void runLocal(String instruction, String channelCode, String approvalMode, EventSink sink) throws Exception {
+    public void runLocal(String instruction, String channelCode, String approvalMode, EventSink sink,
+                         String cwd, java.util.List<String> sandboxRoots) throws Exception {
         String port = System.getProperty("server.port", "8080");
         String url = "http://127.0.0.1:" + port + "/api/agent/stream";
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .timeout(Duration.ofMinutes(10))
                 .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(buildBody(instruction, channelCode, approvalMode)))
+                .POST(HttpRequest.BodyPublishers.ofString(buildBody(instruction, channelCode, approvalMode, cwd, sandboxRoots)))
                 .build();
         stream(request, sink);
     }
@@ -235,10 +243,17 @@ public class RemoteAgentGateway {
         if (taskKey != null) cancelled.add(taskKey);
     }
 
-    private String buildBody(String instruction, String channelCode, String approvalMode) throws Exception {
+    private String buildBody(String instruction, String channelCode, String approvalMode,
+                             String cwd, java.util.List<String> sandboxRoots) throws Exception {
         var body = new java.util.LinkedHashMap<String, Object>();
         body.put("agentId", "collab-" + System.currentTimeMillis());
         body.put("message", instruction);
+        if (cwd != null && !cwd.isBlank()) {
+            body.put("cwd", cwd);
+        }
+        if (sandboxRoots != null && !sandboxRoots.isEmpty()) {
+            body.put("sandboxRoots", sandboxRoots);
+        }
         if (channelCode != null && !channelCode.isBlank()) {
             body.put("channelCode", channelCode);
         }
