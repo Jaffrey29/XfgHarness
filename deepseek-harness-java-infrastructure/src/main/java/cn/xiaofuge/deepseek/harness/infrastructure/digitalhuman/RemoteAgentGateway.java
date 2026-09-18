@@ -73,7 +73,7 @@ public class RemoteAgentGateway {
                 .uri(URI.create(url))
                 .timeout(Duration.ofMinutes(10))
                 .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(buildBody(instruction, channelCode, approvalMode)));
+                .POST(HttpRequest.BodyPublishers.ofString(buildBody(instruction, null, approvalMode)));
         if (token != null && !token.isBlank()) {
             builder.header("Authorization", "Bearer " + token.trim());
         }

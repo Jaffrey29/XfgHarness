@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,29 @@ import org.junit.jupiter.api.Test;
 class RemoteAgentGatewayTest {
 
     private HttpServer server;
+
+    @Test
+    void runRemoteDoesNotForwardLocalChannelCode() throws Exception {
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/agent/stream", exchange -> {
+            String request = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            assertTrue(request.contains("远端执行"));
+            assertFalse(request.contains("channelCode"));
+            exchange.getResponseHeaders().set("Content-Type", "text/event-stream");
+            exchange.sendResponseHeaders(200, 0);
+            try (OutputStream body = exchange.getResponseBody()) {
+                body.write("event: chunk\ndata: {\"content\":\"远端完成\"}\n\n".getBytes(StandardCharsets.UTF_8));
+                body.write("event: done\ndata: {}\n\n".getBytes(StandardCharsets.UTF_8));
+                body.flush();
+            }
+        });
+        server.start();
+
+        List<String> chunks = new ArrayList<>();
+        new RemoteAgentGateway().runRemote(baseUrl(), "", "远端执行", "local-channel", "AUTO_APPROVE", sink(chunks));
+
+        assertEquals(List.of("远端完成"), chunks);
+    }
 
     @AfterEach
     void tearDown() {
