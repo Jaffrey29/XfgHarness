@@ -43,7 +43,7 @@ public class CollaborationService {
     private static final Logger log = LoggerFactory.getLogger(CollaborationService.class);
     private static final int EVENT_PAGE_SIZE = 500;
     private static final Pattern LOCAL_FILE_PATTERN = Pattern.compile(
-            "(?:/[^\\s<>\\\"'，。；）)]+|[A-Za-z]:\\\\[^\\s<>\\\"']+)\\.(?:docx|xlsx|xls|csv|md|markdown)",
+            "(?:/[^\\s<>\\\"'，。；）)]+|[A-Za-z]:\\\\[^\\s<>\\\"']+)\\.(?:docx|xlsx|xls|csv|md|markdown|html?|drawio)",
             Pattern.CASE_INSENSITIVE);
 
     private final ICollaborationDao collaborationDao;
@@ -994,6 +994,7 @@ public class CollaborationService {
         if (lower.endsWith(".xlsx") || lower.endsWith(".xls") || lower.endsWith(".csv") || tool.contains("sheet")) return "excel";
         if (lower.endsWith(".md") || lower.endsWith(".markdown")) return "markdown";
         if (lower.endsWith(".html") || lower.endsWith(".htm")) return "html";
+        if (lower.endsWith(".drawio")) return "drawio";
         return "file";
     }
 
@@ -1005,6 +1006,7 @@ public class CollaborationService {
         if (lower.endsWith(".csv")) return "text/csv";
         if ("markdown".equals(kind)) return "text/markdown";
         if ("html".equals(kind)) return "text/html";
+        if ("drawio".equals(kind) || lower.endsWith(".drawio")) return "application/x-drawio";
         return "application/octet-stream";
     }
 
