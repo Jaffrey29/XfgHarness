@@ -47,10 +47,22 @@ public class RemoteAgentGateway {
 
         void onToolCall(String toolName, String summary);
 
+        /**
+         * 携带 callId 的工具调用回调：上游（Agent SSE step_break / tool_result）都带 callId，
+         * 协作层用它去重（同一调用双发）与配对（调用 ↔ 结果）。默认实现退化为无 callId 版本。
+         */
+        default void onToolCall(String toolName, String summary, String callId) {
+            onToolCall(toolName, summary);
+        }
+
         void onToolResult(String toolName, String summary);
 
         default void onToolResult(String toolName, String summary, String rawResult) {
             onToolResult(toolName, summary);
+        }
+
+        default void onToolResult(String toolName, String summary, String rawResult, String callId) {
+            onToolResult(toolName, summary, rawResult);
         }
 
         /** 执行在审批点中断：携带审批关键信息（若流内有），由协作层落房间事件 */
@@ -456,19 +468,21 @@ public class RemoteAgentGateway {
                 case "tool_result" -> {
                     String toolName = payload.path("toolName").asText(
                             payload.path("name").asText("tool"));
+                    String callId = payload.path("callId").asText("");
                     JsonNode resultNode = payload.path("result");
                     String rawResult = resultNode.isMissingNode() ? "" : rawJson(resultNode);
                     String summary = abbreviate(resultNode.isMissingNode() ? extractText(payload) : extractText(resultNode));
                     // tool_result 事件在 DSH 中既承载发起也承载返回，按 status 区分
                     String status = payload.path("status").asText("");
                     if ("running".equals(status) || "call".equals(status)) {
-                        sink.onToolCall(toolName, summary);
+                        sink.onToolCall(toolName, summary, callId);
                     } else {
-                        sink.onToolResult(toolName, summary, rawResult);
+                        sink.onToolResult(toolName, summary, rawResult, callId);
                     }
                 }
                 case "step_break" -> {
                     String toolName = payload.path("toolName").asText("tool");
+                    String callId = payload.path("callId").asText("");
                     String status = payload.path("status").asText("");
                     String summary = abbreviate(payload.toString());
                     // 审批中断信号：工具调用进入审批等待（发起后无对应 result 即被挂起）
@@ -476,7 +490,7 @@ public class RemoteAgentGateway {
                             || "waiting".equals(status) || "requires_approval".equals(status)) {
                         sink.onApprovalRequired(toolName, summary);
                     } else {
-                        sink.onToolCall(toolName, summary);
+                        sink.onToolCall(toolName, summary, callId);
                     }
                 }
                 case "finish", "done" -> {

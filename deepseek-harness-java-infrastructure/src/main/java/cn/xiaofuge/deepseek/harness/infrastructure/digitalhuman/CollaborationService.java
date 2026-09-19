@@ -1026,6 +1026,8 @@ public class CollaborationService {
         private final String digitalHumanId;
         private final StringBuilder finalText;
         private final Set<String> artifactKeys = ConcurrentHashMap.newKeySet();
+        /** 已落库的工具调用 callId：上游对同一次调用会双发（step_break ×2），按 callId 去重防重复卡片 */
+        private final Set<String> toolCallKeys = ConcurrentHashMap.newKeySet();
         /** 执行在写操作审批点中断（Agent 流内出现需审批的工具调用后流结束） */
         volatile boolean approvalPending = false;
         volatile String approvalSummary = "";
@@ -1043,12 +1045,23 @@ public class CollaborationService {
         }
 
         @Override public void onReasoning(String text) {
-            appendEvent(roomId, taskId, null, digitalHumanId, "REASONING_CHUNK", Map.of("text", text));
+            // 推理增量不进房间事件日志：UI 不渲染该类型，且高频（含大量空块）事件
+            // 会迅速挤占事件窗口（此前一个房间 500 条里 216 条是推理块），
+            // 把真正重要的消息/工具/交付事件挤出首页，表现为"协作只剩一个数字人"。
         }
 
         @Override public void onToolCall(String toolName, String summary) {
-            appendEvent(roomId, taskId, null, digitalHumanId, "TOOL_CALL",
-                    Map.of("toolName", toolName, "summary", summary));
+            onToolCall(toolName, summary, "");
+        }
+
+        @Override public void onToolCall(String toolName, String summary, String callId) {
+            boolean duplicated = callId != null && !callId.isBlank() && !toolCallKeys.add(callId);
+            if (duplicated) return; // 同一次调用的重复事件：只保留第一张卡
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("toolName", toolName);
+            payload.put("summary", summary);
+            if (callId != null && !callId.isBlank()) payload.put("callId", callId);
+            appendEvent(roomId, taskId, null, digitalHumanId, "TOOL_CALL", payload);
         }
 
         @Override public void onToolResult(String toolName, String summary) {
@@ -1056,11 +1069,18 @@ public class CollaborationService {
         }
 
         @Override public void onToolResult(String toolName, String summary, String rawResult) {
+            onToolResult(toolName, summary, rawResult, "");
+        }
+
+        @Override public void onToolResult(String toolName, String summary, String rawResult, String callId) {
             // 审批被裁决（放行/拒绝）后工具必然产出结果：清除挂起标记，
             // 任务就地完成，避免误入 WAITING_APPROVAL 触发 resumeTask 全量重跑。
             approvalPending = false;
-            appendEvent(roomId, taskId, null, digitalHumanId, "TOOL_RESULT",
-                    Map.of("toolName", toolName, "summary", summary));
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("toolName", toolName);
+            payload.put("summary", summary);
+            if (callId != null && !callId.isBlank()) payload.put("callId", callId);
+            appendEvent(roomId, taskId, null, digitalHumanId, "TOOL_RESULT", payload);
             for (ArtifactDraft draft : extractToolArtifacts(toolName, summary, rawResult)) {
                 if (draft.identity() != null && !artifactKeys.add(draft.identity())) continue;
                 try {
@@ -1082,7 +1102,9 @@ public class CollaborationService {
     public SseEmitter subscribe(String roomId, long afterSeq) {
         ensureRoom(roomId);
         SseEmitter emitter = new SseEmitter(0L);
-        List<RoomEventPO> backlog = collaborationDao.listEventsAfter(roomId, afterSeq, EVENT_PAGE_SIZE);
+        // 先注册订阅者再补历史：补历史期间新产生的事件会走实时推送（客户端按 seq 去重），
+        // 保证不丢事件；backlog 必须按页循环取满——历史事件超过单页 500 条时，
+        // 只取一页会让后面的成员消息/交付物永远进不了 UI（表现为"协作只剩一个数字人"）。
         roomEmitters.computeIfAbsent(roomId, key -> new CopyOnWriteArrayList<>()).add(emitter);
         Runnable cleanup = () -> roomEmitters.getOrDefault(roomId, new CopyOnWriteArrayList<>()).remove(emitter);
         emitter.onCompletion(cleanup);
@@ -1090,8 +1112,14 @@ public class CollaborationService {
         emitter.onError(error -> cleanup.run());
         executor.submit(() -> {
             try {
-                for (RoomEventPO event : backlog) {
-                    emitter.send(SseEmitter.event().name("room-event").data(toJson(eventView(event))));
+                long cursor = afterSeq;
+                while (true) {
+                    List<RoomEventPO> batch = collaborationDao.listEventsAfter(roomId, cursor, EVENT_PAGE_SIZE);
+                    for (RoomEventPO event : batch) {
+                        emitter.send(SseEmitter.event().name("room-event").data(toJson(eventView(event))));
+                        cursor = event.seq();
+                    }
+                    if (batch.size() < EVENT_PAGE_SIZE) break;
                 }
             } catch (Exception e) {
                 cleanup.run();

@@ -21,7 +21,9 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 public class AgentStreamApi implements IAgentStreamApi {
 
     private static final Logger log = LoggerFactory.getLogger(AgentStreamApi.class);
-    private static final long SSE_TIMEOUT_MS = 300_000L;
+    // 0 = 不限超时：agent 单轮可能远超 5 分钟（长推理/长工具），固定 300s 会中途掐断流；
+    // 前端有 120s 空闲看门狗 + REST 对账兜底，服务端不需要再设硬超时。
+    private static final long SSE_TIMEOUT_MS = 0L;
 
     private final IAgentApi agentApi;
     private final ObjectMapper objectMapper;
@@ -30,14 +32,14 @@ public class AgentStreamApi implements IAgentStreamApi {
     public AgentStreamApi(IAgentApi agentApi, ObjectMapper objectMapper) {
         this.agentApi = agentApi;
         this.objectMapper = objectMapper;
-        this.sseExecutor = Executors.newFixedThreadPool(
-                Runtime.getRuntime().availableProcessors(),
-                runnable -> {
-                    Thread thread = new Thread(runnable, "sse-stream-worker");
-                    thread.setDaemon(true);
-                    return thread;
-                }
-        );
+        // 弹性线程池：每条流占用一个工作线程直到该轮 agent turn 结束，
+        // 固定核数池在多对话并发 + 前端停止后服务端继续跑完的场景下会耗尽线程，
+        // 导致新流在首字节前排队。缓存的 daemon 线程池让并发上限随负载伸缩。
+        this.sseExecutor = Executors.newCachedThreadPool(runnable -> {
+            Thread thread = new Thread(runnable, "sse-stream-worker");
+            thread.setDaemon(true);
+            return thread;
+        });
     }
 
     @Override

@@ -6,6 +6,7 @@ import cn.xiaofuge.deepseek.harness.cases.agent.factory.AgentMessageDynamicConte
 import cn.xiaofuge.deepseek.harness.domain.agent.model.entity.AgentOptions;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.run.AgentRun;
 import cn.xiaofuge.deepseek.harness.domain.agent.contract.inbound.AgentRunLifecycle;
+import cn.xiaofuge.deepseek.harness.domain.agent.model.valobj.AgentStatus;
 import cn.xiaofuge.deepseek.harness.domain.agent.model.valobj.ApprovalModeVO;
 import cn.xiaofuge.deepseek.harness.domain.runtime.setting.service.AgentModelSettingResolver;
 import cn.xiaofuge.deepseek.harness.cases.orchestration.StrategyHandler;
@@ -55,6 +56,16 @@ public class AgentResolveNode extends AbstractAgentMessageNode {
             sandboxExtraRootsRegistry.update(request.sandboxRoots());
         }
         AgentRun agent = agentFactory.get(request.agentId());
+        if (agent != null) {
+            // 流式请求互斥：Agent 的流式 sink 是单实例字段，运行中再挂第二个请求的 sink
+            // 会覆盖第一个请求的回调（前一条 SSE 流丢失增量）。非流式路径消息会进 Inbox
+            // 排队，不受影响；数字人房间任务每次用全新 agentId（collab-<ts>），也不会命中。
+            boolean streaming = ctx.getDeltaSink() != null || ctx.getToolCallEventSink() != null;
+            if (streaming && agent.status() == AgentStatus.RUNNING) {
+                throw new IllegalStateException(
+                        "Agent=" + request.agentId() + " 正在执行上一条消息，请等待完成或先停止当前生成");
+            }
+        }
         if (agent == null) {
             AgentOptions options = buildAgentOptions(request);
             String workDir = request.cwd() != null ? request.cwd() : System.getProperty("user.dir");
