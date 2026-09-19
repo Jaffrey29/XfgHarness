@@ -44,9 +44,10 @@ public class ApiKeyAuthInterceptor implements HandlerInterceptor {
                     request.getHeader("User-Agent"));
         }
 
-        // 放行公开静态资源
+        // 放行公开静态资源与 A2A Agent Card 发现路径（标准 A2A 要求卡片可公开发现）
         if (path.equals("/") || path.equals("/index.html") || path.equals("/app.js") || path.equals("/app.css")
-                || path.startsWith("/lib/") || path.equals("/favicon.ico") || path.startsWith("/actuator")) {
+                || path.startsWith("/lib/") || path.equals("/favicon.ico") || path.startsWith("/actuator")
+                || path.startsWith("/.well-known/")) {
             return true;
         }
 

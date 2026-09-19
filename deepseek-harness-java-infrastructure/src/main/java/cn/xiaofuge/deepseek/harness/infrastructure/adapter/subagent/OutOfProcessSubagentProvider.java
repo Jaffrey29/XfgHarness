@@ -19,7 +19,7 @@ import java.util.concurrent.*;
  */
 public abstract class OutOfProcessSubagentProvider implements SubagentProvider {
 
-    protected final String command;
+    protected volatile String command;
     protected final List<String> args;
     protected final String cwd;
     protected final Map<String, String> env;
@@ -36,6 +36,13 @@ public abstract class OutOfProcessSubagentProvider implements SubagentProvider {
         this.cwd = cwd;
         this.env = env == null ? Map.of() : Map.copyOf(env);
         this.timeoutMs = timeoutMs;
+    }
+
+    /** 运行期更新 CLI 命令（扩展管理热更新；立即对下一次 spawn 生效）。 */
+    public void setCommand(String command) {
+        if (command != null && !command.isBlank()) {
+            this.command = command.trim();
+        }
     }
 
     @Override

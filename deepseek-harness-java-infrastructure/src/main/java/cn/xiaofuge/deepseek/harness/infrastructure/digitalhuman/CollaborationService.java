@@ -63,6 +63,16 @@ public class CollaborationService {
     }
     private final Map<String, SandboxScope> taskSandboxScopes = new ConcurrentHashMap<>();
 
+    /** 执行中任务注册表（taskId -> 执行 Future）：cancelTask 据此真正打断执行线程，而非只改 DB 状态 */
+    private final Map<String, java.util.concurrent.FutureTask<Void>> activeRuns = new ConcurrentHashMap<>();
+
+    /** 成员定向提问预算（taskId -> 已用次数，上限 2）：预算制替代硬禁提问 */
+    private final Map<String, Integer> clarifyBudget = new ConcurrentHashMap<>();
+    /** 失败自动恢复预算（taskId -> 已用次数，上限 1）：改派或重试一次，耗尽才级联终止 */
+    private final Map<String, Integer> recoveryBudget = new ConcurrentHashMap<>();
+    /** ASK 协议：回复末尾 [[ASK:@成员名] 问题] 表示阻塞性提问，服务端路由给目标成员作答 */
+    private static final Pattern ASK_PATTERN = Pattern.compile("\\[\\[ASK:@([^\\]]+)\\]\\s*([^\\]]*)]");
+
     public CollaborationService(ICollaborationDao collaborationDao,
                                 IDigitalHumanDao humanDao,
                                 IDigitalHumanEndpointDao endpointDao,
@@ -304,6 +314,9 @@ public class CollaborationService {
      */
     private synchronized void schedule(String roomId, String token, Map<String, String> digitalHumanTokens,
                                       String channelCode, String approvalMode) {
+        // 先级联终止上游已失败的 READY/ASSIGNED 任务：depsSatisfied 只认 COMPLETED，
+        // 不级联的话这些任务永远挂起，房间无法收敛、前端"生成中"永不停止
+        cascadeBlockedTasks(roomId);
         List<TaskPO> tasks = collaborationDao.listTasks(roomId);
         Map<String, String> stateById = new LinkedHashMap<>();
         Map<String, Integer> runningByHuman = new LinkedHashMap<>();
@@ -330,11 +343,15 @@ public class CollaborationService {
             final String instruction = buildInstructionWithDeps(task, stateById);
             executor.submit(() -> runTask(roomId, taskId, humanId, instruction, token, digitalHumanTokens, channelCode, approvalMode));
         }
-        // 全部任务终态 → 房间回到 done
+        // 全部任务终态 → 房间回到 done，并释放任务级内存预算
         boolean allTerminal = tasks.stream().allMatch(t ->
                 List.of("COMPLETED", "FAILED", "CANCELED", "TIMEOUT").contains(t.state()));
         if (!tasks.isEmpty() && allTerminal && !dispatchedAny) {
             collaborationDao.updateRoomState(roomId, "done");
+            for (TaskPO task : tasks) {
+                clarifyBudget.remove(task.id());
+                recoveryBudget.remove(task.id());
+            }
         }
     }
 
@@ -385,12 +402,66 @@ public class CollaborationService {
     public Map<String, Object> cancelTask(String roomId, String taskId) {
         TaskPO task = collaborationDao.findTask(taskId)
                 .orElseThrow(() -> new IllegalArgumentException("任务不存在：" + taskId));
-        gateway.cancel(task.remoteSessionId());
+        if (!roomId.equals(task.roomId())) {
+            throw new IllegalArgumentException("任务不属于当前房间");
+        }
+        if (List.of("COMPLETED", "FAILED", "CANCELED", "TIMEOUT").contains(task.state())) {
+            return taskView(task); // 幂等：已终态直接返回
+        }
+        // 1) 真正打断执行：中断执行线程 + 网关取消标志（流读循环逐行检查，命中即抛取消）
+        java.util.concurrent.FutureTask<Void> future = activeRuns.get(taskId);
+        if (future != null) future.cancel(true);
+        gateway.cancel(taskId);
+        // 2) 置终态
         collaborationDao.updateTaskState(taskId, "CANCELED", task.remoteSessionId(), null, Instant.now());
         collaborationDao.updatePresence(roomId, task.assignedTo(), "idle", null);
+        clarifyBudget.remove(taskId);
+        recoveryBudget.remove(taskId);
         appendEvent(roomId, taskId, null, task.assignedTo(), "TASK_STATE_CHANGED",
                 Map.of("state", "CANCELED"));
+        // 3) 级联终止下游（否则依赖它的 READY 任务永远挂起，前端"生成中"永不停止）
+        cascadeBlockedTasks(roomId);
+        settleRoomIfTerminal(roomId);
         return taskView(collaborationDao.findTask(taskId).orElse(task));
+    }
+
+    /** 上游终态为失败/取消/超时的 READY/ASSIGNED 任务级联置 FAILED，循环至不动点。 */
+    private void cascadeBlockedTasks(String roomId) {
+        boolean changed = true;
+        while (changed) {
+            changed = false;
+            List<TaskPO> tasks = collaborationDao.listTasks(roomId);
+            Map<String, String> stateById = new LinkedHashMap<>();
+            for (TaskPO t : tasks) stateById.put(t.id(), t.state());
+            for (TaskPO t : tasks) {
+                if (!"READY".equals(t.state()) && !"ASSIGNED".equals(t.state())) continue;
+                if (t.dependsOn() == null || t.dependsOn().isBlank()) continue;
+                for (String dep : t.dependsOn().split(",")) {
+                    String depState = stateById.get(dep.trim());
+                    if (depState != null && List.of("FAILED", "CANCELED", "TIMEOUT").contains(depState)) {
+                        collaborationDao.updateTaskState(t.id(), "FAILED", null,
+                                "上游任务" + ("CANCELED".equals(depState) ? "已取消" : "失败") + "，级联终止", Instant.now());
+                        collaborationDao.updatePresence(roomId, t.assignedTo(), "idle", null);
+                        appendEvent(roomId, t.id(), null, t.assignedTo(), "ERROR",
+                                Map.of("code", "UPSTREAM_FAILED", "message", "上游任务未成功，本任务自动终止",
+                                        "recoverable", true));
+                        appendEvent(roomId, t.id(), null, t.assignedTo(), "TASK_STATE_CHANGED",
+                                Map.of("state", "FAILED"));
+                        stateById.put(t.id(), "FAILED");
+                        changed = true;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    /** 全部任务终态时把房间收敛为 done。 */
+    private void settleRoomIfTerminal(String roomId) {
+        List<TaskPO> tasks = collaborationDao.listTasks(roomId);
+        boolean allTerminal = !tasks.isEmpty() && tasks.stream().allMatch(t ->
+                List.of("COMPLETED", "FAILED", "CANCELED", "TIMEOUT").contains(t.state()));
+        if (allTerminal) collaborationDao.updateRoomState(roomId, "done");
     }
 
     /**
@@ -423,6 +494,7 @@ public class CollaborationService {
         }
         collaborationDao.updateTaskState(taskId, "READY", null, null, Instant.now());
         collaborationDao.updatePresence(roomId, task.assignedTo(), "idle", null);
+        recoveryBudget.remove(taskId); // 手动重试视为全新尝试，重置自动恢复预算
         appendEvent(roomId, taskId, null, task.assignedTo(), "TASK_RETRIED",
                 Map.of("taskId", taskId, "assignedTo", task.assignedTo()));
         appendEvent(roomId, taskId, null, task.assignedTo(), "TASK_STATE_CHANGED",
@@ -471,6 +543,9 @@ public class CollaborationService {
         collaborationDao.updatePresence(roomId, digitalHumanId, "working", taskTitle(taskId));
         appendEvent(roomId, taskId, null, digitalHumanId, "TASK_STATE_CHANGED", Map.of("state", "RUNNING"));
 
+        // 重试场景下清除上一次执行的取消残留
+        gateway.clearCancelled(taskId);
+
         StringBuilder finalText = new StringBuilder();
         GatewayEventSink sink = new GatewayEventSink(roomId, taskId, digitalHumanId, finalText);
         // 桌面端随消息下发的沙箱边界：cwd = 会话归属项目；可写根 = @ 工程 + 资源目录
@@ -481,22 +556,24 @@ public class CollaborationService {
                 String roleInstruction = "[角色设定] 你是「" + displayName + "」，职责："
                         + (human == null ? "通用智能体" : human.purpose())
                         + "。请以该身份完成任务。\n"
-                        + "[协作规则] 你在多数字人协作房间中工作。重要：不要调用 ask_user_question 向用户提问，"
-                        + "协作流中无人实时回答会导致任务卡死。遇到信息不足时，基于已有上下文和上游交付物"
-                        + "自主做出最合理的假设并继续推进，在结果中注明你的假设即可。\n\n" + instruction;
+                        + "[协作规则] 你在多数字人协作房间中工作。不要调用 ask_user_question 向用户提问。"
+                        + "遇到信息不足时，默认基于已有上下文和上游交付物自主做出最合理的假设并继续推进，在结果中注明假设即可。"
+                        + "仅当缺失信息是阻塞性的（拿不到就无法产出有效交付物）且房间内其他成员可能知道答案时，"
+                        + "才可在回复的最后单独一行输出：[[ASK:@成员名] 你的问题]（整个任务最多 1 次，问题要具体、对方可一句话回答），"
+                        + "提问后本任务会等待对方答复并自动续跑。除此之外请正常完成任务。\n\n" + instruction;
                 runWithTimeout(taskId, () ->
-                        gateway.runLocal(roleInstruction, channelCode, effectiveApprovalMode, sink,
+                        gateway.runLocal(taskId, roleInstruction, channelCode, effectiveApprovalMode, sink,
                                 scope.cwd(), scope.sandboxRoots()));
             } else if ("a2a".equals(endpoint.endpointType())) {
                 String remoteToken = tokenForHuman(token, digitalHumanTokens, digitalHumanId);
                 String remoteInstruction = remoteInstruction(human, displayName, instruction);
                 runWithTimeout(taskId, () ->
-                        gateway.runA2a(endpoint.baseUrl(), remoteToken, remoteInstruction, sink));
+                        gateway.runA2a(taskId, endpoint.baseUrl(), remoteToken, remoteInstruction, sink));
             } else {
                 String remoteToken = tokenForHuman(token, digitalHumanTokens, digitalHumanId);
                 String remoteInstruction = remoteInstruction(human, displayName, instruction);
                 runWithTimeout(taskId, () ->
-                        gateway.runRemote(endpoint.baseUrl(), remoteToken, remoteInstruction, channelCode, effectiveApprovalMode, sink));
+                        gateway.runRemote(taskId, endpoint.baseUrl(), remoteToken, remoteInstruction, channelCode, effectiveApprovalMode, sink));
             }
             // 审批中断：执行在写操作审批点暂停，转入等待审批而非完成
             if (sink.approvalPending) {
@@ -508,7 +585,46 @@ public class CollaborationService {
                                 "riskLevel", "write"));
                 return; // 不 schedule：等审批 resolve 后由 resumeTask 重新派发
             }
+            // 执行期间被用户取消：不覆盖状态、不归档、不发消息（cancelTask 已置 CANCELED）
+            String currentState = collaborationDao.findTask(taskId).map(TaskPO::state).orElse("");
+            if ("CANCELED".equals(currentState)) {
+                collaborationDao.updatePresence(roomId, digitalHumanId, "idle", null);
+                return;
+            }
             String answer = finalText.toString();
+            // 成员定向提问（预算制，每任务最多 2 轮）：目标成员作答后答案注入并自动续跑
+            AskRequest ask = parseAskRequest(answer);
+            if (ask != null && clarifyBudget.merge(taskId, 1, Integer::sum) <= 2) {
+                String targetId = resolveMemberByName(roomId, ask.targetName());
+                if (targetId != null && !targetId.equals(digitalHumanId)) {
+                    DigitalHumanPO target = humanDao.findById(targetId).orElse(null);
+                    String targetName = target == null ? targetId : target.displayName();
+                    String question = abbreviate(ask.question(), 500);
+                    String reply;
+                    try {
+                        reply = askPeer(roomId, taskId, digitalHumanId, displayName,
+                                targetId, targetName, question,
+                                token, digitalHumanTokens, channelCode);
+                    } catch (Exception qaError) {
+                        log.warn("Collab QA turn {} -> {} failed: {}", taskId, targetId, qaError.getMessage());
+                        appendEvent(roomId, taskId, null, targetId, "ERROR",
+                                Map.of("code", "QA_FAILED",
+                                        "message", "答复失败：" + (qaError.getMessage() == null ? "未知错误" : qaError.getMessage()),
+                                        "recoverable", true));
+                        reply = null;
+                    }
+                    String followUp = reply == null || reply.isBlank()
+                            ? "\n\n[系统提示] 成员「" + targetName + "」未能答复你的问题，请基于合理假设继续完成任务。"
+                            : "\n\n[成员「" + targetName + "」的答复]\n" + abbreviate(reply, 1500);
+                    collaborationDao.updateTaskInstruction(taskId, instruction + followUp, Instant.now());
+                    collaborationDao.updateTaskState(taskId, "READY", null, null, Instant.now());
+                    collaborationDao.updatePresence(roomId, digitalHumanId, "idle", null);
+                    appendEvent(roomId, taskId, null, digitalHumanId, "TASK_STATE_CHANGED",
+                            Map.of("state", "READY", "reason", "已获得成员答复，自动续跑"));
+                    return; // finally 会 schedule 重新派发
+                }
+            }
+            answer = stripAskMarkers(answer);
             // 交付物归档（协作真正留下的东西）
             if (!answer.isBlank()) {
                 archiveArtifact(roomId, taskId, digitalHumanId,
@@ -521,17 +637,29 @@ public class CollaborationService {
                             "displayName", displayName, "content", answer));
             appendEvent(roomId, taskId, null, digitalHumanId, "TASK_STATE_CHANGED",
                     Map.of("state", "COMPLETED"));
+        } catch (java.util.concurrent.CancellationException e) {
+            // 用户取消：状态已由 cancelTask 置 CANCELED，这里只复位在线状态，不覆盖终态
+            log.info("Collab task {} canceled", taskId);
+            collaborationDao.updatePresence(roomId, digitalHumanId, "idle", null);
         } catch (Exception e) {
             log.warn("Collab task {} failed: {}", taskId, e.getMessage());
-            collaborationDao.updateTaskState(taskId, "FAILED", null, e.getMessage(), Instant.now());
-            collaborationDao.updatePresence(roomId, digitalHumanId, "error", null);
-            appendEvent(roomId, taskId, null, digitalHumanId, "ERROR",
-                    Map.of("code", "TASK_FAILED", "message", e.getMessage() == null ? "执行失败" : e.getMessage(),
-                            "recoverable", true));
-            appendEvent(roomId, taskId, null, digitalHumanId, "TASK_STATE_CHANGED",
-                    Map.of("state", "FAILED"));
+            // 执行期间被取消的：保持 CANCELED，不覆盖为 FAILED
+            String currentState = collaborationDao.findTask(taskId).map(TaskPO::state).orElse("");
+            if ("CANCELED".equals(currentState)) {
+                collaborationDao.updatePresence(roomId, digitalHumanId, "idle", null);
+            } else if (!attemptAutoRecovery(roomId, taskId, digitalHumanId, human, e,
+                    token, digitalHumanTokens)) {
+                collaborationDao.updateTaskState(taskId, "FAILED", null, e.getMessage(), Instant.now());
+                collaborationDao.updatePresence(roomId, digitalHumanId, "error", null);
+                appendEvent(roomId, taskId, null, digitalHumanId, "ERROR",
+                        Map.of("code", "TASK_FAILED", "message", e.getMessage() == null ? "执行失败" : e.getMessage(),
+                                "recoverable", true));
+                appendEvent(roomId, taskId, null, digitalHumanId, "TASK_STATE_CHANGED",
+                        Map.of("state", "FAILED"));
+            }
         } finally {
-            // 状态变化后再调度一轮：唤醒依赖当前任务的下游
+            activeRuns.remove(taskId);
+            // 状态变化后再调度一轮：唤醒依赖当前任务的下游（含级联终止与房间收敛）
             schedule(roomId, token, digitalHumanTokens, channelCode, approvalMode);
         }
     }
@@ -559,8 +687,170 @@ public class CollaborationService {
         return "[角色设定] 你是「" + displayName + "」，职责："
                 + (human == null ? "通用智能体" : human.purpose())
                 + "。请以该身份完成任务。\n"
-                + "[协作规则] 你在多数字人协作房间中工作。遇到信息不足时，请基于上下文做出假设并继续推进，"
-                + "在结果中注明假设与交付物。\n\n" + instruction;
+                + "[协作规则] 你在多数字人协作房间中工作。遇到信息不足时，默认基于上下文做出假设并继续推进，"
+                + "在结果中注明假设与交付物。仅当缺失信息是阻塞性的且房间内其他成员可能知道答案时，"
+                + "才可在回复的最后单独一行输出：[[ASK:@成员名] 你的问题]（整个任务最多 1 次，问题要具体、对方可一句话回答），"
+                + "提问后本任务会等待对方答复并自动续跑。除此之外请正常完成任务。\n\n" + instruction;
+    }
+
+    // ══════════════ 成员定向问答（ASK 协议） ══════════════
+
+    private record AskRequest(String targetName, String question) {
+    }
+
+    /** 取最后一个 ASK 标记（多次提问只处理最后一次）。 */
+    private AskRequest parseAskRequest(String text) {
+        if (text == null || text.isBlank()) return null;
+        Matcher matcher = ASK_PATTERN.matcher(text);
+        AskRequest found = null;
+        while (matcher.find()) {
+            found = new AskRequest(matcher.group(1).trim(), matcher.group(2).trim());
+        }
+        return found != null && !found.question().isBlank() ? found : null;
+    }
+
+    private String stripAskMarkers(String text) {
+        return text == null ? "" : ASK_PATTERN.matcher(text).replaceAll("").trim();
+    }
+
+    /** 按显示名（或 id）在房间参与者中解析成员。 */
+    private String resolveMemberByName(String roomId, String name) {
+        if (name == null || name.isBlank()) return null;
+        for (var participant : collaborationDao.listParticipants(roomId)) {
+            DigitalHumanPO human = humanDao.findById(participant.digitalHumanId()).orElse(null);
+            if (human == null) continue;
+            if (name.equalsIgnoreCase(human.displayName()) || name.equalsIgnoreCase(human.id())) {
+                return human.id();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 问答回合：提问入群聊 → 目标成员轻量作答（独立取消 key、只读审批模式、不得再问）→ 答案入群聊。
+     * 只负责对话本身；答案注入与续跑由调用方处理。
+     */
+    private String askPeer(String roomId, String taskId, String askerId, String askerName,
+                           String targetId, String targetName, String question,
+                           String token, Map<String, String> digitalHumanTokens, String channelCode) throws Exception {
+        appendEvent(roomId, taskId, null, askerId, "MESSAGE_CREATED",
+                Map.of("role", "assistant", "digitalHumanId", askerId, "displayName", askerName,
+                        "content", "[向 " + targetName + " 提问] " + question));
+        DigitalHumanEndpointPO endpoint = endpointDao.findByHumanId(targetId).orElse(null);
+        StringBuilder reply = new StringBuilder();
+        RemoteAgentGateway.EventSink qaSink = new RemoteAgentGateway.EventSink() {
+            @Override public void onChunk(String text) {
+                reply.append(text);
+            }
+
+            @Override public void onReasoning(String text) {
+            }
+
+            @Override public void onToolCall(String toolName, String summary) {
+            }
+
+            @Override public void onToolResult(String toolName, String summary) {
+            }
+        };
+        String qaInstruction = "[协作协助请求] 成员「" + askerName + "」在执行任务时向你提问：\n" + question
+                + "\n请直接作答：结论先行、简要（500 字内），基于你的职责与房间已有上下文。"
+                + "不要反问、不要向用户提问、不要执行长任务、不要输出 [[ASK:...]] 标记。";
+        String qaKey = taskId + ":qa";
+        gateway.clearCancelled(qaKey);
+        String remoteToken = tokenForHuman(token, digitalHumanTokens, targetId);
+        if (endpoint == null || "local-dsh".equals(endpoint.endpointType()) || endpoint.baseUrl() == null) {
+            gateway.runLocal(qaKey, qaInstruction, channelCode, "FULL_OPEN", qaSink, null, null);
+        } else if ("a2a".equals(endpoint.endpointType())) {
+            gateway.runA2a(qaKey, endpoint.baseUrl(), remoteToken, qaInstruction, qaSink);
+        } else {
+            gateway.runRemote(qaKey, endpoint.baseUrl(), remoteToken, qaInstruction, channelCode, "FULL_OPEN", qaSink);
+        }
+        String answer = reply.toString();
+        appendEvent(roomId, taskId, null, targetId, "MESSAGE_CREATED",
+                Map.of("role", "assistant", "digitalHumanId", targetId, "displayName", targetName,
+                        "content", "[答复 " + askerName + "] " + abbreviate(answer.isBlank() ? "（无有效答复）" : answer, 1500)));
+        return answer;
+    }
+
+    // ══════════════ 失败自动恢复（改派 / 重试） ══════════════
+
+    /**
+     * 失败后的一次自动恢复机会（每任务 1 次）：
+     * <ol>
+     *   <li>确定性端点故障（HTTP 4xx/5xx）：改派给房间内其他有空闲并发的成员（优先同 roleTags）；</li>
+     *   <li>其他失败（超时/网络抖动等）：优先改派，无候选则同员重试，指令附失败原因要求调整方法。</li>
+     * </ol>
+     * 返回 true 表示已入队恢复（finally 的 schedule 会派发）；false 表示预算耗尽或无候选，走级联终止。
+     */
+    private boolean attemptAutoRecovery(String roomId, String taskId, String failedHumanId,
+                                        DigitalHumanPO failedHuman, Exception cause,
+                                        String token, Map<String, String> digitalHumanTokens) {
+        if (recoveryBudget.merge(taskId, 1, Integer::sum) > 1) return false;
+        boolean endpointSurface = cause instanceof RemoteAgentGateway.HttpSurfaceException;
+        TaskPO task = collaborationDao.findTask(taskId).orElse(null);
+        if (task == null) return false;
+        String reason = cause.getMessage() == null ? "执行失败" : cause.getMessage();
+        String recoveryNote = "\n\n[自动恢复] 上一次执行失败：" + abbreviate(reason, 300)
+                + "。请调整方法或路径规避该问题后重试。";
+
+        String targetId = pickReassignTarget(roomId, failedHumanId, failedHuman);
+        if (targetId != null) {
+            DigitalHumanPO target = humanDao.findById(targetId).orElse(null);
+            String targetName = target == null ? targetId : target.displayName();
+            collaborationDao.updateTaskAssignment(taskId, targetId, "READY", Instant.now());
+            collaborationDao.updateTaskInstruction(taskId, task.instruction() + recoveryNote, Instant.now());
+            collaborationDao.updatePresence(roomId, failedHumanId, "idle", null);
+            appendEvent(roomId, taskId, null, targetId, "TASK_REASSIGNED",
+                    Map.of("taskId", taskId, "from", failedHumanId, "to", targetId,
+                            "auto", true, "reason", abbreviate(reason, 200)));
+            appendEvent(roomId, taskId, null, targetId, "TASK_STATE_CHANGED",
+                    Map.of("state", "READY", "reason", "自动改派给 " + targetName + " 重试"));
+            log.info("Collab task {} auto-reassigned {} -> {} after failure: {}", taskId, failedHumanId, targetId, reason);
+            return true;
+        }
+        if (!endpointSurface) {
+            // 无改派候选且非确定性端点故障：同员重试一次
+            collaborationDao.updateTaskState(taskId, "READY", null, null, Instant.now());
+            collaborationDao.updateTaskInstruction(taskId, task.instruction() + recoveryNote, Instant.now());
+            collaborationDao.updatePresence(roomId, failedHumanId, "idle", null);
+            appendEvent(roomId, taskId, null, failedHumanId, "TASK_RETRIED",
+                    Map.of("taskId", taskId, "assignedTo", failedHumanId,
+                            "auto", true, "reason", abbreviate(reason, 200)));
+            appendEvent(roomId, taskId, null, failedHumanId, "TASK_STATE_CHANGED",
+                    Map.of("state", "READY", "reason", "自动重试"));
+            log.info("Collab task {} auto-retried on {} after failure: {}", taskId, failedHumanId, reason);
+            return true;
+        }
+        recoveryBudget.remove(taskId); // 不恢复则释放预算，供后续手动 retryTask 使用
+        return false;
+    }
+
+    /** 在房间参与者中挑改派候选：有空闲并发者优先同 roleTags，其次任意空闲者。 */
+    private String pickReassignTarget(String roomId, String excludeHumanId, DigitalHumanPO failedHuman) {
+        Map<String, Long> runningByHuman = new LinkedHashMap<>();
+        for (TaskPO t : collaborationDao.listTasks(roomId)) {
+            if ("RUNNING".equals(t.state()) && t.assignedTo() != null) {
+                runningByHuman.merge(t.assignedTo(), 1L, Long::sum);
+            }
+        }
+        String best = null;
+        int bestScore = -1;
+        for (var participant : collaborationDao.listParticipants(roomId)) {
+            String id = participant.digitalHumanId();
+            if (id.equals(excludeHumanId)) continue;
+            DigitalHumanPO human = humanDao.findById(id).orElse(null);
+            if (human == null) continue;
+            int limit = human.concurrencyLimit() <= 0 ? 1 : human.concurrencyLimit();
+            if (runningByHuman.getOrDefault(id, 0L) >= limit) continue;
+            boolean sameRole = failedHuman != null && failedHuman.roleTags() != null
+                    && failedHuman.roleTags().equalsIgnoreCase(human.roleTags());
+            int score = (sameRole ? 2 : 0) + ("working".equals(participant.presence()) ? 0 : 1);
+            if (score > bestScore) {
+                bestScore = score;
+                best = id;
+            }
+        }
+        return best;
     }
 
     /** 带看门狗的任务执行：超时（默认 6 分钟）未完成则抛错，杜绝 ask_user_question 之类的死等 */
@@ -571,17 +861,22 @@ public class CollaborationService {
         });
         Thread thread = new Thread(future, "collab-task-" + taskId);
         thread.setDaemon(true);
+        activeRuns.put(taskId, future);
         thread.start();
         try {
             future.get(6, java.util.concurrent.TimeUnit.MINUTES);
         } catch (java.util.concurrent.TimeoutException e) {
             future.cancel(true);
             thread.interrupt();
+            // 同步网关取消标志：socket 读阻塞在线循环时 interrupt 无效，靠逐行取消检查打断
+            gateway.cancel(taskId);
             throw new IllegalStateException("执行超时（可能因等待用户输入而中断），已自动停止。可重试或调整任务描述。");
         } catch (java.util.concurrent.ExecutionException e) {
             Throwable cause = e.getCause();
             if (cause instanceof Exception exception) throw exception;
             throw new IllegalStateException(String.valueOf(cause));
+        } finally {
+            activeRuns.remove(taskId);
         }
     }
 

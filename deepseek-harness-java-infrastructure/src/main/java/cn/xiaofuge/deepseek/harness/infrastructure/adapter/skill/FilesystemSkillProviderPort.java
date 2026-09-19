@@ -34,6 +34,8 @@ public class FilesystemSkillProviderPort implements ISkillProviderPort {
     private final List<Path> customRoots;
     private final boolean enabled;
     private final boolean projectEnabled;
+    /** 运行期停用的技能名（扩展管理热更新）；可空集。 */
+    private volatile Set<String> disabledNames = Set.of();
 
     /**
      * 处理Filesystem Skill 模型提供方 Port。
@@ -74,23 +76,39 @@ public class FilesystemSkillProviderPort implements ISkillProviderPort {
         this.projectEnabled = projectEnabled;
     }
 
+    /** 更新停用名单（扩展管理服务调用；名单内技能不参与发现）。 */
+    public void setDisabledNames(Set<String> names) {
+        this.disabledNames = names == null ? Set.of() : Set.copyOf(names);
+    }
+
+    /** 用户级技能根目录（{@code <dshHome>/skills}），技能安装/删除的托管位置。 */
+    public Path dshHome() {
+        return dshHome;
+    }
+
+    /** 自定义技能根目录（harness.extensions.skills.roots）。 */
+    public List<Path> customRoots() {
+        return customRoots;
+    }
+
     @Override
     public List<SkillCandidate> discover(String cwd) {
         if (!enabled) return List.of();
+        Set<String> disabled = disabledNames;
         List<SkillCandidate> candidates = new ArrayList<>();
         // Project skills: <cwd>/.dsh/skills
         if (projectEnabled && cwd != null) {
             Path projectSkills = Path.of(cwd).resolve(".dsh").resolve("skills");
-            candidates.addAll(discoverRoot(projectSkills, SkillSource.PROJECT_DSH, PROJECT_DSH_RANK));
+            candidates.addAll(discoverRoot(projectSkills, SkillSource.PROJECT_DSH, PROJECT_DSH_RANK, disabled));
         }
         for (Path customRoot : customRoots) {
-            candidates.addAll(discoverRoot(customRoot, SkillSource.CUSTOM, CUSTOM_RANK));
+            candidates.addAll(discoverRoot(customRoot, SkillSource.CUSTOM, CUSTOM_RANK, disabled));
         }
         // User skills: <dshHome>/skills
-        candidates.addAll(discoverRoot(dshHome.resolve("skills"), SkillSource.USER_DSH, USER_DSH_RANK));
+        candidates.addAll(discoverRoot(dshHome.resolve("skills"), SkillSource.USER_DSH, USER_DSH_RANK, disabled));
         // Bundled skills
         if (bundledDir != null && Files.isDirectory(bundledDir)) {
-            candidates.addAll(discoverRoot(bundledDir, SkillSource.BUNDLED, BUNDLED_RANK));
+            candidates.addAll(discoverRoot(bundledDir, SkillSource.BUNDLED, BUNDLED_RANK, disabled));
         }
     /**
      * 加载。
@@ -129,12 +147,13 @@ public class FilesystemSkillProviderPort implements ISkillProviderPort {
      * @param rank rank参数。
      * @return 方法执行结果。
      */
-    private List<SkillCandidate> discoverRoot(Path root, SkillSource source, int rank) {
+    private List<SkillCandidate> discoverRoot(Path root, SkillSource source, int rank, Set<String> disabled) {
         if (!Files.isDirectory(root)) return List.of();
         List<SkillCandidate> result = new ArrayList<>();
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(root)) {
             for (Path entry : stream) {
                 String name = entry.getFileName().toString();
+                if (disabled.contains(name)) continue;
                 // Directory bundle: <name>/SKILL.md
                 if (Files.isDirectory(entry)) {
                     Path skillFile = entry.resolve("SKILL.md");
@@ -144,6 +163,7 @@ public class FilesystemSkillProviderPort implements ISkillProviderPort {
                 } else if (name.endsWith(".md")) {
                     // Flat markdown: <name>.md
                     String skillName = name.substring(0, name.length() - 3);
+                    if (disabled.contains(skillName)) continue;
                     addCandidate(result, skillName, entry, source, rank);
                 }
             }

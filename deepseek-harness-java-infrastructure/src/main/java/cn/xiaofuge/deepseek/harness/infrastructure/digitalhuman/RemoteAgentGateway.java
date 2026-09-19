@@ -29,7 +29,7 @@ public class RemoteAgentGateway {
 
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
-    /** taskKey（remoteSessionId）-> 取消句柄 */
+    /** taskKey（taskId）-> 取消标志：cancel() 写入，流读循环逐行检查，命中即中断执行 */
     private final Set<String> cancelled = ConcurrentHashMap.newKeySet();
 
     public RemoteAgentGateway() {
@@ -68,6 +68,12 @@ public class RemoteAgentGateway {
     /** 远端数字人：POST {baseUrl}/api/agent/stream */
     public void runRemote(String baseUrl, String token, String instruction,
                           String channelCode, String approvalMode, EventSink sink) throws Exception {
+        runRemote(null, baseUrl, token, instruction, channelCode, approvalMode, sink);
+    }
+
+    /** 带 taskKey 的重载：taskKey 命中取消标志时立即中断流读取。 */
+    public void runRemote(String taskKey, String baseUrl, String token, String instruction,
+                          String channelCode, String approvalMode, EventSink sink) throws Exception {
         String url = baseUrl.replaceAll("/+$", "") + "/api/agent/stream";
         HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(URI.create(url))
@@ -77,45 +83,79 @@ public class RemoteAgentGateway {
         if (token != null && !token.isBlank()) {
             builder.header("Authorization", "Bearer " + token.trim());
         }
-        stream(builder.build(), sink);
+        stream(builder.build(), sink, taskKey);
     }
 
-    /** A2A 数字人：优先 POST {baseUrl}/message/stream，失败回退 POST {baseUrl}/message/send。 */
+    /**
+     * A2A 数字人调用链：
+     * <ol>
+     *   <li>标准 A2A 发现：读 Agent Card 的 url 字段（即 JSON-RPC 端点，如 {base}/a2a）；
+     *       发现失败时回退猜测 {base}/a2a。</li>
+     *   <li>JSON-RPC {@code message/stream}（SSE 流式，A2A 0.3.x）。</li>
+     *   <li>JSON-RPC {@code message/send}（阻塞式）。</li>
+     *   <li>兼容旧版：REST 路径 {base}/message/stream、{base}/message/send（A2A 0.2.x 风格）。</li>
+     * </ol>
+     * 注意：DSH 的 JSON-RPC 端点在 {base}/a2a（见 AgentCardController.url），
+     * message/send、message/stream 是 JSON-RPC method 而非 URL 路径。
+     */
     public void runA2a(String baseUrl, String token, String instruction, EventSink sink) throws Exception {
+        runA2a(null, baseUrl, token, instruction, sink);
+    }
+
+    /** 带 taskKey 的重载：支持协作层取消 + HTTP 表面错误快速失败。 */
+    public void runA2a(String taskKey, String baseUrl, String token, String instruction, EventSink sink) throws Exception {
         String normalized = baseUrl.replaceAll("/+$", "");
         Exception lastError = null;
+
+        String jsonRpcUrl = discoverA2aUrl(normalized, token);
+        if (jsonRpcUrl == null || jsonRpcUrl.isBlank()) {
+            jsonRpcUrl = normalized + "/a2a";
+        }
+        log.info("A2A JSON-RPC endpoint: {}", jsonRpcUrl);
+
+        // 回退策略：
+        // - 传输层失败（连不上/超时）：逐级回退（下一端点可能可达）
+        // - HTTP 表面错误（有响应但 4xx/5xx）：同一服务器，仅当 404/405/501（路由/方法不存在）时
+        //   允许换 method/path 再试一次；500/502/503/504 直接失败——远端已明确报错，傻等回退链只会拖长卡死时间
         try {
-            streamA2a(a2aMessageRequest(normalized + "/message/stream", token, instruction)
+            ensureNotCancelled(taskKey);
+            streamA2a(a2aJsonRpcRequest(jsonRpcUrl, token, "message/stream", instruction)
                     .timeout(Duration.ofMinutes(10))
-                    .build(), sink);
+                    .build(), sink, taskKey);
             return;
         } catch (Exception error) {
             lastError = error;
+            if (abortFallback(taskKey, error)) throw error;
             log.debug("A2A message/stream failed, fallback: {}", error.getMessage());
         }
 
         try {
-            sendA2a(a2aMessageRequest(normalized + "/message/send", token, instruction)
+            ensureNotCancelled(taskKey);
+            sendA2a(a2aJsonRpcRequest(jsonRpcUrl, token, "message/send", instruction)
                     .timeout(Duration.ofMinutes(10))
                     .build(), sink);
             return;
         } catch (Exception error) {
             lastError = error;
+            if (abortFallback(taskKey, error)) throw error;
             log.debug("A2A message/send failed, fallback: {}", error.getMessage());
         }
 
         try {
-            streamA2a(a2aJsonRpcRequest(normalized, token, "tasks/sendSubscribe", instruction)
+            ensureNotCancelled(taskKey);
+            streamA2a(a2aMessageRequest(normalized + "/message/stream", token, instruction)
                     .timeout(Duration.ofMinutes(10))
-                    .build(), sink);
+                    .build(), sink, taskKey);
             return;
         } catch (Exception error) {
             lastError = error;
-            log.debug("A2A tasks/sendSubscribe failed, fallback: {}", error.getMessage());
+            if (abortFallback(taskKey, error)) throw error;
+            log.debug("A2A legacy /message/stream failed, fallback: {}", error.getMessage());
         }
 
         try {
-            sendA2a(a2aJsonRpcRequest(normalized, token, "tasks/send", instruction)
+            ensureNotCancelled(taskKey);
+            sendA2a(a2aMessageRequest(normalized + "/message/send", token, instruction)
                     .timeout(Duration.ofMinutes(10))
                     .build(), sink);
             return;
@@ -125,10 +165,34 @@ public class RemoteAgentGateway {
         throw lastError == null ? new IllegalStateException("A2A Agent 调用失败") : lastError;
     }
 
+    /**
+     * 是否应终止回退链：任务已取消，或收到不可路由修复的 HTTP 表面错误
+     * （500/502/503/504 等——远端服务器活着且明确报错，换端点无意义）。
+     */
+    private boolean abortFallback(String taskKey, Exception error) {
+        if (isCancelled(taskKey)) return true;
+        if (error instanceof HttpSurfaceException surface) {
+            // 404/405/501 可能只是端点路径/方法不对，允许下一级回退
+            return surface.status != 404 && surface.status != 405 && surface.status != 501;
+        }
+        return false;
+    }
+
+    /** HTTP 有响应但状态码非 2xx：与传输层失败（连不上/超时）区分开，用于快速失败决策。 */
+    static class HttpSurfaceException extends IllegalStateException {
+        final int status;
+
+        HttpSurfaceException(int status, String message) {
+            super(message);
+            this.status = status;
+        }
+    }
+
     private void sendA2a(HttpRequest request, EventSink sink) throws Exception {
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() != 200) {
-            throw new IllegalStateException("A2A Agent 返回 HTTP " + response.statusCode() + "：" + abbreviate(response.body()));
+            throw new HttpSurfaceException(response.statusCode(),
+                    "A2A Agent 返回 HTTP " + response.statusCode() + "：" + abbreviate(response.body()));
         }
         JsonNode payload = objectMapper.readTree(response.body());
         String text = extractA2aText(payload);
@@ -160,7 +224,9 @@ public class RemoteAgentGateway {
                 "params", Map.of(
                         "message", Map.of(
                                 "role", "user",
-                                "parts", java.util.List.of(Map.of("kind", "text", "text", instruction))
+                                "parts", java.util.List.of(Map.of("kind", "text", "text", instruction)),
+                                "messageId", "msg-" + System.currentTimeMillis(),
+                                "kind", "message"
                         )
                 )
         );
@@ -175,18 +241,24 @@ public class RemoteAgentGateway {
     }
 
     private void streamA2a(HttpRequest request, EventSink sink) throws Exception {
+        streamA2a(request, sink, null);
+    }
+
+    private void streamA2a(HttpRequest request, EventSink sink, String taskKey) throws Exception {
         HttpResponse<java.io.InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
         if (response.statusCode() != 200) {
             String errorBody;
             try (var stream = response.body()) {
                 errorBody = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
             }
-            throw new IllegalStateException("A2A Agent 返回 HTTP " + response.statusCode() + "：" + abbreviate(errorBody));
+            throw new HttpSurfaceException(response.statusCode(),
+                    "A2A Agent 返回 HTTP " + response.statusCode() + "：" + abbreviate(errorBody));
         }
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(response.body(), StandardCharsets.UTF_8))) {
             StringBuilder dataLines = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) {
+                ensureNotCancelled(taskKey);
                 if (line.startsWith("data:")) {
                     String value = line.substring(5);
                     if (value.startsWith(" ")) value = value.substring(1);
@@ -208,11 +280,61 @@ public class RemoteAgentGateway {
     private void dispatchA2a(String raw, EventSink sink) {
         try {
             JsonNode payload = objectMapper.readTree(raw);
+            // JSON-RPC error 响应：视为失败，向上抛出以触发回退链
+            JsonNode error = payload.path("error");
+            if (!error.isMissingNode() && !error.isNull() && error.isObject()) {
+                throw new IllegalStateException("A2A Agent 错误 "
+                        + error.path("code").asText("") + "：" + error.path("message").asText(""));
+            }
+            JsonNode result = payload.path("result");
+            if (result.isObject() && "status-update".equals(result.path("kind").asText())) {
+                String state = result.path("status").path("state").asText("");
+                if ("failed".equals(state) || "rejected".equals(state) || "canceled".equals(state)) {
+                    String detail = result.path("status").path("message").path("parts")
+                            .path(0).path("text").asText("");
+                    throw new IllegalStateException("A2A 任务"
+                            + ("canceled".equals(state) ? "已取消" : "失败") + "：" + detail);
+                }
+                // working/completed 等中间状态无文本，直接消费
+                return;
+            }
             String text = extractA2aText(payload);
             if (!text.isBlank()) sink.onChunk(text);
+        } catch (IllegalStateException e) {
+            throw e;
         } catch (Exception e) {
             if (!raw.isBlank()) sink.onChunk(raw);
         }
+    }
+
+    /** 标准 A2A 发现：读取 Agent Card 的 url 字段（JSON-RPC 端点）；不可用返回 null。 */
+    private String discoverA2aUrl(String normalized, String token) {
+        for (String path : new String[]{"/.well-known/agent-card.json", "/.well-known/agent.json"}) {
+            try {
+                HttpRequest.Builder builder = HttpRequest.newBuilder()
+                        .uri(URI.create(normalized + path))
+                        .timeout(Duration.ofSeconds(8))
+                        .GET();
+                if (token != null && !token.isBlank()) {
+                    builder.header("Authorization", "Bearer " + token.trim());
+                }
+                HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+                if (response.statusCode() == 200) {
+                    JsonNode url = objectMapper.readTree(response.body()).path("url");
+                    if (url.isTextual() && !url.asText().isBlank()) {
+                        String endpoint = url.asText().replaceAll("/+$", "");
+                        // 相对路径端点补全为绝对 URL
+                        if (endpoint.startsWith("/")) {
+                            endpoint = normalized + endpoint;
+                        }
+                        return endpoint;
+                    }
+                }
+            } catch (Exception e) {
+                log.debug("A2A card discover failed via {}: {}", path, e.getMessage());
+            }
+        }
+        return null;
     }
 
     public void runLocal(String instruction, String channelCode, String approvalMode, EventSink sink) throws Exception {
@@ -228,6 +350,12 @@ public class RemoteAgentGateway {
      */
     public void runLocal(String instruction, String channelCode, String approvalMode, EventSink sink,
                          String cwd, java.util.List<String> sandboxRoots) throws Exception {
+        runLocal(null, instruction, channelCode, approvalMode, sink, cwd, sandboxRoots);
+    }
+
+    /** 带 taskKey 的重载：支持协作层取消。 */
+    public void runLocal(String taskKey, String instruction, String channelCode, String approvalMode, EventSink sink,
+                         String cwd, java.util.List<String> sandboxRoots) throws Exception {
         String port = System.getProperty("server.port", "8080");
         String url = "http://127.0.0.1:" + port + "/api/agent/stream";
         HttpRequest request = HttpRequest.newBuilder()
@@ -236,11 +364,27 @@ public class RemoteAgentGateway {
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(buildBody(instruction, channelCode, approvalMode, cwd, sandboxRoots)))
                 .build();
-        stream(request, sink);
+        stream(request, sink, taskKey);
     }
 
+    /** 标记取消：流读循环逐行检查该标志，命中即抛 CancellationException 中断执行。 */
     public void cancel(String taskKey) {
         if (taskKey != null) cancelled.add(taskKey);
+    }
+
+    /** 任务（重试）启动前清除取消标志，避免历史取消残留阻断新执行。 */
+    public void clearCancelled(String taskKey) {
+        if (taskKey != null) cancelled.remove(taskKey);
+    }
+
+    private boolean isCancelled(String taskKey) {
+        return taskKey != null && cancelled.contains(taskKey);
+    }
+
+    private void ensureNotCancelled(String taskKey) {
+        if (isCancelled(taskKey)) {
+            throw new java.util.concurrent.CancellationException("任务已被取消");
+        }
     }
 
     private String buildBody(String instruction, String channelCode, String approvalMode,
@@ -263,19 +407,25 @@ public class RemoteAgentGateway {
 
     /** 消费 DSH SSE 流：event: xxx + data: {json}，空行分隔 */
     private void stream(HttpRequest request, EventSink sink) throws Exception {
+        stream(request, sink, null);
+    }
+
+    private void stream(HttpRequest request, EventSink sink, String taskKey) throws Exception {
         HttpResponse<java.io.InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
         if (response.statusCode() != 200) {
             String errorBody;
             try (var stream = response.body()) {
                 errorBody = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
             }
-            throw new IllegalStateException("Agent 服务返回 HTTP " + response.statusCode() + "：" + abbreviate(errorBody));
+            throw new HttpSurfaceException(response.statusCode(),
+                    "Agent 服务返回 HTTP " + response.statusCode() + "：" + abbreviate(errorBody));
         }
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(response.body(), StandardCharsets.UTF_8))) {
             String eventName = "";
             StringBuilder dataLines = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) {
+                ensureNotCancelled(taskKey);
                 if (line.startsWith("event:")) {
                     eventName = line.substring(6).trim();
                 } else if (line.startsWith("data:")) {

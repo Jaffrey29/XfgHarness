@@ -91,6 +91,11 @@ public interface ICollaborationDao {
                             @Param("outputArtifacts") String outputArtifacts,
                             @Param("updatedAt") java.time.Instant updatedAt);
 
+    @Update("UPDATE collaboration_task SET instruction = #{instruction}, updated_at = #{updatedAt} WHERE id = #{id}")
+    int updateTaskInstruction(@Param("id") String id,
+                              @Param("instruction") String instruction,
+                              @Param("updatedAt") java.time.Instant updatedAt);
+
     @Update("""
             UPDATE collaboration_task SET assigned_to = #{assignedTo}, state = #{state}, remote_session_id = NULL,
                 error_summary = NULL, updated_at = #{updatedAt}

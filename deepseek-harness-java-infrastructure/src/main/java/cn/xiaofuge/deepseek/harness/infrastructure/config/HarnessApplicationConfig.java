@@ -289,7 +289,7 @@ public class HarnessApplicationConfig {
     // ── 技能层 ──────────────────────────────────────────────
 
     @Bean
-    public ISkillProviderPort skillProviderPort(
+    public FilesystemSkillProviderPort skillProviderPort(
             HarnessExtensionsProperties extensions,
             @Value("${harness.credentials.home:${user.home}/.dsh}") String defaultDshHome
     ) {

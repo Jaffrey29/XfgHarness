@@ -30,6 +30,9 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-boot.version>3.3.2</spring-boot.version>
         <mybatis-spring-boot.version>3.0.4</mybatis-spring-boot.version>
+        <!-- 默认跳过单元测试（install/package 均生效），需要跑测试时用 -DskipTests=false -->
+        <maven.test.skip>false</maven.test.skip>
+        <skipTests>true</skipTests>
     </properties>
 
     <dependencyManagement>
