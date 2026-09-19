@@ -13,6 +13,7 @@ import cn.xiaofuge.deepseek.harness.infrastructure.dao.po.DigitalHumanPO;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Instant;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -316,6 +317,7 @@ public class CollaborationService {
                                       String channelCode, String approvalMode) {
         // 先级联终止上游已失败的 READY/ASSIGNED 任务：depsSatisfied 只认 COMPLETED，
         // 不级联的话这些任务永远挂起，房间无法收敛、前端"生成中"永不停止
+        reapOrphanTasks(roomId);
         cascadeBlockedTasks(roomId);
         List<TaskPO> tasks = collaborationDao.listTasks(roomId);
         Map<String, String> stateById = new LinkedHashMap<>();
@@ -361,6 +363,23 @@ public class CollaborationService {
             if (!"COMPLETED".equals(stateById.get(dep.trim()))) return false;
         }
         return true;
+    }
+
+    /** 服务重启或执行线程异常退出后，DB 里可能残留没有活跃 Future 的 RUNNING/ASSIGNED 任务。 */
+    private void reapOrphanTasks(String roomId) {
+        for (TaskPO task : collaborationDao.listTasks(roomId)) {
+            if (!List.of("RUNNING", "ASSIGNED").contains(task.state())) continue;
+            if (activeRuns.containsKey(task.id())) continue;
+            Instant updatedAt = task.updatedAt();
+            if (updatedAt == null || Duration.between(updatedAt, Instant.now()).toMinutes() < 1) continue;
+            collaborationDao.updateTaskState(task.id(), "FAILED", null,
+                    "执行中断：未找到活跃运行（可能服务重启）", Instant.now());
+            collaborationDao.updatePresence(roomId, task.assignedTo(), "error", null);
+            appendEvent(roomId, task.id(), null, task.assignedTo(), "ERROR",
+                    Map.of("code", "ORPHAN_TASK", "message", "执行中断：未找到活跃运行", "recoverable", true));
+            appendEvent(roomId, task.id(), null, task.assignedTo(), "TASK_STATE_CHANGED",
+                    Map.of("state", "FAILED"));
+        }
     }
 
     /** 把上游任务的交付物拼进当前任务指令（交接的语义载体） */
@@ -625,11 +644,7 @@ public class CollaborationService {
                 }
             }
             answer = stripAskMarkers(answer);
-            // 交付物归档（协作真正留下的东西）
-            if (!answer.isBlank()) {
-                archiveArtifact(roomId, taskId, digitalHumanId,
-                        new ArtifactDraft("markdown", taskTitle(taskId) + " · 交付", answer, null));
-            }
+            // 先落任务终态和消息事件：即便后续归档/IO 短暂阻塞，UI 也不能继续显示“生成中”。
             collaborationDao.updateTaskState(taskId, "COMPLETED", null, null, Instant.now());
             collaborationDao.updatePresence(roomId, digitalHumanId, "done", null);
             appendEvent(roomId, taskId, null, digitalHumanId, "MESSAGE_CREATED",
@@ -637,6 +652,11 @@ public class CollaborationService {
                             "displayName", displayName, "content", answer));
             appendEvent(roomId, taskId, null, digitalHumanId, "TASK_STATE_CHANGED",
                     Map.of("state", "COMPLETED"));
+            // 交付物归档（协作真正留下的东西）
+            if (!answer.isBlank()) {
+                archiveArtifact(roomId, taskId, digitalHumanId,
+                        new ArtifactDraft("markdown", taskTitle(taskId) + " · 交付", answer, null));
+            }
         } catch (java.util.concurrent.CancellationException e) {
             // 用户取消：状态已由 cancelTask 置 CANCELED，这里只复位在线状态，不覆盖终态
             log.info("Collab task {} canceled", taskId);
@@ -1149,7 +1169,10 @@ public class CollaborationService {
         List<SseEmitter> emitters = roomEmitters.get(roomId);
         if (emitters == null || emitters.isEmpty()) return;
         String json = toJson(eventView(event));
-        for (SseEmitter emitter : emitters) {
+        // 遍历副本：send 失败时会从 emitters 移除失效连接，
+        // 直接在原列表上 for-each 移除会触发 ConcurrentModificationException，
+        // 异常虽被上层 appendEvent 吞掉，但同批其余在线订阅者会漏推这一条事件
+        for (SseEmitter emitter : new ArrayList<>(emitters)) {
             try {
                 emitter.send(SseEmitter.event().name("room-event").data(json));
             } catch (Exception e) {

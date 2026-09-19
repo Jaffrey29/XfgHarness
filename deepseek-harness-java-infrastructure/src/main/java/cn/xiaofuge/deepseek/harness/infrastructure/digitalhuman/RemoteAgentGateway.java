@@ -26,6 +26,12 @@ import org.slf4j.LoggerFactory;
 public class RemoteAgentGateway {
 
     private static final Logger log = LoggerFactory.getLogger(RemoteAgentGateway.class);
+    /**
+     * 流空闲判定阈值。上游 SseEmitter 无心跳，工具执行期间（shell 可能跑数分钟）完全没有
+     * SSE 字节是常态，阈值必须显著大于常见工具耗时；此前 30s 会在长工具执行中途掐断流，
+     * 上游随即 Broken pipe，任务被当成"正常结束"收口成半截结果。
+     */
+    private static final long STREAM_IDLE_CLOSE_MS = 300_000L;
 
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
@@ -269,7 +275,8 @@ public class RemoteAgentGateway {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(response.body(), StandardCharsets.UTF_8))) {
             StringBuilder dataLines = new StringBuilder();
             String line;
-            while ((line = reader.readLine()) != null) {
+            long lastEventAt = System.currentTimeMillis();
+            while ((line = readLineWithIdleClose(reader, taskKey, lastEventAt)) != null) {
                 ensureNotCancelled(taskKey);
                 if (line.startsWith("data:")) {
                     String value = line.substring(5);
@@ -278,8 +285,10 @@ public class RemoteAgentGateway {
                     dataLines.append(value);
                 } else if (line.isBlank()) {
                     if (dataLines.length() > 0) {
-                        dispatchA2a(dataLines.toString(), sink);
+                        boolean terminal = dispatchA2a(dataLines.toString(), sink);
                         dataLines.setLength(0);
+                        lastEventAt = System.currentTimeMillis();
+                        if (terminal) return;
                     }
                 }
             }
@@ -289,7 +298,7 @@ public class RemoteAgentGateway {
         }
     }
 
-    private void dispatchA2a(String raw, EventSink sink) {
+    private boolean dispatchA2a(String raw, EventSink sink) {
         try {
             JsonNode payload = objectMapper.readTree(raw);
             // JSON-RPC error 响应：视为失败，向上抛出以触发回退链
@@ -307,8 +316,8 @@ public class RemoteAgentGateway {
                     throw new IllegalStateException("A2A 任务"
                             + ("canceled".equals(state) ? "已取消" : "失败") + "：" + detail);
                 }
-                // working/completed 等中间状态无文本，直接消费
-                return;
+                // completed 是 A2A 的终态；即使连接未关闭也应让协作任务收口
+                return "completed".equals(state);
             }
             String text = extractA2aText(payload);
             if (!text.isBlank()) sink.onChunk(text);
@@ -317,6 +326,7 @@ public class RemoteAgentGateway {
         } catch (Exception e) {
             if (!raw.isBlank()) sink.onChunk(raw);
         }
+        return false;
     }
 
     /** 标准 A2A 发现：读取 Agent Card 的 url 字段（JSON-RPC 端点）；不可用返回 null。 */
@@ -436,7 +446,8 @@ public class RemoteAgentGateway {
             String eventName = "";
             StringBuilder dataLines = new StringBuilder();
             String line;
-            while ((line = reader.readLine()) != null) {
+            long lastEventAt = System.currentTimeMillis();
+            while ((line = readLineWithIdleClose(reader, taskKey, lastEventAt)) != null) {
                 ensureNotCancelled(taskKey);
                 if (line.startsWith("event:")) {
                     eventName = line.substring(6).trim();
@@ -447,9 +458,13 @@ public class RemoteAgentGateway {
                     dataLines.append(value);
                 } else if (line.isBlank()) {
                     if (dataLines.length() > 0) {
-                        dispatch(eventName, dataLines.toString(), sink);
+                        boolean terminal = dispatch(eventName, dataLines.toString(), sink);
                         dataLines.setLength(0);
                         eventName = "";
+                        lastEventAt = System.currentTimeMillis();
+                        if (terminal) return;
+                    } else if (isTerminalEvent(eventName)) {
+                        return;
                     }
                 }
             }
@@ -459,13 +474,32 @@ public class RemoteAgentGateway {
         }
     }
 
-    private void dispatch(String eventName, String raw, EventSink sink) {
+    private String readLineWithIdleClose(BufferedReader reader, String taskKey, long lastEventAt) throws Exception {
+        while (!reader.ready()) {
+            ensureNotCancelled(taskKey);
+            if (System.currentTimeMillis() - lastEventAt >= STREAM_IDLE_CLOSE_MS) {
+                // 空闲超时必须抛错而不是静默返回：返回 null 会被调用方当作正常 EOF，
+                // 协作层会把半截结果标成 COMPLETED。抛异常让 runTask 走自动恢复（改派/重试）。
+                throw new IllegalStateException("Agent 流空闲超过 " + (STREAM_IDLE_CLOSE_MS / 1000)
+                        + "s 无事件，网关主动断开（taskKey=" + taskKey + "）");
+            }
+            Thread.sleep(200L);
+        }
+        return reader.readLine();
+    }
+
+    private boolean dispatch(String eventName, String raw, EventSink sink) {
+        String normalizedEventName = eventName == null || eventName.isBlank() ? "chunk" : eventName;
+        if (isTerminalEvent(normalizedEventName)) {
+            // 完成信号由调用方收尾，无需转发；不依赖 data 是否为 JSON
+            return true;
+        }
         try {
             JsonNode payload = objectMapper.readTree(raw);
-            switch (eventName == null || eventName.isBlank() ? "chunk" : eventName) {
-                case "chunk" -> sink.onChunk(extractText(payload));
-                case "reasoning" -> sink.onReasoning(extractText(payload));
-                case "tool_result" -> {
+            switch (normalizedEventName) {
+                case "chunk", "message.delta" -> sink.onChunk(extractText(payload));
+                case "reasoning", "message.reasoning" -> sink.onReasoning(extractText(payload));
+                case "tool_result", "tool.result" -> {
                     String toolName = payload.path("toolName").asText(
                             payload.path("name").asText("tool"));
                     String callId = payload.path("callId").asText("");
@@ -480,7 +514,7 @@ public class RemoteAgentGateway {
                         sink.onToolResult(toolName, summary, rawResult, callId);
                     }
                 }
-                case "step_break" -> {
+                case "step_break", "tool.call" -> {
                     String toolName = payload.path("toolName").asText("tool");
                     String callId = payload.path("callId").asText("");
                     String status = payload.path("status").asText("");
@@ -492,9 +526,6 @@ public class RemoteAgentGateway {
                     } else {
                         sink.onToolCall(toolName, summary, callId);
                     }
-                }
-                case "finish", "done" -> {
-                    // 完成信号由调用方收尾，无需转发
                 }
                 case "error" -> throw new IllegalStateException(
                         payload.path("message").asText(extractText(payload)));
@@ -512,10 +543,22 @@ public class RemoteAgentGateway {
                 log.debug("Skip unparsable SSE event {}: {}", eventName, e.getMessage());
             }
         }
+        return false;
+    }
+
+    private boolean isTerminalEvent(String eventName) {
+        // finish 后服务端还会立即发 done；在 finish 就断开会让上游记录 Broken pipe。
+        // done 才是完整终态；如果连接异常挂住，另有空闲兜底。
+        return "done".equals(eventName);
     }
 
     private String extractText(JsonNode payload) {
         if (payload.isTextual()) return payload.asText();
+        JsonNode nestedPayload = payload.path("payload");
+        if (!nestedPayload.isMissingNode() && !nestedPayload.isNull()) {
+            String nestedText = extractText(nestedPayload);
+            if (!nestedText.isBlank()) return nestedText;
+        }
         for (String field : new String[]{"text", "content", "delta", "message", "result"}) {
             JsonNode node = payload.path(field);
             if (node.isTextual()) return node.asText();

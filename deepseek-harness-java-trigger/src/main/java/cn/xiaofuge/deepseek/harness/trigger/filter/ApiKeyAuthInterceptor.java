@@ -33,6 +33,12 @@ public class ApiKeyAuthInterceptor implements HandlerInterceptor {
         String path = request.getRequestURI();
         boolean gatewayStreamRequest = GATEWAY_STREAM_PATH.equals(path);
 
+        // CORS 预检请求不带自定义凭据（浏览器规范如此），一律放行；
+        // 实际请求的认证仍在后续非 OPTIONS 请求上执行
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            return true;
+        }
+
         if (gatewayStreamRequest) {
             log.info("[GatewayStream] HTTP 请求进入认证拦截器，method={}，path={}，remoteAddr={}，contentType={}，hasApiKey={}，hasAuthorization={}，userAgent={}",
                     request.getMethod(),
