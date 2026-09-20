@@ -12,6 +12,9 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -25,9 +28,15 @@ public class AgentStreamApi implements IAgentStreamApi {
     // 前端有 120s 空闲看门狗 + REST 对账兜底，服务端不需要再设硬超时。
     private static final long SSE_TIMEOUT_MS = 0L;
 
+    // SSE 心跳周期：长工具执行/长推理期间流上没有业务事件，SSE 长时间零字节会被
+    // 前端空闲看门狗（120s）判定为连接挂死而掐断。每 15s 推一个 SSE comment（":keepalive"），
+    // 前端解析器忽略 comment 行，但任何字节到达都会重置空闲看门狗，连接得以存活。
+    private static final long HEARTBEAT_INTERVAL_MS = 15_000L;
+
     private final IAgentApi agentApi;
     private final ObjectMapper objectMapper;
     private final ExecutorService sseExecutor;
+    private final ScheduledExecutorService heartbeatExecutor;
 
     public AgentStreamApi(IAgentApi agentApi, ObjectMapper objectMapper) {
         this.agentApi = agentApi;
@@ -37,6 +46,11 @@ public class AgentStreamApi implements IAgentStreamApi {
         // 导致新流在首字节前排队。缓存的 daemon 线程池让并发上限随负载伸缩。
         this.sseExecutor = Executors.newCachedThreadPool(runnable -> {
             Thread thread = new Thread(runnable, "sse-stream-worker");
+            thread.setDaemon(true);
+            return thread;
+        });
+        this.heartbeatExecutor = Executors.newSingleThreadScheduledExecutor(runnable -> {
+            Thread thread = new Thread(runnable, "sse-heartbeat");
             thread.setDaemon(true);
             return thread;
         });
@@ -68,6 +82,7 @@ public class AgentStreamApi implements IAgentStreamApi {
         // 会让前端逐帧重渲染整条消息导致闪烁），攒够时间窗或收尾时一次性发出
         DeltaBatch textBatch = new DeltaBatch(content -> sendDelta(emitter, emitterClosed, chunkIndex, content));
         DeltaBatch reasoningBatch = new DeltaBatch(content -> sendReasoning(emitter, emitterClosed, content));
+        ScheduledFuture<?> heartbeat = startHeartbeat(emitter, emitterClosed);
         try {
             sendMeta(request, emitter);
             java.util.function.Consumer<String> deltaSink = textBatch::accept;
@@ -95,7 +110,27 @@ public class AgentStreamApi implements IAgentStreamApi {
             textBatch.flush();
             reasoningBatch.flush();
             sendError(emitter, emitterClosed, exception);
+        } finally {
+            heartbeat.cancel(false);
         }
+    }
+
+    /**
+     * 流存续期间的保活心跳：每 15s 推一个 SSE comment。
+     * ResponseBodyEmitter.send 内部加锁，与业务事件并发发送是安全的；
+     * 发送失败（客户端已断开）则标记 emitter 关闭，由业务发送路径自行收尾。
+     */
+    private ScheduledFuture<?> startHeartbeat(SseEmitter emitter, java.util.concurrent.atomic.AtomicBoolean emitterClosed) {
+        return heartbeatExecutor.scheduleAtFixedRate(() -> {
+            if (emitterClosed.get()) {
+                return;
+            }
+            try {
+                emitter.send(SseEmitter.event().comment("keepalive"));
+            } catch (Exception ignored) {
+                emitterClosed.set(true);
+            }
+        }, HEARTBEAT_INTERVAL_MS, HEARTBEAT_INTERVAL_MS, TimeUnit.MILLISECONDS);
     }
 
     private void sendMeta(AgentMessageRequestDTO request, SseEmitter emitter) throws IOException {

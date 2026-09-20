@@ -5,10 +5,15 @@ import cn.xiaofuge.deepseek.harness.api.dto.AgentMessageResponseDTO;
 import cn.xiaofuge.deepseek.harness.cases.agent.factory.AgentMessageDynamicContext;
 import cn.xiaofuge.deepseek.harness.domain.agent.model.entity.AgentOptions;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.run.AgentRun;
+import cn.xiaofuge.deepseek.harness.domain.agent.service.run.PersistingSessionLog;
 import cn.xiaofuge.deepseek.harness.domain.agent.contract.inbound.AgentRunLifecycle;
 import cn.xiaofuge.deepseek.harness.domain.agent.model.valobj.AgentStatus;
 import cn.xiaofuge.deepseek.harness.domain.agent.model.valobj.ApprovalModeVO;
 import cn.xiaofuge.deepseek.harness.domain.runtime.setting.service.AgentModelSettingResolver;
+import cn.xiaofuge.deepseek.harness.domain.session.event.adapter.repository.ISessionEventStore;
+import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionEvent;
+import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionHeader;
+import cn.xiaofuge.deepseek.harness.domain.session.event.model.entity.SessionLog;
 import cn.xiaofuge.deepseek.harness.cases.orchestration.StrategyHandler;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +39,10 @@ public class AgentResolveNode extends AbstractAgentMessageNode {
 
     @Autowired
     private AgentModelSettingResolver modelSettingResolver;
+
+    /** 会话事件持久化存储：实例缺失时用于从事件日志恢复历史上下文；未装配时跳过恢复 */
+    @Autowired(required = false)
+    private ISessionEventStore sessionEventStore;
 
     @Autowired
     @Qualifier("agentMessageIntentNode")
@@ -78,9 +87,19 @@ public class AgentResolveNode extends AbstractAgentMessageNode {
         if (agent == null) {
             AgentOptions options = buildAgentOptions(request);
             String workDir = request.cwd() != null ? request.cwd() : System.getProperty("user.dir");
-            log.info("[Resolve] Agent={} 不存在，创建新实例（channel={} model={} cwd={}）",
-                    request.agentId(), options.channelCode(), options.model(), workDir);
-            agent = agentFactory.create(request.agentId(), options, workDir);
+            // 实例缺失（桌面应用/服务重启）≠ 会话丢失：事件日志里有完整历史。
+            // 直接 create 会开全新空会话，模型看到"继续"却没有任何上文；
+            // 这里先尝试按 agentId 恢复最近一次持久化会话，恢复失败再走全新会话。
+            SessionLog restoredSession = findPersistedSession(request.agentId());
+            if (restoredSession != null) {
+                log.info("[Resolve] Agent={} 内存实例缺失，从事件日志恢复会话 sessionId={}（事件数={}）",
+                        request.agentId(), restoredSession.sessionId(), restoredSession.size());
+                agent = agentFactory.resume(request.agentId(), options, workDir, restoredSession);
+            } else {
+                log.info("[Resolve] Agent={} 不存在，创建新实例（channel={} model={} cwd={}）",
+                        request.agentId(), options.channelCode(), options.model(), workDir);
+                agent = agentFactory.create(request.agentId(), options, workDir);
+            }
             agentFactory.configureApprovalMode(request.agentId(), approvalMode(request));
         } else {
             log.debug("[Resolve] Agent={} 已存在，复用实例", request.agentId());
@@ -107,6 +126,37 @@ public class AgentResolveNode extends AbstractAgentMessageNode {
 
     getNext(AgentMessageRequestDTO request, AgentMessageDynamicContext ctx) {
         return intentNode;
+    }
+
+    /**
+     * 按 agentId 查找最近一次持久化会话并重建内存日志（实例缺失时的上下文恢复）。
+     * <p>listHeaders 按 created_at 倒序返回，第一个匹配即最近会话；header 的 agentPreset
+     * 槽位存的是创建时的 agentId（见 AgentRunFactory.create）。恢复出的日志用
+     * PersistingSessionLog 承载，后续 turn 的新事件继续落库。
+     * 无持久化存储 / 无匹配会话 / 恢复异常时返回 null（调用方走全新会话路径）。
+     */
+    private SessionLog findPersistedSession(String agentId) {
+        if (sessionEventStore == null) {
+            return null;
+        }
+        try {
+            for (SessionHeader header : sessionEventStore.listHeaders(200)) {
+                if (!agentId.equals(header.agentPreset())) {
+                    continue;
+                }
+                java.util.List<SessionEvent> events = sessionEventStore.readAll(header.sessionId());
+                if (events.isEmpty()) {
+                    continue;
+                }
+                PersistingSessionLog restored = new PersistingSessionLog(header.sessionId(), header, sessionEventStore);
+                restored.restore(events);
+                return restored;
+            }
+        } catch (Exception exception) {
+            log.warn("[Resolve] Agent={} 尝试从事件日志恢复会话失败，改用全新会话：{}",
+                    agentId, exception.getMessage());
+        }
+        return null;
     }
 
     /**

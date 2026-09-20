@@ -19,6 +19,9 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -29,6 +32,10 @@ public class GatewayStreamApi implements IGatewayStreamApi {
 
     private static final Logger log = LoggerFactory.getLogger(GatewayStreamApi.class);
 
+    // SSE 心跳周期：长工具执行期间流上无业务事件，长时间零字节会触发客户端空闲看门狗断连。
+    // 每 15s 推一个 SSE comment 保活，前端解析器忽略 comment，但字节到达会重置空闲计时。
+    private static final long HEARTBEAT_INTERVAL_MS = 15_000L;
+
     private final IAgentApi agentApi;
     private final IWorkflowCommandApi workflowCommandApi;
     private final ObjectMapper objectMapper;
@@ -36,6 +43,13 @@ public class GatewayStreamApi implements IGatewayStreamApi {
             Runtime.getRuntime().availableProcessors(),
             runnable -> {
                 Thread thread = new Thread(runnable, "gateway-stream-worker");
+                thread.setDaemon(true);
+                return thread;
+            }
+    );
+    private final ScheduledExecutorService heartbeatExecutor = Executors.newSingleThreadScheduledExecutor(
+            runnable -> {
+                Thread thread = new Thread(runnable, "gateway-sse-heartbeat");
                 thread.setDaemon(true);
                 return thread;
             }
@@ -55,12 +69,14 @@ public class GatewayStreamApi implements IGatewayStreamApi {
     public SseEmitter stream(GatewayStreamRequestDTO request) {
         SseEmitter emitter = new SseEmitter(300_000L);
         String requestId = UUID.randomUUID().toString();
+        java.util.concurrent.atomic.AtomicBoolean closed = new java.util.concurrent.atomic.AtomicBoolean(false);
         StreamContext context = new StreamContext(
                 requestId,
                 Instant.now(),
                 emitter,
                 new java.util.concurrent.atomic.AtomicBoolean(false),
-                new java.util.concurrent.atomic.AtomicBoolean(false)
+                closed,
+                startHeartbeat(emitter, closed)
         );
         log.info("[GatewayStream] 接收数字人网关流式请求，requestId={}，{}", requestId, summarizeRequest(request));
         emitter.onCompletion(() -> {
@@ -201,7 +217,22 @@ public class GatewayStreamApi implements IGatewayStreamApi {
         }
     }
 
+    /** SSE 保活心跳：每 15s 推一个 comment，客户端断开（closed）后自动停摆。 */
+    private ScheduledFuture<?> startHeartbeat(SseEmitter emitter, java.util.concurrent.atomic.AtomicBoolean closed) {
+        return heartbeatExecutor.scheduleAtFixedRate(() -> {
+            if (closed.get()) {
+                return;
+            }
+            try {
+                emitter.send(SseEmitter.event().comment("keepalive"));
+            } catch (Exception ignored) {
+                closed.set(true);
+            }
+        }, HEARTBEAT_INTERVAL_MS, HEARTBEAT_INTERVAL_MS, TimeUnit.MILLISECONDS);
+    }
+
     private void complete(StreamContext context) {
+        context.heartbeat().cancel(false);
         if (context.closed().compareAndSet(false, true)) {
             log.info("[GatewayStream] SSE 连接关闭，requestId={}，completed={}，elapsedMs={}",
                     context.requestId(), context.completed().get(), elapsedMillis(context));
@@ -210,6 +241,7 @@ public class GatewayStreamApi implements IGatewayStreamApi {
     }
 
     private void completeWithError(StreamContext context, Exception exception) {
+        context.heartbeat().cancel(false);
         if (context.closed().compareAndSet(false, true)) {
             log.warn("[GatewayStream] SSE 异常关闭，requestId={}，completed={}，elapsedMs={}，error={}",
                     context.requestId(), context.completed().get(), elapsedMillis(context), exception.getMessage());
@@ -269,6 +301,7 @@ public class GatewayStreamApi implements IGatewayStreamApi {
             Instant startedAt,
             SseEmitter emitter,
             java.util.concurrent.atomic.AtomicBoolean completed,
-            java.util.concurrent.atomic.AtomicBoolean closed
+            java.util.concurrent.atomic.AtomicBoolean closed,
+            ScheduledFuture<?> heartbeat
     ) {}
 }
