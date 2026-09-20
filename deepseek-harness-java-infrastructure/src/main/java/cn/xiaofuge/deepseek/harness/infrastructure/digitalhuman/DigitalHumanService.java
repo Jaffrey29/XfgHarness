@@ -76,6 +76,7 @@ public class DigitalHumanService {
                 text(body.get("themeColor"), "#4160f0"),
                 text(body.get("approvalPolicy"), "WRITE_REQUIRES_APPROVAL"),
                 clampInt(body.get("concurrencyLimit"), 1, 8, 1),
+                normalizeProjectPath(body.get("projectPath")),
                 now, now);
         humanDao.insert(human);
         upsertEndpoint(id, body, now);
@@ -96,6 +97,9 @@ public class DigitalHumanService {
                 body.containsKey("concurrencyLimit")
                         ? clampInt(body.get("concurrencyLimit"), 1, 8, existing.concurrencyLimit())
                         : existing.concurrencyLimit(),
+                body.containsKey("projectPath")
+                        ? normalizeProjectPath(body.get("projectPath"))
+                        : existing.projectPath(),
                 existing.createdAt(), Instant.now());
         humanDao.update(merged);
         if (body.get("endpoint") instanceof Map<?, ?>) {
@@ -316,6 +320,7 @@ public class DigitalHumanService {
         view.put("themeColor", human.themeColor());
         view.put("approvalPolicy", human.approvalPolicy());
         view.put("concurrencyLimit", human.concurrencyLimit());
+        view.put("projectPath", human.projectPath());
         view.put("createdAt", human.createdAt() == null ? null : human.createdAt().toString());
         Map<String, Object> endpointView = new LinkedHashMap<>();
         endpointView.put("type", endpoint == null ? "local-dsh" : endpoint.endpointType());
@@ -341,6 +346,12 @@ public class DigitalHumanService {
     private String text(Object value, String fallback) {
         if (value instanceof String string && !string.isBlank()) return string.trim();
         return fallback;
+    }
+
+    /** 工程归属：空串/null 表示全局（存 NULL），否则去空白。 */
+    private String normalizeProjectPath(Object value) {
+        if (value instanceof String string && !string.isBlank()) return string.trim();
+        return null;
     }
 
     private String joinTags(Object value) {

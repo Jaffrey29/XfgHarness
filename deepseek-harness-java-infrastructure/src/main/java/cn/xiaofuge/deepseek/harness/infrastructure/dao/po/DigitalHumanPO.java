@@ -15,6 +15,7 @@ public record DigitalHumanPO(
         String themeColor,
         String approvalPolicy,
         Integer concurrencyLimit,
+        String projectPath,
         Instant createdAt,
         Instant updatedAt
 ) {

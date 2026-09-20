@@ -173,6 +173,7 @@ CREATE TABLE IF NOT EXISTS digital_human (
     theme_color VARCHAR(16) NULL,
     approval_policy VARCHAR(32) NOT NULL DEFAULT 'WRITE_REQUIRES_APPROVAL',
     concurrency_limit INT NOT NULL DEFAULT 1,
+    project_path VARCHAR(512) NULL,
     created_at TIMESTAMP(3) NOT NULL,
     updated_at TIMESTAMP(3) NOT NULL
 );

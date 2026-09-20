@@ -55,6 +55,9 @@ public class SchemaMigrationRunner implements ApplicationRunner {
             addColumnIfMissing(
                     "collaboration_task", "output_artifacts",
                     "ALTER TABLE collaboration_task ADD COLUMN output_artifacts VARCHAR(512) NULL");
+            addColumnIfMissing(
+                    "digital_human", "project_path",
+                    "ALTER TABLE digital_human ADD COLUMN project_path VARCHAR(512) NULL");
             ensurePayloadJsonCapacity();
             migrateLegacyProfileColumn();
             backfillActiveModelChannel();
