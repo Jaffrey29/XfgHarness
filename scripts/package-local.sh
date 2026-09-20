@@ -59,7 +59,7 @@ fi
 rm -rf "${PACKAGE_DIR}"
 mkdir -p "${PACKAGE_DIR}/bin" "${PACKAGE_DIR}/data" "${PACKAGE_DIR}/plugins" "${PACKAGE_DIR}/skills" "${PACKAGE_DIR}/workspaces"
 
-cp "${APP_JAR}" "${PACKAGE_DIR}/deepseek-harness-java.jar"
+cp "${APP_JAR}" "${PACKAGE_DIR}/deepseek-harness-java-app.jar"
 cp "${PLUGIN_JAR}" "${PACKAGE_DIR}/plugins/sample-tools-plugin-1.0.0.jar"
 cp -R "${ROOT_DIR}/plugins/demo-plugin" "${PACKAGE_DIR}/plugins/demo-plugin"
 cp -R "${ROOT_DIR}/skills/." "${PACKAGE_DIR}/skills/"
@@ -76,7 +76,7 @@ JAVA_BIN="${JAVA_HOME:+${JAVA_HOME}/bin/java}"
 JAVA_BIN="${JAVA_BIN:-java}"
 
 exec "${JAVA_BIN}" ${DSH_JAVA_OPTS:-} \
-  -jar deepseek-harness-java.jar \
+  -jar deepseek-harness-java-app.jar \
   --spring.profiles.active=standalone "$@"
 EOF
 
@@ -84,7 +84,7 @@ cat > "${PACKAGE_DIR}/start.bat" <<'EOF'
 @echo off
 setlocal
 cd /d "%~dp0"
-java %DSH_JAVA_OPTS% -jar deepseek-harness-java.jar --spring.profiles.active=standalone %*
+java %DSH_JAVA_OPTS% -jar deepseek-harness-java-app.jar --spring.profiles.active=standalone %*
 endlocal
 EOF
 

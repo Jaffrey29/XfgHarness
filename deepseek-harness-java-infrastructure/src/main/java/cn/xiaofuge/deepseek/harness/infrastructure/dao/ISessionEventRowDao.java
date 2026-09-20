@@ -51,6 +51,21 @@ public interface ISessionEventRowDao {
     void insert(SessionEventRowPO row);
 
     /**
+     * 批量插入事件记录，减少网络往返和事务持锁时间。
+     */
+    @Insert("""
+            <script>
+            INSERT INTO harness_session_event_log
+                (session_id, seq, event_type, event_time, payload_json, surface_op, source_event_seqs)
+            VALUES
+            <foreach collection="rows" item="row" separator=",">
+                (#{row.sessionId}, #{row.seq}, #{row.eventType}, #{row.eventTime}, #{row.payloadJson}, #{row.surfaceOp}, #{row.sourceEventSeqs})
+            </foreach>
+            </script>
+            """)
+    void insertBatch(@Param("rows") List<SessionEventRowPO> rows);
+
+    /**
      * 读取某会话全部事件，并按序列号排序。
      */
     @Select("""

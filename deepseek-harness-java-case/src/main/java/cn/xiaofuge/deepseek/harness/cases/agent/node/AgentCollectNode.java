@@ -104,11 +104,14 @@ public class AgentCollectNode extends AbstractAgentMessageNode {
 
         log.info("[Collect] Agent={} 收集完成，共 {} 条消息，status={}",
                 request.agentId(), messages.size(), agent.status().name().toLowerCase());
+        // 本回合写文件类工具产出的文件清单（绝对路径），随 done 事件下发前端做权威文件卡片
+        List<String> artifacts = agent.drainWrittenArtifacts();
         return new AgentMessageResponseDTO(
                 request.agentId(),
                 session.sessionId(),
                 agent.status().name().toLowerCase(),
-                messages
+                messages,
+                artifacts
         );
     }
 

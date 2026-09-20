@@ -2,6 +2,7 @@ package cn.xiaofuge.deepseek.harness.infrastructure.adapter.llm.deepseek;
 
 import cn.xiaofuge.deepseek.harness.domain.llm.adapter.LlmAdapter;
 import cn.xiaofuge.deepseek.harness.domain.llm.adapter.ResolvedRetryPolicy;
+import cn.xiaofuge.deepseek.harness.domain.channel.service.OpenAiCompatibleUriResolver;
 import cn.xiaofuge.deepseek.harness.domain.llm.model.valobj.*;
 import cn.xiaofuge.deepseek.harness.domain.model.valobj.*;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -198,7 +199,7 @@ public class DeepSeekAdapter implements LlmAdapter {
         }
 
         HttpRequest.Builder builder = HttpRequest.newBuilder()
-                .uri(resolveChatCompletionsUri(baseUrl))
+                .uri(OpenAiCompatibleUriResolver.resolveChatCompletionsUri(baseUrl))
                 .timeout(Duration.ofSeconds(REQUEST_TIMEOUT_SECONDS))
                 .header("Content-Type", "application/json")
                 .header("Accept", "text/event-stream")
@@ -253,7 +254,7 @@ public class DeepSeekAdapter implements LlmAdapter {
 
         String payload = objectMapper.writeValueAsString(body);
         HttpRequest.Builder builder = HttpRequest.newBuilder()
-                .uri(resolveChatCompletionsUri(baseUrl))
+                .uri(OpenAiCompatibleUriResolver.resolveChatCompletionsUri(baseUrl))
                 .timeout(Duration.ofSeconds(REQUEST_TIMEOUT_SECONDS))
                 .header("Content-Type", "application/json")
                 .header("Accept", "application/json")
@@ -459,6 +460,9 @@ public class DeepSeekAdapter implements LlmAdapter {
         }
 
         if (options.temperature() != null) root.put("temperature", options.temperature());
+        if (options.reasoningEffort() != null && !options.reasoningEffort().isBlank()) {
+            root.put("reasoning_effort", options.reasoningEffort());
+        }
         if (options.maxTokens() != null) root.put("max_tokens", options.maxTokens());
         if (options.stop() != null && !options.stop().isEmpty()) {
             root.set("stop", objectMapper.valueToTree(options.stop()));
@@ -546,7 +550,7 @@ public class DeepSeekAdapter implements LlmAdapter {
     private List<DirectSeekCatalogModel> discoverUpstreamModels() {
         String apiKey = options.resolveApiKey();
         HttpRequest.Builder builder = HttpRequest.newBuilder()
-                .uri(resolveModelsUri(options.baseUrl()))
+                .uri(OpenAiCompatibleUriResolver.resolveModelsUri(options.baseUrl()))
                 .timeout(Duration.ofSeconds(30))
                 .header("Accept", "application/json")
                 .GET();
@@ -790,37 +794,6 @@ public class DeepSeekAdapter implements LlmAdapter {
         }
         int inputTokens = cacheRead != null ? promptTokens - cacheRead : promptTokens;
         return new TokenUsage(inputTokens, completionTokens, cacheRead, null, reasoning);
-    }
-
-    /**
-     * 解析e Chat Completions Uri。
-     */
-    private URI resolveChatCompletionsUri(String baseUrl) {
-        if (baseUrl == null || baseUrl.isBlank()) {
-            return URI.create("https://api.deepseek.com/v1/chat/completions");
-        }
-        String normalized = baseUrl.trim();
-        if (normalized.endsWith("/chat/completions")) return URI.create(normalized);
-        if (normalized.endsWith("/v1")) return URI.create(normalized + "/chat/completions");
-        if (normalized.endsWith("/")) return URI.create(normalized + "v1/chat/completions");
-        return URI.create(normalized + "/v1/chat/completions");
-    }
-
-    /**
-     * 解析e Models Uri。
-     */
-    private URI resolveModelsUri(String baseUrl) {
-        if (baseUrl == null || baseUrl.isBlank()) {
-            return URI.create("https://api.deepseek.com/v1/models");
-        }
-        String normalized = baseUrl.trim();
-        if (normalized.endsWith("/models")) return URI.create(normalized);
-        if (normalized.endsWith("/chat/completions")) {
-            return URI.create(normalized.substring(0, normalized.length() - "/chat/completions".length()) + "/models");
-        }
-        if (normalized.endsWith("/v1")) return URI.create(normalized + "/models");
-        if (normalized.endsWith("/")) return URI.create(normalized + "v1/models");
-        return URI.create(normalized + "/v1/models");
     }
 
     /**

@@ -17,20 +17,20 @@ fi
 
 rm -rf "${PACKAGE_DIR}"
 mkdir -p "${PACKAGE_DIR}"
-cp "${APP_JAR}" "${PACKAGE_DIR}/deepseek-harness-java.jar"
+cp "${APP_JAR}" "${PACKAGE_DIR}/deepseek-harness-java-app.jar"
 
 cat > "${PACKAGE_DIR}/start.sh" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-exec java -jar deepseek-harness-java.jar --spring.profiles.active=standalone "$@"
+exec java -jar deepseek-harness-java-app.jar --spring.profiles.active=standalone "$@"
 EOF
 
 cat > "${PACKAGE_DIR}/start.bat" <<'EOF'
 @echo off
 setlocal
 cd /d "%~dp0"
-java -jar deepseek-harness-java.jar --spring.profiles.active=standalone %*
+java -jar deepseek-harness-java-app.jar --spring.profiles.active=standalone %*
 endlocal
 EOF
 

@@ -45,6 +45,9 @@ public class AgentRunFactory implements AgentRunLifecycle {
     private final CompactionEngine compactionEngine;
     private final ConcurrentMap<String, AgentRun> liveAgents = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, MatrixRuntimeApprovalGate> approvalGates = new ConcurrentHashMap<>();
+    // 每个 Agent 的 cwd 引用：Agent 复用且请求换了工程目录时热更新，
+    // 使 CwdResolvingFsPort 的相对路径解析跟随最新 cwd
+    private final ConcurrentMap<String, java.util.concurrent.atomic.AtomicReference<String>> cwdRefs = new ConcurrentHashMap<>();
 
     public AgentRunFactory(
             ILlmRuntimePort llm,
@@ -100,6 +103,17 @@ public class AgentRunFactory implements AgentRunLifecycle {
         }
     }
 
+    @Override
+    public void updateCwd(String agentId, String cwd) {
+        if (cwd == null || cwd.isBlank()) {
+            return;
+        }
+        java.util.concurrent.atomic.AtomicReference<String> reference = cwdRefs.get(agentId);
+        if (reference != null) {
+            reference.set(cwd);
+        }
+    }
+
     public java.util.Collection<AgentRun> all() {
         return liveAgents.values();
     }
@@ -117,8 +131,11 @@ public class AgentRunFactory implements AgentRunLifecycle {
         Inbox inbox = new Inbox(session, LoggingInboxNotifications.INSTANCE);
         String sessionId = session.sessionId();
         AtomicReference<AgentOptions> optionsReference = new AtomicReference<>(options);
+        java.util.concurrent.atomic.AtomicReference<String> cwdReference =
+                new java.util.concurrent.atomic.AtomicReference<>(cwd);
+        cwdRefs.put(agentId, cwdReference);
         ToolRegistry toolRegistry = toolCatalog.createRegistry(
-                new AgentToolContext(agentId, sessionId, cwd, session, userQuestions, optionsReference::get),
+                new AgentToolContext(agentId, sessionId, cwd, session, userQuestions, optionsReference::get, cwdReference),
                 sharedToolRegistry
         );
 
@@ -134,7 +151,7 @@ public class AgentRunFactory implements AgentRunLifecycle {
         if (permissionMatrixPort != null && approvalGateway != null) {
             MatrixRuntimeApprovalGate gate = new MatrixRuntimeApprovalGate(
                     permissionMatrixPort,
-                    session.sessionId(),
+                    agentId,
                     (request, ignored) -> approvalGateway.requestApproval(request)
             );
             gate.setApprovalMode(options.approvalMode());

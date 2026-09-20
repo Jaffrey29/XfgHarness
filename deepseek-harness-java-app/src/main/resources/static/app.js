@@ -2719,8 +2719,8 @@ function renderComposer(sess) {
     },
     {
       value: 'FULL_OPEN',
-      label: '完全开放',
-      desc: '将允许读写、命令与网络等全部操作。',
+      label: '完全开放·沙箱外',
+      desc: '自动审批并允许在沙箱外执行读写、命令与网络等全部操作。',
     },
   ];
   const currentApprovalMode = (sess && sess.approvalMode) || 'REQUEST_APPROVAL';

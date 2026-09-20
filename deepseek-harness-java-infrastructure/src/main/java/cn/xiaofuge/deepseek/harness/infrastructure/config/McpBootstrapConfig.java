@@ -1,10 +1,7 @@
 package cn.xiaofuge.deepseek.harness.infrastructure.config;
 
-import cn.xiaofuge.deepseek.harness.domain.tool.adapter.ToolRegistry;
-import cn.xiaofuge.deepseek.harness.domain.tool.mcp.McpBootstrap;
 import cn.xiaofuge.deepseek.harness.domain.tool.mcp.McpServerConfig;
-import cn.xiaofuge.deepseek.harness.infrastructure.adapter.mcp.StdioMcpClient;
-import cn.xiaofuge.deepseek.harness.infrastructure.adapter.mcp.HttpMcpClient;
+import cn.xiaofuge.deepseek.harness.infrastructure.adapter.extension.McpRuntime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -19,12 +16,13 @@ import java.util.List;
 
 /**
  * MCP 启动器：应用启动后按 {@code harness.extensions.mcp.servers} 配置连接各 MCP server，
- * 并把远端工具以 {@code mcp__<server>__<tool>} 形式注册进共享 {@link ToolRegistry}。
+ * 并把远端工具以 {@code mcp__<server>__<tool>} 形式注册进共享 ToolRegistry。
  * <p>
- * 对齐原版 TS 的 mcp-client「连接 + 工具注入 registry」闭环；支持 stdio、SSE 和 streamable HTTP。
+ * 实际连接工作委托给共享 {@link McpRuntime}，扩展管理在运行期对 server 增删改时
+ * 直接复用该运行时做热更新（断开旧连接、按新配置重连、注销/注册工具）。
+ * <p>
  * 单个 server 连接失败不影响其余 server，错误记录到日志。
- * <p>
- * 应用关闭时统一 {@code disconnectAll} 释放子进程。
+ * 应用关闭时统一 disconnectAll 释放子进程。
  *
  * @author 小傅哥
  * @website bugstack.cn
@@ -35,27 +33,13 @@ public class McpBootstrapConfig implements ApplicationRunner, ApplicationListene
 
     private static final Logger log = LoggerFactory.getLogger(McpBootstrapConfig.class);
 
-    /** stdio 调用超时（与 McpBootstrap 内部 DEFAULT_CALL_TIMEOUT_MS 对齐） */
-    private static final long CALL_TIMEOUT_MS = 60_000;
-
     private final HarnessExtensionsProperties properties;
-    private final ToolRegistry toolRegistry;
-    private volatile McpBootstrap bootstrap;
+    private final McpRuntime mcpRuntime;
 
-    /**
-     * 处理MCP Bootstrap 配置。
-     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
-     * @param properties properties参数。
-     * @param toolRegistry 工具 Registry参数。
-     * @return 方法执行结果。
-     */
-    public McpBootstrapConfig(HarnessExtensionsProperties properties, ToolRegistry toolRegistry) {
+    public McpBootstrapConfig(HarnessExtensionsProperties properties, McpRuntime mcpRuntime) {
         this.properties = properties;
-        this.toolRegistry = toolRegistry;
+        this.mcpRuntime = mcpRuntime;
     }
-    /**
-     * 运行。
-     */
 
     @Override
     @Order(30) // 在 PresetPluginLoader(20) 之后运行，确保基础工具链就绪
@@ -65,13 +49,6 @@ public class McpBootstrapConfig implements ApplicationRunner, ApplicationListene
             log.info("[mcp] no servers configured (harness.extensions.mcp.servers), skipping MCP bootstrap");
             return;
         }
-
-        bootstrap = new McpBootstrap(toolRegistry, config -> {
-            if ("stdio".equals(config.transport())) {
-                return new StdioMcpClient(config.command(), config.args(), config.env(), config.cwd(), CALL_TIMEOUT_MS);
-            }
-            return new HttpMcpClient(config.transport(), config.url(), config.headers(), CALL_TIMEOUT_MS);
-        });
 
         List<McpServerConfig> configs = servers.stream()
                 .filter(s -> s.getName() != null && !s.getName().isBlank())
@@ -92,24 +69,13 @@ public class McpBootstrapConfig implements ApplicationRunner, ApplicationListene
             return;
         }
 
-        int registered = bootstrap.connectAll(configs);
+        int registered = mcpRuntime.connectAll(configs);
         log.info("[mcp] bootstrap complete: {} tool(s) registered from {} server(s)", registered, configs.size());
-        if (!bootstrap.errors().isEmpty()) {
-            log.warn("[mcp] server connection errors: {}", bootstrap.errors());
-        }
     }
-    /**
-     * on Application Event。
-     * 流程：适配外部协议或资源 → 调用底层能力 → 返回结果。
-     * @param event 领域事件。
-     */
-
 
     @Override
     public void onApplicationEvent(ContextClosedEvent event) {
-        if (bootstrap != null) {
-            log.info("[mcp] disconnecting all MCP servers");
-            bootstrap.disconnectAll();
-        }
+        log.info("[mcp] disconnecting all MCP servers");
+        mcpRuntime.disconnectAll();
     }
 }

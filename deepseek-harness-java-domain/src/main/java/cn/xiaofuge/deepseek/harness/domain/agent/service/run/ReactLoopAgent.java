@@ -162,6 +162,11 @@ public class ReactLoopAgent implements AgentRun {
         optionsChangeListener.accept(options);
     }
     @Override public SessionLog session() { return session; }
+
+    @Override
+    public java.util.List<String> drainWrittenArtifacts() {
+        return toolExecutor.drainArtifacts();
+    }
     @Override public Inbox inbox() { return inbox; }
 
     /**
@@ -827,7 +832,7 @@ public class ReactLoopAgent implements AgentRun {
         return new GenerateOptions(
                 options.provider(),
                 options.model(),
-                null,               // reasoningEffort
+                options.reasoningEffort(),
                 history,
                 assembly.system(),
                 assembly.tools(),

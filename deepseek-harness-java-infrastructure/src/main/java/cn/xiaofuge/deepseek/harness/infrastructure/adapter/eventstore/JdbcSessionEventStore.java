@@ -120,9 +120,10 @@ public class JdbcSessionEventStore implements ISessionEventStore {
     @Override
     @Transactional
     public void appendBatch(String sessionId, List<SessionEvent> events) {
-        for (SessionEvent event : events) {
-            dao.insert(toRow(sessionId, event));
-        }
+        List<SessionEventRowPO> rows = events.stream()
+                .map(event -> toRow(sessionId, event))
+                .toList();
+        dao.insertBatch(rows);
     }
     /**
      * 读取All。

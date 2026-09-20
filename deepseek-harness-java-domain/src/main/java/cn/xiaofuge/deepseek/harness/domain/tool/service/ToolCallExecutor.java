@@ -51,6 +51,8 @@ public final class ToolCallExecutor {
     private volatile IHookService hookService;
     private volatile RuntimeApprovalGate approvalGate = RuntimeApprovalGate.allowAll();
     private volatile Consumer<ToolLifecycleEvent> lifecycleListener;
+    // 本回合写文件类工具登记的产物（绝对路径），由响应收集节点按回合取走
+    private final Set<String> turnArtifacts = ConcurrentHashMap.newKeySet();
 
     /**
      * @param registry    工具注册表
@@ -101,6 +103,17 @@ public final class ToolCallExecutor {
     }
 
     /**
+     * 取走本回合累计的文件产物路径（绝对路径，去重）。
+     * 由响应收集节点在回合结束后调用一次。
+     */
+    public List<String> drainArtifacts() {
+        if (turnArtifacts.isEmpty()) return List.of();
+        List<String> copy = new ArrayList<>(turnArtifacts);
+        turnArtifacts.clear();
+        return copy;
+    }
+
+    /**
      * 运行期审批判定结果：携带裁决详情（而非布尔），以区分 deny 与 cancel。
      */
     private record ApprovalOutcome(boolean denied, boolean cancelled) {}
@@ -110,6 +123,15 @@ public final class ToolCallExecutor {
      * <p>数据示例：shell_execute 未获得审批时返回 denied=true；fs_read 通常直接放行。
      */
     private ApprovalOutcome checkApproval(String toolName, Object args) {
+        // 阻塞等待裁决前先发出显式挂起信号：远程协作层据此识别"审批等待"，
+        // 而不是把长时间阻塞误判为普通工具执行（step_break 的 status=requires_approval）。
+        if (approvalGate.requiresApproval(toolName)) {
+            log.info("[Tool] 工具 {} 需运行期审批，已发出 requires_approval 信号，等待人工裁决...", toolName);
+            notifyLifecycle(new ToolLifecycleEvent(
+                    "call", null, toolName,
+                    args == null ? null : String.valueOf(args),
+                    null, "requires_approval", null));
+        }
         RuntimeApprovalGate.Decision decision = approvalGate.check(toolName, args);
         return new ApprovalOutcome(decision == RuntimeApprovalGate.Decision.DENY, false);
     }
@@ -430,9 +452,8 @@ public final class ToolCallExecutor {
             java.util.function.Consumer<Message> acceptContext
     ) {
         ToolExecutionResult result = slot.result;
-
         // 按需执行 finalizeContent
-        if (slot.needsPost) {
+        if (slot.needsPost && slot.ctx != null) {
             var defOpt = registry.lookup(call.block.name());
             if (defOpt.isPresent()) {
                 var finalized = defOpt.get().finalizeContent(slot.ctx.execution(), result);
@@ -450,7 +471,9 @@ public final class ToolCallExecutor {
         }
 
         // 合并延迟上下文
-        List<Message> deferred = slot.ctx.drainDeferredContexts();
+        List<Message> deferred = slot.ctx == null
+                ? List.of()
+                : slot.ctx.drainDeferredContexts();
         if (!deferred.isEmpty()) {
             if (result instanceof ToolExecutionResult.Success s) {
                 var combined = new ArrayList<>(s.additionalContexts());
@@ -463,6 +486,11 @@ public final class ToolCallExecutor {
                 result = new ToolExecutionResult.Failure(f.error(), f.content(),
                         f.meta(), combined);
             }
+        }
+
+        // 聚合写文件类工具登记的产物路径
+        if (slot.ctx != null) {
+            turnArtifacts.addAll(slot.ctx.drainArtifacts());
         }
 
         // 追加 tool/result 事件

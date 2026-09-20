@@ -1607,6 +1607,117 @@ a { color: inherit; text-decoration: none; }
 .toc-nav a:hover { color: var(--blue); border-color: rgba(79, 70, 229, .45); box-shadow: 0 4px 14px rgba(79, 70, 229, .1); }
 
 /* ============================================================
+   Desktop App · 桌面端下载
+   ============================================================ */
+.desktop-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1.02fr) minmax(0, .98fr);
+  gap: 56px;
+  align-items: center;
+}
+
+.desktop-copy h2 {
+  margin: 18px 0 0;
+  font-size: clamp(1.9rem, 3.2vw, 2.5rem);
+  line-height: 1.22;
+  letter-spacing: -.02em;
+}
+
+.desktop-lede {
+  margin: 16px 0 0;
+  color: var(--text-2);
+  font-size: 1.01rem;
+}
+
+.desktop-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 13px;
+  margin-top: 30px;
+}
+
+.desktop-actions .btn svg { flex: 0 0 auto; }
+
+.desktop-platforms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+  margin: 26px 0 0;
+}
+
+.desktop-platforms li {
+  padding: 7px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line-2);
+  background: var(--bg-card);
+  color: var(--text-2);
+  font-size: .8rem;
+  font-weight: 600;
+  transition: border-color .2s ease, color .2s ease;
+}
+
+.desktop-platforms li:hover { border-color: rgba(79, 70, 229, .45); color: var(--blue); }
+
+.desktop-note {
+  margin: 18px 0 0;
+  color: var(--muted);
+  font-size: .84rem;
+}
+
+.desktop-visual { position: relative; }
+
+.desktop-visual svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.desktop-features {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 60px;
+}
+
+.desktop-feature {
+  padding: 24px 22px 22px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+  transition: border-color .22s ease, box-shadow .22s ease, transform .22s ease;
+}
+
+.desktop-feature:hover {
+  border-color: rgba(79, 70, 229, .3);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.desktop-feature .feature-icon { margin-bottom: 16px; }
+.desktop-feature .feature-icon { background: linear-gradient(135deg, #4f46e5, #0ea5e9); box-shadow: 0 8px 18px rgba(79, 70, 229, .26); }
+.desktop-feature:nth-child(2) .feature-icon { background: linear-gradient(135deg, #8b5cf6, #a78bfa); box-shadow: 0 8px 18px rgba(139, 92, 246, .26); }
+.desktop-feature:nth-child(3) .feature-icon { background: linear-gradient(135deg, #10b981, #34d399); box-shadow: 0 8px 18px rgba(16, 185, 129, .26); }
+.desktop-feature:nth-child(4) .feature-icon { background: linear-gradient(135deg, #f59e0b, #fbbf24); box-shadow: 0 8px 18px rgba(245, 158, 11, .26); }
+
+.desktop-feature .feature-icon svg { width: 22px; height: 22px; color: #fff; }
+
+.desktop-feature h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  letter-spacing: -.01em;
+}
+
+.desktop-feature p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: .86rem;
+}
+
+/* ============================================================
    Responsive
    ============================================================ */
 @media (max-width: 1024px) {
@@ -1623,6 +1734,8 @@ a { color: inherit; text-decoration: none; }
   .plugin-flow { grid-template-columns: repeat(2, 1fr); }
   .plugin-topic-panel { gap: 30px; }
   .quickstart-grid { grid-template-columns: 1fr; }
+  .desktop-panel { grid-template-columns: 1fr; gap: 44px; }
+  .desktop-features { grid-template-columns: repeat(2, 1fr); margin-top: 44px; }
 }
 
 @media (max-width: 740px) {

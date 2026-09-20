@@ -43,6 +43,27 @@ public class SandboxPolicyService implements ISandboxPolicyService {
         };
     }
 
+    @Override
+    public SandboxExecutionPolicy resolveWithExtraRoots(SandboxPolicyRequest request, java.util.List<Path> extraRoots) {
+        SandboxMode mode = request.modeOverride().orElse(defaultMode);
+        if (mode != SandboxMode.WORKSPACE_WRITE || extraRoots == null || extraRoots.isEmpty()) {
+            return resolve(request);
+        }
+        java.util.List<Path> roots = new java.util.ArrayList<>();
+        roots.add(request.sessionCwd()
+                .map(Path::toAbsolutePath)
+                .map(Path::normalize)
+                .orElse(fallbackWorkspaceRoot));
+        for (Path extra : extraRoots) {
+            if (extra == null) continue;
+            Path normalized = extra.toAbsolutePath().normalize();
+            if (roots.stream().noneMatch(normalized::equals)) {
+                roots.add(normalized);
+            }
+        }
+        return SandboxExecutionPolicy.workspaceWrite(roots);
+    }
+
     /**
      * 处理render 策略 上下文。
      * 流程：应用领域规则 → 更新领域对象 → 返回结果。
@@ -52,7 +73,13 @@ public class SandboxPolicyService implements ISandboxPolicyService {
     public String renderPolicyContext(SandboxExecutionPolicy policy) {
         return switch (policy.mode()) {
             case READ_ONLY -> "Current DSH file policy: read-only. Any available operation enforced by the DSH file sandbox cannot modify files in the standing mode.";
-            case WORKSPACE_WRITE -> "Current DSH file policy: workspace-write. Any available operation enforced by the DSH file sandbox may modify files under the session workspace: " + policy.workspaceRoot().map(Path::toString).orElse("") + ".";
+            case WORKSPACE_WRITE -> {
+                java.util.List<Path> roots = policy.workspaceRoots() != null && !policy.workspaceRoots().isEmpty()
+                        ? policy.workspaceRoots()
+                        : policy.workspaceRoot().map(java.util.List::of).orElse(java.util.List.of());
+                String joined = roots.stream().map(Path::toString).collect(java.util.stream.Collectors.joining(", "));
+                yield "Current DSH file policy: workspace-write. Any available operation enforced by the DSH file sandbox may modify files under these writable roots: " + joined + ".";
+            }
             case DANGER_FULL_ACCESS -> "Current DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations.";
         };
     }

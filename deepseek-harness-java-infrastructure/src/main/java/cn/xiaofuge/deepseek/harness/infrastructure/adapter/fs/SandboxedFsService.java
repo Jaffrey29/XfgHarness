@@ -33,6 +33,7 @@ public class SandboxedFsService implements IFsPort {
     private final LocalFsService delegate;
     private final ISandboxPolicyService sandboxPolicyService;
     private final Path baseDir;
+    private final java.util.function.Supplier<java.util.List<Path>> extraRootsSupplier;
 
     /**
      * 处理Sandboxed Fs Service。
@@ -42,9 +43,21 @@ public class SandboxedFsService implements IFsPort {
      * @return 方法执行结果。
      */
     public SandboxedFsService(String baseDir, ISandboxPolicyService sandboxPolicyService) {
+        this(baseDir, sandboxPolicyService, java.util.List::of);
+    }
+
+    /**
+     * 带动态额外根的构造：每次写操作时从 supplier 取当前会话授权的工程目录。
+     * @param baseDir base Dir参数。
+     * @param sandboxPolicyService sandbox 策略 Service参数。
+     * @param extraRootsSupplier 额外可写根提供者。
+     */
+    public SandboxedFsService(String baseDir, ISandboxPolicyService sandboxPolicyService,
+                              java.util.function.Supplier<java.util.List<Path>> extraRootsSupplier) {
         this.baseDir = Paths.get(baseDir != null ? baseDir : ".").toAbsolutePath().normalize();
         this.delegate = new LocalFsService(baseDir);
         this.sandboxPolicyService = sandboxPolicyService;
+        this.extraRootsSupplier = extraRootsSupplier != null ? extraRootsSupplier : java.util.List::of;
     }
 
     /**
@@ -53,10 +66,10 @@ public class SandboxedFsService implements IFsPort {
      * @return 方法执行结果。
      */
     private SandboxExecutionPolicy policy() {
-        return sandboxPolicyService.resolve(new SandboxPolicyRequest(
+        return sandboxPolicyService.resolveWithExtraRoots(new SandboxPolicyRequest(
                 Optional.of(baseDir),
                 Optional.empty()
-        ));
+        ), extraRootsSupplier.get());
     }
 
     @Override
@@ -77,8 +90,8 @@ public class SandboxedFsService implements IFsPort {
         switch (policy.mode()) {
             case READ_ONLY -> throw new SecurityException(
                     "[sandbox: file write denied under read-only mode] " + path);
-            // delegate.write 内部 resolveForWrite 已限制在 baseDir 内
-            case WORKSPACE_WRITE -> delegate.write(path, content);
+            // delegate.write(path, content, roots) 按多根策略校验，允许写入授权工程目录
+            case WORKSPACE_WRITE -> delegate.write(path, content, policy.workspaceRoots());
             case DANGER_FULL_ACCESS -> writeUnrestricted(path, content);
         }
     }

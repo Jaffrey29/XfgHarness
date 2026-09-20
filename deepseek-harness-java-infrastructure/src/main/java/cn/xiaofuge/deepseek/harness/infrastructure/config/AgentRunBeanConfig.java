@@ -8,6 +8,15 @@ import cn.xiaofuge.deepseek.harness.domain.agent.service.run.InMemoryUserQuestio
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.agent.PersistingAgentEventListener;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.run.PersistingSessionLog;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.run.RuntimeApprovalBroker;
+import cn.xiaofuge.deepseek.harness.infrastructure.adapter.fs.LocalFsService;
+import cn.xiaofuge.deepseek.harness.infrastructure.dao.IDigitalHumanDao;
+import cn.xiaofuge.deepseek.harness.infrastructure.dao.IDigitalHumanEndpointDao;
+import cn.xiaofuge.deepseek.harness.infrastructure.digitalhuman.AggregatingRuntimeApprovalGateway;
+import cn.xiaofuge.deepseek.harness.infrastructure.digitalhuman.RemoteEndpointCredentialRegistry;
+import cn.xiaofuge.deepseek.harness.infrastructure.adapter.shell.LocalShellExecutor;
+import cn.xiaofuge.deepseek.harness.infrastructure.adapter.subagent.AcpSubagentProvider;
+import cn.xiaofuge.deepseek.harness.infrastructure.adapter.subagent.ClaudeCodeSubagentProvider;
+import cn.xiaofuge.deepseek.harness.infrastructure.adapter.subagent.CodexSubagentProvider;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.run.tool.InMemoryToolRegistry;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.run.tool.AgentToolCatalog;
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.tool.JacksonToolArgumentsParser;
@@ -47,6 +56,7 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 
 /**
  * AgentRun 运行时组合根。
@@ -101,13 +111,21 @@ public class AgentRunBeanConfig {
                 ## 工具使用（重要）
                 - 你处在一个可以调用真实工具的运行环境中。工具以 function calling 形式提供，必须真正发起工具调用才能获得结果。
                 - 当任务涉及「读取/列出/搜索/写入文件、执行命令、查看目录、访问网页、查询代码」等任何需要真实数据的操作时，你必须调用对应工具，严禁凭空编造或复述请求。
+                - **扩展管理**：用户要求安装/启用/停用技能，或添加/修改/删除 MCP 服务时，直接使用 extension_skill_install（从 Git 仓库拉取安装技能）、extension_skill_list、extension_skill_manage、extension_mcp_list、extension_mcp_configure、extension_mcp_remove 工具完成，不要只给出口头指引。安装技能时若用户未给出仓库地址，可先通过 web 搜索找到合适的技能仓库再安装。
                 - 即使用户只说一句"列出当前目录的文件"，也必须调用工具获取真实结果，而不是回答"我来列出"。
                 - **列出目录内容（一级子目录/文件）时，优先用 `shell_execute` 执行 `ls -la <目录>` 或 `find <目录> -maxdepth 1 -type d`；`fs_search` 是 glob 文件搜索工具，不适合列目录。**
+                - 使用 `shell_execute` 时，优先通过 `cwd` 参数指定工作目录；不要执行 `cd ~/...`、`cd /` 或 `cd $HOME`，工作区写模式下这些命令会被沙箱拒绝。
                 - 工具调用前简要说明目的，调用后基于真实结果解读。
                 - 危险操作（删除、覆盖）前确认。
                 - 任务完成后停止调用工具，给出最终回复。
                 - 除非用户明确要求禁用工具，否则根据任务需要自主选择工具。
                 - 工具失败时不要编造结果：说明失败原因，尝试更安全的替代路径或请求澄清。
+
+                ## 网页与图表产物
+                - 生成 HTML、ECharts 或可视化页面后，只需写入文件并在回复中给出绝对路径或 Markdown 文件链接。
+                - 不要调用系统 `open`、`open_external`、`xdg-open` 或浏览器命令打开产物；桌面端会在 DSH Java Desktop 右侧面板内嵌预览。
+                - ECharts 页面应优先使用内联脚本和可访问的资源链接，确保在桌面端内嵌 WebView 中可运行。
+                - **draw.io 图表**：用户要求流程图/架构图/泳道图/ER 图等，或要求按 draw.io 插件交付时，生成 `.drawio` 文件（内容为 `<mxfile><diagram><mxGraphModel>…</mxGraphModel></diagram></mxfile>` 包裹的合法 XML）：节点用 `vertex="1"` 的 `mxCell` 描述（`style` 控制圆角/填充/字体，`mxGeometry` 定位），连线用 `edge="1"` 的 `mxCell` 并以 `source`/`target` 关联节点；合理布局避免重叠，写入文件后在回复中给出绝对路径，桌面端会内嵌渲染并支持编辑。
 
                 ## 工具结果解读（严格遵循）
                 - 工具返回的就是真实数据，直接原样引用，不要二次加工或"翻译"。
@@ -145,11 +163,31 @@ public class AgentRunBeanConfig {
         return new RuntimeApprovalBroker(timeoutMs);
     }
 
+    /**
+     * 聚合审批网关（@Primary）：本地 agent 走本地 Broker，行为不变；
+     * 前端轮询/裁决接口在此之上聚合远端 DSH 数字人端点的待决审批并转发裁决，
+     * 解决"远端数字人请求审批但桌面端看不到审批卡"的跨实例可见性问题。
+     */
+    @Bean
+    @Primary
+    public RuntimeApprovalGateway runtimeApprovalGateway(
+            RuntimeApprovalBroker runtimeApprovalBroker,
+            IDigitalHumanEndpointDao endpointDao,
+            IDigitalHumanDao humanDao,
+            RemoteEndpointCredentialRegistry remoteCredentials
+    ) {
+        return new AggregatingRuntimeApprovalGateway(
+                runtimeApprovalBroker, endpointDao, humanDao, remoteCredentials);
+    }
+
     @Bean
     public Object agentRunFactorySubagentInit(
             SubagentRegistry subagentRegistry,
             AgentRunLifecycle agentRunFactory,
-            AgentModelSettingResolver modelSettingResolver
+            AgentModelSettingResolver modelSettingResolver,
+            ObjectProvider<ClaudeCodeSubagentProvider> claudeProvider,
+            ObjectProvider<CodexSubagentProvider> codexProvider,
+            ObjectProvider<AcpSubagentProvider> acpProvider
     ) {
         var spawn = new SpawnInProcessProvider(
                 "spawn-in-process",
@@ -158,6 +196,13 @@ public class AgentRunBeanConfig {
                 () -> modelSettingResolver.resolve(null, 4096)
         );
         subagentRegistry.register(spawn);
+        // 外部 CLI 子智能体（可通过扩展管理在运行期热更新命令）
+        ClaudeCodeSubagentProvider claude = claudeProvider.getIfAvailable();
+        if (claude != null) subagentRegistry.register(claude);
+        CodexSubagentProvider codex = codexProvider.getIfAvailable();
+        if (codex != null) subagentRegistry.register(codex);
+        AcpSubagentProvider acp = acpProvider.getIfAvailable();
+        if (acp != null) subagentRegistry.register(acp);
         return spawn;
     }
 
@@ -174,6 +219,7 @@ public class AgentRunBeanConfig {
             SubagentRegistry subagentRegistry,
             IShellExecutor shellExecutor,
             IFsPort fsService,
+            @Value("${harness.agent.default-cwd:#{systemProperties['user.dir']}}") String defaultCwd,
             IWebPort webService,
             IJobRegistryService jobRegistryService,
             IGoalQueryService goalQueryService,
@@ -202,6 +248,8 @@ public class AgentRunBeanConfig {
         AgentToolCatalog toolCatalog = new AgentToolCatalog(
                 shellExecutor,
                 fsService,
+                new LocalShellExecutor(),
+                new LocalFsService(defaultCwd, false),
                 webService,
                 planModeService,
                 todoWriteService,
