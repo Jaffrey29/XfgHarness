@@ -64,23 +64,36 @@ public class AgentStreamApi implements IAgentStreamApi {
     ) {
         java.util.concurrent.atomic.AtomicInteger chunkIndex =
                 new java.util.concurrent.atomic.AtomicInteger(0);
+        // 60ms 增量聚合：LLM 逐 token 回调时不再逐条推 SSE（每 token 一次序列化+网络写
+        // 会让前端逐帧重渲染整条消息导致闪烁），攒够时间窗或收尾时一次性发出
+        DeltaBatch textBatch = new DeltaBatch(content -> sendDelta(emitter, emitterClosed, chunkIndex, content));
+        DeltaBatch reasoningBatch = new DeltaBatch(content -> sendReasoning(emitter, emitterClosed, content));
         try {
             sendMeta(request, emitter);
-            java.util.function.Consumer<String> deltaSink = delta -> sendDelta(
-                    emitter, emitterClosed, chunkIndex, delta
-            );
-            java.util.function.Consumer<String> reasoningSink = delta -> sendReasoning(emitter, emitterClosed, delta);
-            java.util.function.Consumer<AgentToolCallEventResponseDTO> toolCallSink = event ->
-                    sendToolCall(emitter, emitterClosed, event);
-            Runnable finishSink = () -> sendFinish(emitter, emitterClosed);
+            java.util.function.Consumer<String> deltaSink = textBatch::accept;
+            java.util.function.Consumer<String> reasoningSink = reasoningBatch::accept;
+            java.util.function.Consumer<AgentToolCallEventResponseDTO> toolCallSink = event -> {
+                textBatch.flush();
+                reasoningBatch.flush();
+                sendToolCall(emitter, emitterClosed, event);
+            };
+            Runnable finishSink = () -> {
+                textBatch.flush();
+                reasoningBatch.flush();
+                sendFinish(emitter, emitterClosed);
+            };
 
             Response<AgentMessageResponseDTO> wrappedResponse =
                     agentApi.sendMessageStreaming(request, deltaSink, reasoningSink, toolCallSink, finishSink);
             if (wrappedResponse.data() == null) {
                 throw new IllegalStateException(wrappedResponse.info());
             }
+            textBatch.flush();
+            reasoningBatch.flush();
             sendDone(emitter, emitterClosed, wrappedResponse.data(), chunkIndex.get());
         } catch (Exception exception) {
+            textBatch.flush();
+            reasoningBatch.flush();
             sendError(emitter, emitterClosed, exception);
         }
     }
@@ -179,6 +192,9 @@ public class AgentStreamApi implements IAgentStreamApi {
         done.put("sessionId", response.sessionId());
         done.put("status", response.status());
         done.put("messages", response.messages());
+        if (response.artifacts() != null && !response.artifacts().isEmpty()) {
+            done.put("artifacts", response.artifacts());
+        }
         done.put("totalChunks", totalChunks);
         log.info("[SSE] 流式完成，推送 done 事件：agentId={} sessionId={} status={} chunks={}",
                 response.agentId(), response.sessionId(), response.status(), totalChunks);

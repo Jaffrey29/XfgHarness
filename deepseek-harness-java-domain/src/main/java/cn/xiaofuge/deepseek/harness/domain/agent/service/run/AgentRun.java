@@ -41,6 +41,14 @@ public interface AgentRun extends Agent {
     void setStreamFinishSink(Runnable sink);
 
     /**
+     * 取走本回合累计的文件产物路径（绝对路径，去重）。
+     * 由响应收集节点在回合结束后调用一次，随 done 事件下发前端。
+     */
+    default java.util.List<String> drainWrittenArtifacts() {
+        return java.util.List.of();
+    }
+
+    /**
      * 释放当前运行占用的资源。
      */
     CompletableFuture<Void> dispose();

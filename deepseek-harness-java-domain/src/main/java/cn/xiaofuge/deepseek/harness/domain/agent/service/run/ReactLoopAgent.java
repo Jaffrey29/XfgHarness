@@ -162,6 +162,11 @@ public class ReactLoopAgent implements AgentRun {
         optionsChangeListener.accept(options);
     }
     @Override public SessionLog session() { return session; }
+
+    @Override
+    public java.util.List<String> drainWrittenArtifacts() {
+        return toolExecutor.drainArtifacts();
+    }
     @Override public Inbox inbox() { return inbox; }
 
     /**

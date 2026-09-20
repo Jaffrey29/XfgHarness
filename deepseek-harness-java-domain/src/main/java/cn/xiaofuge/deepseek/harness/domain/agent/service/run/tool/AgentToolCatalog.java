@@ -18,6 +18,7 @@ import cn.xiaofuge.deepseek.harness.domain.session.IConversationQueryService;
 import cn.xiaofuge.deepseek.harness.domain.todo.service.TodoWriteService;
 import cn.xiaofuge.deepseek.harness.domain.todo.service.TodoWriteTool;
 import cn.xiaofuge.deepseek.harness.domain.tool.adapter.ToolRegistry;
+import cn.xiaofuge.deepseek.harness.domain.tool.fs.CwdResolvingFsPort;
 import cn.xiaofuge.deepseek.harness.domain.tool.fs.FsEditTool;
 import cn.xiaofuge.deepseek.harness.domain.tool.fs.FsGrepTool;
 import cn.xiaofuge.deepseek.harness.domain.tool.fs.FsReadImageTool;
@@ -122,27 +123,38 @@ public final class AgentToolCatalog {
                 ? fsPort
                 : new ApprovalAwareFsPort(fsPort, unrestrictedFsPort, optionsSupplier);
 
+        // cwd 感知：fsPort 是全局单例（baseDir=进程目录），相对路径必须解析到 Agent
+        // 自己的工作目录，否则 fs_write 写出的文件与前端按会话 cwd 找的路径对不上；
+        // cwdRef 支持热更新，Agent 实例复用且换工程目录时由 AgentRunFactory.updateCwd 刷新
+        IFsPort agentFsPort = new CwdResolvingFsPort(effectiveFsPort, context.cwdRef() != null
+                ? context.cwdRef()
+                : new java.util.concurrent.atomic.AtomicReference<>(context.cwd()));
+        // 写文件类工具自行把相对路径解析到 cwd（绝对路径透传），并按绝对路径登记产物
+        java.util.function.Supplier<String> cwdSupplier = context.cwdRef() != null
+                ? context.cwdRef()::get
+                : () -> context.cwd();
+
         localRegistry.register(new TodoWriteTool(context.session(), false, todoWriteService));
         localRegistry.register(new AskUserTool(context.userQuestions(), context.agentId()));
         localRegistry.register(new ExitPlanModeTool(context.session(), planState, planModeService));
         localRegistry.register(new ShellExecuteTool(
                 effectiveShellExecutor,
                 context.cwd()));
-        localRegistry.register(new FsReadTool(fsPort));
+        localRegistry.register(new FsReadTool(agentFsPort));
         localRegistry.register(new FsWriteTool(
-                effectiveFsPort));
-        localRegistry.register(new FsSearchTool(fsPort));
+                agentFsPort, cwdSupplier));
+        localRegistry.register(new FsSearchTool(agentFsPort));
         localRegistry.register(new StrReplaceEditorTool(
-                effectiveFsPort));
-        localRegistry.register(new FsGrepTool(fsPort));
-        localRegistry.register(new FsReadImageTool(fsPort));
+                agentFsPort, cwdSupplier));
+        localRegistry.register(new FsGrepTool(agentFsPort));
+        localRegistry.register(new FsReadImageTool(agentFsPort));
         localRegistry.register(new FsEditTool(
-                effectiveFsPort));
+                agentFsPort, cwdSupplier));
         localRegistry.register(new PluginStatusTool(pluginRepository, pluginRuntimeService));
         localRegistry.register(new WebSearchTool(webPort));
         localRegistry.register(new WebFetchTool(webPort));
         if (lspService != null) {
-            localRegistry.register(new LspTool(lspService, fsPort));
+            localRegistry.register(new LspTool(lspService, agentFsPort));
         }
         if (terminalPort != null) {
             localRegistry.register(new TerminalTools.Open(terminalPort));
@@ -193,8 +205,20 @@ public final class AgentToolCatalog {
             String cwd,
             SessionLog session,
             UserQuestionGateway userQuestions,
-            Supplier<AgentOptions> optionsSupplier
+            Supplier<AgentOptions> optionsSupplier,
+            java.util.concurrent.atomic.AtomicReference<String> cwdRef
     ) {
+        public AgentToolContext(
+                String agentId,
+                String sessionId,
+                String cwd,
+                SessionLog session,
+                UserQuestionGateway userQuestions,
+                Supplier<AgentOptions> optionsSupplier
+        ) {
+            this(agentId, sessionId, cwd, session, userQuestions, optionsSupplier, null);
+        }
+
         public AgentToolContext(
                 String agentId,
                 String sessionId,
@@ -202,7 +226,7 @@ public final class AgentToolCatalog {
                 SessionLog session,
                 UserQuestionGateway userQuestions
         ) {
-            this(agentId, sessionId, cwd, session, userQuestions, () -> null);
+            this(agentId, sessionId, cwd, session, userQuestions, () -> null, null);
         }
     }
 }

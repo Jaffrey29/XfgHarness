@@ -21,5 +21,14 @@ public interface AgentRunLifecycle {
 
     void configureApprovalMode(String agentId, ApprovalModeVO mode);
 
+    /**
+     * 热更新 Agent 工作目录。Agent 实例被复用且请求换了工程目录时调用，
+     * 使 FS 工具的相对路径解析跟随最新 cwd。
+     *
+     * @param agentId Agent 标识。
+     * @param cwd 新工作目录，null/空忽略。
+     */
+    void updateCwd(String agentId, String cwd);
+
     CompletableFuture<Void> disposeAll();
 }

@@ -40,7 +40,25 @@ public class FsEditTool implements ToolDefinition {
      * @return 方法执行结果。
      */
     public FsEditTool(IFsPort fsService) {
+        this(fsService, () -> null);
+    }
+
+    public FsEditTool(IFsPort fsService, java.util.function.Supplier<String> cwdSupplier) {
         this.fsService = fsService;
+        this.cwdSupplier = cwdSupplier != null ? cwdSupplier : () -> null;
+    }
+
+    private final java.util.function.Supplier<String> cwdSupplier;
+
+    /** 相对路径解析到 Agent cwd（绝对路径原样返回）。 */
+    private String resolveAbsolute(String path) {
+        if (path == null || path.isBlank()) return path;
+        java.nio.file.Path p = java.nio.file.Paths.get(path);
+        String cwd = cwdSupplier.get();
+        if (!p.isAbsolute() && cwd != null && !cwd.isBlank()) {
+            return java.nio.file.Paths.get(cwd).toAbsolutePath().normalize().resolve(p).normalize().toString();
+        }
+        return path;
     }
 
     @Override public String name() { return NAME; }
@@ -104,7 +122,8 @@ public class FsEditTool implements ToolDefinition {
     public CompletableFuture<ToolExecutionResult> execute(Object args, ToolRunContext ctx) {
         try {
             Map<String, Object> argMap = (Map<String, Object>) args;
-            String path = String.valueOf(argMap.get("path"));
+            // 统一解析到绝对路径：与前端按会话工作目录找文件对齐
+            String path = resolveAbsolute(String.valueOf(argMap.get("path")));
             Object oldObj = argMap.get("old_string");
             Object newObj = argMap.get("new_string");
             if (path == null || path.isBlank() || "null".equals(path)) {
@@ -147,6 +166,11 @@ public class FsEditTool implements ToolDefinition {
                     ? content.replace(oldString, newString)
                     : replaceFirst(content, oldString, newString);
             fsService.write(path, updated);
+
+            // 编辑成功登记产物，随 done 事件下发权威文件清单
+            if (ctx != null) {
+                ctx.recordArtifact(path);
+            }
 
             int replaced = replaceAll ? occurrences : 1;
             return CompletableFuture.completedFuture(ToolExecutionResult.ok(List.of(

@@ -51,9 +51,18 @@ public class AgentResolveNode extends AbstractAgentMessageNode {
     @Override
     protected AgentMessageResponseDTO doApply(AgentMessageRequestDTO request,
                                            AgentMessageDynamicContext ctx) throws Exception {
-        // 桌面端把项目下授权的工程目录随请求传入，workspace-write 沙箱据此放行
-        if (request.sandboxRoots() != null) {
-            sandboxExtraRootsRegistry.update(request.sandboxRoots());
+        // 桌面端把项目下授权的工程目录随请求传入，workspace-write 沙箱据此放行；
+        // Agent 的 cwd（会话归属工程）必须一并授权：FS 工具的相对路径现在解析到 cwd，
+        // 否则写入 cwd 下的文件会被沙箱拦截（cwd 未必出现在 sandboxRoots 里）
+        java.util.List<String> sandboxRoots = request.sandboxRoots();
+        if (sandboxRoots != null) {
+            String requestCwd = request.cwd();
+            if (requestCwd != null && !requestCwd.isBlank() && !sandboxRoots.contains(requestCwd)) {
+                java.util.List<String> withCwd = new java.util.ArrayList<>(sandboxRoots);
+                withCwd.add(requestCwd);
+                sandboxRoots = withCwd;
+            }
+            sandboxExtraRootsRegistry.update(sandboxRoots);
         }
         AgentRun agent = agentFactory.get(request.agentId());
         if (agent != null) {
@@ -77,6 +86,9 @@ public class AgentResolveNode extends AbstractAgentMessageNode {
             log.debug("[Resolve] Agent={} 已存在，复用实例", request.agentId());
             agent.updateOptions(buildAgentOptions(request));
             agentFactory.configureApprovalMode(request.agentId(), approvalMode(request));
+            // 同步 cwd：桌面端同一 agentId 可能在不同会话/工程间复用，
+            // 不同步会导致 FS 工具把相对路径写到旧工程目录
+            agentFactory.updateCwd(request.agentId(), request.cwd());
         }
         ctx.attachSinks(agent);
         ctx.setAgent(agent);

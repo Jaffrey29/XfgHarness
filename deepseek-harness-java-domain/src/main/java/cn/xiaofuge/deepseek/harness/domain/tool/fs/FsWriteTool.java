@@ -31,6 +31,8 @@ public class FsWriteTool implements ToolDefinition {
             "Use this for creating new files, updating configurations, or saving output.";
 
     private final IFsPort fsService;
+    /** Agent 工作目录提供者：相对路径解析到 Agent cwd，产物按绝对路径登记 */
+    private final java.util.function.Supplier<String> cwdSupplier;
 
     /**
      * 处理Fs Write 工具。
@@ -39,7 +41,12 @@ public class FsWriteTool implements ToolDefinition {
      * @return 方法执行结果。
      */
     public FsWriteTool(IFsPort fsService) {
+        this(fsService, () -> null);
+    }
+
+    public FsWriteTool(IFsPort fsService, java.util.function.Supplier<String> cwdSupplier) {
         this.fsService = fsService;
+        this.cwdSupplier = cwdSupplier != null ? cwdSupplier : () -> null;
     }
 
     @Override public String name() { return NAME; }
@@ -106,10 +113,24 @@ public class FsWriteTool implements ToolDefinition {
                 content = "";
             }
 
-            fsService.write(path, content);
+            // 相对路径解析到 Agent cwd：与前端按会话工作目录找文件对齐，
+            // 同时把解析后的绝对路径登记为产物，随 done 事件下发权威文件清单
+            String effectivePath = path;
+            java.nio.file.Path p = java.nio.file.Paths.get(path);
+            String cwd = cwdSupplier.get();
+            if (!p.isAbsolute() && cwd != null && !cwd.isBlank()) {
+                effectivePath = java.nio.file.Paths.get(cwd).toAbsolutePath().normalize()
+                        .resolve(p).normalize().toString();
+            }
+
+            fsService.write(effectivePath, content);
+
+            if (ctx != null) {
+                ctx.recordArtifact(effectivePath);
+            }
 
             int bytes = content.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
-            String result = "Wrote " + bytes + " bytes to " + path;
+            String result = "Wrote " + bytes + " bytes to " + effectivePath;
             return CompletableFuture.completedFuture(
                     ToolExecutionResult.ok(List.of(new TextBlock(result))));
         } catch (Exception e) {

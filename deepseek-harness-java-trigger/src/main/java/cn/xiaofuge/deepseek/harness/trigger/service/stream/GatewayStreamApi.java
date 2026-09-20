@@ -120,17 +120,30 @@ public class GatewayStreamApi implements IGatewayStreamApi {
                 blankToDefault(request.agent().channelCode(), "<active>"),
                 length(request.agent().message()),
                 request.agent().images() == null ? 0 : request.agent().images().size());
+        // 60ms 增量聚合，消除逐 token 推送导致的前端闪烁（与 AgentStreamApi 同策略）
+        DeltaBatch textBatch = new DeltaBatch(delta -> sendEvent(source, context, "message.delta", delta));
+        DeltaBatch reasoningBatch = new DeltaBatch(delta -> sendEvent(source, context, "message.reasoning", delta));
         Response<AgentMessageResponseDTO> response = agentApi.sendMessageStreaming(
                 request.agent(),
-                delta -> sendEvent(source, context, "message.delta", delta),
-                delta -> sendEvent(source, context, "message.reasoning", delta),
-                toolCall -> sendEvent(source, context,
-                        toolCall.phase().equals("result") ? "tool.result" : "tool.call", toolCall),
-                () -> sendEvent(source, context, "finish", Map.of())
+                textBatch::accept,
+                reasoningBatch::accept,
+                toolCall -> {
+                    textBatch.flush();
+                    reasoningBatch.flush();
+                    sendEvent(source, context,
+                            toolCall.phase().equals("result") ? "tool.result" : "tool.call", toolCall);
+                },
+                () -> {
+                    textBatch.flush();
+                    reasoningBatch.flush();
+                    sendEvent(source, context, "finish", Map.of());
+                }
         );
         if (!Response.SUCCESS_CODE.equals(response.code())) {
             throw new IllegalStateException(response.info());
         }
+        textBatch.flush();
+        reasoningBatch.flush();
         sendEvent(source, context, "done", response.data());
         context.completed().set(true);
         log.info("[GatewayStream] Agent 流式调用完成，requestId={}，agentId={}，elapsedMs={}",

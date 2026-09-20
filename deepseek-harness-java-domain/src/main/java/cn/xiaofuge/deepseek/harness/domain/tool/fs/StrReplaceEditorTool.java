@@ -43,6 +43,8 @@ public class StrReplaceEditorTool implements ToolDefinition {
     private static final int MAX_OUTPUT_CHARS = 50_000;
 
     private final IFsPort fsService;
+    /** Agent 工作目录提供者：相对路径解析到 Agent cwd，产物按绝对路径登记 */
+    private final java.util.function.Supplier<String> cwdSupplier;
 
     /**
      * 处理Str Replace Editor 工具。
@@ -51,7 +53,23 @@ public class StrReplaceEditorTool implements ToolDefinition {
      * @return 方法执行结果。
      */
     public StrReplaceEditorTool(IFsPort fsService) {
+        this(fsService, () -> null);
+    }
+
+    public StrReplaceEditorTool(IFsPort fsService, java.util.function.Supplier<String> cwdSupplier) {
         this.fsService = fsService;
+        this.cwdSupplier = cwdSupplier != null ? cwdSupplier : () -> null;
+    }
+
+    /** 相对路径解析到 Agent cwd（绝对路径原样返回）。 */
+    private String resolveAbsolute(String path) {
+        if (path == null || path.isBlank()) return path;
+        java.nio.file.Path p = java.nio.file.Paths.get(path);
+        String cwd = cwdSupplier.get();
+        if (!p.isAbsolute() && cwd != null && !cwd.isBlank()) {
+            return java.nio.file.Paths.get(cwd).toAbsolutePath().normalize().resolve(p).normalize().toString();
+        }
+        return path;
     }
 
     @Override public String name() { return NAME; }
@@ -120,7 +138,8 @@ public class StrReplaceEditorTool implements ToolDefinition {
         try {
             Map<String, Object> argMap = (Map<String, Object>) args;
             String command = String.valueOf(argMap.get("command"));
-            String path = String.valueOf(argMap.get("path"));
+            // 统一解析到绝对路径：与前端按会话工作目录找文件对齐
+            String path = resolveAbsolute(String.valueOf(argMap.get("path")));
 
             if (command == null || command.isBlank()) {
                 return CompletableFuture.completedFuture(
@@ -140,6 +159,13 @@ public class StrReplaceEditorTool implements ToolDefinition {
                         ((Number) argMap.get("insert_line")).intValue());
                 default -> "Unknown command: " + command;
             };
+
+            // 写类命令成功时登记产物，随 done 事件下发权威文件清单
+            boolean wrote = ("create".equals(command) || "str_replace".equals(command) || "insert".equals(command))
+                    && !result.startsWith("Error:") && !result.startsWith("Unknown");
+            if (wrote && ctx != null) {
+                ctx.recordArtifact(path);
+            }
 
             if (result.length() > MAX_OUTPUT_CHARS) {
                 result = result.substring(0, MAX_OUTPUT_CHARS)

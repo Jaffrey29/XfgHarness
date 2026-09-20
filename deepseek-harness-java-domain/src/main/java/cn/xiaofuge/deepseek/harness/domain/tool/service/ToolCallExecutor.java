@@ -51,6 +51,8 @@ public final class ToolCallExecutor {
     private volatile IHookService hookService;
     private volatile RuntimeApprovalGate approvalGate = RuntimeApprovalGate.allowAll();
     private volatile Consumer<ToolLifecycleEvent> lifecycleListener;
+    // 本回合写文件类工具登记的产物（绝对路径），由响应收集节点按回合取走
+    private final Set<String> turnArtifacts = ConcurrentHashMap.newKeySet();
 
     /**
      * @param registry    工具注册表
@@ -98,6 +100,17 @@ public final class ToolCallExecutor {
 
     public void setLifecycleListener(Consumer<ToolLifecycleEvent> listener) {
         this.lifecycleListener = listener;
+    }
+
+    /**
+     * 取走本回合累计的文件产物路径（绝对路径，去重）。
+     * 由响应收集节点在回合结束后调用一次。
+     */
+    public List<String> drainArtifacts() {
+        if (turnArtifacts.isEmpty()) return List.of();
+        List<String> copy = new ArrayList<>(turnArtifacts);
+        turnArtifacts.clear();
+        return copy;
     }
 
     /**
@@ -473,6 +486,11 @@ public final class ToolCallExecutor {
                 result = new ToolExecutionResult.Failure(f.error(), f.content(),
                         f.meta(), combined);
             }
+        }
+
+        // 聚合写文件类工具登记的产物路径
+        if (slot.ctx != null) {
+            turnArtifacts.addAll(slot.ctx.drainArtifacts());
         }
 
         // 追加 tool/result 事件

@@ -73,7 +73,10 @@ public class AgentApi implements IAgentApi {
                             event.callId(),
                             event.toolName(),
                             event.arguments(),
-                            "result".equals(event.phase()) ? event.status() : "running",
+                            // result 相位透传最终状态；call 相位透传真实运行态（如 requires_approval），缺失才兜底 running
+                            "result".equals(event.phase()) || event.status() != null
+                                    ? event.status()
+                                    : "running",
                             event.phase(),
                             event.result(),
                             event.durationMs()

@@ -22,6 +22,7 @@ public final class ToolRunContext {
 
     private final ToolExecution execution;
     private final List<Message> deferredContexts = new ArrayList<>();
+    private final List<String> artifacts = new ArrayList<>();
     private final AtomicBoolean turnConcluded = new AtomicBoolean(false);
 
     /**
@@ -41,6 +42,27 @@ public final class ToolRunContext {
     public void deferContext(Message context) {
         if (context != null) {
             deferredContexts.add(context);
+        }
+    }
+
+/**
+     * 登记本次工具产生的文件产物（绝对路径）。
+     * 由写文件类工具调用，执行器按回合聚合并随 done 事件下发给前端。
+     * @param path 产物绝对路径。
+     */
+    public void recordArtifact(String path) {
+        if (path != null && !path.isBlank() && !artifacts.contains(path)) {
+            artifacts.add(path);
+        }
+    }
+
+/** 取出已登记的产物路径列表。 */
+    public List<String> drainArtifacts() {
+        synchronized (artifacts) {
+            if (artifacts.isEmpty()) return List.of();
+            List<String> copy = List.copyOf(artifacts);
+            artifacts.clear();
+            return copy;
         }
     }
 
