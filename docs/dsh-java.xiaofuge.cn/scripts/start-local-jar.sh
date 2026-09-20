@@ -2,12 +2,12 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-JAR_PATH="${JAR_PATH:-${SCRIPT_DIR}/deepseek-harness-java.jar}"
+JAR_PATH="${JAR_PATH:-${SCRIPT_DIR}/deepseek-harness-java-app.jar}"
 DOWNLOAD_URL="https://drive.weixin.qq.com/s?k=ACMA4AfQABUnIBrQ39"
 
 if [[ ! -f "$JAR_PATH" ]]; then
   echo "未找到本地 JAR：$JAR_PATH"
-  echo "请先从下面地址下载 deepseek-harness-java.jar，并放到本脚本同目录："
+  echo "请先从下面地址下载 deepseek-harness-java-app.jar，并放到本脚本同目录："
   echo "$DOWNLOAD_URL"
   echo "然后再执行：./start-local-jar.sh"
   exit 1
