@@ -9,6 +9,10 @@ import cn.xiaofuge.deepseek.harness.infrastructure.adapter.agent.PersistingAgent
 import cn.xiaofuge.deepseek.harness.domain.agent.service.run.PersistingSessionLog;
 import cn.xiaofuge.deepseek.harness.domain.agent.service.run.RuntimeApprovalBroker;
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.fs.LocalFsService;
+import cn.xiaofuge.deepseek.harness.infrastructure.dao.IDigitalHumanDao;
+import cn.xiaofuge.deepseek.harness.infrastructure.dao.IDigitalHumanEndpointDao;
+import cn.xiaofuge.deepseek.harness.infrastructure.digitalhuman.AggregatingRuntimeApprovalGateway;
+import cn.xiaofuge.deepseek.harness.infrastructure.digitalhuman.RemoteEndpointCredentialRegistry;
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.shell.LocalShellExecutor;
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.subagent.AcpSubagentProvider;
 import cn.xiaofuge.deepseek.harness.infrastructure.adapter.subagent.ClaudeCodeSubagentProvider;
@@ -52,6 +56,7 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 
 /**
  * AgentRun 运行时组合根。
@@ -156,6 +161,23 @@ public class AgentRunBeanConfig {
             @Value("${harness.approval.runtime-timeout-ms:600000}") long timeoutMs
     ) {
         return new RuntimeApprovalBroker(timeoutMs);
+    }
+
+    /**
+     * 聚合审批网关（@Primary）：本地 agent 走本地 Broker，行为不变；
+     * 前端轮询/裁决接口在此之上聚合远端 DSH 数字人端点的待决审批并转发裁决，
+     * 解决"远端数字人请求审批但桌面端看不到审批卡"的跨实例可见性问题。
+     */
+    @Bean
+    @Primary
+    public RuntimeApprovalGateway runtimeApprovalGateway(
+            RuntimeApprovalBroker runtimeApprovalBroker,
+            IDigitalHumanEndpointDao endpointDao,
+            IDigitalHumanDao humanDao,
+            RemoteEndpointCredentialRegistry remoteCredentials
+    ) {
+        return new AggregatingRuntimeApprovalGateway(
+                runtimeApprovalBroker, endpointDao, humanDao, remoteCredentials);
     }
 
     @Bean

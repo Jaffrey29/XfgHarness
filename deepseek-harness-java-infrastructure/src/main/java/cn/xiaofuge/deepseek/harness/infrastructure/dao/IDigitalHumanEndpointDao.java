@@ -1,6 +1,7 @@
 package cn.xiaofuge.deepseek.harness.infrastructure.dao;
 
 import cn.xiaofuge.deepseek.harness.infrastructure.dao.po.DigitalHumanEndpointPO;
+import java.util.List;
 import java.util.Optional;
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
@@ -45,6 +46,12 @@ public interface IDigitalHumanEndpointDao {
             FROM digital_human_endpoint WHERE digital_human_id = #{digitalHumanId}
             """)
     Optional<DigitalHumanEndpointPO> findByHumanId(@Param("digitalHumanId") String digitalHumanId);
+
+    @Select("""
+            SELECT id, digital_human_id, endpoint_type, base_url, credential_ref, protocol_version, agent_card, health_state, last_checked_at, latency_ms
+            FROM digital_human_endpoint
+            """)
+    List<DigitalHumanEndpointPO> findAll();
 
     @Delete("DELETE FROM digital_human_endpoint WHERE digital_human_id = #{digitalHumanId}")
     int deleteByHumanId(@Param("digitalHumanId") String digitalHumanId);

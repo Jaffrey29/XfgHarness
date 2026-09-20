@@ -51,6 +51,7 @@ public class CollaborationService {
     private final IDigitalHumanDao humanDao;
     private final IDigitalHumanEndpointDao endpointDao;
     private final PlannerService plannerService;
+    private final RemoteEndpointCredentialRegistry remoteCredentials;
     private final RemoteAgentGateway gateway;
     private final ObjectMapper objectMapper;
     private final ExecutorService executor;
@@ -77,11 +78,13 @@ public class CollaborationService {
     public CollaborationService(ICollaborationDao collaborationDao,
                                 IDigitalHumanDao humanDao,
                                 IDigitalHumanEndpointDao endpointDao,
-                                PlannerService plannerService) {
+                                PlannerService plannerService,
+                                RemoteEndpointCredentialRegistry remoteCredentials) {
         this.collaborationDao = collaborationDao;
         this.humanDao = humanDao;
         this.endpointDao = endpointDao;
         this.plannerService = plannerService;
+        this.remoteCredentials = remoteCredentials;
         this.gateway = new RemoteAgentGateway();
         this.objectMapper = new ObjectMapper();
         this.executor = Executors.newCachedThreadPool(runnable -> {
@@ -591,6 +594,8 @@ public class CollaborationService {
             } else {
                 String remoteToken = tokenForHuman(token, digitalHumanTokens, digitalHumanId);
                 String remoteInstruction = remoteInstruction(human, displayName, instruction);
+                // 登记凭据：审批聚合网关据此回源远端实例查询/裁决运行期审批
+                remoteCredentials.remember(digitalHumanId, remoteToken);
                 runWithTimeout(taskId, () ->
                         gateway.runRemote(taskId, endpoint.baseUrl(), remoteToken, remoteInstruction, channelCode, effectiveApprovalMode, sink));
             }
@@ -778,6 +783,8 @@ public class CollaborationService {
         String qaKey = taskId + ":qa";
         gateway.clearCancelled(qaKey);
         String remoteToken = tokenForHuman(token, digitalHumanTokens, targetId);
+        // 登记凭据：审批聚合网关据此回源远端实例查询/裁决运行期审批
+        remoteCredentials.remember(targetId, remoteToken);
         if (endpoint == null || "local-dsh".equals(endpoint.endpointType()) || endpoint.baseUrl() == null) {
             gateway.runLocal(qaKey, qaInstruction, channelCode, "FULL_OPEN", qaSink, null, null);
         } else if ("a2a".equals(endpoint.endpointType())) {
@@ -1114,6 +1121,11 @@ public class CollaborationService {
         @Override public void onApprovalRequired(String toolName, String summary) {
             approvalPending = true;
             approvalSummary = summary == null || summary.isBlank() ? toolName : summary;
+        }
+
+        @Override public boolean approvalAwaiting() {
+            // 审批挂起 → 工具结果到达（裁决后 agent 续跑）前，网关空闲阈值放宽，防止流被误关触发任务重试
+            return approvalPending;
         }
     }
 

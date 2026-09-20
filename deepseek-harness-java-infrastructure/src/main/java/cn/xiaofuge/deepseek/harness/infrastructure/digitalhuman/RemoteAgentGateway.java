@@ -33,6 +33,12 @@ public class RemoteAgentGateway {
      */
     private static final long STREAM_IDLE_CLOSE_MS = 300_000L;
 
+    /**
+     * 审批等待期间的空闲阈值：远端 agent 挂起等人工裁决（最长 600s）期间流上完全没有字节是常态，
+     * 阈值必须大于审批 Broker 的超时（600s），否则用户还在裁决时流就被掐断、任务被误判失败触发重试。
+     */
+    private static final long APPROVAL_IDLE_CLOSE_MS = 700_000L;
+
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
     /** taskKey（taskId）-> 取消标志：cancel() 写入，流读循环逐行检查，命中即中断执行 */
@@ -73,6 +79,11 @@ public class RemoteAgentGateway {
 
         /** 执行在审批点中断：携带审批关键信息（若流内有），由协作层落房间事件 */
         default void onApprovalRequired(String toolName, String summary) {
+        }
+
+        /** 流当前是否处于运行期审批等待（空闲阈值据此放宽，避免裁决期间流被误关） */
+        default boolean approvalAwaiting() {
+            return false;
         }
     }
 
@@ -447,7 +458,7 @@ public class RemoteAgentGateway {
             StringBuilder dataLines = new StringBuilder();
             String line;
             long lastEventAt = System.currentTimeMillis();
-            while ((line = readLineWithIdleClose(reader, taskKey, lastEventAt)) != null) {
+            while ((line = readLineWithIdleClose(reader, taskKey, lastEventAt, sink)) != null) {
                 ensureNotCancelled(taskKey);
                 if (line.startsWith("event:")) {
                     eventName = line.substring(6).trim();
@@ -475,13 +486,20 @@ public class RemoteAgentGateway {
     }
 
     private String readLineWithIdleClose(BufferedReader reader, String taskKey, long lastEventAt) throws Exception {
+        return readLineWithIdleClose(reader, taskKey, lastEventAt, null);
+    }
+
+    private String readLineWithIdleClose(BufferedReader reader, String taskKey, long lastEventAt, EventSink sink) throws Exception {
         while (!reader.ready()) {
             ensureNotCancelled(taskKey);
-            if (System.currentTimeMillis() - lastEventAt >= STREAM_IDLE_CLOSE_MS) {
+            // 审批等待期间放宽空闲阈值：远端 agent 挂起等裁决时流上没有字节，但任务并没有死
+            boolean approvalAwait = sink != null && sink.approvalAwaiting();
+            long idleLimit = approvalAwait ? APPROVAL_IDLE_CLOSE_MS : STREAM_IDLE_CLOSE_MS;
+            if (System.currentTimeMillis() - lastEventAt >= idleLimit) {
                 // 空闲超时必须抛错而不是静默返回：返回 null 会被调用方当作正常 EOF，
                 // 协作层会把半截结果标成 COMPLETED。抛异常让 runTask 走自动恢复（改派/重试）。
-                throw new IllegalStateException("Agent 流空闲超过 " + (STREAM_IDLE_CLOSE_MS / 1000)
-                        + "s 无事件，网关主动断开（taskKey=" + taskKey + "）");
+                throw new IllegalStateException("Agent 流空闲超过 " + (idleLimit / 1000)
+                        + "s 无事件，网关主动断开（taskKey=" + taskKey + (approvalAwait ? "，审批等待中" : "") + "）");
             }
             Thread.sleep(200L);
         }
