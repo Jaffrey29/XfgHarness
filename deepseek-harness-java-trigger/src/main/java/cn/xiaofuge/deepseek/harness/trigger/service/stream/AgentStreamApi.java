@@ -230,6 +230,13 @@ public class AgentStreamApi implements IAgentStreamApi {
         if (response.artifacts() != null && !response.artifacts().isEmpty()) {
             done.put("artifacts", response.artifacts());
         }
+        // 回合异常收口（驱动器线程死亡等）：done 里带上 error，让前端在保留
+        // 已流式内容的同时显示错误提示，而不是伪装成正常完成
+        if (response.error() != null && !response.error().isBlank()) {
+            done.put("error", response.error());
+            log.warn("[SSE] 回合异常收口，done 携带 error：agentId={} sessionId={} error={}",
+                    response.agentId(), response.sessionId(), response.error());
+        }
         done.put("totalChunks", totalChunks);
         log.info("[SSE] 流式完成，推送 done 事件：agentId={} sessionId={} status={} chunks={}",
                 response.agentId(), response.sessionId(), response.status(), totalChunks);

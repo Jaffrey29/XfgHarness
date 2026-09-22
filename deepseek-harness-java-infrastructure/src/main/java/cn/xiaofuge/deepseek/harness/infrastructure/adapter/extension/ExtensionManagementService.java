@@ -217,7 +217,7 @@ public class ExtensionManagementService implements IExtensionManagementPort, App
                 return new ExtensionSkillInstallResult(false, "", "",
                         "仓库中未找到 SKILL.md（可指定 subdir 指向技能目录）");
             }
-            String skillName = normalizeName(name, skillDir.getFileName().toString());
+            String skillName = resolveSkillName(name, skillDir, repo, gitUrl);
             Path target = installRoot().resolve(skillName);
             if (Files.exists(target)) {
                 ExtensionConfigStore.deleteRecursively(target);
@@ -299,6 +299,53 @@ public class ExtensionManagementService implements IExtensionManagementPort, App
         } catch (IOException e) {
             return null;
         }
+    }
+
+    /**
+     * 技能命名优先级：显式指定 name > SKILL.md frontmatter 的 name 字段 > 目录名。
+     * 技能目录为 clone 仓库根目录时回退用 git 仓库名——clone 目录固定叫 repo，
+     * 直接取目录名会让所有根目录型技能都叫 "repo"。
+     */
+    private String resolveSkillName(String requested, Path skillDir, Path repo, String gitUrl) {
+        if (requested != null && !requested.isBlank()) {
+            return normalizeName(requested, null);
+        }
+        String frontmatterName = readFrontmatterName(skillDir.resolve("SKILL.md"));
+        if (frontmatterName != null && !frontmatterName.isBlank()) {
+            return normalizeName(frontmatterName, null);
+        }
+        boolean atRepoRoot = repo.equals(skillDir);
+        String fallback = atRepoRoot ? repoNameFromUrl(gitUrl) : skillDir.getFileName().toString();
+        return normalizeName(fallback, "installed-skill");
+    }
+
+    /** 读取 SKILL.md frontmatter 的 name 字段（无 frontmatter 或没有 name 返回 null）。 */
+    private String readFrontmatterName(Path file) {
+        try {
+            List<String> lines = Files.readAllLines(file);
+            if (lines.isEmpty() || !"---".equals(lines.get(0).trim())) return null;
+            for (int i = 1; i < Math.min(lines.size(), 20); i++) {
+                String line = lines.get(i).trim();
+                if ("---".equals(line)) break;
+                if (line.startsWith("name:")) {
+                    return line.substring("name:".length()).trim();
+                }
+            }
+            return null;
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    /** 从 git URL 提取仓库名：去尾部斜杠与 .git 后缀，取最后一段。 */
+    private String repoNameFromUrl(String gitUrl) {
+        String trimmed = gitUrl.trim();
+        while (trimmed.endsWith("/")) trimmed = trimmed.substring(0, trimmed.length() - 1);
+        if (trimmed.toLowerCase(Locale.ROOT).endsWith(".git")) {
+            trimmed = trimmed.substring(0, trimmed.length() - 4);
+        }
+        int slash = Math.max(trimmed.lastIndexOf('/'), trimmed.lastIndexOf(':'));
+        return slash >= 0 ? trimmed.substring(slash + 1) : trimmed;
     }
 
     private String normalizeName(String requested, String fallback) {

@@ -27,7 +27,7 @@ class AgentApiTest {
                 toolCallSink.accept(new AgentToolCallEventResponseDTO(
                         "call-1", "fs_read", "{}", "SUCCEEDED", "result", "content", 12L
                 ));
-                return new AgentMessageResponseDTO("agent-1", "session-1", "idle", List.of(), List.of());
+                return new AgentMessageResponseDTO("agent-1", "session-1", "idle", List.of(), List.of(), null);
             }
             @Override public String getAgentStatus(String agentId) { return "idle"; }
             @Override public void cancelAgent(String agentId) {}

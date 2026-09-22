@@ -48,11 +48,17 @@ public class AgentCollectNode extends AbstractAgentMessageNode {
                                            AgentMessageDynamicContext ctx) throws Exception {
         var agent = ctx.getAgent();
         log.info("[Collect] Agent={} 等待 Agent 空闲，开始收集会话结果...", request.agentId());
+        // 驱动器线程异常死亡（如 NoClassDefFoundError）会让 whenIdle() 异常完成。
+        // 这里不能静默吞掉：要把根因带出响应（error 字段），前端才能显示"执行出错"，
+        // 否则表现为"没回复完就正常结束"（2026-09-22 排查结论）。
+        String turnError = null;
         try {
             agent.whenIdle().join();
         } catch (Exception e) {
-            // 超时或异常时，直接返回已收集到的消息
-            log.warn("[Collect] Agent={} 等待空闲超时/异常，返回已收集消息：{}", request.agentId(), e.getMessage());
+            Throwable cause = e.getCause() != null ? e.getCause() : e;
+            turnError = "智能体执行异常中断：" + cause.getClass().getSimpleName()
+                    + (cause.getMessage() != null ? " " + cause.getMessage() : "");
+            log.warn("[Collect] Agent={} 等待空闲异常，回合异常收口：{}", request.agentId(), turnError, e);
         }
 
         SessionLog session = agent.session();
@@ -111,7 +117,8 @@ public class AgentCollectNode extends AbstractAgentMessageNode {
                 session.sessionId(),
                 agent.status().name().toLowerCase(),
                 messages,
-                artifacts
+                artifacts,
+                turnError
         );
     }
 

@@ -1,6 +1,7 @@
 package cn.xiaofuge.deepseek.harness.domain.agent.service.run;
 
 import cn.xiaofuge.deepseek.harness.domain.agent.contract.outbound.UserQuestionGateway;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -22,7 +23,19 @@ import java.util.concurrent.TimeoutException;
  */
 public class InMemoryUserQuestionGateway implements UserQuestionGateway {
 
+    /**
+     * PendingQuestion 聚合一次待回答请求的全部信息：请求 id、提问 agent、问题明细与创建时间。
+     * <p>前端轮询 {@code GET /api/harness/questions/runtime/pending} 时据此渲染问答卡。</p>
+     */
+    public record PendingQuestion(
+            String requestId,
+            String agentId,
+            List<Question> questions,
+            long createdAt
+    ) {}
+
     private final ConcurrentMap<String, CompletableFuture<UserAnswer>> pending = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, PendingQuestion> pendingMeta = new ConcurrentHashMap<>();
     private final long defaultTimeoutMs;
 
     /**
@@ -49,6 +62,8 @@ public class InMemoryUserQuestionGateway implements UserQuestionGateway {
         String requestId = UUID.randomUUID().toString();
         CompletableFuture<UserAnswer> future = new CompletableFuture<>();
         pending.put(requestId, future);
+        pendingMeta.put(requestId, new PendingQuestion(
+                requestId, request.agentId(), request.questions(), System.currentTimeMillis()));
         try {
             return future.get(defaultTimeoutMs, TimeUnit.MILLISECONDS);
         } catch (TimeoutException e) {
@@ -63,6 +78,7 @@ public class InMemoryUserQuestionGateway implements UserQuestionGateway {
             throw new RuntimeException("User question failed", e);
         } finally {
             pending.remove(requestId);
+            pendingMeta.remove(requestId);
         }
     }
     /**
@@ -87,7 +103,9 @@ public class InMemoryUserQuestionGateway implements UserQuestionGateway {
     public boolean submitAnswer(String requestId, UserAnswer answer) {
         CompletableFuture<UserAnswer> future = pending.get(requestId);
         if (future != null) {
-            return future.complete(answer);
+            boolean accepted = future.complete(answer);
+            if (accepted) pendingMeta.remove(requestId);
+            return accepted;
         }
         return false;
     }
@@ -97,5 +115,15 @@ public class InMemoryUserQuestionGateway implements UserQuestionGateway {
      */
     public Map<String, CompletableFuture<UserAnswer>> getPending() {
         return Map.copyOf(pending);
+    }
+
+    /**
+     * 获取当前全部待回答问题（含问题明细），供前端轮询渲染问答卡。
+     * <p>返回快照，按创建时间升序。</p>
+     */
+    public List<PendingQuestion> getPendingQuestions() {
+        return pendingMeta.values().stream()
+                .sorted(java.util.Comparator.comparingLong(PendingQuestion::createdAt))
+                .toList();
     }
 }
