@@ -25,6 +25,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
@@ -55,6 +59,8 @@ public class CollaborationService {
     private final RemoteAgentGateway gateway;
     private final ObjectMapper objectMapper;
     private final ExecutorService executor;
+    /** SSE 心跳调度器：空闲连接每 15s 发送注释帧，防止代理/网关掐断长连接 */
+    private final ScheduledExecutorService heartbeatExecutor;
 
     /** roomId -> 活跃 SSE 订阅者 */
     private final Map<String, CopyOnWriteArrayList<SseEmitter>> roomEmitters = new ConcurrentHashMap<>();
@@ -89,6 +95,11 @@ public class CollaborationService {
         this.objectMapper = new ObjectMapper();
         this.executor = Executors.newCachedThreadPool(runnable -> {
             Thread thread = new Thread(runnable, "collab-worker");
+            thread.setDaemon(true);
+            return thread;
+        });
+        this.heartbeatExecutor = Executors.newSingleThreadScheduledExecutor(runnable -> {
+            Thread thread = new Thread(runnable, "collab-heartbeat");
             thread.setDaemon(true);
             return thread;
         });
@@ -1131,6 +1142,9 @@ public class CollaborationService {
 
     // ══════════════ 事件流 ══════════════
 
+    /** SSE 心跳间隔（毫秒） */
+    private static final long SSE_HEARTBEAT_INTERVAL_MS = 15_000L;
+
     public SseEmitter subscribe(String roomId, long afterSeq) {
         ensureRoom(roomId);
         SseEmitter emitter = new SseEmitter(0L);
@@ -1138,7 +1152,13 @@ public class CollaborationService {
         // 保证不丢事件；backlog 必须按页循环取满——历史事件超过单页 500 条时，
         // 只取一页会让后面的成员消息/交付物永远进不了 UI（表现为"协作只剩一个数字人"）。
         roomEmitters.computeIfAbsent(roomId, key -> new CopyOnWriteArrayList<>()).add(emitter);
-        Runnable cleanup = () -> roomEmitters.getOrDefault(roomId, new CopyOnWriteArrayList<>()).remove(emitter);
+        AtomicBoolean heartbeatStopped = new AtomicBoolean(false);
+        ScheduledFuture<?> heartbeat = startHeartbeat(emitter, heartbeatStopped);
+        Runnable cleanup = () -> {
+            heartbeatStopped.set(true);
+            heartbeat.cancel(false);
+            roomEmitters.getOrDefault(roomId, new CopyOnWriteArrayList<>()).remove(emitter);
+        };
         emitter.onCompletion(cleanup);
         emitter.onTimeout(cleanup);
         emitter.onError(error -> cleanup.run());
@@ -1159,6 +1179,18 @@ public class CollaborationService {
             }
         });
         return emitter;
+    }
+
+    /** 每 15s 发送一条 SSE 注释帧（comment keepalive），不产生业务事件 */
+    private ScheduledFuture<?> startHeartbeat(SseEmitter emitter, AtomicBoolean stopped) {
+        return heartbeatExecutor.scheduleAtFixedRate(() -> {
+            if (stopped.get()) return;
+            try {
+                emitter.send(SseEmitter.event().comment("keepalive"));
+            } catch (Exception exception) {
+                stopped.set(true);
+            }
+        }, SSE_HEARTBEAT_INTERVAL_MS, SSE_HEARTBEAT_INTERVAL_MS, TimeUnit.MILLISECONDS);
     }
 
     private void appendEvent(String roomId, String taskId, String participantId,

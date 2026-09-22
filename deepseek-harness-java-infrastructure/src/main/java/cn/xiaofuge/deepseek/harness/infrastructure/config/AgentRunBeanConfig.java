@@ -235,7 +235,8 @@ public class AgentRunBeanConfig {
             ObjectProvider<ISessionEventStore> sessionEventStoreProvider,
             CompactionEngine compactionEngine,
             IHarnessPluginRepository pluginRepository,
-            IPluginRuntimeService pluginRuntimeService
+            IPluginRuntimeService pluginRuntimeService,
+            @Value("${harness.agent.tool-timeout-ms:300000}") long toolTimeoutMs
     ) {
         ISessionEventStore sessionEventStore = sessionEventStoreProvider.getIfAvailable();
         AgentRunFactory.SessionLogFactory sessionLogFactory = header -> sessionEventStore == null
@@ -278,7 +279,8 @@ public class AgentRunBeanConfig {
                 runtimeApprovalBroker,
                 sessionLogFactory,
                 agentEventListenerFactory,
-                compactionEngine
+                compactionEngine,
+                toolTimeoutMs
         );
     }
 }

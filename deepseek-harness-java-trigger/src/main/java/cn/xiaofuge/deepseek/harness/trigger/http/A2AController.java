@@ -16,6 +16,9 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,6 +57,8 @@ public class A2AController {
 
     private static final Logger log = LoggerFactory.getLogger(A2AController.class);
     private static final long SSE_TIMEOUT_MS = 600_000L;
+    /** SSE 心跳间隔：空闲连接每 15s 发送注释帧，防止代理/网关掐断长连接 */
+    private static final long SSE_HEARTBEAT_INTERVAL_MS = 15_000L;
 
     /** JSON-RPC / A2A 标准错误码 */
     private static final int PARSE_ERROR = -32700;
@@ -66,6 +71,7 @@ public class A2AController {
     private final IAgentApi agentApi;
     private final ObjectMapper objectMapper;
     private final ExecutorService a2aExecutor;
+    private final ScheduledExecutorService heartbeatExecutor;
     /** taskId -> 任务状态（内存态；进程重启即失，A2A 任务生命周期本就短于进程） */
     private final Map<String, A2aTask> tasks = new ConcurrentHashMap<>();
 
@@ -79,6 +85,11 @@ public class A2AController {
                     thread.setDaemon(true);
                     return thread;
                 });
+        this.heartbeatExecutor = Executors.newSingleThreadScheduledExecutor(runnable -> {
+            Thread thread = new Thread(runnable, "a2a-heartbeat");
+            thread.setDaemon(true);
+            return thread;
+        });
     }
 
     // ── JSON-RPC 入口 ──────────────────────────────
@@ -138,8 +149,36 @@ public class A2AController {
             return errorResponse(id, INVALID_PARAMS, "Invalid params: message with text parts is required");
         }
         SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
-        a2aExecutor.execute(() -> streamTask(id, messageNode, text, emitter));
+        // SSE 心跳：A2A 流在模型思考/工具执行期间可能长时间无数据，空闲注释帧防止中间层断连
+        AtomicBoolean heartbeatStopped = new AtomicBoolean(false);
+        ScheduledFuture<?> heartbeat = startHeartbeat(emitter, heartbeatStopped);
+        Runnable stopHeartbeat = () -> {
+            heartbeatStopped.set(true);
+            heartbeat.cancel(false);
+        };
+        emitter.onCompletion(stopHeartbeat);
+        emitter.onTimeout(stopHeartbeat);
+        emitter.onError(error -> stopHeartbeat.run());
+        a2aExecutor.execute(() -> {
+            try {
+                streamTask(id, messageNode, text, emitter);
+            } finally {
+                stopHeartbeat.run();
+            }
+        });
         return emitter;
+    }
+
+    /** 每 15s 发送一条 SSE 注释帧（comment keepalive），不产生 JSON-RPC 事件 */
+    private ScheduledFuture<?> startHeartbeat(SseEmitter emitter, AtomicBoolean stopped) {
+        return heartbeatExecutor.scheduleAtFixedRate(() -> {
+            if (stopped.get()) return;
+            try {
+                emitter.send(SseEmitter.event().comment("keepalive"));
+            } catch (Exception exception) {
+                stopped.set(true);
+            }
+        }, SSE_HEARTBEAT_INTERVAL_MS, SSE_HEARTBEAT_INTERVAL_MS, TimeUnit.MILLISECONDS);
     }
 
     private void streamTask(JsonNode id, JsonNode messageNode, String text, SseEmitter emitter) {

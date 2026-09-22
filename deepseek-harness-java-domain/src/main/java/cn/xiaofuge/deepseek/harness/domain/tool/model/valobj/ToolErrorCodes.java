@@ -9,6 +9,7 @@ public final class ToolErrorCodes {
     public static final String UNKNOWN_TOOL = "UNKNOWN_TOOL";
     public static final String INVALID_ARGS = "INVALID_ARGS";
     public static final String INVALID_TOOL_OUTPUT = "INVALID_TOOL_OUTPUT";
+    public static final String TOOL_TIMEOUT = "TOOL_TIMEOUT";
 
     /**
      * 转换为 ol Error Codes。

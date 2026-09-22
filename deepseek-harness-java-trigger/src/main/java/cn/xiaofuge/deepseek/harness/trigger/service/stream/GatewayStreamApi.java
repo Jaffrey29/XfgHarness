@@ -160,11 +160,33 @@ public class GatewayStreamApi implements IGatewayStreamApi {
         }
         textBatch.flush();
         reasoningBatch.flush();
-        sendEvent(source, context, "done", response.data());
+        // done 瘦身（D-10）：agent 路径只回传当前回合消息 + 会话消息总数，避免长对话 done 膨胀
+        sendEvent(source, context, "done", slimAgentDone(response.data()));
         context.completed().set(true);
         log.info("[GatewayStream] Agent 流式调用完成，requestId={}，agentId={}，elapsedMs={}",
                 context.requestId(), request.agent().agentId(), elapsedMillis(context));
         complete(context);
+    }
+
+    /** agent 流 done 载荷瘦身：messages 截为当前回合，附 messageCount 元信息 */
+    private Object slimAgentDone(AgentMessageResponseDTO data) {
+        if (data == null) {
+            return null;
+        }
+        java.util.List<java.util.Map<String, Object>> all = data.messages();
+        java.util.Map<String, Object> slim = new java.util.LinkedHashMap<>();
+        slim.put("agentId", data.agentId());
+        slim.put("sessionId", data.sessionId());
+        slim.put("status", data.status());
+        slim.put("messages", DonePayloads.currentTurnMessages(all));
+        slim.put("messageCount", DonePayloads.messageCount(all));
+        if (data.artifacts() != null && !data.artifacts().isEmpty()) {
+            slim.put("artifacts", data.artifacts());
+        }
+        if (data.error() != null && !data.error().isBlank()) {
+            slim.put("error", data.error());
+        }
+        return slim;
     }
 
     private void streamWorkflow(
@@ -195,6 +217,7 @@ public class GatewayStreamApi implements IGatewayStreamApi {
             throw new IllegalStateException(response.info());
         }
         if (!context.completed().get()) {
+            // workflow 路径的 done 是 WorkflowStartResponseDTO，不携带会话历史，无需瘦身
             sendEvent(source, context, "done", response.data());
             context.completed().set(true);
         }

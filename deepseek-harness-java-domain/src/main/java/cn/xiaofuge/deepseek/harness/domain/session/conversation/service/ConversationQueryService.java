@@ -158,11 +158,44 @@ public class ConversationQueryService implements IConversationQueryService {
     }
 
     /**
+     * 还原用户可见文本：剥离注入给模型的增强指令与隐藏上下文。
+     * <p>
+     * AgentDispatchNode 会把任务类消息包装为
+     * 「请先使用可用工具完成下面的任务，……用户原始请求：<原文>」，
+     * 客户端也会在消息尾部附加 &lt;hidden-context&gt; 注入块；
+     * 会话标题/摘要必须取用户原始输入，而不是模型指令，否则
+     * 所有会话标题都变成同一段包装文案。
+     *
+     * @param content 消息原始内容
+     * @return 用户可见文本（可能为空串）
+     */
+    private String visibleUserText(String content) {
+        if (content == null || content.isBlank()) return "";
+        String text = content
+                .replaceAll("(?s)<hidden-context>.*?</hidden-context>", "")
+                .replaceAll("(?s)<hidden-context>.*$", "")
+                .trim();
+        int marker = text.lastIndexOf("用户原始请求：");
+        if (marker >= 0) {
+            text = text.substring(marker + "用户原始请求：".length()).trim();
+        }
+        return text;
+    }
+
+    /**
+     * 摘要文本：优先取用户可见文本；剥离后为空（如消息只剩注入块）时回退原文。
+     */
+    private String previewText(String content) {
+        String visible = visibleUserText(content);
+        return visible.isBlank() ? (content == null ? "" : content.trim()) : visible;
+    }
+
+    /**
      * 装配会话摘要。
      * <p>
      * 执行流程：
      * 1. 读取会话消息；
-     * 2. 取首条用户消息作为标题、末条消息作为摘要；
+     * 2. 取首条用户消息（剥离增强指令后）作为标题、末条消息作为摘要；
      * 3. 组装摘要读模型。
      */
     private ConversationSessionSummaryVO toSummary(HarnessSessionAggregate session) {
@@ -170,9 +203,11 @@ public class ConversationQueryService implements IConversationQueryService {
         String title = messages.stream()
                 .filter(message -> "user".equals(message.role()))
                 .findFirst()
-                .map(message -> abbreviate(message.content(), 16))
+                .map(message -> abbreviate(visibleUserText(message.content()), 16))
+                .filter(text -> text != null && !text.isBlank())
                 .orElse("新会话");
-        String preview = messages.isEmpty() ? "等待消息" : abbreviate(messages.get(messages.size() - 1).content(), 24);
+        String preview = messages.isEmpty() ? "等待消息"
+                : abbreviate(previewText(messages.get(messages.size() - 1).content()), 24);
         return new ConversationSessionSummaryVO(
                 session.getSessionId(),
                 title,
@@ -195,9 +230,11 @@ public class ConversationQueryService implements IConversationQueryService {
         String title = messages.stream()
                 .filter(message -> "user".equals(message.role()))
                 .findFirst()
-                .map(message -> abbreviate(message.content(), 16))
+                .map(message -> abbreviate(visibleUserText(message.content()), 16))
+                .filter(text -> text != null && !text.isBlank())
                 .orElse("新会话");
-        String preview = messages.isEmpty() ? "等待消息" : abbreviate(messages.get(messages.size() - 1).content(), 24);
+        String preview = messages.isEmpty() ? "等待消息"
+                : abbreviate(previewText(messages.get(messages.size() - 1).content()), 24);
         return new ConversationSessionSummaryVO(
                 session.getSessionId(),
                 title,
@@ -252,14 +289,15 @@ public class ConversationQueryService implements IConversationQueryService {
             }
             if (text == null || text.isBlank()) continue;
             if (isUser && title == null) {
-                title = abbreviate(text, 16);
+                title = abbreviate(visibleUserText(text), 16);
+                if (title == null || title.isBlank()) title = null;
             }
-            preview = abbreviate(text, 24);
+            preview = abbreviate(previewText(text), 24);
         }
         return new ConversationSessionSummaryVO(
                 header.sessionId(),
-                title != null ? title : "新会话",
-                preview != null ? preview : "等待消息",
+                title != null && !title.isBlank() ? title : "新会话",
+                preview != null && !preview.isBlank() ? preview : "等待消息",
                 "COMPLETED",
                 header.createdAt(),
                 header.cwd(),

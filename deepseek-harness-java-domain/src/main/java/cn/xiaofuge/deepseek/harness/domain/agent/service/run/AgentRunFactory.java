@@ -43,6 +43,8 @@ public class AgentRunFactory implements AgentRunLifecycle {
     private final SessionLogFactory sessionLogFactory;
     private final AgentEventListenerFactory agentEventListenerFactory;
     private final CompactionEngine compactionEngine;
+    /** 单个工具调用最大执行时长（毫秒），<=0 表示不设超时。 */
+    private final long toolTimeoutMs;
     private final ConcurrentMap<String, AgentRun> liveAgents = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, MatrixRuntimeApprovalGate> approvalGates = new ConcurrentHashMap<>();
     // 每个 Agent 的 cwd 引用：Agent 复用且请求换了工程目录时热更新，
@@ -63,6 +65,27 @@ public class AgentRunFactory implements AgentRunLifecycle {
             AgentEventListenerFactory agentEventListenerFactory,
             CompactionEngine compactionEngine
     ) {
+        this(llm, sharedToolRegistry, systemPromptAssembler, userQuestions, toolCatalog,
+                toolArgumentsParser, hookService, permissionMatrixPort, approvalGateway,
+                sessionLogFactory, agentEventListenerFactory, compactionEngine,
+                ToolCallExecutor.DEFAULT_TOOL_TIMEOUT_MS);
+    }
+
+    public AgentRunFactory(
+            ILlmRuntimePort llm,
+            ToolRegistry sharedToolRegistry,
+            SystemPromptAssembler systemPromptAssembler,
+            UserQuestionGateway userQuestions,
+            AgentToolCatalog toolCatalog,
+            ToolArgumentsParser toolArgumentsParser,
+            IHookService hookService,
+            IPermissionMatrixPort permissionMatrixPort,
+            RuntimeApprovalGateway approvalGateway,
+            SessionLogFactory sessionLogFactory,
+            AgentEventListenerFactory agentEventListenerFactory,
+            CompactionEngine compactionEngine,
+            long toolTimeoutMs
+    ) {
         this.llm = llm;
         this.sharedToolRegistry = sharedToolRegistry;
         this.systemPromptAssembler = systemPromptAssembler;
@@ -75,6 +98,7 @@ public class AgentRunFactory implements AgentRunLifecycle {
         this.sessionLogFactory = sessionLogFactory;
         this.agentEventListenerFactory = agentEventListenerFactory;
         this.compactionEngine = compactionEngine;
+        this.toolTimeoutMs = toolTimeoutMs;
     }
 
     @Override
@@ -143,7 +167,8 @@ public class AgentRunFactory implements AgentRunLifecycle {
                 toolRegistry,
                 session,
                 10,
-                toolArgumentsParser
+                toolArgumentsParser,
+                toolTimeoutMs
         );
         if (hookService != null) {
             executor.setHookService(hookService);

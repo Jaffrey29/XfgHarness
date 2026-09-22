@@ -9,6 +9,7 @@ import cn.xiaofuge.deepseek.harness.api.stream.IAgentStreamApi;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -226,7 +227,12 @@ public class AgentStreamApi implements IAgentStreamApi {
         done.put("agentId", response.agentId());
         done.put("sessionId", response.sessionId());
         done.put("status", response.status());
-        done.put("messages", response.messages());
+        // done 瘦身（D-10）：只回传当前回合消息（自最后一条 user 起），不再携带全量会话历史。
+        // 长对话时全量历史会让 done 随轮次线性膨胀；完整历史由
+        // GET /api/harness/console/sessions/{id}/messages 兜底，messageCount 供客户端对账。
+        List<Map<String, Object>> allMessages = response.messages();
+        done.put("messages", DonePayloads.currentTurnMessages(allMessages));
+        done.put("messageCount", DonePayloads.messageCount(allMessages));
         if (response.artifacts() != null && !response.artifacts().isEmpty()) {
             done.put("artifacts", response.artifacts());
         }

@@ -44,10 +44,26 @@ public final class ToolCallExecutor {
     private static final Logger log = LoggerFactory.getLogger(ToolCallExecutor.class);
     // Domain 层不持有日志器
 
+    /** 单个工具调用的默认执行超时（毫秒）：300s。超时后记为 TOOL_TIMEOUT 失败，不再无限阻塞回合。 */
+    public static final long DEFAULT_TOOL_TIMEOUT_MS = 300_000L;
+
+    /**
+     * 工具执行工作线程池（daemon）：部分工具实现（如 shell_execute）会在调用线程上
+     * 同步阻塞直到自身超时，若直接在驱动线程派发，任何后续超时等待都无从生效。
+     * 超时启用时派发动作被投递到本池，驱动线程仅负责限时等待结果。
+     */
+    private static final ExecutorService TOOL_WORKER = Executors.newCachedThreadPool(r -> {
+        Thread t = new Thread(r, "tool-worker");
+        t.setDaemon(true);
+        return t;
+    });
+
     private final ToolRegistry registry;
     private final SessionLog session;
     private final int maxParallel;
     private final ToolArgumentsParser argumentsParser;
+    /** 单个工具调用最大执行时长（毫秒），0 表示不设超时。 */
+    private final long toolTimeoutMs;
     private volatile IHookService hookService;
     private volatile RuntimeApprovalGate approvalGate = RuntimeApprovalGate.allowAll();
     private volatile Consumer<ToolLifecycleEvent> lifecycleListener;
@@ -60,26 +76,35 @@ public final class ToolCallExecutor {
      * @param maxParallel 每个步骤中可并行的最大在途调用数
      */
     public ToolCallExecutor(ToolRegistry registry, SessionLog session, int maxParallel) {
-        this(registry, session, maxParallel, ToolArgumentsParser.identity());
+        this(registry, session, maxParallel, ToolArgumentsParser.identity(), DEFAULT_TOOL_TIMEOUT_MS);
     }
 
-    /**
-     * 创建带参数解析器的完整工具执行器。
-     * <p>执行流程：校验注册表、会话、参数解析器 -> 校验最大并行数 -> 绑定运行期组件。
-     * 该执行器本身不实现工具，只负责解析、审批、Hook、并发调度和结果落库。
-     * <p>数据示例：maxParallel=2 时，模型同轮请求 read_file 与 grep 工具，两个只读工具可并发执行。
-     */
     public ToolCallExecutor(
             ToolRegistry registry,
             SessionLog session,
             int maxParallel,
             ToolArgumentsParser argumentsParser
     ) {
+        this(registry, session, maxParallel, argumentsParser, DEFAULT_TOOL_TIMEOUT_MS);
+    }
+
+    /**
+     * 创建带参数解析器和工具超时的完整工具执行器。
+     * <p>toolTimeoutMs 为单个工具调用的最大执行时长（毫秒），<=0 表示不启用超时。
+     */
+    public ToolCallExecutor(
+            ToolRegistry registry,
+            SessionLog session,
+            int maxParallel,
+            ToolArgumentsParser argumentsParser,
+            long toolTimeoutMs
+    ) {
         this.registry = Objects.requireNonNull(registry);
         this.session = Objects.requireNonNull(session);
         this.argumentsParser = Objects.requireNonNull(argumentsParser);
         if (maxParallel < 1) throw new IllegalArgumentException("maxParallel must be >= 1");
         this.maxParallel = maxParallel;
+        this.toolTimeoutMs = toolTimeoutMs;
     }
 
     /**
@@ -216,6 +241,45 @@ public final class ToolCallExecutor {
     // ── 分组执行器 ────────────────────────────────────────────────
 
     /**
+     * 等待单个工具 Future 完成；超过 toolTimeoutMs 未完成时以 TOOL_TIMEOUT 失败收场。
+     * <p>超时后 Future 里的工作线程仍在跑（无法安全强杀），但其结果会被丢弃，
+     * 槽位记为合成失败结果，保证 tool_call/tool_result 成对落库，回合不再被挂死工具阻塞。
+     */
+    private ToolExecutionResult awaitWithTimeout(
+            CompletableFuture<ToolExecutionResult> future,
+            long turn, long step, String toolName
+    ) {
+        if (toolTimeoutMs <= 0) {
+            return future.join();
+        }
+        try {
+            return future.get(toolTimeoutMs, TimeUnit.MILLISECONDS);
+        } catch (java.util.concurrent.TimeoutException te) {
+            log.warn("[Tool] Turn#{} Step#{} 工具 {} 执行超过 {}ms，判定超时（TOOL_TIMEOUT）",
+                    turn, step, toolName, toolTimeoutMs);
+            notifyLifecycle(new ToolLifecycleEvent(
+                    "result", null, toolName, null, null, "timeout", toolTimeoutMs));
+            return ToolExecutionResult.fail(
+                    "Tool \"" + toolName + "\" timed out after " + toolTimeoutMs
+                            + "ms and was terminated",
+                    ToolErrorCodes.TOOL_TIMEOUT);
+        } catch (java.util.concurrent.ExecutionException ee) {
+            Throwable cause = ee.getCause() != null ? ee.getCause() : ee;
+            return ToolExecutionResult.fail(cause.getMessage(), "TOOL_ERROR");
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            return ToolExecutionResult.fail("tool wait interrupted", "TOOL_ERROR");
+        }
+    }
+
+    /** 判断一个工具调用是否已因超时而失败（其后续结果将被丢弃）。 */
+    private boolean isTimeoutFailure(Slot slot) {
+        return slot != null && slot.result instanceof ToolExecutionResult.Failure f
+                && f.error() != null && f.error().info() != null
+                && ToolErrorCodes.TOOL_TIMEOUT.equals(f.error().info().code());
+    }
+
+    /**
      * 按并行/串行模式执行一组工具调用，并保持结果按调用顺序提交。
      * <p>执行流程：解析参数 -> 记录 tool_call 事件 -> 审批检查 -> PRE Hook -> 启动执行 ->
      * 等待完成 -> POST Hook -> 记录 tool_result 事件。取消时未派发的调用标记为 ABORTED。
@@ -243,6 +307,11 @@ public final class ToolCallExecutor {
 
         // 记录在途 Future
         Map<Integer, CompletableFuture<Integer>> inFlight = new ConcurrentHashMap<>();
+        // 已定论槽位（超时判负后，底层 future 迟到的回调不得覆盖结果）
+        Set<Integer> settled = ConcurrentHashMap.newKeySet();
+        // 每个在途调用的超时截止时间（nanoTime），仅超时启用时记录
+        Map<Integer, Long> deadlines = new ConcurrentHashMap<>();
+        long timeoutNanos = TimeUnit.MILLISECONDS.toNanos(Math.max(0, toolTimeoutMs));
 
         try {
             // 填充线程池
@@ -302,26 +371,42 @@ public final class ToolCallExecutor {
                                 "unknown tool \"" + call.block.name() + "\"",
                                 ToolErrorCodes.UNKNOWN_TOOL), false);
                     } else {
-                        // 通过 CompletableFuture 同步派发
-                        CompletableFuture<ToolExecutionResult> future = defOpt.get()
-                                .execute(call.execArgs, ctx);
+                        // 派发：超时启用时投递到工作线程池，避免同步阻塞型工具
+                        // 在驱动线程上跑满自身超时、令本执行器的超时等待形同虚设
+                        CompletableFuture<ToolExecutionResult> future = toolTimeoutMs > 0
+                                ? CompletableFuture.supplyAsync(
+                                        () -> defOpt.get().execute(call.execArgs, ctx).join(), TOOL_WORKER)
+                                : defOpt.get().execute(call.execArgs, ctx);
                         int finalIndex = index;
                         CompletableFuture<Integer> tracked = future.handle((result, error) -> {
-                            if (error != null) {
-                                slots[finalIndex] = new Slot(ctx,
-                                        ToolExecutionResult.fail(error.getMessage(), "TOOL_ERROR"), false);
-                            } else {
-                                afterTool(call.block.name());
-                                boolean needsPost = true;
-                                slots[finalIndex] = new Slot(ctx, result, needsPost);
+                            if (settled.add(finalIndex)) {
+                                if (error != null) {
+                                    slots[finalIndex] = new Slot(ctx,
+                                            ToolExecutionResult.fail(error.getMessage(), "TOOL_ERROR"), false);
+                                } else {
+                                    afterTool(call.block.name());
+                                    boolean needsPost = true;
+                                    slots[finalIndex] = new Slot(ctx, result, needsPost);
+                                }
                             }
                             return finalIndex;
                         });
                         inFlight.put(index, tracked);
                         tracked.whenComplete((ignored, throwable) -> inFlight.remove(finalIndex));
-                        // 非并行模式下，等待该调用完成后再继续
+                        if (toolTimeoutMs > 0) {
+                            deadlines.put(index, System.nanoTime() + timeoutNanos);
+                        }
+                        // 非并行模式下，等待该调用完成后再继续（带超时保护）
                         if (mode != ToolExecutionMode.PARALLEL) {
-                            future.join();
+                            ToolExecutionResult awaited = awaitWithTimeout(
+                                    future, turn, step, call.block.name());
+                            if (isTimeoutFailure(new Slot(ctx, awaited, false))) {
+                                // 超时：直接把失败结果写入槽位（settled 防止底层回调覆盖），
+                                // 从等待队列移除，使回合不再被挂死工具阻塞
+                                settled.add(finalIndex);
+                                slots[finalIndex] = new Slot(ctx, awaited, false);
+                                inFlight.remove(finalIndex);
+                            }
                         }
                     }
                 } catch (Exception e) {
@@ -336,10 +421,49 @@ public final class ToolCallExecutor {
                 committed = commitReady(turn, step, group, slots, callSeqs, committed, acceptContext);
             }
 
-            // 等待全部在途调用完成
+            // 等待全部在途调用完成（带超时保护，避免挂死工具无限阻塞回合）
             while (!inFlight.isEmpty()) {
-                CompletableFuture.allOf(inFlight.values().toArray(new CompletableFuture[0]))
-                        .join();
+                CompletableFuture<Void> all = CompletableFuture.allOf(
+                        inFlight.values().toArray(new CompletableFuture[0]));
+                if (timeoutNanos <= 0) {
+                    all.join();
+                } else {
+                    // 计算当前在途调用中最近的截止时间，等待到该时刻
+                    long nearestDeadline = deadlines.values().stream()
+                            .min(Long::compare)
+                            .orElse(System.nanoTime() + timeoutNanos);
+                    long waitNanos = nearestDeadline - System.nanoTime();
+                    try {
+                        if (waitNanos > 0) {
+                            all.get(waitNanos, TimeUnit.NANOSECONDS);
+                        }
+                    } catch (java.util.concurrent.TimeoutException te) {
+                        // 到期仍未完成的调用全部判定超时
+                    } catch (java.util.concurrent.ExecutionException ee) {
+                        // 单个调用异常已由各自回调处理，此处忽略聚合异常
+                    }
+                    // 判定所有已到期且未完成的调用为 TOOL_TIMEOUT
+                    long now = System.nanoTime();
+                    for (Map.Entry<Integer, Long> entry : deadlines.entrySet()) {
+                        int idx = entry.getKey();
+                        if (entry.getValue() <= now && inFlight.containsKey(idx)) {
+                            String toolName = group.get(idx).block.name();
+                            log.warn("[Tool] Turn#{} Step#{} 工具 {} 执行超过 {}ms，判定超时（TOOL_TIMEOUT）",
+                                    turn, step, toolName, toolTimeoutMs);
+                            notifyLifecycle(new ToolLifecycleEvent(
+                                    "result", null, toolName, null, null, "timeout", toolTimeoutMs));
+                            if (settled.add(idx)) {
+                                slots[idx] = new Slot(null, ToolExecutionResult.fail(
+                                        "Tool \"" + toolName + "\" timed out after " + toolTimeoutMs
+                                                + "ms and was terminated",
+                                        ToolErrorCodes.TOOL_TIMEOUT), false);
+                            }
+                            deadlines.remove(idx);
+                            CompletableFuture<Integer> f = inFlight.remove(idx);
+                            if (f != null) f.cancel(false);
+                        }
+                    }
+                }
                 committed = commitReady(turn, step, group, slots, callSeqs, committed, acceptContext);
                 if (abortSignal.get()) aborted = true;
 
@@ -374,18 +498,26 @@ public final class ToolCallExecutor {
                             slots[index] = new Slot(ctx, ToolExecutionResult.fail(
                                     "unknown tool", ToolErrorCodes.UNKNOWN_TOOL), false);
                         } else {
-                            CompletableFuture<ToolExecutionResult> future = defOpt.get()
-                                    .execute(call.execArgs, ctx);
+                            // 派发（补流路径）：与主派发路径一致，超时启用时走工作线程池
+                            CompletableFuture<ToolExecutionResult> future = toolTimeoutMs > 0
+                                    ? CompletableFuture.supplyAsync(
+                                            () -> defOpt.get().execute(call.execArgs, ctx).join(), TOOL_WORKER)
+                                    : defOpt.get().execute(call.execArgs, ctx);
                             int finalIndex = index;
                             future.whenComplete((result, error) -> {
-                                if (error != null) {
-                                    slots[finalIndex] = new Slot(ctx,
-                                            ToolExecutionResult.fail(error.getMessage(), "TOOL_ERROR"), false);
-                                } else {
-                                    slots[finalIndex] = new Slot(ctx, result, true);
+                                if (settled.add(finalIndex)) {
+                                    if (error != null) {
+                                        slots[finalIndex] = new Slot(ctx,
+                                                ToolExecutionResult.fail(error.getMessage(), "TOOL_ERROR"), false);
+                                    } else {
+                                        slots[finalIndex] = new Slot(ctx, result, true);
+                                    }
                                 }
                                 inFlight.remove(finalIndex);
                             });
+                            if (toolTimeoutMs > 0) {
+                                deadlines.put(index, System.nanoTime() + timeoutNanos);
+                            }
                             inFlight.put(index, future.thenApply(v -> finalIndex));
                         }
                     } catch (Exception e) {
@@ -399,9 +531,15 @@ public final class ToolCallExecutor {
 
         } catch (Exception e) {
             schedulerFailure = true;
-            // 清空在途调用
+            // 清空在途调用（超时启用时限制等待，避免清理阶段被挂死工具二次阻塞）
             for (var f : inFlight.values()) {
-                try { f.join(); } catch (Exception ignored) {}
+                try {
+                    if (toolTimeoutMs > 0) {
+                        f.get(toolTimeoutMs, TimeUnit.MILLISECONDS);
+                    } else {
+                        f.join();
+                    }
+                } catch (Exception ignored) {}
             }
         }
 
