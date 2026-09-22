@@ -10,8 +10,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * 扩展管理命令接口：技能安装/启停/删除、MCP server 增删改与测试、CLI 配置保存。
@@ -39,6 +43,29 @@ public class ExtensionCommandController {
             return Response.invalidArgument(e.getMessage());
         } catch (Exception e) {
             return Response.internalError(e.getMessage());
+        }
+    }
+
+    @PostMapping(value = "/skills/upload", consumes = "multipart/form-data")
+    public Response<IExtensionManagementPort.ExtensionSkillInstallResult> uploadSkill(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "subdir", required = false) String subdir,
+            @RequestParam(value = "name", required = false) String name) {
+        try {
+            String original = file.getOriginalFilename() == null ? "" : file.getOriginalFilename();
+            if (!original.toLowerCase(java.util.Locale.ROOT).endsWith(".zip")) {
+                return Response.invalidArgument("请选择 .zip 压缩包");
+            }
+            Path staging = Path.of(System.getProperty("java.io.tmpdir"), "deepseek-harness-skill-uploads");
+            Files.createDirectories(staging);
+            Path target = staging.resolve(UUID.randomUUID() + ".zip").toAbsolutePath().normalize();
+            file.transferTo(target);
+            return Response.success(extensionManagement.installSkillFromZip(
+                    target.toString(), subdir, name));
+        } catch (IllegalArgumentException e) {
+            return Response.invalidArgument(e.getMessage());
+        } catch (Exception e) {
+            return Response.internalError("技能压缩包上传失败：" + e.getMessage());
         }
     }
 

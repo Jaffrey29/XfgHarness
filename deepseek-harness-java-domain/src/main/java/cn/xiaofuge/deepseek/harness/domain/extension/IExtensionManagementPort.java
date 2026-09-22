@@ -30,6 +30,15 @@ public interface IExtensionManagementPort {
      */
     ExtensionSkillInstallResult installSkillFromGit(String gitUrl, String subdir, String name);
 
+    /**
+     * 从压缩包安装技能：解压 zip → 定位 SKILL.md 所在目录 → 拷入用户技能根目录。
+     * @param zipPath 上传暂存的 zip 文件路径
+     * @param subdir 压缩包内技能子目录（可选，为空则自动搜索 SKILL.md）
+     * @param name 安装后的技能目录名（可选，默认取 SKILL.md 的 name 或压缩包名）
+     * @return 安装结果（含最终技能名与路径）
+     */
+    ExtensionSkillInstallResult installSkillFromZip(String zipPath, String subdir, String name);
+
     /** 删除用户根目录下已安装的技能（bundled/project 来源不允许删除）。 */
     void removeSkill(String name, String cwd);
 

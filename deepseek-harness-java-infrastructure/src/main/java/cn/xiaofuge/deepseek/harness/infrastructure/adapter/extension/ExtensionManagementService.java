@@ -237,6 +237,73 @@ public class ExtensionManagementService implements IExtensionManagementPort, App
     }
 
     @Override
+    public ExtensionSkillInstallResult installSkillFromZip(String zipPath, String subdir, String name) {
+        if (zipPath == null || zipPath.isBlank()) {
+            return new ExtensionSkillInstallResult(false, "", "", "zipPath 不能为空");
+        }
+        Path zipFile = Path.of(zipPath.trim());
+        if (!Files.isRegularFile(zipFile)) {
+            return new ExtensionSkillInstallResult(false, "", "", "压缩包不存在: " + zipPath);
+        }
+        Path tmpDir = null;
+        try {
+            Path workRoot = Files.createTempDirectory("dsh-skill-zip-");
+            tmpDir = workRoot;
+            Path extractRoot = workRoot.resolve("unpacked");
+            unzip(zipFile, extractRoot);
+            Path skillDir = locateSkillDir(extractRoot, subdir);
+            if (skillDir == null) {
+                return new ExtensionSkillInstallResult(false, "", "",
+                        "压缩包中未找到 SKILL.md（可指定 subdir 指向技能目录）");
+            }
+            String skillName = resolveSkillName(name, skillDir, extractRoot, zipFileName(zipFile));
+            Path target = installRoot().resolve(skillName);
+            if (Files.exists(target)) {
+                ExtensionConfigStore.deleteRecursively(target);
+            }
+            copyDirectory(skillDir, target);
+            String message = "技能已安装: " + skillName;
+            log.info("[extension] {}", message);
+            return new ExtensionSkillInstallResult(true, skillName, target.toString(), message);
+        } catch (Exception e) {
+            log.warn("[extension] skill zip install failed: {}", e.getMessage());
+            return new ExtensionSkillInstallResult(false, "", "", "安装失败: " + e.getMessage());
+        } finally {
+            if (tmpDir != null) {
+                try { ExtensionConfigStore.deleteRecursively(tmpDir); } catch (IOException ignored) { }
+            }
+        }
+    }
+
+    /** 解压 zip 到目标目录（带 zip-slip 防护）。 */
+    private void unzip(Path zipFile, Path destDir) throws IOException {
+        Files.createDirectories(destDir);
+        try (java.util.zip.ZipInputStream zis = new java.util.zip.ZipInputStream(Files.newInputStream(zipFile))) {
+            java.util.zip.ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
+                Path target = destDir.resolve(entry.getName()).normalize();
+                if (!target.startsWith(destDir)) {
+                    throw new IOException("压缩包包含非法路径条目: " + entry.getName());
+                }
+                if (entry.isDirectory()) {
+                    Files.createDirectories(target);
+                } else {
+                    Files.createDirectories(target.getParent());
+                    Files.copy(zis, target, StandardCopyOption.REPLACE_EXISTING);
+                }
+                zis.closeEntry();
+            }
+        }
+    }
+
+    /** 从压缩包文件名推导技能名兜底：去掉扩展名。 */
+    private String zipFileName(Path zipFile) {
+        String fileName = zipFile.getFileName().toString();
+        int dot = fileName.lastIndexOf('.');
+        return dot > 0 ? fileName.substring(0, dot) : fileName;
+    }
+
+    @Override
     public void removeSkill(String name, String cwd) {
         ExtensionSkillSummary target = listSkills(cwd).stream()
                 .filter(s -> s.name().equals(name))
