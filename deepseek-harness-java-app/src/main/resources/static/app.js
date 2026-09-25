@@ -18,8 +18,19 @@ const DEFAULT_CHANNEL = '';
 const PLUGIN_API = '/api/harness/plugins';
 const CONSOLE_API = '/api/harness/console';
 const APPROVAL_API = '/api/harness/approvals';
+const QUESTION_API = '/api/harness/questions';
+
+// API Key 鉴权：服务端 harness.auth.api-keys 非空时所有 /api/* 需要 X-API-Key。
+// Key 在设置页「接入安全」中配置，localStorage 持久化。
+function getApiKey() {
+  return localStorage.getItem('webApiKey') || '';
+}
 
 async function apiRequest(path, options = {}) {
+  const apiKey = getApiKey();
+  if (apiKey) {
+    options.headers = Object.assign({}, options.headers, { 'X-API-Key': apiKey });
+  }
   const response = await fetch(path, options);
   let payload = null;
   try {
@@ -30,6 +41,9 @@ async function apiRequest(path, options = {}) {
 
   const succeeded = response.ok && payload && payload.code === '00000';
   if (!succeeded) {
+    if (response.status === 401) {
+      showToast('需要 API Key：请到 设置 → 接入安全 填写服务端配置的 API Key');
+    }
     throw new Error((payload && payload.info) || ('HTTP ' + response.status));
   }
   return payload.data;
@@ -38,6 +52,11 @@ async function apiRequest(path, options = {}) {
 const SSE_TIMEOUT_MS = 300_000;
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 1500;
+
+// P1: 工件文件读取端点（受限工作区路径）
+const FILE_API = '/api/agent/workspace/file';
+// P2: 扩展管理端点（Skills / MCP / CLI）
+const EXT_API = '/api/harness/extensions';
 
 const ERROR_MAP = {
   'HTTP 400': '请求格式有误，请检查输入',
@@ -67,10 +86,18 @@ function translateError(msg) {
 marked.setOptions({ breaks: true, gfm: true, headerIds: false, mangle: false });
 
 const _renderer = new marked.Renderer();
-_renderer.code = function(token) {
-  const code = (typeof token === 'object' && token !== null) ? (token.text || '') : token;
-  const lang = (typeof token === 'object' && token !== null) ? (token.lang || '') : '';
-  const language = (lang || '').trim() || 'text';
+_renderer.code = function() {
+  // 兼容 marked 新旧签名：v12+ 传 token 对象，旧版传 (code, infostring, escaped)
+  let code, lang;
+  const a0 = arguments[0];
+  if (a0 && typeof a0 === 'object') {
+    code = a0.text || '';
+    lang = a0.lang || '';
+  } else {
+    code = a0 || '';
+    lang = arguments[1] || '';
+  }
+  const language = (lang || '').trim().split(/\s+/)[0] || 'text';
   let highlighted;
   try {
     if (typeof hljs !== 'undefined' && language !== 'text') {
@@ -116,6 +143,9 @@ class ChatSession {
     this.stats = { turns: 0, steps: 0, llmTimeMs: 0, firstTokenMs: 0, inputTokens: 0, outputTokens: 0, cacheHitRate: 0 };
     this.title = '新对话';
     this.lastMessage = '';
+    // P1: 置顶 / 未读徽标（对齐桌面端会话能力）
+    this.pinned = false;
+    this.unread = 0;
     this.createdAt = new Date().toISOString();
     this.workspace = state.currentWorkspace || '';
     this.approvalMode = 'REQUEST_APPROVAL';
@@ -174,8 +204,17 @@ const state = {
   selectedPluginId: null,
   // v11: 审批队列
   pendingApprovals: [],
-  // v11: 侧边面板
-  activePanel: null, // 'todos' | 'plan' | 'goal' | 'trajectory' | 'subagents' | 'deliverables' | 'jobs' | 'recall' | null
+  // 运行期问答（ask_user_question 挂起等待）：待回答问题 + 每题的本地作答状态
+  pendingQuestions: [],
+  questionUi: {},
+  // v11: 侧边面板（信息面板常驻显示，对齐桌面端右侧信息栏）
+  activePanel: localStorage.getItem('activePanel') || 'info', // 'todos' | 'plan' | 'goal' | 'trajectory' | 'subagents' | 'deliverables' | 'jobs' | 'recall' | 'info' | null
+  // 信息面板（对齐桌面端）：内部 Tab + 文件树缓存
+  infoTab: 'runinfo', // 'runinfo' | 'deliverables'
+  fileTree: null,     // 当前工作区文件树根节点
+  fileTreePath: null, // fileTree 对应的工作区路径
+  fileTreeLoading: false,
+  fileTreeCollapsed: {}, // 记录收起的目录 path -> true
   // v29: 轨迹视图搜索关键字
   trajSearch: '',
   // v29.1: 轨迹明细列表倒序（true=最新在上，默认）
@@ -183,6 +222,15 @@ const state = {
   // v11: 会话历史
   sessionHistory: [],
   sessionHistoryLimit: 20,
+  // P1: 侧边栏会话搜索 + 工件预览弹层
+  sessionSearch: '',
+  artifactPreview: null, // { path, name, loading, error, kind, payload }
+  previewFile: null, // 右侧内嵌预览：{ path, name }
+  // P2: 扩展设置（Skills / MCP / CLI）
+  extensionSkills: [],
+  extensionMcpServers: [],
+  extensionCliConfig: null,
+  extensionLoaded: false,
   // v11: 斜杠命令
   slashCommands: [
     { name: '/help', desc: '显示帮助信息', icon: '❓' },
@@ -287,6 +335,7 @@ function saveSessionsToStorage() {
         title: s.title,
         displayName: s.displayName,
         lastMessage: s.lastMessage,
+        pinned: !!s.pinned,
         createdAt: s.createdAt,
         workspace: s.workspace,
         messages: (s.messages || []).map(function(m) {
@@ -325,6 +374,8 @@ function loadSessionsFromStorage() {
       sess.title = s.title || '历史对话';
       sess.displayName = s.displayName || sess.title;
       sess.lastMessage = s.lastMessage || '';
+      sess.pinned = !!s.pinned;
+      sess.unread = 0;
       sess.createdAt = s.createdAt || new Date().toISOString();
       sess.workspace = (s.workspace === 'default') ? '' : (s.workspace || '');
       sess.messages = (s.messages || []).map(function(m) {
@@ -423,8 +474,27 @@ function renderLayout() {
   app.appendChild(renderSidebar());
   const mainArea = el('div', { class: 'main-area' });
   mainArea.appendChild(renderMain());
+  // 右侧面板与 .main 平级（.main-area 为横向 flex），避免被 .main 纵向 flex 压成 0 宽
+  if (state.activePanel) {
+    mainArea.appendChild(renderSidePanel());
+    // 信息面板常驻：首次挂载时若无文件树缓存则异步加载一次
+    if (state.activePanel === 'info' && !state.fileTree && !state.fileTreeLoading) {
+      setTimeout(function() { loadWorkspaceFileTree(false); }, 0);
+    }
+  }
   app.appendChild(mainArea);
   return app;
+}
+
+// P1: 会话搜索过滤 + 置顶排序（置顶始终在最前，组内保持原有时序）
+function filterSessionsBySearch(list) {
+  const q = (state.sessionSearch || '').trim().toLowerCase();
+  const filtered = q
+    ? list.filter(function(s) {
+        return ((s.title || '') + ' ' + (s.displayName || '') + ' ' + (s.lastMessage || '')).toLowerCase().indexOf(q) !== -1;
+      })
+    : list.slice();
+  return filtered.sort(function(a, b) { return (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0); });
 }
 
 // ── 侧边栏 ─────────────────────────────────
@@ -479,6 +549,25 @@ function renderSidebar() {
   newBtn.appendChild(el('span', null, '新会话'));
   expandSection.appendChild(newBtn);
 
+  // P1: 会话搜索框（仅前端过滤，不持久化，刷新即清空）
+  const searchWrap = el('div', { class: 'session-search-wrap' });
+  const searchInput = el('input', {
+    class: 'session-search-input',
+    id: 'session-search',
+    type: 'text',
+    placeholder: '搜索会话…',
+    value: state.sessionSearch || '',
+    oninput: function(e) {
+      state.sessionSearch = e.target.value;
+      updateSidebarStatus();
+      const box = $('#session-search');
+      if (box) { box.focus(); try { box.setSelectionRange(box.value.length, box.value.length); } catch (_) {} }
+    }
+  });
+  searchWrap.appendChild(icon('search', 'session-search-icon'));
+  searchWrap.appendChild(searchInput);
+  expandSection.appendChild(searchWrap);
+
   // Workspace action toolbar
   const wsToolbar = el('div', { class: 'ws-toolbar' });
   const pickBtn = el('button', {
@@ -497,6 +586,13 @@ function renderSidebar() {
   const filterBtn = el('button', { class: 'workspace-action-btn', title: '设置', onclick: function() { openSettingsPage(); } });
   filterBtn.appendChild(icon('sliders'));
   wsToolbar.appendChild(filterBtn);
+  // P2: 主题切换（函数原本已实现，这里接上入口）
+  const themeBtn = el('button', {
+    class: 'workspace-action-btn',
+    title: '切换主题（当前：' + (state.theme === 'dark' ? '暗色' : '亮色') + '）',
+    onclick: function() { toggleTheme(); }
+  }, state.theme === 'dark' ? '🌞' : '🌙');
+  wsToolbar.appendChild(themeBtn);
   const clearBtn = el('button', {
     class: 'workspace-action-btn danger',
     title: '清空对话',
@@ -512,12 +608,12 @@ function renderSidebar() {
   let dragSrcName = null;
 
   function renderSessionsForWorkspace(wsPath) {
-    const wsSessions = state.sessions.filter(function(sess) {
+    const wsSessions = filterSessionsBySearch(state.sessions.filter(function(sess) {
       return (sess.workspace || '') === wsPath;
-    });
+    }));
     const group = el('div', { class: 'ws-session-group' });
     if (wsSessions.length === 0) {
-      group.appendChild(el('div', { class: 'ws-session-empty' }, '暂无对话'));
+      group.appendChild(el('div', { class: 'ws-session-empty' }, state.sessionSearch ? '无匹配会话' : '暂无对话'));
     } else {
       const display = wsSessions.slice(0, state.sidebarSessionLimit);
       for (const sess of display) {
@@ -542,7 +638,7 @@ function renderSidebar() {
     header.appendChild(el('span', { class: 'ws-session-header-name' }, n));
     const wsCount = state.sessions.filter(function(s) { return (s.workspace || '') === p; }).length;
     header.appendChild(el('span', { class: 'ws-session-header-count' }, String(wsCount)));
-    // rename + delete actions
+    // rename + delete + ⋯ 菜单（对齐桌面端项目右键菜单）
     const actions = el('div', { class: 'ws-session-header-actions' });
     const newChatBtn = el('button', { class: 'workspace-item-btn', title: '在此空间新建对话', onclick: function(e) {
       e.stopPropagation();
@@ -552,12 +648,9 @@ function renderSidebar() {
     } });
     newChatBtn.appendChild(icon('addWorkspace', 'workspace-item-btn-icon'));
     actions.appendChild(newChatBtn);
-    const renameBtn = el('button', { class: 'workspace-item-btn', title: '重命名', onclick: function(e) { e.stopPropagation(); showRenameWorkspaceForm(n); } });
-    renameBtn.appendChild(icon('pencil', 'workspace-item-btn-icon'));
-    actions.appendChild(renameBtn);
-    const delBtn = el('button', { class: 'workspace-item-btn', title: '删除', onclick: function(e) { e.stopPropagation(); confirmDeleteWorkspace(n); } });
-    delBtn.appendChild(icon('trash', 'workspace-item-btn-icon'));
-    actions.appendChild(delBtn);
+    const menuBtn = el('button', { class: 'workspace-item-btn', title: '项目操作', onclick: function(e) { e.stopPropagation(); showWorkspaceMenu(e, p, n); } });
+    menuBtn.appendChild(el('span', { class: 'workspace-item-btn-icon ws-dots' }, '⋯'));
+    actions.appendChild(menuBtn);
     header.appendChild(actions);
     header.onclick = function() {
       state.currentWorkspace = p;
@@ -583,9 +676,9 @@ function renderSidebar() {
   }
 
   if (state.workspaces.length === 0) {
-    const allSessions = state.sessions.slice();
+    const allSessions = filterSessionsBySearch(state.sessions);
     if (allSessions.length === 0) {
-      sessionList.appendChild(el('div', { class: 'empty' }, '暂无对话'));
+      sessionList.appendChild(el('div', { class: 'empty' }, state.sessionSearch ? '无匹配会话' : '暂无对话'));
     } else {
       const display = allSessions.slice(0, state.sidebarSessionLimit);
       for (const sess of display) {
@@ -625,8 +718,12 @@ function renderSidebar() {
 }
 
 function renderSessionItem(sess) {
+  const generating = !!(sess.sending || sess.streaming);
   const item = el('div', {
-    class: 'session-item' + (sess.agentId === state.currentSessionId ? ' active' : ''),
+    class: 'session-item'
+      + (sess.agentId === state.currentSessionId ? ' active' : '')
+      + (sess.pinned ? ' pinned' : '')
+      + (generating ? ' generating' : ''),
     role: 'button',
     tabindex: '0',
     onclick: function() { selectSession(sess.agentId); },
@@ -635,11 +732,25 @@ function renderSessionItem(sess) {
     }
   });
   const row = el('div', { class: 'session-item-row' });
+  if (sess.pinned) {
+    row.appendChild(el('span', { class: 'session-item-pin', title: '已置顶' }, '📌'));
+  }
   row.appendChild(el('div', {
     class: 'session-item-title',
     title: sess.title || sess.lastMessage || sess.displayName || '新会话'
   }, sess.title || sess.lastMessage || sess.displayName || '新会话'));
-  row.appendChild(el('span', { class: 'session-item-time' }, formatSessionAge(sess.createdAt)));
+  // P1: 后台生成中状态（对齐桌面端多会话并发流式）
+  if (generating) {
+    row.appendChild(el('span', { class: 'session-item-generating', title: '正在生成回复' },
+      el('span', null, '生成中'),
+      el('span', { class: 'generating-dot' }, '')));
+  } else {
+    row.appendChild(el('span', { class: 'session-item-time' }, formatSessionAge(sess.createdAt)));
+  }
+  // P1: 未读徽标（后台会话有新回复时显示）
+  if ((sess.unread || 0) > 0 && sess.agentId !== state.currentSessionId) {
+    row.appendChild(el('span', { class: 'session-unread-badge' }, String(sess.unread > 99 ? '99+' : sess.unread)));
+  }
   const actions = el('div', { class: 'session-item-actions' });
   actions.appendChild(el('button', {
     class: 'session-item-menu-btn',
@@ -658,6 +769,14 @@ function renderSessionItem(sess) {
 function showSessionMenu(event, sess) {
   closeSessionMenu();
   const menu = el('div', { class: 'session-context-menu' });
+  menu.appendChild(el('button', { class: 'session-context-item', onclick: function() {
+    closeSessionMenu();
+    togglePinSession(sess);
+  } }, sess.pinned ? '📌 取消置顶' : '📌 置顶'));
+  menu.appendChild(el('button', { class: 'session-context-item', onclick: function() {
+    closeSessionMenu();
+    markSessionRead(sess);
+  } }, '✓ 标为已读'));
   menu.appendChild(el('button', { class: 'session-context-item', onclick: function() {
     closeSessionMenu();
     renameSession(sess);
@@ -682,6 +801,22 @@ function showSessionMenu(event, sess) {
 function closeSessionMenu() {
   const menu = $('.session-context-menu');
   if (menu) menu.remove();
+}
+
+// P1: 置顶 / 已读
+function togglePinSession(sess) {
+  if (!sess) return;
+  sess.pinned = !sess.pinned;
+  saveSessionsToStorage();
+  render();
+  showToast(sess.pinned ? '已置顶' : '已取消置顶');
+}
+
+function markSessionRead(sess) {
+  if (!sess) return;
+  sess.unread = 0;
+  saveSessionsToStorage();
+  render();
 }
 
 function renameSession(sess) {
@@ -928,6 +1063,128 @@ function confirmDeleteWorkspace(name) {
   };
 }
 
+// ── 项目（工作区）⋯ 菜单（对齐桌面端）────────────────────
+// 新建对话 / 添加工程 / 编辑项目 / 清空非今日对话 / 清空全部对话 / 删除项目
+function showWorkspaceMenu(event, wsPath, wsName) {
+  closeWorkspaceMenu();
+  const menu = el('div', { class: 'session-context-menu workspace-context-menu' });
+
+  function item(label, fn, danger) {
+    menu.appendChild(el('button', { class: 'session-context-item' + (danger ? ' danger' : ''), onclick: function() { closeWorkspaceMenu(); fn(); } }, label));
+  }
+
+  item('＋ 新建对话', function() {
+    state.currentWorkspace = wsPath;
+    localStorage.setItem('currentWorkspace', wsPath);
+    newChat();
+  });
+  item('✎ 编辑项目', function() { showRenameWorkspaceForm(wsName); });
+  menu.appendChild(el('div', { class: 'session-context-divider' }));
+  item('🧹 清空非今日对话', function() { clearWorkspaceSessions(wsPath, false); });
+  item('🗑 清空全部对话', function() { clearWorkspaceSessions(wsPath, true); }, true);
+  menu.appendChild(el('div', { class: 'session-context-divider' }));
+  item('🗑 删除项目', function() { confirmDeleteWorkspace(wsName); }, true);
+
+  document.body.appendChild(menu);
+  const rect = event.currentTarget.getBoundingClientRect();
+  const width = menu.offsetWidth || 170;
+  const left = Math.max(8, Math.min(window.innerWidth - width - 8, rect.right - width));
+  const top = Math.min(window.innerHeight - menu.offsetHeight - 8, rect.bottom + 6);
+  menu.style.left = left + 'px';
+  menu.style.top = top + 'px';
+  setTimeout(function() { document.addEventListener('click', closeWorkspaceMenu, { once: true }); }, 0);
+}
+
+function closeWorkspaceMenu() {
+  const m = $('.workspace-context-menu');
+  if (m) m.remove();
+}
+
+// 按项目清空对话（all=true 清空全部，否则只清非今日）。仅前端列表移除。
+function clearWorkspaceSessions(wsPath, all) {
+  const today = new Date();
+  const ymd = today.getFullYear() + '-' + today.getMonth() + '-' + today.getDate();
+  function isToday(sess) {
+    const d = new Date(sess.createdAt || 0);
+    return (d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate()) === ymd;
+  }
+  const before = state.sessions.length;
+  state.sessions = state.sessions.filter(function(s) {
+    if ((s.workspace || '') !== wsPath) return true; // 非本项目保留
+    if (all) return false;                            // 清空全部
+    return isToday(s);                                // 清空非今日 → 只留今日
+  });
+  const removed = before - state.sessions.length;
+  if (state.currentSessionId && !state.sessions.find(function(s) { return s.agentId === state.currentSessionId; })) {
+    state.currentSessionId = state.sessions[0] ? state.sessions[0].agentId : null;
+  }
+  saveSessionsToStorage();
+  render();
+  showToast(removed > 0 ? ('已清空 ' + removed + ' 个对话') : '该项目暂无可清空的对话');
+}
+
+// 添加工程（新建工作区目录）
+function showAddWorkspaceForm() {
+  const existing = $('.ws-add-modal');
+  if (existing) existing.remove();
+  const overlay = el('div', { class: 'modal-overlay ws-add-modal', onclick: function(e) { if (e.target === overlay) overlay.remove(); } });
+  const modal = el('div', { class: 'modal', style: 'width:400px' });
+  const header = el('div', { class: 'modal-header' });
+  header.appendChild(el('div', { class: 'modal-title' }, '添加工程'));
+  header.appendChild(el('button', { class: 'modal-close', onclick: function() { overlay.remove(); } }, '×'));
+  modal.appendChild(header);
+  const body = el('div', { class: 'modal-body' });
+  const formGroup = el('div', { class: 'form-group' });
+  formGroup.appendChild(el('label', { class: 'form-label' }, '工程名称'));
+  const input = el('input', { class: 'form-input', placeholder: '例如：my-project', autocomplete: 'off' });
+  formGroup.appendChild(input);
+  body.appendChild(formGroup);
+  const errorEl = el('div', { class: 'error-banner', style: 'display:none;margin-top:8px' });
+  body.appendChild(errorEl);
+  modal.appendChild(body);
+  const footerEl = el('div', { class: 'modal-footer' });
+  footerEl.appendChild(el('button', { class: 'btn btn-secondary', onclick: function() { overlay.remove(); } }, '取消'));
+  const saveBtn = el('button', { class: 'btn btn-primary' }, '创建');
+  footerEl.appendChild(saveBtn);
+  modal.appendChild(footerEl);
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+  input.focus();
+  async function doCreate() {
+    const name = input.value.trim();
+    if (!name) { overlay.remove(); return; }
+    saveBtn.textContent = '创建中…';
+    saveBtn.disabled = true;
+    errorEl.style.display = 'none';
+    try {
+      await apiRequest(API + '/workspaces', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name })
+      });
+      await loadWorkspaces();
+      const created = state.workspaces.find(function(w) { return wsEntryName(w) === name; });
+      if (created) {
+        state.currentWorkspace = wsEntryPath(created);
+        localStorage.setItem('currentWorkspace', state.currentWorkspace);
+      }
+      overlay.remove();
+      render();
+      showToast('工程已创建');
+    } catch (e) {
+      errorEl.textContent = '创建失败: ' + e.message;
+      errorEl.style.display = 'flex';
+      saveBtn.textContent = '创建';
+      saveBtn.disabled = false;
+    }
+  }
+  saveBtn.onclick = doCreate;
+  input.onkeydown = function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doCreate(); }
+    if (e.key === 'Escape') overlay.remove();
+  };
+}
+
 async function reorderWorkspaces(srcName, targetName) {
   var names = state.workspaces.map(function(w) { return wsEntryName(w); });
   var from = names.indexOf(srcName);
@@ -989,6 +1246,12 @@ function renderMain() {
   if (sess && sess.messages.length > 0) {
     headerRight.appendChild(el('button', { class: 'main-header-session', onclick: () => exportSession(sess), title: '导出当前对话' }, 'Session log ⬇'));
   }
+  // 信息面板开关（对齐桌面端右上角「信息」）
+  headerRight.appendChild(el('button', {
+    class: 'main-header-info-btn' + (state.activePanel === 'info' ? ' active' : ''),
+    onclick: function() { toggleInfoPanel(); },
+    title: '信息'
+  }, 'ℹ 信息'));
 
   header.appendChild(headerRight);
   main.appendChild(header);
@@ -1045,6 +1308,10 @@ function renderMain() {
   // Composer
   if (state.pendingApprovals.length > 0) {
     main.appendChild(renderApprovalBanner());
+  }
+  // 运行期问答卡（ask_user_question）：挂在 Composer 上方，与审批横幅同级
+  for (const q of state.pendingQuestions) {
+    main.appendChild(renderQuestionCard(q));
   }
   main.appendChild(renderComposer(sess));
 
@@ -1147,8 +1414,16 @@ function renderMessage(m) {
     contentEl.appendChild(el('span', { class: 'streaming-cursor' }, '▋'));
   } else {
     contentEl.innerHTML = renderAssistantContent(m, false);
+    // P1: 挂载正文中的 ```echarts 图表块
+    mountEchartsBlocks(contentEl);
   }
   bubble.appendChild(contentEl);
+
+  // P1: 工件卡片（仅最终 assistant 消息，流式中不渲染）
+  if (m.role === 'assistant' && !m.streaming && m.content) {
+    const artifactCards = renderArtifactCards(m);
+    if (artifactCards) bubble.appendChild(artifactCards);
+  }
 
   // v11: 附件预览
   if (m.attachments && m.attachments.length > 0) {
@@ -1670,7 +1945,7 @@ function handleFilePaste(e, sess) {
   const items = e.clipboardData?.items;
   if (!items) return;
   for (const item of items) {
-    if (item.type.startsWith('image/')) {
+    if (item.kind === 'file') {
       e.preventDefault();
       const file = item.getAsFile();
       if (file) addAttachment(sess, file);
@@ -1683,31 +1958,91 @@ function handleFileDrop(e, sess) {
   const files = e.dataTransfer?.files;
   if (!files) return;
   for (const file of files) {
-    if (file.type.startsWith('image/')) {
-      addAttachment(sess, file);
-    }
+    addAttachment(sess, file);
   }
 }
 
+// 上传附件到服务端工作区（.dsh-attachments/），返回 {path,name,size,mimeType}
+async function uploadAttachment(file) {
+  const form = new FormData();
+  form.append('file', file);
+  // 后端 resolveWorkspaceDir 期望工作区「名称」（相对 harness.workspace.root），
+  // 而 state.currentWorkspace 存的是绝对路径。在根目录内时提取末段名称传入，
+  // 根目录外则原样传（后端会返回可读错误）。
+  form.append('workspace', workspaceNameForUpload(state.currentWorkspace));
+  const data = await apiRequest(API + '/attachments', { method: 'POST', body: form });
+  return data || null;
+}
+
+// 从当前工作区绝对路径提取后端可识别的工作区名称（harness.workspace.root 的末段）
+function workspaceNameForUpload(wsPath) {
+  if (!wsPath) return '';
+  const m = String(wsPath).match(/\/workspaces\/([^\/]+)\/?$/);
+  if (m) return m[1];
+  // 兜底：取路径最后一段
+  return String(wsPath).split('/').filter(Boolean).pop() || '';
+}
+
+// 对齐桌面端资源模型：
+// - 图片：dataURL 内联（多模态识别）+ 上传落盘（工具可读取），双通道；
+// - 其他文件：必须先选择工作区，上传落盘后以绝对路径注入消息隐藏上下文。
 function addAttachment(sess, file) {
   if (!sess) return;
   if (!sess.pendingAttachments) sess.pendingAttachments = [];
-  const maxSize = 10 * 1024 * 1024; // 10MB
+  const maxSize = 30 * 1024 * 1024; // 30MB（与服务端限制一致）
   if (file.size > maxSize) {
-    showToast('图片不能超过 10MB');
+    showToast('附件不能超过 30MB');
     return;
   }
-  const reader = new FileReader();
-  reader.onload = function() {
-    sess.pendingAttachments.push({
-      name: file.name,
-      type: 'image',
-      url: reader.result,
-      size: file.size,
-    });
+  const isImage = file.type && file.type.startsWith('image/');
+  const att = {
+    name: file.name,
+    type: isImage ? 'image' : 'file',
+    mimeType: file.type || 'application/octet-stream',
+    size: file.size,
+    url: null,
+    path: null,
+    uploading: true,
+    error: null,
+  };
+  sess.pendingAttachments.push(att);
+  console.log('[dsh-attach] pushed, count=', sess.pendingAttachments.length, 'will render');
+  try {
+    render();
+    console.log('[dsh-attach] render done, previewInDOM=', !!document.querySelector('.attachment-preview-area'));
+  } catch (e) {
+    console.error('[dsh-attach] render 抛错:', e && e.stack || e);
+  }
+
+  const finish = function() {
+    att.uploading = false;
     render();
   };
-  reader.readAsDataURL(file);
+
+  // 落盘：需要工作区。没有工作区时图片仍可内联（纯多模态），其他文件拒绝。
+  if (state.currentWorkspace) {
+    uploadAttachment(file).then(function(result) {
+      if (result && result.path) att.path = result.path;
+      else att.error = '上传失败';
+      finish();
+    }).catch(function(e) {
+      att.error = e.message || '上传失败';
+      finish();
+    });
+  } else if (!isImage) {
+    att.error = '请先选择工作区再上传文件';
+    finish();
+  }
+
+  if (isImage) {
+    const reader = new FileReader();
+    reader.onload = function() {
+      att.url = reader.result;
+      if (!state.currentWorkspace) { att.uploading = false; }
+      render();
+    };
+    reader.readAsDataURL(file);
+  }
 }
 
 function removeAttachment(sess, index) {
@@ -1780,6 +2115,9 @@ function startApprovalPolling(sess) {
     if (before !== state.pendingApprovals.length && state.currentSessionId === sess.agentId) {
       render();
     }
+    // 运行期问答：agent 调 ask_user_question 挂起等待期间同样需要轮询，
+    // 与审批共用流式期间的轮询计时器（700ms）
+    await loadPendingQuestions();
   }, 700);
 }
 
@@ -1788,6 +2126,182 @@ function stopApprovalPolling(sess) {
     clearInterval(sess.approvalPollTimer);
     sess.approvalPollTimer = null;
   }
+}
+
+// ═══════════════════════════════════════════
+// 运行期问答（ask_user_question）
+// 与桌面端 QuestionCard 同构：选项点选（单/多选）+ 自定义回答，
+// 提交后 POST answer 唤醒挂起的 agent。
+// ═══════════════════════════════════════════
+async function loadPendingQuestions() {
+  try {
+    const data = await apiRequest(QUESTION_API + '/runtime/pending');
+    const next = Array.isArray(data) ? data : [];
+    const ids = next.map(q => q.questionId).join(',');
+    const prevIds = state.pendingQuestions.map(q => q.questionId).join(',');
+    state.pendingQuestions = next;
+    // 挂起等待问答：给当前会话一个明确的阶段提示，避免「看起来卡住不动」
+    const current = getCurrentSession();
+    const relevantQ = current ? next.find(q => (q.agentId || '') === current.agentId) : null;
+    if (relevantQ && current) current.currentStage = '等待你的回答 · ask_user_question';
+    // 问题集合变化且与当前会话相关时才重渲染（question.agentId 对应会话 agentId）
+    if (ids !== prevIds && next.length > 0 && state.currentSessionId) {
+      if (relevantQ) render();
+    }
+  } catch (e) { /* ignore */ }
+}
+
+function questionUiFor(questionId) {
+  if (!state.questionUi[questionId]) {
+    state.questionUi[questionId] = { selected: {}, custom: {}, submitting: false };
+  }
+  return state.questionUi[questionId];
+}
+
+function toggleQuestionOption(questionId, itemId, label, multiSelect, btnEl) {
+  const ui = questionUiFor(questionId);
+  const existing = ui.selected[itemId] || [];
+  if (!multiSelect) {
+    ui.selected[itemId] = existing.includes(label) ? [] : [label];
+  } else {
+    ui.selected[itemId] = existing.includes(label)
+      ? existing.filter(item => item !== label)
+      : existing.concat([label]);
+  }
+  // 局部更新：避免整页 render() 把问答卡/正在输入的自定义框/审批弹窗重建清空。
+  if (btnEl && btnEl.classList) {
+    if (!multiSelect) {
+      // 单选：清掉同组其他选项的 active
+      const group = btnEl.closest('.question-options');
+      if (group) group.querySelectorAll('.question-option').forEach(function(b) { b.classList.remove('active'); });
+    }
+    const nowActive = (ui.selected[itemId] || []).includes(label);
+    btnEl.classList.toggle('active', nowActive);
+  }
+  // 仅更新提交按钮可用态
+  const card = document.querySelector('.question-banner[data-question-id="' + questionId + '"]');
+  if (card) {
+    const question = (state.pendingQuestions || []).find(function(q) { return q.questionId === questionId; });
+    const submitBtn = card.querySelector('.question-banner-actions .btn-primary');
+    if (question && submitBtn) submitBtn.disabled = (ui.submitting || !questionAnswersReady(question)) ? true : false;
+  }
+}
+
+function setQuestionCustom(questionId, itemId, value) {
+  const ui = questionUiFor(questionId);
+  ui.custom[itemId] = value;
+  // 局部更新提交按钮可用态，不整页 render（避免打断正在输入的弹窗）
+  const card = document.querySelector('.question-banner[data-question-id="' + questionId + '"]');
+  if (card) {
+    const question = (state.pendingQuestions || []).find(function(q) { return q.questionId === questionId; });
+    const submitBtn = card.querySelector('.question-banner-actions .btn-primary');
+    if (question && submitBtn) submitBtn.disabled = (ui.submitting || !questionAnswersReady(question)) ? true : false;
+  }
+}
+
+function questionAnswersReady(question) {
+  const ui = questionUiFor(question.questionId);
+  for (const item of (question.questions || [])) {
+    const chosen = ui.selected[item.id] || [];
+    const text = (ui.custom[item.id] || '').trim();
+    if (chosen.length === 0 && !text) return false;
+  }
+  return true;
+}
+
+function buildQuestionAnswers(question) {
+  const ui = questionUiFor(question.questionId);
+  const answers = [];
+  for (const item of (question.questions || [])) {
+    const chosen = ui.selected[item.id] || [];
+    const text = (ui.custom[item.id] || '').trim();
+    if (chosen.length === 0 && !text) return null;
+    const entry = { id: item.id, selected: chosen };
+    if (text) entry.custom = text;
+    answers.push(entry);
+  }
+  return answers;
+}
+
+function renderQuestionCard(question) {
+  const ui = questionUiFor(question.questionId);
+  const card = el('div', { class: 'question-banner', 'data-question-id': question.questionId });
+  card.appendChild(el('div', { class: 'question-banner-head' },
+    el('span', { class: 'question-banner-icon' }, '💬'),
+    el('span', null,
+      el('strong', null, '智能体等待你的回答'),
+      el('span', { class: 'question-banner-sub' }, '（ask_user_question）')
+    )
+  ));
+
+  const list = el('div', { class: 'question-list' });
+  for (const item of (question.questions || [])) {
+    const itemEl = el('div', { class: 'question-item' });
+    if (item.header) {
+      itemEl.appendChild(el('div', { class: 'question-header' }, item.header));
+    }
+    itemEl.appendChild(el('div', { class: 'question-text' }, item.question));
+    if (Array.isArray(item.options) && item.options.length > 0) {
+      const optionsEl = el('div', { class: 'question-options' + (item.multiSelect ? ' multi' : '') });
+      for (const option of item.options) {
+        const active = (ui.selected[item.id] || []).includes(option.label);
+        const btn = el('button', {
+          class: 'question-option' + (active ? ' active' : ''),
+          title: option.description || option.label,
+          disabled: ui.submitting ? 'disabled' : null,
+          onclick: function(e) { toggleQuestionOption(question.questionId, item.id, option.label, !!item.multiSelect, e.currentTarget); }
+        },
+          el('span', { class: 'question-option-label' }, option.label),
+          option.description ? el('span', { class: 'question-option-desc' }, option.description) : null
+        );
+        optionsEl.appendChild(btn);
+      }
+      itemEl.appendChild(optionsEl);
+    }
+    const customInput = el('input', {
+      class: 'question-custom',
+      type: 'text',
+      placeholder: '或输入自定义回答…',
+      value: ui.custom[item.id] || '',
+      disabled: ui.submitting ? 'disabled' : null,
+      oninput: function(e) { setQuestionCustom(question.questionId, item.id, e.target.value); }
+    });
+    itemEl.appendChild(customInput);
+    list.appendChild(itemEl);
+  }
+  card.appendChild(list);
+
+  const actions = el('div', { class: 'question-banner-actions' });
+  const ready = questionAnswersReady(question);
+  actions.appendChild(el('button', {
+    class: 'btn btn-primary',
+    disabled: (ui.submitting || !ready) ? 'disabled' : null,
+    onclick: function() { submitQuestionAnswer(question); }
+  }, ui.submitting ? '提交中…' : '提交回答'));
+  card.appendChild(actions);
+  return card;
+}
+
+async function submitQuestionAnswer(question) {
+  const answers = buildQuestionAnswers(question);
+  if (!answers) return;
+  const ui = questionUiFor(question.questionId);
+  ui.submitting = true;
+  render();
+  try {
+    await apiRequest(QUESTION_API + '/runtime/' + encodeURIComponent(question.questionId) + '/answer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answers })
+    });
+    showToast('回答已提交');
+  } catch (e) {
+    showToast('提交回答失败：' + e.message);
+  }
+  ui.submitting = false;
+  delete state.questionUi[question.questionId];
+  state.pendingQuestions = state.pendingQuestions.filter(q => q.questionId !== question.questionId);
+  render();
 }
 
 // ═══════════════════════════════════════════
@@ -2086,19 +2600,77 @@ function showDirectoryPicker(callback) {
 // P2: 侧边面板
 // ═══════════════════════════════════════════
 function renderSidePanel() {
-  const sess = getCurrentSession();
-  if (!sess) return el('div', { class: 'side-panel' });
+  let sess = getCurrentSession();
+  // 信息/预览面板不依赖具体会话，无会话时用占位对象
+  if (!sess && state.activePanel !== 'info' && state.activePanel !== 'preview') return el('div', { class: 'side-panel' });
+  if (!sess) sess = { deliverables: [], messages: [], stats: {} };
 
-  const panel = el('div', { class: 'side-panel' });
+  const panel = el('div', { class: 'side-panel' + (state.activePanel === 'preview' ? ' preview-panel' : '') });
   const header = el('div', { class: 'side-panel-header' });
   const titles = {
     todos: '待办列表', plan: '计划', goal: '目标',
     subagents: '子代理', deliverables: '交付物',
-    jobs: '后台任务', trajectory: '轨迹', recall: '会话回忆'
+    jobs: '后台任务', trajectory: '轨迹', recall: '会话回忆',
+    info: '信息', preview: '预览'
   };
-  header.appendChild(el('div', { class: 'side-panel-title' }, titles[state.activePanel] || ''));
-  header.appendChild(el('button', { class: 'side-panel-close', onclick: function() { state.activePanel = null; render(); } }, '×'));
+  // 预览面板：标题显示文件名
+  const titleText = state.activePanel === 'preview' && state.previewFile
+    ? state.previewFile.name
+    : (titles[state.activePanel] || '');
+  const titleEl = el('div', { class: 'side-panel-title', title: state.activePanel === 'preview' && state.previewFile ? state.previewFile.path : '' }, titleText);
+  header.appendChild(titleEl);
+  // 预览面板头部：下载按钮
+  if (state.activePanel === 'preview' && state.previewFile) {
+    header.appendChild(el('a', {
+      class: 'artifact-card-btn side-panel-dl',
+      href: workspaceFileUrl(state.previewFile.path, true),
+      download: state.previewFile.name,
+      title: '下载'
+    }, '下载'));
+  }
+  // 所有面板都提供关闭按钮（×），点击彻底关闭右侧面板
+  header.appendChild(el('button', {
+    class: 'side-panel-close',
+    onclick: function() { state.activePanel = null; state.previewFile = null; localStorage.setItem('activePanel', ''); updateSidePanel(); },
+    title: '关闭面板'
+  }, '×'));
   panel.appendChild(header);
+
+  // 预览面板：右侧内嵌展示文件内容（复用 loadArtifactPreview 的渲染逻辑）
+  if (state.activePanel === 'preview') {
+    const body = el('div', { class: 'side-panel-body preview-body' });
+    if (state.previewFile) {
+      body.appendChild(el('div', { class: 'artifact-modal-loading' }, '加载中…'));
+      // 异步填充内容
+      setTimeout(function() {
+        body.innerHTML = '';
+        loadArtifactPreview(body, state.previewFile.path);
+      }, 0);
+    } else {
+      body.appendChild(el('div', { class: 'empty' }, '未选择文件'));
+    }
+    panel.appendChild(body);
+    return panel;
+  }
+
+  // 信息面板：桌面端同款「运行信息 / 产出文件」双 Tab
+  if (state.activePanel === 'info') {
+    const tabBar = el('div', { class: 'side-panel-tabs' });
+    tabBar.appendChild(el('button', {
+      class: 'side-panel-tab' + (state.infoTab === 'runinfo' ? ' active' : ''),
+      onclick: function() { state.infoTab = 'runinfo'; render(); }
+    }, '运行信息'));
+    tabBar.appendChild(el('button', {
+      class: 'side-panel-tab' + (state.infoTab === 'deliverables' ? ' active' : ''),
+      onclick: function() { state.infoTab = 'deliverables'; render(); }
+    }, '产出文件'));
+    panel.appendChild(tabBar);
+    const infoBody = el('div', { class: 'side-panel-body' });
+    if (state.infoTab === 'runinfo') renderRunInfoPanel(infoBody, sess);
+    else renderDeliverablesPanel(infoBody, sess);
+    panel.appendChild(infoBody);
+    return panel;
+  }
 
   const body = el('div', { class: 'side-panel-body' });
 
@@ -2115,6 +2687,178 @@ function renderSidePanel() {
 
   panel.appendChild(body);
   return panel;
+}
+
+// 打开/关闭信息面板
+function toggleInfoPanel() {
+  // 点「信息」按钮切换开/关：已在信息面板 → 关闭；否则打开并加载文件树
+  if (state.activePanel === 'info') {
+    state.activePanel = null;
+    localStorage.setItem('activePanel', '');
+    render();
+    return;
+  }
+  state.activePanel = 'info';
+  state.infoTab = 'runinfo';
+  localStorage.setItem('activePanel', 'info');
+  render();
+  loadWorkspaceFileTree(false);
+}
+
+// ── 运行信息面板（当前工作区 + 工程文件树，对齐桌面端）──────
+function renderRunInfoPanel(body, sess) {
+  const wsPath = state.currentWorkspace || '';
+  const wsName = wsPath ? wsPath.split('/').filter(Boolean).pop() : '默认';
+
+  // 当前工作区卡片（紧凑：图标 + 名称 + 路径，路径单行省略）
+  const wsCard = el('div', { class: 'runinfo-ws-card' });
+  const wsHead = el('div', { class: 'runinfo-ws-head' });
+  wsHead.appendChild(treeIconSvg('dir', false));
+  const wsText = el('div', { class: 'runinfo-ws-text' });
+  wsText.appendChild(el('div', { class: 'runinfo-ws-name' }, wsName));
+  if (wsPath) wsText.appendChild(el('div', { class: 'runinfo-ws-path', title: wsPath }, wsPath));
+  wsHead.appendChild(wsText);
+  wsCard.appendChild(wsHead);
+  body.appendChild(wsCard);
+
+  // 文件树工具条
+  const treeBar = el('div', { class: 'runinfo-tree-bar' });
+  treeBar.appendChild(el('span', { class: 'runinfo-tree-label' }, '工程文件'));
+  const refreshBtn = el('button', { class: 'runinfo-icon-btn', title: '刷新', onclick: function() { loadWorkspaceFileTree(true); } }, '⟳');
+  treeBar.appendChild(refreshBtn);
+  body.appendChild(treeBar);
+
+  // 文件树容器
+  const treeWrap = el('div', { class: 'runinfo-tree' });
+  if (state.fileTreeLoading) {
+    treeWrap.appendChild(el('div', { class: 'empty' }, '加载文件树…'));
+  } else if (!state.fileTree) {
+    treeWrap.appendChild(el('div', { class: 'empty' }, '暂无文件（点击 ⟳ 加载）'));
+  } else {
+    renderTreeChildren(treeWrap, state.fileTree.children || [], 0);
+  }
+  body.appendChild(treeWrap);
+}
+
+// 递归渲染文件树子节点
+function renderTreeChildren(container, children, depth) {
+  for (const node of children) {
+    const isDir = node.type === 'directory';
+    const collapsed = !!state.fileTreeCollapsed[node.path];
+    const row = el('div', {
+      class: 'tree-row' + (isDir ? ' dir' : ' file') + (collapsed ? '' : (isDir ? ' open' : '')),
+      style: 'padding-left:' + (6 + depth * 16) + 'px',
+      title: node.path
+    });
+    // 展开/折叠箭头（SVG chevron）
+    const caret = el('span', { class: 'tree-caret' });
+    if (isDir) caret.appendChild(treeCaretSvg(collapsed));
+    row.appendChild(caret);
+    // 图标（SVG）
+    const iconWrap = el('span', { class: 'tree-icon' });
+    iconWrap.appendChild(treeIconSvg(isDir ? 'dir' : node.name, isDir ? !collapsed : false));
+    row.appendChild(iconWrap);
+    // 名称
+    row.appendChild(el('span', { class: 'tree-name' }, node.name));
+    if (!isDir && node.size != null) {
+      row.appendChild(el('span', { class: 'tree-size' }, formatBytes(node.size)));
+    }
+    row.onclick = function() {
+      if (isDir) {
+        state.fileTreeCollapsed[node.path] = !collapsed;
+        render();
+      } else {
+        openArtifactPreview(node.path);
+      }
+    };
+    container.appendChild(row);
+    if (isDir && !collapsed && node.children && node.children.length > 0) {
+      renderTreeChildren(container, node.children, depth + 1);
+    }
+  }
+}
+
+// 目录 chevron（折叠 ▸ / 展开 ▾）
+function treeCaretSvg(collapsed) {
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(svgNS, 'svg');
+  svg.setAttribute('viewBox', '0 0 16 16');
+  svg.setAttribute('width', '12');
+  svg.setAttribute('height', '12');
+  const p = document.createElementNS(svgNS, 'path');
+  p.setAttribute('fill', 'currentColor');
+  p.setAttribute('d', collapsed ? 'M6 4l4 4-4 4z' : 'M4 6l4 4 4-4z');
+  svg.appendChild(p);
+  return svg;
+}
+
+// 统一 SVG 文件/目录图标（key 为 'dir' 或文件名）
+function treeIconSvg(key, isOpen) {
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(svgNS, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('width', '15');
+  svg.setAttribute('height', '15');
+  const meta = treeIconMeta(key);
+  svg.setAttribute('class', 'tree-svg-icon');
+  const p = document.createElementNS(svgNS, 'path');
+  p.setAttribute('fill', meta.color);
+  p.setAttribute('d', isOpen && meta.openD ? meta.openD : meta.d);
+  svg.appendChild(p);
+  return svg;
+}
+
+// 图标路径与配色（精简专业风，按类型着色）
+function treeIconMeta(key) {
+  const DIR = 'M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2z';
+  const FILE = 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm0 0v6h6';
+  if (key === 'dir') return { color: '#7aa2f7', d: DIR };
+  const ext = (key.split('.').pop() || '').toLowerCase();
+  const colors = {
+    md: '#4b9fff', markdown: '#4b9fff',
+    docx: '#2b6cb0', doc: '#2b6cb0', pdf: '#e53e3e',
+    xlsx: '#2f9e44', xls: '#2f9e44', csv: '#2f9e44',
+    html: '#e8590c', htm: '#e8590c', drawio: '#f08c00', xml: '#f08c00',
+    java: '#d9480f', js: '#eab308', ts: '#3178c6', py: '#3776ab', sh: '#4b5563',
+    json: '#9c6b1f', yml: '#9c6b1f', yaml: '#9c6b1f', css: '#7c3aed',
+    png: '#12b886', jpg: '#12b886', jpeg: '#12b886', gif: '#12b886', svg: '#12b886',
+    txt: '#6b7280', log: '#6b7280'
+  };
+  return { color: colors[ext] || '#94a3b8', d: FILE };
+}
+
+function formatBytes(n) {
+  if (n == null) return '';
+  if (n < 1024) return n + 'B';
+  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + 'K';
+  return (n / 1024 / 1024).toFixed(1) + 'M';
+}
+
+// 加载当前工作区文件树
+async function loadWorkspaceFileTree(force) {
+  const wsPath = state.currentWorkspace || '';
+  if (!force && state.fileTree && state.fileTreePath === wsPath) { render(); return; }
+  state.fileTreeLoading = true;
+  if (state.activePanel === 'info') render();
+  try {
+    const qs = wsPath ? ('?path=' + encodeURIComponent(wsPath) + '&depth=6') : '?depth=6';
+    const apiKey = getApiKey();
+    const headers = apiKey ? { 'X-API-Key': apiKey } : {};
+    const resp = await fetch('/api/agent/workspace/tree' + qs, { headers: headers });
+    if (!resp.ok) {
+      let msg = 'HTTP ' + resp.status;
+      try { const j = await resp.json(); if (j && j.info) msg = j.info; } catch (_) {}
+      throw new Error(msg);
+    }
+    state.fileTree = await resp.json();
+    state.fileTreePath = wsPath;
+  } catch (e) {
+    state.fileTree = null;
+    if (state.activePanel === 'info') showToast('文件树加载失败：' + e.message);
+  } finally {
+    state.fileTreeLoading = false;
+    if (state.activePanel === 'info') render();
+  }
 }
 
 // ── To-do 面板 ─────────────────────────────
@@ -2569,6 +3313,258 @@ function renderAssistantContent(message, streaming) {
   return parseMessageContent(message.content || '', streaming, message.role === 'user');
 }
 
+// ═══════════════════════════════════════════
+// P1: 工件系统 — 路径卡片 + 预览弹层 + ECharts 块渲染
+// 对齐桌面端 InlineFileCards / FilePreview / EChartBlock 的轻量网页版
+// ═══════════════════════════════════════════
+
+const ARTIFACT_EXT_ICONS = {
+  md: '📝', markdown: '📝', html: '🌐', htm: '🌐', docx: '📄', xlsx: '📊', pdf: '📕',
+  png: '🖼', jpg: '🖼', jpeg: '🖼', gif: '🖼', webp: '🖼', svg: '🖼', bmp: '🖼', ico: '🖼',
+  drawio: '📐', xml: '🧩', json: '🧩', txt: '📃', csv: '📊', log: '📃',
+  java: '☕', js: '📜', ts: '📜', tsx: '📜', jsx: '📜', py: '🐍', go: '🐹', rs: '🦀',
+  sh: '⚙', sql: '🗄', yaml: '⚙', yml: '⚙', css: '🎨', properties: '⚙',
+};
+
+// 从消息正文提取服务端绝对文件路径（仅接受工作区内可预览的扩展名）
+function extractArtifactPaths(text) {
+  if (!text || text.indexOf('/') === -1) return [];
+  const seen = {}; const out = [];
+  const re = /(?:^|[\s`'"（(<【\[*>_\-：:，,；;！!？?）)】\]])(\/[^\s`'"<>)\]);，。、】\]]+?\.[A-Za-z0-9]{1,8})(?=$|[\s`'"<>)\]);，。、】\]]|(?![-_A-Za-z0-9.\u4e00-\u9fff]))/g;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const p = m[1];
+    if (seen[p] || p.length > 400) continue;
+    seen[p] = 1;
+    const ext = (p.split('.').pop() || '').toLowerCase();
+    if (!ARTIFACT_EXT_ICONS[ext]) continue;
+    out.push({ path: p, name: p.split('/').pop(), ext: ext });
+    if (out.length >= 8) break;
+  }
+  return out;
+}
+
+function workspaceFileUrl(path, download) {
+  return FILE_API + '?path=' + encodeURIComponent(path) + (download ? '&download=1' : '');
+}
+
+// 消息尾部工件卡片区（无路径时返回 null）
+function renderArtifactCards(m) {
+  const files = extractArtifactPaths(m.content || '');
+  if (files.length === 0) return null;
+  const wrap = el('div', { class: 'artifact-cards' });
+  wrap.appendChild(el('div', { class: 'artifact-cards-label' }, '📎 工件 ' + files.length));
+  for (const f of files) {
+    const card = el('div', { class: 'artifact-card' });
+    card.appendChild(el('span', { class: 'artifact-card-icon' }, ARTIFACT_EXT_ICONS[f.ext] || '📄'));
+    card.appendChild(el('div', { class: 'artifact-card-info' },
+      el('div', { class: 'artifact-card-name', title: f.path }, f.name),
+      el('div', { class: 'artifact-card-path', title: f.path }, f.path)));
+    const actions = el('div', { class: 'artifact-card-actions' });
+    actions.appendChild(el('button', { class: 'artifact-card-btn', onclick: function() { openArtifactPreview(f.path); } }, '预览'));
+    actions.appendChild(el('a', { class: 'artifact-card-btn', href: workspaceFileUrl(f.path, true), download: f.name }, '下载'));
+    card.appendChild(actions);
+    wrap.appendChild(card);
+  }
+  return wrap;
+}
+
+// ── 预览（右侧内嵌面板，见 renderSidePanel 的 preview 分支）──────────────
+function openArtifactPreview(path) {
+  // 右侧内嵌预览（不再用居中弹窗，避免遮挡对话）
+  const name = path.split('/').pop();
+  state.previewFile = { path: path, name: name };
+  state.activePanel = 'preview';
+  // 局部更新右侧面板，不做全量 render() —— 避免对话区整体重建导致内容闪烁
+  updateSidePanel();
+}
+
+// 仅重绘右侧边栏面板（对话区不动）。若面板未挂载则先挂到 .main-area。
+function updateSidePanel() {
+  const mainArea = document.querySelector('.main-area');
+  if (!mainArea) { render(); return; }
+  const existing = mainArea.querySelector('.side-panel');
+  if (state.activePanel) {
+    const panel = renderSidePanel();
+    if (existing) mainArea.replaceChild(panel, existing);
+    else mainArea.appendChild(panel);
+  } else if (existing) {
+    existing.remove();
+  }
+}
+
+// CDN 库懒加载（一次成功后缓存；多源降级）
+const _loadedScripts = {};
+function loadScriptCached() {
+  const urls = Array.prototype.slice.call(arguments);
+  const key = urls[0];
+  if (_loadedScripts[key]) return _loadedScripts[key];
+  _loadedScripts[key] = new Promise(function(resolve, reject) {
+    let i = 0;
+    (function tryNext() {
+      if (i >= urls.length) {
+        delete _loadedScripts[key];
+        reject(new Error('组件加载失败（需要网络访问 CDN）'));
+        return;
+      }
+      const s = document.createElement('script');
+      s.src = urls[i++];
+      s.onload = function() { resolve(); };
+      s.onerror = function() { s.remove(); tryNext(); };
+      document.head.appendChild(s);
+    })();
+  });
+  return _loadedScripts[key];
+}
+
+function loadEchartsLib() {
+  if (window.echarts) return Promise.resolve(window.echarts);
+  return loadScriptCached(
+    'https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js',
+    'https://unpkg.com/echarts@5.5.0/dist/echarts.min.js'
+  ).then(function() {
+    if (!window.echarts) throw new Error('ECharts 加载异常');
+    return window.echarts;
+  });
+}
+
+async function loadArtifactPreview(body, path) {
+  const ext = (path.split('.').pop() || '').toLowerCase();
+  try {
+    const apiKey = getApiKey();
+    const headers = apiKey ? { 'X-API-Key': apiKey } : {};
+    const response = await fetch(workspaceFileUrl(path), { headers: headers });
+    if (!response.ok) throw new Error('HTTP ' + response.status + (response.status === 404 ? '（文件不存在或不在工作区目录内）' : ''));
+    const buf = await response.arrayBuffer();
+
+    // 图片 / PDF：浏览器原生渲染
+    if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico'].indexOf(ext) !== -1 || (ext === 'svg' && false)) {
+      body.innerHTML = '';
+      body.appendChild(el('img', { class: 'artifact-preview-image', src: URL.createObjectURL(new Blob([buf], { type: response.headers.get('Content-Type') || 'application/octet-stream' })), alt: path }));
+      return;
+    }
+    if (ext === 'pdf') {
+      body.innerHTML = '';
+      body.appendChild(el('iframe', { class: 'artifact-preview-iframe', src: URL.createObjectURL(new Blob([buf], { type: 'application/pdf' })) }));
+      return;
+    }
+
+    const text = new TextDecoder('utf-8').decode(buf);
+
+    if (ext === 'md' || ext === 'markdown') {
+      body.innerHTML = parseMessageContent(text, false, false);
+      mountEchartsBlocks(body);
+      return;
+    }
+    if (ext === 'html' || ext === 'htm') {
+      body.innerHTML = '';
+      body.appendChild(el('iframe', { class: 'artifact-preview-iframe', srcdoc: text }));
+      return;
+    }
+    if (ext === 'docx') {
+      body.innerHTML = '加载 docx 预览组件…';
+      await loadScriptCached(
+        'https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js',
+        'https://unpkg.com/mammoth@1.6.0/mammoth.browser.min.js');
+      const result = await window.mammoth.convertToHtml({ arrayBuffer: buf });
+      body.innerHTML = '<div class="artifact-preview-docx">' + result.value + '</div>';
+      return;
+    }
+    if (ext === 'drawio') {
+      body.innerHTML = '加载 drawio 预览组件…';
+      await loadScriptCached('https://viewer.diagrams.net/js/viewer-static.min.js');
+      body.innerHTML = '';
+      const holder = el('div', { class: 'drawio-viewer-container' });
+      body.appendChild(holder);
+      if (typeof GraphViewer === 'function') {
+        new GraphViewer(holder, text, { highlight: '#4176e6', nav: true, resize: true, toolbar: 'zoom lightbox', border: 8 });
+      } else {
+        body.innerHTML = 'drawio 查看器初始化失败';
+      }
+      return;
+    }
+    if (ext === 'xlsx' || ext === 'xls') {
+      // Excel：用 SheetJS 转 HTML 表格（对齐桌面端 Excel 工件预览）
+      body.innerHTML = '加载 Excel 预览组件…';
+      await loadScriptCached(
+        'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
+        'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js');
+      if (!window.XLSX) throw new Error('Excel 组件加载异常');
+      const wb = window.XLSX.read(buf, { type: 'array' });
+      body.innerHTML = '';
+      const tabs = el('div', { class: 'xlsx-sheet-tabs' });
+      const sheetBody = el('div', { class: 'xlsx-sheet-body' });
+      function renderSheet(idx) {
+        const name = wb.SheetNames[idx];
+        const ws = wb.Sheets[name];
+        const html = window.XLSX.utils.sheet_to_html(ws, { header: '', footer: '' });
+        sheetBody.innerHTML = '<div class="artifact-preview-xlsx">' + html + '</div>';
+        tabs.querySelectorAll('.xlsx-sheet-tab').forEach(function(t, i) { t.classList.toggle('active', i === idx); });
+      }
+      wb.SheetNames.forEach(function(name, idx) {
+        tabs.appendChild(el('button', { class: 'xlsx-sheet-tab' + (idx === 0 ? ' active' : ''), onclick: function() { renderSheet(idx); } }, name));
+      });
+      body.appendChild(tabs);
+      body.appendChild(sheetBody);
+      renderSheet(0);
+      return;
+    }
+
+    // 代码 / 文本：hljs 高亮
+    body.innerHTML = '';
+    const pre = document.createElement('pre');
+    pre.className = 'artifact-preview-code';
+    const code = document.createElement('code');
+    if (window.hljs) {
+      try {
+        code.innerHTML = window.hljs.getLanguage(ext)
+          ? window.hljs.highlight(text, { language: ext }).value
+          : window.hljs.highlightAuto(text).value;
+      } catch (_) { code.textContent = text; }
+    } else {
+      code.textContent = text;
+    }
+    pre.appendChild(code);
+    body.appendChild(pre);
+  } catch (e) {
+    body.innerHTML = '<div class="artifact-modal-error">⚠ 预览失败：' + escapeHtml(e.message || String(e)) + '</div>';
+  }
+}
+
+// 正文中的 ```echarts 代码块 → 实时图表（仅最终消息挂载，流式中跳过）
+function mountEchartsBlocks(container) {
+  if (!container || !container.querySelectorAll) return;
+  const blocks = container.querySelectorAll('pre > code.language-echarts, pre > code.lang-echarts');
+  for (const codeEl of blocks) {
+    if (codeEl.dataset.echartsMounted) continue;
+    codeEl.dataset.echartsMounted = '1';
+    const raw = codeEl.textContent;
+    let option = null;
+    try { option = JSON.parse(raw); } catch (_) { /* JSON 失败再试 JS 字面量 */ }
+    if (!option) {
+      try { option = new Function('return (' + raw + ')')(); } catch (_) { option = null; }
+    }
+    if (!option || typeof option !== 'object') continue; // 非 option 保留源码展示
+    const pre = codeEl.parentElement;
+    const holder = el('div', { class: 'echarts-block' },
+      el('div', { class: 'echarts-block-title' }, '📊 ECharts 图表'));
+    const chartDiv = el('div', { class: 'echarts-block-holder' });
+    holder.appendChild(chartDiv);
+    pre.replaceWith(holder);
+    loadEchartsLib().then(function(echarts) {
+      const chart = echarts.init(chartDiv);
+      chart.setOption(option);
+      if (window.ResizeObserver) {
+        const ro = new ResizeObserver(function() { try { chart.resize(); } catch (_) {} });
+        ro.observe(chartDiv);
+      }
+    }).catch(function(err) {
+      holder.classList.add('echarts-block-error');
+      chartDiv.textContent = '⚠ ' + (err && err.message || '图表渲染失败');
+    });
+  }
+}
+
 function streamTextLength(message) {
   if (Array.isArray(message.blocks) && message.blocks.length > 0) {
     return message.blocks
@@ -2756,11 +3752,17 @@ function renderComposer(sess) {
     const attArea = el('div', { class: 'attachment-preview-area' });
     for (let i = 0; i < sess.pendingAttachments.length; i++) {
       const att = sess.pendingAttachments[i];
-      const item = el('div', { class: 'attachment-thumb' });
-      if (att.type === 'image') {
+      const item = el('div', { class: 'attachment-thumb' + (att.error ? ' error' : '') });
+      if (att.type === 'image' && att.url) {
         item.appendChild(el('img', { src: att.url, class: 'attachment-thumb-img', alt: att.name }));
+      } else {
+        item.appendChild(el('span', { class: 'attachment-thumb-file' }, '📄'));
       }
-      item.appendChild(el('span', { class: 'attachment-thumb-name' }, att.name));
+      const nameEl = el('span', { class: 'attachment-thumb-name' }, att.name);
+      if (att.uploading) nameEl.textContent += '（上传中…）';
+      else if (att.error) nameEl.textContent += '（' + att.error + '）';
+      else if (att.type === 'file' && att.path) nameEl.title = att.path;
+      item.appendChild(nameEl);
       item.appendChild(el('button', { class: 'attachment-thumb-remove', onclick: function() { removeAttachment(sess, i); } }, '×'));
       attArea.appendChild(item);
     }
@@ -2803,16 +3805,11 @@ function renderComposer(sess) {
   const toolbar = el('div', { class: 'composer-toolbar' });
 
   const left = el('div', { class: 'composer-left' });
-  const attachBtn = el('button', { class: 'composer-attach-btn', onclick: function() {
-    const fileInput = el('input', { type: 'file', accept: 'image/*', multiple: 'true', style: 'display:none', onchange: function() {
-      for (const file of fileInput.files) {
-        addAttachment(sess, file);
-      }
-    } });
-    document.body.appendChild(fileInput);
-    fileInput.click();
-    document.body.removeChild(fileInput);
-  }, title: '添加图片' }, '+');
+  // 「+」菜单（对齐桌面端）：添加文件/图片 + 插件（产出 Word/Excel/MD/EChart/Draw.io）+ 技能
+  const attachBtn = el('button', { class: 'composer-attach-btn', title: '添加资源 / 插件 / 技能', onclick: function(e) {
+    e.stopPropagation();
+    showAttachMenu(e, sess);
+  } }, '+');
   left.appendChild(attachBtn);
   left.appendChild(approvalInline);
 
@@ -2858,6 +3855,108 @@ function renderComposer(sess) {
   inner.appendChild(box);
   composer.appendChild(inner);
   return composer;
+}
+
+// ── 「+」附件/插件/技能菜单（对齐桌面端）────────────────────
+// 上段：添加文件/图片（走系统选择器，附件上传）。
+// 中段：插件 —— 让模型产出指定类型工件（Word/Excel/MD/EChart/Draw.io）。
+// 下段：技能 —— 将技能名插入输入框引导模型调用。
+function showAttachMenu(event, sess) {
+  closeAttachMenu();
+  const menu = el('div', { class: 'attach-menu' });
+
+  function insertPrompt(text) {
+    closeAttachMenu();
+    const ta = $('#composer-input');
+    if (!ta) return;
+    const cur = ta.value || '';
+    ta.value = cur ? (cur + '\n' + text) : text;
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+    ta.focus();
+  }
+
+  // 添加文件 / 图片 —— 全局单例 <input type=file> 挂在 body（不随菜单销毁），
+  // 菜单里的 <label for> 关联触发它。关键设计：
+  //  1. input 不放菜单内 → addAttachment→render() 重建 DOM 不会销毁 input；
+  //  2. 单例复用 → 避免重复 id 冲突；每次打开菜单只更新 _sess 引用；
+  //  3. change 时先拷贝 FileList（活引用）再 addAttachment。
+  const hiddenFileInput = getAttachFileInput();
+  hiddenFileInput._sess = sess;
+  const fileLabel = el('label', { class: 'attach-menu-item attach-file-label', for: 'dsh-attach-file-input' },
+    el('span', { class: 'attach-menu-icon' }, '📎'), '添加文件 / 图片');
+  // 阻止 label 点击冒泡到 document 的 closeAttachMenu
+  fileLabel.addEventListener('click', function(e) { e.stopPropagation(); });
+  menu.appendChild(fileLabel);
+  menu.appendChild(el('div', { class: 'attach-menu-divider' }));
+  menu.appendChild(el('div', { class: 'attach-menu-label' }, '插件 · 产出工件'));
+
+  const artifacts = [
+    { name: 'Word', icon: '📄', prompt: '请将结果整理成一个 Word 文档（.docx）保存到当前工作区。' },
+    { name: 'Excel', icon: '📊', prompt: '请将结果整理成一个 Excel 表格（.xlsx）保存到当前工作区。' },
+    { name: 'MD', icon: '📝', prompt: '请将结果整理成一个 Markdown 文档（.md）保存到当前工作区。' },
+    { name: 'EChart', icon: '📈', prompt: '请用 ECharts 配置（```echarts 代码块或 .html）把数据可视化出来并保存到当前工作区。' },
+    { name: 'Draw.io', icon: '🔀', prompt: '请生成一个 Draw.io 流程图（.drawio）保存到当前工作区。' },
+  ];
+  for (const a of artifacts) {
+    menu.appendChild(el('button', { class: 'attach-menu-item', onclick: (function(p) { return function() { insertPrompt(p); }; })(a.prompt) },
+      el('span', { class: 'attach-menu-icon' }, a.icon), a.name));
+  }
+
+  // 技能（仅当有可用技能时展示）
+  const skills = state.extensionSkills && state.extensionSkills.length ? state.extensionSkills : state.skills;
+  if (skills && skills.length > 0) {
+    menu.appendChild(el('div', { class: 'attach-menu-divider' }));
+    menu.appendChild(el('div', { class: 'attach-menu-label' }, '技能'));
+    for (const sk of skills.slice(0, 8)) {
+      const nm = sk.name || sk.id || 'skill';
+      menu.appendChild(el('button', { class: 'attach-menu-item', onclick: (function(n) { return function() { insertPrompt('请使用 ' + n + ' 技能完成下面的任务。'); }; })(nm) },
+        el('span', { class: 'attach-menu-icon' }, '🔧'), nm));
+    }
+  }
+
+  document.body.appendChild(menu);
+  const rect = event.currentTarget.getBoundingClientRect();
+  menu.style.left = Math.max(8, rect.left) + 'px';
+  menu.style.bottom = (window.innerHeight - rect.top + 8) + 'px';
+  setTimeout(function() { document.addEventListener('click', closeAttachMenu, { once: true }); }, 0);
+}
+
+function closeAttachMenu() {
+  const m = $('.attach-menu');
+  if (m) m.remove();
+}
+
+// 全局单例附件 file input：挂在 body，生命周期独立于「+」菜单。
+// 用 label[for] 触发，避免程序化 click() 被 user-activation 链拦截。
+function getAttachFileInput() {
+  let inp = document.getElementById('dsh-attach-file-input');
+  if (inp) return inp;
+  inp = el('input', { type: 'file', multiple: 'true', id: 'dsh-attach-file-input', class: 'attach-file-input', tabindex: '-1' });
+  inp.addEventListener('change', function() {
+    try {
+      const files = Array.prototype.slice.call(inp.files || []);
+      const sess = inp._sess || getCurrentSession();
+      console.log('[dsh-attach] change fired, files=', files.length, files.map(function(f){return f.name;}), 'sess=', sess ? sess.agentId : null);
+      closeAttachMenu();
+      if (sess) {
+        for (const file of files) {
+          try {
+            addAttachment(sess, file);
+            console.log('[dsh-attach] added ok:', file.name, 'pendingCount=', (sess.pendingAttachments||[]).length, 'previewInDOM=', !!document.querySelector('.attachment-preview-area'));
+          } catch (e1) {
+            console.error('[dsh-attach] addAttachment 抛错:', file.name, e1 && e1.stack || e1);
+          }
+        }
+      } else {
+        console.warn('[dsh-attach] 无 sess，跳过添加');
+      }
+      inp.value = ''; // 允许重复选择同一文件再次触发 change
+    } catch (e) {
+      console.error('[dsh-attach] change handler 抛错:', e && e.stack || e);
+    }
+  });
+  document.body.appendChild(inp);
+  return inp;
 }
 
 // ── 上下文用量指示圈 ────────────────────────
@@ -2944,6 +4043,8 @@ function renderSettingsPage() {
   const tabConfigs = [
     { id: 'models', label: '模型配置', desc: '接入、默认模型与 API' },
     { id: 'plugins', label: '插件管理', desc: '安装、启停与参数配置' },
+    { id: 'extensions', label: '扩展', desc: 'Skills · MCP · CLI' },
+    { id: 'security', label: '接入安全', desc: 'API Key 与访问凭据' },
     { id: 'presets', label: '预设', desc: '会话默认行为' },
     { id: 'permissions', label: '权限', desc: '工具审批边界' },
   ];
@@ -2978,6 +4079,8 @@ function renderSettingsPage() {
   switch (state.activeSettingsTab) {
     case 'models': renderModelSettings(body, null); break;
     case 'plugins': renderPluginSettings(body, null); break;
+    case 'extensions': renderExtensionsSettings(body, null); break;
+    case 'security': renderSecuritySettings(body, null); break;
     case 'presets': renderPresetSettings(body, null); break;
     case 'permissions': renderPermissionSettings(body, null); break;
   }
@@ -3308,6 +4411,379 @@ function wrapInput(key, label, placeholder) {
   const group = el('div', { class: 'form-group' });
   group.appendChild(el('label', { class: 'form-label' }, label));
   group.appendChild(el('input', { class: 'form-input', 'data-key': key, placeholder: placeholder }));
+  return group;
+}
+
+// ── 接入安全（API Key）─────────────────────
+function renderSecuritySettings(body, footer) {
+  const panel = el('section', { class: 'settings-panel' });
+  panel.appendChild(el('div', { class: 'settings-panel-head' },
+    el('div', null,
+      el('h2', { class: 'settings-panel-title' }, 'API Key'),
+      el('p', { class: 'settings-panel-desc' },
+        '服务端通过 harness.auth.api-keys 配置访问密钥时，所有接口都需要携带 X-API-Key 请求头。'
+        + '桌面端由启动器自动注入，网页版请在下方填写与服务端一致的 Key（仅保存在本机浏览器 localStorage）。'))
+  ));
+
+  const group = el('div', { class: 'form-group' });
+  group.appendChild(el('label', { class: 'form-label' }, 'X-API-Key'));
+  const input = el('input', {
+    class: 'form-input',
+    type: 'password',
+    placeholder: '与服务端 harness.auth.api-keys 一致的密钥',
+    value: getApiKey(),
+    autocomplete: 'off'
+  });
+  group.appendChild(input);
+  panel.appendChild(group);
+
+  const status = el('p', { class: 'settings-panel-desc' }, '');
+
+  const actions = el('div', { class: 'settings-panel-actions' });
+  actions.appendChild(el('button', {
+    class: 'btn btn-secondary',
+    onclick: function() {
+      input.value = '';
+      localStorage.removeItem('webApiKey');
+      status.textContent = '已清除本机保存的 API Key。';
+      showToast('API Key 已清除');
+    }
+  }, '清除'));
+  actions.appendChild(el('button', {
+    class: 'btn btn-primary',
+    onclick: async function() {
+      const key = input.value.trim();
+      if (!key) {
+        showToast('请输入 API Key');
+        return;
+      }
+      localStorage.setItem('webApiKey', key);
+      status.textContent = '已保存，正在验证…';
+      try {
+        await apiRequest(MODEL_CATALOG_API);
+        status.textContent = '✓ API Key 有效，接口连通正常。';
+        showToast('API Key 验证通过');
+      } catch (e) {
+        status.textContent = '✗ 验证失败：' + e.message;
+      }
+    }
+  }, '保存并验证'));
+  panel.appendChild(actions);
+  panel.appendChild(status);
+
+  const tip = el('section', { class: 'settings-panel' });
+  tip.appendChild(el('div', { class: 'settings-panel-head' },
+    el('div', null,
+      el('h2', { class: 'settings-panel-title' }, '说明'),
+      el('p', { class: 'settings-panel-desc' },
+        '服务端未配置密钥（本地开发模式）时，本页留空即可，所有接口直接放行。'
+        + '若出现 401「Invalid or missing API key」，说明服务端已启用鉴权，请在此填写对应 Key。'))
+  ));
+  body.appendChild(panel);
+  body.appendChild(tip);
+}
+
+// ── 扩展设置（Skills / MCP / CLI，对齐桌面端 ExtensionsSettings） ─────────
+function refreshExtensionsTab() {
+  const bodyEl = document.querySelector('.settings-body');
+  if (!bodyEl) return;
+  bodyEl.innerHTML = '';
+  renderExtensionsSettings(bodyEl, null);
+}
+
+async function loadExtensionData() {
+  const cwdParam = state.currentWorkspace ? '?cwd=' + encodeURIComponent(state.currentWorkspace) : '';
+  const [skills, servers, cli] = await Promise.all([
+    apiRequest(EXT_API + '/skills' + cwdParam).catch(function() { return []; }),
+    apiRequest(EXT_API + '/mcp/servers').catch(function() { return []; }),
+    apiRequest(EXT_API + '/cli').catch(function() { return null; }),
+  ]);
+  state.extensionSkills = Array.isArray(skills) ? skills : [];
+  state.extensionMcpServers = Array.isArray(servers) ? servers : [];
+  state.extensionCliConfig = cli || null;
+  state.extensionLoaded = true;
+}
+
+function renderExtensionsSettings(body, footer) {
+  const container = el('div', null, el('div', { class: 'artifact-modal-loading' }, '加载扩展数据…'));
+  body.appendChild(container);
+  loadExtensionData().then(function() {
+    container.innerHTML = '';
+    container.appendChild(renderSkillsPanel());
+    container.appendChild(renderMcpPanel());
+    container.appendChild(renderCliPanel());
+  }).catch(function(e) {
+    container.innerHTML = '';
+    container.appendChild(el('div', { class: 'settings-panel' },
+      el('div', { class: 'settings-panel-head' },
+        el('div', null,
+          el('h2', { class: 'settings-panel-title' }, '扩展'),
+          el('p', { class: 'settings-panel-desc' }, '加载失败：' + (e.message || e))))));
+      });
+}
+
+// ── Skills ────────────────────────────────
+function renderSkillsPanel() {
+  const panel = el('section', { class: 'settings-panel' });
+  panel.appendChild(el('div', { class: 'settings-panel-head' },
+    el('div', null,
+      el('h2', { class: 'settings-panel-title' }, 'Skills 技能'),
+      el('p', { class: 'settings-panel-desc' },
+        '从 Git 仓库或 zip 压缩包安装技能包（需含 SKILL.md）。启停即时生效，停用后不会进入技能目录。')),
+    el('span', { class: 'settings-pill' }, String(state.extensionSkills.length) + ' 个')
+  ));
+
+  const list = el('div', { class: 'extension-list' });
+  if (state.extensionSkills.length === 0) {
+    list.appendChild(el('div', { class: 'extension-empty' }, '暂无技能，可从下方安装'));
+  }
+  for (const skill of state.extensionSkills) {
+    const row = el('div', { class: 'extension-row' });
+    row.appendChild(el('div', { class: 'extension-row-main' },
+      el('div', { class: 'extension-row-name' },
+        el('span', null, skill.name || '(未命名)'),
+        skill.source ? el('span', { class: 'extension-badge' }, skill.source) : null,
+        skill.enabled ? null : el('span', { class: 'extension-badge off' }, '已停用')),
+      el('div', { class: 'extension-row-desc' }, skill.description || skill.path || '')));
+    const actions = el('div', { class: 'extension-row-actions' });
+    actions.appendChild(el('button', {
+      class: 'btn btn-secondary btn-sm',
+      onclick: async function() {
+        try {
+          await apiRequest(EXT_API + '/skills/' + encodeURIComponent(skill.name) + '/enabled', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled: !skill.enabled }),
+          });
+          showToast(skill.enabled ? '已停用 ' + skill.name : '已启用 ' + skill.name);
+          refreshExtensionsTab();
+        } catch (e) { showToast('操作失败：' + e.message); }
+      }
+    }, skill.enabled ? '停用' : '启用'));
+    if (skill.removable) {
+      actions.appendChild(el('button', {
+        class: 'btn btn-secondary btn-sm danger',
+        onclick: async function() {
+          if (!window.confirm('确认删除技能 ' + skill.name + '？')) return;
+          try {
+            const cwdParam = state.currentWorkspace ? '?cwd=' + encodeURIComponent(state.currentWorkspace) : '';
+            await apiRequest(EXT_API + '/skills/' + encodeURIComponent(skill.name) + cwdParam, { method: 'DELETE' });
+            showToast('已删除 ' + skill.name);
+            renderExtensionsSettings(document.querySelector('.settings-body'), null);
+          } catch (e) { showToast('删除失败：' + e.message); }
+        }
+      }, '删除'));
+    }
+    row.appendChild(actions);
+    list.appendChild(row);
+  }
+  panel.appendChild(list);
+
+  // 安装表单
+  const install = el('div', { class: 'extension-install' });
+  const gitInput = el('input', { class: 'form-input', placeholder: 'Git 仓库地址，例如 https://github.com/user/skill-repo.git' });
+  const nameInput = el('input', { class: 'form-input', placeholder: '安装名（可选）', style: 'max-width:180px' });
+  install.appendChild(el('div', { class: 'extension-install-row' },
+    gitInput, nameInput,
+    el('button', {
+      class: 'btn btn-primary',
+      onclick: async function() {
+        const gitUrl = gitInput.value.trim();
+        if (!gitUrl) { showToast('请输入 Git 仓库地址'); return; }
+        showToast('正在安装…');
+        try {
+          const r = await apiRequest(EXT_API + '/skills/install', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ gitUrl: gitUrl, name: nameInput.value.trim() || null }),
+          });
+          showToast(r && r.success ? '安装成功：' + r.name : '安装失败：' + (r && r.message));
+          renderExtensionsSettings(document.querySelector('.settings-body'), null);
+        } catch (e) { showToast('安装失败：' + e.message); }
+      }
+    }, '从 Git 安装')));
+  const zipInput = el('input', { type: 'file', accept: '.zip', style: 'display:none', onchange: async function() {
+    const file = zipInput.files && zipInput.files[0];
+    if (!file) return;
+    showToast('正在上传安装…');
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      if (nameInput.value.trim()) fd.append('name', nameInput.value.trim());
+      const apiKey = getApiKey();
+      const headers = apiKey ? { 'X-API-Key': apiKey } : {};
+      const resp = await fetch(EXT_API + '/skills/upload', { method: 'POST', headers: headers, body: fd });
+      const payload = await resp.json().catch(function() { return null; });
+      const ok = resp.ok && payload && payload.code === '00000';
+      if (!ok) throw new Error((payload && payload.info) || ('HTTP ' + resp.status));
+      const r = payload.data;
+      showToast(r && r.success ? '安装成功：' + r.name : '安装失败：' + (r && r.message));
+      renderExtensionsSettings(document.querySelector('.settings-body'), null);
+    } catch (e) { showToast('安装失败：' + e.message); }
+  } });
+  install.appendChild(el('div', { class: 'extension-install-row' },
+    el('button', { class: 'btn btn-secondary', onclick: function() { zipInput.click(); } }, '上传 zip 安装'),
+    zipInput));
+  panel.appendChild(install);
+  return panel;
+}
+
+// ── MCP ───────────────────────────────────
+function renderMcpPanel() {
+  const panel = el('section', { class: 'settings-panel' });
+  panel.appendChild(el('div', { class: 'settings-panel-head' },
+    el('div', null,
+      el('h2', { class: 'settings-panel-title' }, 'MCP 服务器'),
+      el('p', { class: 'settings-panel-desc' }, '新增 / 更新即时重连并注册工具；测试会临时连接并列出工具，不落盘。')),
+    el('span', { class: 'settings-pill' }, String(state.extensionMcpServers.length) + ' 个')
+  ));
+
+  const list = el('div', { class: 'extension-list' });
+  if (state.extensionMcpServers.length === 0) {
+    list.appendChild(el('div', { class: 'extension-empty' }, '暂无 MCP 服务器配置'));
+  }
+  for (const server of state.extensionMcpServers) {
+    const row = el('div', { class: 'extension-row' });
+    const summary = server.transport === 'stdio'
+      ? (server.command || '') + ' ' + ((server.args || []).join(' '))
+      : (server.url || '');
+    row.appendChild(el('div', { class: 'extension-row-main' },
+      el('div', { class: 'extension-row-name' },
+        el('span', null, server.name || '(未命名)'),
+        server.transport ? el('span', { class: 'extension-badge' }, server.transport) : null,
+        server.presetSource ? el('span', { class: 'extension-badge' }, '预置') : null),
+      el('div', { class: 'extension-row-desc' }, summary || ' ')));
+    const actions = el('div', { class: 'extension-row-actions' });
+    if (!server.presetSource) {
+      actions.appendChild(el('button', {
+        class: 'btn btn-secondary btn-sm danger',
+        onclick: async function() {
+          if (!window.confirm('确认移除 MCP 服务器 ' + server.name + '？')) return;
+          try {
+            await apiRequest(EXT_API + '/mcp/servers/' + encodeURIComponent(server.name), { method: 'DELETE' });
+            showToast('已移除 ' + server.name);
+            renderExtensionsSettings(document.querySelector('.settings-body'), null);
+          } catch (e) { showToast('移除失败：' + e.message); }
+        }
+      }, '移除'));
+    }
+    row.appendChild(actions);
+    list.appendChild(row);
+  }
+  panel.appendChild(list);
+
+  // 新增表单
+  const form = el('div', { class: 'extension-install' });
+  const grid = el('div', { class: 'extension-mcp-grid' });
+  const nameIn = el('input', { class: 'form-input', placeholder: '名称，如 weather' });
+  const transportIn = el('select', { class: 'form-input' },
+    el('option', { value: 'stdio' }, 'stdio'),
+    el('option', { value: 'sse' }, 'sse'));
+  const commandIn = el('input', { class: 'form-input', placeholder: 'stdio 命令，如 npx' });
+  const argsIn = el('input', { class: 'form-input', placeholder: '命令参数（空格分隔），如 -y @modelcontextprotocol/server-weather' });
+  const urlIn = el('input', { class: 'form-input', placeholder: 'sse 地址，如 http://host:port/sse' });
+  grid.appendChild(wrapField('名称', nameIn));
+  grid.appendChild(wrapField('传输', transportIn));
+  grid.appendChild(wrapField('命令', commandIn));
+  grid.appendChild(wrapField('参数', argsIn));
+  grid.appendChild(wrapField('URL', urlIn));
+  form.appendChild(grid);
+
+  function buildServer() {
+    const transport = transportIn.value;
+    return {
+      name: nameIn.value.trim(),
+      transport: transport,
+      command: transport === 'stdio' ? commandIn.value.trim() : '',
+      args: transport === 'stdio' ? argsIn.value.trim().split(/\s+/).filter(Boolean) : [],
+      url: transport === 'sse' ? urlIn.value.trim() : '',
+    };
+  }
+  form.appendChild(el('div', { class: 'extension-install-row' },
+    el('button', {
+      class: 'btn btn-secondary',
+      onclick: async function() {
+        const server = buildServer();
+        if (!server.name) { showToast('请输入名称'); return; }
+        try {
+          const r = await apiRequest(EXT_API + '/mcp/servers/test', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(server),
+          });
+          showToast(r && r.success
+            ? '连接成功：' + (r.toolCount || 0) + ' 个工具' + (r.tools && r.tools.length ? '（' + r.tools.slice(0, 5).join(', ') + '…）' : '')
+            : '连接失败：' + (r && r.message));
+        } catch (e) { showToast('测试失败：' + e.message); }
+      }
+    }, '测试连接'),
+    el('button', {
+      class: 'btn btn-primary',
+      onclick: async function() {
+        const server = buildServer();
+        if (!server.name) { showToast('请输入名称'); return; }
+        try {
+          const r = await apiRequest(EXT_API + '/mcp/servers', {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(server),
+          });
+          showToast(r && r.success ? '已保存并应用：' + (r.toolCount || 0) + ' 个工具' : '失败：' + (r && r.message));
+          renderExtensionsSettings(document.querySelector('.settings-body'), null);
+        } catch (e) { showToast('保存失败：' + e.message); }
+      }
+    }, '保存并应用')));
+  panel.appendChild(form);
+  return panel;
+}
+
+// ── CLI ───────────────────────────────────
+function renderCliPanel() {
+  const panel = el('section', { class: 'settings-panel' });
+  panel.appendChild(el('div', { class: 'settings-panel-head' },
+    el('div', null,
+      el('h2', { class: 'settings-panel-title' }, 'CLI 子智能体'),
+      el('p', { class: 'settings-panel-desc' }, '配置 ACP / Codex / Claude 等外部 CLI 命令，保存后热替换子智能体 provider。')),
+  ));
+  const cfg = state.extensionCliConfig || {};
+  const grid = el('div', { class: 'extension-mcp-grid' });
+  const mk = function(key, label, placeholder) {
+    const input = el('input', { class: 'form-input', placeholder: placeholder, value: cfg[key] || '' });
+    grid.appendChild(wrapField(label, input));
+    return input;
+  };
+  const acpIn = mk('acpCommand', 'ACP 命令', '例如：acp-cli --stdio');
+  const acpSubIn = mk('acpSubagentCommand', 'ACP 子代理命令', '例如：acp-cli --subagent');
+  const codexIn = mk('codexCommand', 'Codex 命令', '例如：codex');
+  const claudeIn = mk('claudeCommand', 'Claude 命令', '例如：claude');
+  panel.appendChild(grid);
+  if (cfg.effectiveNotice) {
+    panel.appendChild(el('p', { class: 'settings-panel-desc' }, cfg.effectiveNotice));
+  }
+  panel.appendChild(el('div', { class: 'extension-install-row' },
+    el('button', {
+      class: 'btn btn-primary',
+      onclick: async function() {
+        try {
+          const saved = await apiRequest(EXT_API + '/cli', {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              acpCommand: acpIn.value.trim(),
+              acpSubagentCommand: acpSubIn.value.trim(),
+              codexCommand: codexIn.value.trim(),
+              claudeCommand: claudeIn.value.trim(),
+            }),
+          });
+          state.extensionCliConfig = saved;
+          showToast('CLI 配置已保存并生效');
+        } catch (e) { showToast('保存失败：' + e.message); }
+      }
+    }, '保存')));
+  return panel;
+}
+
+function wrapField(label, input) {
+  const group = el('div', { class: 'form-group' });
+  group.appendChild(el('label', { class: 'form-label' }, label));
+  group.appendChild(input);
   return group;
 }
 
@@ -3769,13 +5245,14 @@ function quickSend(text) {
 function selectSession(agentId) {
   state.currentSessionId = agentId;
   state.activeMainTab = 'chat';
+  const sess = getSession(agentId);
+  if (sess) sess.unread = 0;
   render();
   saveSessionsToStorage();
   const input = $('#composer-input');
   if (input) { input.focus(); autoResize({ target: input }); }
   setTimeout(scrollToBottom, 50);
   // v30: 历史会话懒加载消息
-  const sess = getSession(agentId);
   if (sess && sess.messages.length === 0 && sess.sessionId) {
     loadHistoryMessages(sess);
   }
@@ -3881,7 +5358,11 @@ async function sendMessage(overrideText) {
   }
 
   const input = $('#composer-input');
-  const text = overrideText || (input?.value?.trim() || '');
+  let text = overrideText || (input?.value?.trim() || '');
+  // 对齐桌面端：只添加了附件没写字时用默认引导文案
+  if (!text && (sess.pendingAttachments || []).length > 0) {
+    text = '请根据我添加的资源完成任务。';
+  }
   if (!text) return;
 
   // v11: 斜杠命令
@@ -3900,8 +5381,17 @@ async function sendMessage(overrideText) {
   }
   sess.lastMessage = text.slice(0, 40);
 
-  // v11: 附件处理
-  const msgAttachments = sess.pendingAttachments || [];
+  // v11: 附件处理 — 附件仍在上传或有错误时阻止发送
+  const pendingAtts = sess.pendingAttachments || [];
+  if (pendingAtts.some(a => a.uploading)) {
+    showToast('附件还在上传中，请稍候');
+    return;
+  }
+  if (pendingAtts.some(a => a.error)) {
+    showToast('附件上传失败，请先移除失败的附件');
+    return;
+  }
+  const msgAttachments = pendingAtts;
   sess.pendingAttachments = [];
 
   sess.messages.push({ role: 'user', content: text, time: formatTime(new Date().toISOString()), attachments: msgAttachments });
@@ -3970,13 +5460,31 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
     // 图片附件：随请求发送 data URL 列表，后端转 ImageBlock 供多模态模型识别
     const imgAttachments = (sess.lastRequestAttachments || []).filter(function(a) { return a.type === 'image' && a.url; });
     if (imgAttachments.length > 0) requestBody.images = imgAttachments.map(function(a) { return a.url; });
+    // 文件附件：与桌面端资源模型对齐（<hidden-context>），把服务端绝对路径
+    // 注入消息上下文，Agent 工具按路径读取（附件已在工作区 .dsh-attachments/ 落盘）
+    const pathAttachments = (sess.lastRequestAttachments || []).filter(function(a) { return a.path; });
+    if (pathAttachments.length > 0) {
+      const lines = pathAttachments.map(function(a) {
+        const isImage = a.type === 'image';
+        const multiModal = isImage ? '；图片已作为多模态附件提供，请先识别图片内容' : '';
+        return '- 文件：' + a.name + ' (' + a.path + ')' + (a.mimeType ? '；类型：' + a.mimeType : '') + multiModal;
+      });
+      requestBody.message = text + '\n\n<hidden-context>\n[用户添加的资源]\n'
+        + lines.join('\n')
+        + '\n[重要] 上述文件已上传到当前工作区的 .dsh-attachments/ 目录，请直接使用提供的绝对路径读取，不要猜测其他路径。\n</hidden-context>';
+    }
 
     sess.abortController = new AbortController();
     const timeoutId = setTimeout(function() { sess.abortController.abort(); }, SSE_TIMEOUT_MS);
 
     const response = await fetch(API + '/stream', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: (() => {
+        const h = { 'Content-Type': 'application/json' };
+        const apiKey = getApiKey();
+        if (apiKey) h['X-API-Key'] = apiKey;
+        return h;
+      })(),
       body: JSON.stringify(requestBody),
       signal: sess.abortController.signal,
     });
@@ -4154,7 +5662,8 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
                 render();
                 updateSidebarStatus();
               } else {
-                updateSidebarStatus();
+                // P1: 后台会话完成 → 累计未读并刷新侧边栏
+                noteBackgroundActivity(sess);
               }
               await sleep(0);
             } else if (eventType === 'done') {
@@ -4226,7 +5735,8 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
                 render();
                 updateSidebarStatus();
               } else {
-                updateSidebarStatus();
+                // P1: 后台会话完成 → 累计未读并刷新侧边栏
+                noteBackgroundActivity(sess);
               }
 
               await sleep(0);
@@ -4241,27 +5751,25 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
               }
               saveSessionsToStorage();
 
-              // Sync full message history from done event so multi-step
-              // turns (tool calls with intermediate assistant text) are
-              // not lost.  The streaming chunks only carry the final
-              // step's deltas; earlier steps' text lives exclusively in
-              // done.messages.
+              // D-10 瘦身适配：服务端 done.messages 只含「当前回合」（自最后一条
+              // user 起）+ messageCount 供对账，不再携带全量历史。
+              // 因此只重建当前回合段，历史部分保留在 sess.messages 中。
               if (data.messages && Array.isArray(data.messages) && data.messages.length > 0) {
-                // Rebuild sess.messages from the authoritative server list.
-                // 每个 step 都保留自己的 meta（不再共享 assistantMsg.meta 引用）。
-                // tool 消息由 done 完整提供（name+args+result+status）。
                 var rebuilt = [];
-                var userPushed = false;
-                var stepIndex = 0;
+                var userKept = false;
                 var assistantCount = 0;
                 for (var di = 0; di < data.messages.length; di++) {
                   var dm = data.messages[di];
                   if (dm.role === 'user') {
-                    if (!userPushed) {
-                      var existingUser = sess.messages.find(function(m) { return m.role === 'user'; });
-                      if (existingUser) rebuilt.push(existingUser);
+                    if (!userKept) {
+                      // 复用本地已有的 user 消息对象（保留附件缩略图等本地元数据）
+                      var turnStart = -1;
+                      for (var mi = sess.messages.length - 1; mi >= 0; mi--) {
+                        if (sess.messages[mi].role === 'user') { turnStart = mi; break; }
+                      }
+                      if (turnStart >= 0) rebuilt.push(sess.messages[turnStart]);
                       else rebuilt.push({ role: 'user', content: dm.content || '', time: formatTime(new Date().toISOString()) });
-                      userPushed = true;
+                      userKept = true;
                     }
                   } else if (dm.role === 'assistant') {
                     var aText = '';
@@ -4312,7 +5820,22 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
                     lastRebuilt.content = fullContent;
                   }
                 }
-                sess.messages = rebuilt;
+                // 截断本地当前回合（最后一条 user 起），拼接服务端权威回合内容
+                var cutIndex = -1;
+                for (var mi2 = sess.messages.length - 1; mi2 >= 0; mi2--) {
+                  if (sess.messages[mi2].role === 'user') { cutIndex = mi2; break; }
+                }
+                var head = cutIndex >= 0 ? sess.messages.slice(0, cutIndex) : sess.messages.slice();
+                sess.messages = head.concat(rebuilt);
+
+                // 对账兜底：服务端 messageCount 为会话消息总数。本地明显偏少
+                // （如中途刷新过页面）时拉取权威历史补齐，一次性执行防循环。
+                if (sess.sessionId && typeof data.messageCount === 'number' && data.messageCount > 0
+                    && !sess.historyReconciled && sess.messages.length + 2 < data.messageCount) {
+                  sess.historyReconciled = true;
+                  trajPush(sess, 'info', '检测到本地历史缺失（服务端 ' + data.messageCount + ' 条），自动补齐…', {});
+                  loadHistoryMessages(sess);
+                }
               } else {
                 assistantMsg.streaming = false;
                 stopStreamReveal(assistantMsg);
@@ -4326,7 +5849,8 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
                 // 更新侧边栏状态（发送按钮等）
                 updateSidebarStatus();
               } else {
-                updateSidebarStatus();
+                // P1: 后台会话完成 → 累计未读并刷新侧边栏
+                noteBackgroundActivity(sess);
               }
             } else if (eventType === 'error') {
               receivedChunks = true;
@@ -4340,17 +5864,6 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
               // v28: 轨迹日志 — 记录错误
               trajPush(sess, 'error', errMsg, { error: errMsg });
               throw new Error(errMsg);
-            } else if (eventType === 'approval') {
-              // v11: 审批请求
-              state.pendingApprovals.push({
-                approvalId: data.approvalId,
-                sessionId: data.sessionId || sess.agentId,
-                toolName: data.toolName || 'unknown',
-                args: data.args,
-              });
-              // P1: 局部更新审批角标，不全量 render
-              if (state.currentSessionId === sess.agentId) render();
-              else updateSidebarStatus();
             } else if (eventType === 'plan') {
               // v11: 计划更新
               sess.plan = data.plan || sess.plan;
@@ -4431,7 +5944,7 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
       sess.streaming = false;
       sess.abortController = null;
       if (state.currentSessionId === sess.agentId) render();
-      else updateSidebarStatus();
+      else noteBackgroundActivity(sess);
     }
   } catch (e) {
     stopWaitTimer(sess);
@@ -4465,8 +5978,8 @@ async function sendWithRetry(sess, text, assistantMsg, startTime, firstChunkTime
     sess.sending = false;
     sess.streaming = false;
     sess.abortController = null;
-    if (state.currentSessionId === sess.agentId) render();
-    else updateSidebarStatus();
+      if (state.currentSessionId === sess.agentId) render();
+      else noteBackgroundActivity(sess);
   } finally {
     // 仅在非重试场景下清理（重试时递归调用会自行处理）
     if (!retryCount) {
@@ -4588,6 +6101,14 @@ function updateSidebarStatus() {
     const newSidebar = renderSidebar();
     sidebar.replaceWith(newSidebar);
   }
+}
+
+// P1: 后台会话有新动态（完成/出错）时累计未读并刷新侧边栏；返回是否为后台会话
+function noteBackgroundActivity(sess) {
+  if (!sess || state.currentSessionId === sess.agentId) return false;
+  sess.unread = (sess.unread || 0) + 1;
+  updateSidebarStatus();
+  return true;
 }
 
 function showRetryNotice(n) { showToast('连接异常，正在重试 (' + n + '/' + MAX_RETRIES + ')…'); }
@@ -4715,7 +6236,10 @@ async function loadPluginConfig(pluginId) {
 async function loadPendingApprovals() {
   try {
       const data = await apiRequest(APPROVAL_API + '/runtime/pending');
-      state.pendingApprovals = Array.isArray(data) ? data : [];
+      const next = Array.isArray(data) ? data : [];
+      const prevIds = state.pendingApprovals.map(function(a) { return a.approvalId; }).join(',');
+      const nextIds = next.map(function(a) { return a.approvalId; }).join(',');
+      state.pendingApprovals = next;
       const current = getCurrentSession();
       const pending = state.pendingApprovals.find(function(item) {
         return current && (item.sessionId || '') === (current.sessionId || current.agentId);
@@ -4725,7 +6249,10 @@ async function loadPendingApprovals() {
           ? '等待审批 · ' + (pending.toolName || 'unknown')
           : current.currentStage;
       }
-      if (pending && current && state.currentSessionId === current.agentId) render();
+      // 仅当待审批集合「出现新项」时才整页 render（把审批弹窗呈现给用户）；
+      // 集合未变时不 render —— 避免 700ms 轮询反复重建 DOM，
+      // 导致用户正在操作的审批弹窗/问答卡被刷掉（表现为页面一直刷新）。
+      if (pending && current && state.currentSessionId === current.agentId && nextIds !== prevIds) render();
   } catch (e) { /* ignore */ }
 }
 
@@ -4802,6 +6329,7 @@ async function init() {
   await loadModelSettings();
   await loadPlugins();
   await loadPendingApprovals();
+  await loadPendingQuestions(); // 恢复挂起中的问答（ask_user_question）
   await loadSessionHistory(); // P1: 恢复会话列表
   render();
   if ($('#composer-input')) $('#composer-input').focus();

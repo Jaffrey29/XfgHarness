@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>cn.xiaofuge</groupId>
+  <artifactId>deepseek-harness-java-types</artifactId>
+  <version>0.1.7</version>
+  <name>deepseek-harness-java-types</name>
+  <description>插件开发契约包：SPI 接口、抽象基类、工具/内容值对象。外部插件工程只需依赖此包即可开发。</description>
+  <url>https://github.com/fuzhengwei/deepseek-harness-java</url>
+  <licenses>
+    <license>
+      <name>The Apache License, Version 2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+  <developers>
+    <developer>
+      <id>ossrh</id>
+      <name>fuzhengwei</name>
+      <email>184172133@qq.com</email>
+      <url>https://github.com/fuzhengwei</url>
+      <organization>deepseek-harness-java</organization>
+      <organizationUrl>https://github.com/fuzhengwei/deepseek-harness-java</organizationUrl>
+      <roles>
+        <role>Project Manager</role>
+        <role>Developer</role>
+      </roles>
+      <timezone>Asia/Shanghai</timezone>
+    </developer>
+  </developers>
+  <scm>
+    <connection>scm:git:https://github.com/fuzhengwei/deepseek-harness-java.git</connection>
+    <developerConnection>scm:git:git@github.com:fuzhengwei/deepseek-harness-java.git</developerConnection>
+    <url>https://github.com/fuzhengwei/deepseek-harness-java</url>
+  </scm>
+  <dependencies>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>2.0.13</version>
+      <scope>compile</scope>
+    </dependency>
+  </dependencies>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.sonatype.central</groupId>
+        <artifactId>central-publishing-maven-plugin</artifactId>
+        <version>0.4.0</version>
+        <extensions>true</extensions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

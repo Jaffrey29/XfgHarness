@@ -212,6 +212,103 @@ public class WorkspaceRegistryService {
     }
 
     /**
+     * 递归列出工作区（或根目录）内的文件树（Web 端「信息」面板的工程文件浏览）。
+     * <p>流程：解析起始目录（root 防护）→ 递归遍历 → 组装节点。</p>
+     * <p>安全边界：起始路径必须落在工作区根目录内（{@link #resolveInsideRoot(String)}）。</p>
+     * <p>节点字段：name 文件名 / path 服务端绝对路径 / type directory|file /
+     * size 字节数（目录为 0）/ children 子节点（仅目录）。目录排前，同类型按名称排序。</p>
+     *
+     * @param path 起始目录（空则取工作区根目录）；必须在根目录内
+     * @param maxDepth 最大递归深度，超出后该目录标记 truncated=true 不再下钻
+     */
+    public java.util.Map<String, Object> fileTree(String path, int maxDepth) {
+        Path base = (path == null || path.isBlank())
+                ? rootPath().toAbsolutePath().normalize()
+                : resolveInsideRoot(path);
+        if (!Files.isDirectory(base)) {
+            throw new IllegalArgumentException("not a directory: " + base);
+        }
+        return buildTreeNode(base, 0, Math.max(1, maxDepth));
+    }
+
+    /** 递归构建单个节点。 */
+    private java.util.Map<String, Object> buildTreeNode(Path dir, int depth, int maxDepth) {
+        java.util.Map<String, Object> node = new java.util.LinkedHashMap<>();
+        node.put("name", dir.getFileName() == null ? dir.toString() : dir.getFileName().toString());
+        node.put("path", dir.toAbsolutePath().normalize().toString());
+        node.put("type", "directory");
+        node.put("size", 0L);
+        List<java.util.Map<String, Object>> children = new ArrayList<>();
+        if (depth < maxDepth) {
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
+                for (Path child : stream) {
+                    if (isOrderFile(child)) {
+                        continue;
+                    }
+                    if (Files.isDirectory(child)) {
+                        children.add(buildTreeNode(child, depth + 1, maxDepth));
+                    } else if (Files.isRegularFile(child)) {
+                        java.util.Map<String, Object> f = new java.util.LinkedHashMap<>();
+                        f.put("name", child.getFileName().toString());
+                        f.put("path", child.toAbsolutePath().normalize().toString());
+                        f.put("type", "file");
+                        try {
+                            f.put("size", Files.size(child));
+                        } catch (IOException ignored) {
+                            f.put("size", 0L);
+                        }
+                        children.add(f);
+                    }
+                }
+            } catch (IOException ignored) {
+                // 无权限/读取失败的目录按空目录处理
+            }
+            // 目录优先，其次按名称
+            children.sort((a, b) -> {
+                boolean ad = "directory".equals(a.get("type"));
+                boolean bd = "directory".equals(b.get("type"));
+                if (ad != bd) {
+                    return ad ? -1 : 1;
+                }
+                return String.valueOf(a.get("name")).compareToIgnoreCase(String.valueOf(b.get("name")));
+            });
+            node.put("children", children);
+        } else {
+            node.put("children", children);
+            node.put("truncated", true);
+        }
+        return node;
+    }
+
+    /**
+     * 解析指定工作区的磁盘目录（附件上传等本地文件操作使用）。
+     * <p>流程：校验名称 → 归一化为安全名 → 校验目录存在 → 返回绝对路径。</p>
+     */
+    public Path resolveWorkspaceDir(String name) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("workspace name must not be blank");
+        }
+        Path dir = resolve(safeName(name.trim()));
+        if (!Files.isDirectory(dir)) {
+            throw new IllegalArgumentException("workspace not found: " + name);
+        }
+        return dir.toAbsolutePath().normalize();
+    }
+
+    /**
+     * 解析待读取的文件路径（Web 端工件预览 / 下载使用）。
+     * <p>流程：绝对化 + 归一化 → 返回路径。</p>
+     * <p>说明：本地单机部署形态下放开根目录限制，允许读取本机任意可读文件
+     * （Agent 产出物常落在工作区外，如桌面）。多用户/服务端部署时应重新收紧为仅工作区根目录。</p>
+     */
+    public Path resolveInsideRoot(String rawPath) {
+        if (rawPath == null || rawPath.isBlank()) {
+            throw new IllegalArgumentException("path must not be blank");
+        }
+        return Paths.get(rawPath).toAbsolutePath().normalize();
+    }
+
+    /**
      * 处理根路径 路径。
      * 流程：转换请求 → 调用用例或领域服务 → 转换响应。
      * @return 方法执行结果。
