@@ -3726,6 +3726,25 @@ body, .app, .sidebar, .main-area, .main, .messages, .composer, .modal, .toast {
 .side-panel.preview-panel .side-panel-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; font-size: 14px; font-weight: 600; }
 .side-panel-dl { text-decoration: none; flex: none; margin-left: auto; }
 .side-panel.preview-panel .side-panel-close { flex: none; }
+/* 拖拽手柄：面板左边缘 6px 热区 */
+.side-panel { position: relative; }
+.side-panel-resizer {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 6px;
+  cursor: col-resize; z-index: 20; flex: none;
+}
+.side-panel-resizer:hover, body.side-panel-resizing .side-panel-resizer {
+  background: var(--dsw-alias-primary, #4176e6); opacity: .35;
+}
+body.side-panel-resizing { cursor: col-resize; user-select: none; }
+body.side-panel-resizing iframe { pointer-events: none; } /* 拖拽时禁用 iframe 交互，避免吃掉 mousemove */
+/* 放大/缩小按钮 */
+.side-panel-resize-btn {
+  flex: none; width: 24px; height: 24px; border: 1px solid var(--dsw-alias-border-secondary, #e5e7eb);
+  background: var(--dsw-alias-bg-elevated, #fff); border-radius: 6px; cursor: pointer;
+  font-size: 15px; line-height: 1; color: var(--dsw-alias-label-secondary, #4b5563);
+  display: inline-flex; align-items: center; justify-content: center; padding: 0;
+}
+.side-panel-resize-btn:hover { background: var(--dsw-alias-interactive-bg-hover, #f3f4f6); color: var(--dsw-alias-label-primary, #1f2329); }
 .preview-body { flex: 1; overflow: auto; padding: 16px; display: flex; flex-direction: column; min-height: 0; background: var(--dsw-alias-bg-secondary, #fafbfc); }
 .preview-body .artifact-preview-image { max-width: 100%; height: auto; display: block; margin: 0 auto; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
 .preview-body .artifact-preview-iframe { width: 100%; flex: 1; border: 0; min-height: 400px; border-radius: 8px; background: #fff; }

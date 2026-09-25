@@ -226,6 +226,8 @@ const state = {
   sessionSearch: '',
   artifactPreview: null, // { path, name, loading, error, kind, payload }
   previewFile: null, // 右侧内嵌预览：{ path, name }
+  // 右侧面板宽度（px），可拖拽/按钮调整，持久化
+  panelWidth: parseInt(localStorage.getItem('panelWidth') || '0', 10) || 0,
   // P2: 扩展设置（Skills / MCP / CLI）
   extensionSkills: [],
   extensionMcpServers: [],
@@ -465,8 +467,19 @@ function toggleTheme() {
 // ═══════════════════════════════════════════
 function render() {
   const root = $('#app') || document.body;
+  // 保存当前消息区滚动状态，重建后瞬时恢复，避免"从顶部滚到底部"的可见闪烁
+  const oldMsgs = root.querySelector('.messages');
+  const wasNearBottom = oldMsgs ? (oldMsgs.scrollHeight - oldMsgs.scrollTop - oldMsgs.clientHeight < 120) : true;
+  const oldScrollTop = oldMsgs ? oldMsgs.scrollTop : 0;
+
   root.innerHTML = '';
   root.appendChild(state.activeMainTab === 'settings' ? renderSettingsPage() : renderLayout());
+
+  // 瞬时定位（auto，无动画）：本来在底部则贴底，否则恢复原位置
+  const newMsgs = root.querySelector('.messages');
+  if (newMsgs) {
+    newMsgs.scrollTop = wasNearBottom ? newMsgs.scrollHeight : oldScrollTop;
+  }
 }
 
 function renderLayout() {
@@ -1302,7 +1315,7 @@ function renderMain() {
     });
     
     main.appendChild(messages);
-    setTimeout(scrollToBottom, 0);
+    // 滚动位置由 render() 统一瞬时恢复/贴底，此处不再重复 smooth 滚动（避免重建后二次滚动动画）
   }
 
   // Composer
@@ -1986,6 +1999,43 @@ function workspaceNameForUpload(wsPath) {
 // 对齐桌面端资源模型：
 // - 图片：dataURL 内联（多模态识别）+ 上传落盘（工具可读取），双通道；
 // - 其他文件：必须先选择工作区，上传落盘后以绝对路径注入消息隐藏上下文。
+// 渲染附件预览区容器（始终返回容器元素，无附件时为空容器，便于局部替换）
+function renderAttachmentArea(sess) {
+  const attArea = el('div', { class: 'attachment-preview-area' });
+  if (!sess || !sess.pendingAttachments || sess.pendingAttachments.length === 0) {
+    return attArea;
+  }
+  for (let i = 0; i < sess.pendingAttachments.length; i++) {
+    const att = sess.pendingAttachments[i];
+    const item = el('div', { class: 'attachment-thumb' + (att.error ? ' error' : '') });
+    if (att.type === 'image' && att.url) {
+      item.appendChild(el('img', { src: att.url, class: 'attachment-thumb-img', alt: att.name }));
+    } else {
+      item.appendChild(el('span', { class: 'attachment-thumb-file' }, '📄'));
+    }
+    const nameEl = el('span', { class: 'attachment-thumb-name' }, att.name);
+    if (att.uploading) nameEl.textContent += '（上传中…）';
+    else if (att.error) nameEl.textContent += '（' + att.error + '）';
+    else if (att.type === 'file' && att.path) nameEl.title = att.path;
+    item.appendChild(nameEl);
+    (function(idx) {
+      item.appendChild(el('button', { class: 'attachment-thumb-remove', onclick: function() { removeAttachment(sess, idx); } }, '×'));
+    })(i);
+    attArea.appendChild(item);
+  }
+  return attArea;
+}
+
+// 局部刷新附件预览区：只替换 composer-box 内的预览容器，不动对话区/输入框，避免全量 render 闪烁
+function refreshAttachmentPreview(sess) {
+  const box = document.querySelector('.composer-box');
+  if (!box) { render(); return; } // 兜底：找不到 composer 时全量渲染
+  const oldArea = box.querySelector('.attachment-preview-area');
+  const newArea = renderAttachmentArea(sess || getCurrentSession());
+  if (oldArea) box.replaceChild(newArea, oldArea);
+  else box.insertBefore(newArea, box.firstChild);
+}
+
 function addAttachment(sess, file) {
   if (!sess) return;
   if (!sess.pendingAttachments) sess.pendingAttachments = [];
@@ -2006,17 +2056,11 @@ function addAttachment(sess, file) {
     error: null,
   };
   sess.pendingAttachments.push(att);
-  console.log('[dsh-attach] pushed, count=', sess.pendingAttachments.length, 'will render');
-  try {
-    render();
-    console.log('[dsh-attach] render done, previewInDOM=', !!document.querySelector('.attachment-preview-area'));
-  } catch (e) {
-    console.error('[dsh-attach] render 抛错:', e && e.stack || e);
-  }
+  refreshAttachmentPreview(sess);
 
   const finish = function() {
     att.uploading = false;
-    render();
+    refreshAttachmentPreview(sess);
   };
 
   // 落盘：需要工作区。没有工作区时图片仍可内联（纯多模态），其他文件拒绝。
@@ -2039,7 +2083,7 @@ function addAttachment(sess, file) {
     reader.onload = function() {
       att.url = reader.result;
       if (!state.currentWorkspace) { att.uploading = false; }
-      render();
+      refreshAttachmentPreview(sess);
     };
     reader.readAsDataURL(file);
   }
@@ -2048,7 +2092,7 @@ function addAttachment(sess, file) {
 function removeAttachment(sess, index) {
   if (sess.pendingAttachments) {
     sess.pendingAttachments.splice(index, 1);
-    render();
+    refreshAttachmentPreview(sess);
   }
 }
 
@@ -2606,6 +2650,36 @@ function renderSidePanel() {
   if (!sess) sess = { deliverables: [], messages: [], stats: {} };
 
   const panel = el('div', { class: 'side-panel' + (state.activePanel === 'preview' ? ' preview-panel' : '') });
+  // 应用持久化的自定义宽度
+  if (state.panelWidth) panel.style.width = state.panelWidth + 'px';
+
+  // 左侧拖拽手柄：拖动调整面板宽度
+  const dragHandle = el('div', { class: 'side-panel-resizer', title: '拖动调整宽度' });
+  dragHandle.addEventListener('mousedown', function(e) {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = panel.getBoundingClientRect().width;
+    document.body.classList.add('side-panel-resizing');
+    function onMove(ev) {
+      // 向左拖（clientX 变小）→ 面板变宽
+      const delta = startX - ev.clientX;
+      let w = startW + delta;
+      const minW = 320, maxW = Math.floor(window.innerWidth * 0.9);
+      w = Math.max(minW, Math.min(maxW, w));
+      panel.style.width = w + 'px';
+      state.panelWidth = w;
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.classList.remove('side-panel-resizing');
+      localStorage.setItem('panelWidth', String(state.panelWidth));
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+  panel.appendChild(dragHandle);
+
   const header = el('div', { class: 'side-panel-header' });
   const titles = {
     todos: '待办列表', plan: '计划', goal: '目标',
@@ -2619,6 +2693,19 @@ function renderSidePanel() {
     : (titles[state.activePanel] || '');
   const titleEl = el('div', { class: 'side-panel-title', title: state.activePanel === 'preview' && state.previewFile ? state.previewFile.path : '' }, titleText);
   header.appendChild(titleEl);
+
+  // 放大 / 缩小按钮（调整面板宽度，步进 120px）
+  function resizePanel(delta) {
+    const cur = panel.getBoundingClientRect().width;
+    const minW = 320, maxW = Math.floor(window.innerWidth * 0.9);
+    const w = Math.max(minW, Math.min(maxW, Math.round(cur + delta)));
+    panel.style.width = w + 'px';
+    state.panelWidth = w;
+    localStorage.setItem('panelWidth', String(w));
+  }
+  header.appendChild(el('button', { class: 'side-panel-resize-btn', onclick: function() { resizePanel(-120); }, title: '缩小面板' }, '−'));
+  header.appendChild(el('button', { class: 'side-panel-resize-btn', onclick: function() { resizePanel(120); }, title: '放大面板' }, '+'));
+
   // 预览面板头部：下载按钮
   if (state.activePanel === 'preview' && state.previewFile) {
     header.appendChild(el('a', {
@@ -3747,27 +3834,8 @@ function renderComposer(sess) {
 
   const box = el('div', { class: 'composer-box' });
 
-  // v11: 附件预览区
-  if (sess && sess.pendingAttachments && sess.pendingAttachments.length > 0) {
-    const attArea = el('div', { class: 'attachment-preview-area' });
-    for (let i = 0; i < sess.pendingAttachments.length; i++) {
-      const att = sess.pendingAttachments[i];
-      const item = el('div', { class: 'attachment-thumb' + (att.error ? ' error' : '') });
-      if (att.type === 'image' && att.url) {
-        item.appendChild(el('img', { src: att.url, class: 'attachment-thumb-img', alt: att.name }));
-      } else {
-        item.appendChild(el('span', { class: 'attachment-thumb-file' }, '📄'));
-      }
-      const nameEl = el('span', { class: 'attachment-thumb-name' }, att.name);
-      if (att.uploading) nameEl.textContent += '（上传中…）';
-      else if (att.error) nameEl.textContent += '（' + att.error + '）';
-      else if (att.type === 'file' && att.path) nameEl.title = att.path;
-      item.appendChild(nameEl);
-      item.appendChild(el('button', { class: 'attachment-thumb-remove', onclick: function() { removeAttachment(sess, i); } }, '×'));
-      attArea.appendChild(item);
-    }
-    box.appendChild(attArea);
-  }
+  // v11: 附件预览区（始终渲染容器，便于局部刷新）
+  box.appendChild(renderAttachmentArea(sess));
 
   const textarea = el('textarea', {
     class: 'composer-input',
@@ -3936,19 +4004,9 @@ function getAttachFileInput() {
     try {
       const files = Array.prototype.slice.call(inp.files || []);
       const sess = inp._sess || getCurrentSession();
-      console.log('[dsh-attach] change fired, files=', files.length, files.map(function(f){return f.name;}), 'sess=', sess ? sess.agentId : null);
       closeAttachMenu();
       if (sess) {
-        for (const file of files) {
-          try {
-            addAttachment(sess, file);
-            console.log('[dsh-attach] added ok:', file.name, 'pendingCount=', (sess.pendingAttachments||[]).length, 'previewInDOM=', !!document.querySelector('.attachment-preview-area'));
-          } catch (e1) {
-            console.error('[dsh-attach] addAttachment 抛错:', file.name, e1 && e1.stack || e1);
-          }
-        }
-      } else {
-        console.warn('[dsh-attach] 无 sess，跳过添加');
+        for (const file of files) { addAttachment(sess, file); }
       }
       inp.value = ''; // 允许重复选择同一文件再次触发 change
     } catch (e) {
@@ -5251,7 +5309,9 @@ function selectSession(agentId) {
   saveSessionsToStorage();
   const input = $('#composer-input');
   if (input) { input.focus(); autoResize({ target: input }); }
-  setTimeout(scrollToBottom, 50);
+  // 切换会话：瞬时定位到底部（内容全新，无需滚动动画），render() 已瞬时贴底
+  const mc = $('.messages');
+  if (mc) mc.scrollTop = mc.scrollHeight;
   // v30: 历史会话懒加载消息
   if (sess && sess.messages.length === 0 && sess.sessionId) {
     loadHistoryMessages(sess);
